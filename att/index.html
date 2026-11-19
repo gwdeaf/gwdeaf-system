@@ -366,6 +366,7 @@
   <h1 id="header-title">근태관리 시스템</h1>
   <div style="display:flex;gap:0.5rem;align-items:center;">
     <span id="header-name-badge" style="display:none;font-size:0.78rem;color:#fff;background:rgba(255,255,255,0.15);border:1px solid rgba(255,255,255,0.35);border-radius:6px;padding:4px 10px;font-weight:600;"></span>
+    <a class="hdr-btn" href="/" style="text-decoration:none;display:inline-block">🏠 홈으로</a>
     <button id="header-mode-btn" class="hdr-btn" onclick="chooseMode()" style="display:none">🔀 화면 전환</button>
     <button id="header-logout-btn" class="hdr-btn" onclick="doLogout()" style="display:none">로그아웃</button>
   </div>
@@ -1998,7 +1999,8 @@ var NAV_MODE = (function(){
   var m = '';
   try {
     m = (new URLSearchParams(location.search).get('m') || '').toLowerCase();
-    if (['leave','trip','punch'].indexOf(m) >= 0) sessionStorage.setItem('att_nav_mode', m);
+    if (m === 'admin') { sessionStorage.setItem('att_mode', 'admin'); sessionStorage.removeItem('att_nav_mode'); return ''; }   // 홈 '시스템 관리'에서 들어옴 → 관리자 화면
+    if (['leave','trip','punch'].indexOf(m) >= 0) { sessionStorage.setItem('att_nav_mode', m); sessionStorage.setItem('att_mode', 'staff'); }   // 홈 업무 메뉴에서 들어옴 → 직원 화면
     else { m = sessionStorage.getItem('att_nav_mode') || ''; if (['leave','trip','punch'].indexOf(m) < 0) m = ''; }
   } catch(e) { m = ''; }
   return m;
@@ -3587,7 +3589,7 @@ function afterLogin() {
     try { mode = sessionStorage.getItem('att_mode') || ''; } catch(e) {}
     if (mode === 'admin' && canAdmin) { enterAdmin(); return; }
     if (mode === 'staff' && canStaff) { enterUser(res.staff); return; }
-    if (canAdmin && canStaff) { showModeChooser(); return; }
+    if (canAdmin && canStaff) { pickMode('staff'); return; }
     if (canAdmin) { pickMode('admin'); return; }
     if (canStaff) { pickMode('staff'); return; }
     showLeaveLoginView('직원목록에서 이 구글 계정(' + esc(res.email) + ')을 찾을 수 없습니다. 지회 담당자에게 문의하세요.', true);
@@ -3605,7 +3607,7 @@ function pickMode(m) {
 function chooseMode() { try { sessionStorage.removeItem('att_mode'); } catch(e) {} location.reload(); }
 function updateModeBtn() {
   var mb = document.getElementById('header-mode-btn');
-  if (mb) mb.style.display = (ME && ME.isAdmin && ME.staff) ? '' : 'none';
+  if (mb) mb.style.display = 'none';   // 화면 전환은 업무 시스템 홈 메뉴에서 합니다
 }
 
 // 직원 모드 진입 (로그인 직후 / 새로고침 후 자동 복원)

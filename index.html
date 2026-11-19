@@ -5,26 +5,325 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>강원도수어문화원 업무 시스템</title>
 <style>
-  body{margin:0;font-family:-apple-system,"Noto Sans KR",sans-serif;background:#f4f2ee;color:#222;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding:32px 16px}
-  h1{font-size:1.3rem;margin:8px 0 4px}
-  p.sub{color:#777;font-size:.9rem;margin:0 0 24px}
-  .grid{width:100%;max-width:420px;display:flex;flex-direction:column;gap:12px}
-  a.card{display:flex;align-items:center;gap:14px;background:#fff;border-radius:14px;padding:18px;text-decoration:none;color:inherit;box-shadow:0 1px 4px rgba(0,0,0,.08)}
-  a.card:active{transform:scale(.98)}
-  .ic{font-size:1.8rem}
-  .t{font-weight:700;font-size:1.05rem}
-  .d{color:#777;font-size:.85rem;margin-top:2px}
-  .foot{margin-top:28px;color:#999;font-size:.8rem}
+:root{--bg:#f5f7fb;--card:#fff;--line:#e5e9f2;--text:#1f2937;--mute:#6b7280;--pri:#2f5bd6;--pri-soft:#eaf0ff;--ok:#12805c;--ok-soft:#e5f6ee;--warn:#b45309;--warn-soft:#fff4e0;--red:#c0392b;--red-soft:#fdecea}
+*{box-sizing:border-box}
+body{margin:0;font-family:-apple-system,"Noto Sans KR","Malgun Gothic",sans-serif;background:var(--bg);color:var(--text);font-size:15px}
+button{font-family:inherit;cursor:pointer}
+a{color:inherit;text-decoration:none}
+.hide{display:none!important}
+/* 로그인 */
+.center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
+.logincard{background:#fff;border:1px solid var(--line);border-radius:18px;padding:34px 28px;width:100%;max-width:380px;text-align:center;box-shadow:0 6px 24px rgba(31,41,55,.06)}
+.logo{width:56px;height:56px;border-radius:16px;background:var(--pri);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.6rem;margin:0 auto 14px}
+.logincard h1{font-size:1.2rem;margin:0 0 6px}
+.logincard p{color:var(--mute);font-size:.88rem;margin:0 0 22px;line-height:1.5}
+.gbtn{width:100%;padding:13px;border-radius:12px;border:1px solid var(--line);background:#fff;font-size:1rem;font-weight:700}
+.gbtn:hover{background:#f8fafc}
+.msg{margin-top:14px;font-size:.85rem;line-height:1.5;color:var(--red)}
+/* 앱 껍데기 */
+.shell{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
+.side{background:#fff;border-right:1px solid var(--line);padding:20px 14px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
+.brand{display:flex;align-items:center;gap:10px;padding:2px 8px 18px;font-weight:800;font-size:.98rem;line-height:1.25}
+.brand .logo{width:38px;height:38px;border-radius:11px;font-size:1.1rem;margin:0;flex:none}
+.nav{display:flex;flex-direction:column;gap:3px}
+.nav a,.nav .dis{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;font-weight:600;color:#374151}
+.nav a:hover{background:#f3f5fa}
+.nav a.on{background:var(--pri-soft);color:var(--pri)}
+.nav .dis{color:#a3aab8;cursor:default}
+.nav .tag{margin-left:auto;font-size:.68rem;background:#eef0f5;color:#8a93a5;border-radius:6px;padding:2px 6px;font-weight:700}
+.nav .ic{width:22px;text-align:center}
+.grow{flex:1}
+.me{border-top:1px solid var(--line);padding:14px 6px 0;display:flex;align-items:center;gap:10px}
+.av{width:38px;height:38px;border-radius:50%;background:var(--pri-soft);color:var(--pri);font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
+.me .nm{font-weight:700;font-size:.92rem}
+.me .sub{color:var(--mute);font-size:.78rem;white-space:nowrap}
+.me button{margin-left:auto;white-space:nowrap;flex:none;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 9px;font-size:.78rem;color:#4b5563}
+main{padding:28px 32px 48px;max-width:1120px;width:100%}
+.head{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px}
+.head h2{margin:0;font-size:1.45rem}
+.head .date{color:var(--mute);font-size:.86rem;margin-bottom:4px}
+.chips{display:flex;gap:6px;flex-wrap:wrap}
+.chip{background:#fff;border:1px solid var(--line);border-radius:99px;padding:5px 12px;font-size:.8rem;color:#4b5563;font-weight:600}
+.chip.pri{background:var(--pri-soft);border-color:#d5e0ff;color:var(--pri)}
+.grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);grid-template-areas:"nt at" "mg .";gap:18px;align-items:start}
+.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(31,41,55,.04)}
+.ctitle{display:flex;align-items:center;justify-content:space-between;margin:0 0 14px;font-size:1.02rem;font-weight:800}
+.btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 13px;font-size:.84rem;font-weight:700;color:#374151}
+.btn:hover{background:#f6f8fc}
+.btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
+.btn.pri:hover{background:#2549b4}
+.btn.red{color:var(--red);border-color:#f0c9c4}
+.btn.sm{padding:4px 9px;font-size:.76rem}
+.empty{color:var(--mute);text-align:center;padding:26px 6px;font-size:.9rem}
+/* 공지 */
+.nt{border-top:1px solid var(--line)}
+.nt:first-child{border-top:0}
+.nth{display:flex;align-items:center;gap:9px;padding:13px 2px;cursor:pointer}
+.nth .t{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.nth .d{color:var(--mute);font-size:.8rem;flex:none}
+.badge{flex:none;font-size:.7rem;font-weight:800;border-radius:6px;padding:3px 7px}
+.b-imp{background:var(--red-soft);color:var(--red)}
+.b-all{background:var(--pri-soft);color:var(--pri)}
+.b-chap{background:#eef0f5;color:#6b7280}
+.ntb{padding:0 2px 14px;color:#374151;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+.ntb .meta{display:flex;gap:8px;align-items:center;margin-top:10px;color:var(--mute);font-size:.8rem;white-space:normal}
+/* 내 근태 */
+.ring{display:flex;align-items:center;gap:16px;margin-bottom:14px}
+.ringsvg{flex:none}
+.big{font-size:1.9rem;font-weight:800;line-height:1}
+.big small{font-size:.9rem;font-weight:700;color:var(--mute)}
+.lab{color:var(--mute);font-size:.8rem;margin-top:4px}
+.rows{border-top:1px solid var(--line);margin-top:6px}
+.rows div{display:flex;justify-content:space-between;padding:10px 2px;border-bottom:1px solid var(--line);font-size:.9rem}
+.rows div:last-child{border-bottom:0}
+.rows b{font-weight:800}
+.note{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:11px 13px;font-size:.84rem;line-height:1.5}
+/* 관리 */
+.mgr{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.mbox{border:1px solid var(--line);border-radius:12px;padding:14px;display:block}
+.mbox:hover{background:#f8faff;border-color:#cfdcff}
+.mbox .n{font-size:1.4rem;font-weight:800}
+.mbox .l{color:var(--mute);font-size:.82rem;margin-top:3px}
+/* 모달 */
+.ov{position:fixed;inset:0;background:rgba(17,24,39,.4);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+.modal{background:#fff;border-radius:16px;width:100%;max-width:520px;padding:22px;max-height:92vh;overflow:auto}
+.modal h3{margin:0 0 14px}
+.modal label{display:block;font-size:.82rem;font-weight:700;margin:12px 0 5px;color:#4b5563}
+.modal input[type=text],.modal textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit}
+.modal textarea{min-height:150px;resize:vertical}
+.ck{display:flex;align-items:center;gap:7px;font-weight:600;margin-top:12px;font-size:.9rem}
+.mfoot{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
+.mlogout{display:none}
+.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1f2937;color:#fff;padding:11px 18px;border-radius:10px;font-size:.88rem;z-index:99}
+@media(max-width:860px){
+  .shell{display:block}
+  .side{position:static;height:auto;flex-direction:row;align-items:center;gap:8px;padding:10px 12px;overflow-x:auto;border-right:0;border-bottom:1px solid var(--line)}
+  .brand{padding:0 6px 0 0;white-space:nowrap}
+  .brand span.tx{display:none}
+  .nav{flex-direction:row;gap:4px}
+  .nav a,.nav .dis{padding:9px 11px;white-space:nowrap}
+  .grow{display:none}
+  .me{border-top:0;padding:0;margin-left:auto}
+  .me .info{display:none}
+  main{padding:18px 14px 40px}
+  .grid{grid-template-columns:1fr;grid-template-areas:"nt" "at" "mg"}
+  .mbox{padding:11px}
+  .mbox .n{font-size:1.05rem}
+  .mbox .l{word-break:keep-all;font-size:.76rem}
+  .mlogout{display:inline-block!important}
+  .mgr{grid-template-columns:1fr 1fr 1fr}
+}
 </style>
 </head>
 <body>
-  <h1>강원도수어문화원 업무 시스템</h1>
-  <p class="sub">사용할 업무를 선택하세요</p>
-  <div class="grid">
-    <a class="card" href="/car/"><span class="ic">🚗</span><span><div class="t">차량운행일지</div><div class="d">운행 기록 · 차량 예약</div></span></a>
-    <a class="card" href="/att/"><span class="ic">🗓️</span><span><div class="t">근태관리</div><div class="d">휴가 · 시간외 · 시수 · 출장</div></span></a>
-    <a class="card" href="/access.html"><span class="ic">🔑</span><span><div class="t">직원 · 권한 관리</div><div class="d">지회 담당자 전용</div></span></a>
+
+<!-- 로그인 -->
+<div id="login" class="center hide">
+  <div class="logincard">
+    <div class="logo">🏠</div>
+    <h1>강원도수어문화원<br>업무 시스템</h1>
+    <p>업무용 구글 계정(@gwdeaf.or.kr)으로<br>로그인하세요.</p>
+    <button class="gbtn" onclick="doLogin()">🔐 구글 계정으로 로그인</button>
+    <div id="loginmsg" class="msg"></div>
   </div>
-  <div class="foot">구글 업무용 계정(@gwdeaf.or.kr)으로 로그인합니다</div>
+</div>
+
+<!-- 접근 불가 -->
+<div id="blocked" class="center hide">
+  <div class="logincard">
+    <div class="logo" style="background:#c0392b">!</div>
+    <h1 id="blk-t">접근할 수 없습니다</h1>
+    <p id="blk-d"></p>
+    <button class="gbtn" onclick="doLogout()">다른 계정으로 로그인</button>
+  </div>
+</div>
+
+<!-- 대시보드 -->
+<div id="app" class="shell hide">
+  <aside class="side">
+    <div class="brand"><div class="logo">수</div><span class="tx">강원도수어문화원<br>업무 시스템</span></div>
+    <nav class="nav" id="nav"></nav>
+    <div class="grow"></div>
+    <div class="me">
+      <div class="av" id="me-av"></div>
+      <div class="info"><div class="nm" id="me-nm"></div><div class="sub" id="me-sub"></div></div>
+      <button onclick="doLogout()">로그아웃</button>
+    </div>
+  </aside>
+  <main>
+    <div class="head">
+      <div><div class="date" id="today"></div><h2 id="hello"></h2></div>
+      <div class="chips"><span id="chips" style="display:contents"></span><button class="btn sm mlogout" onclick="doLogout()">로그아웃</button></div>
+    </div>
+    <div class="grid">
+        <div class="card" style="grid-area:nt">
+          <div class="ctitle"><span>📢 공지사항</span><button class="btn pri hide" id="notice-add" onclick="openNotice()">+ 공지 쓰기</button></div>
+          <div id="notices"><div class="empty">불러오는 중…</div></div>
+        </div>
+        <div class="card hide" id="mgr-card" style="grid-area:mg">
+          <div class="ctitle"><span>🛠 우리 지회 관리</span><a class="btn" href="/access.html">관리 화면 열기 →</a></div>
+          <div class="mgr" id="mgr"></div>
+        </div>
+        <div class="card" style="grid-area:at">
+          <div class="ctitle"><span>🗓 내 근태</span><a class="btn" href="/att/">근태 열기 →</a></div>
+          <div id="att"><div class="empty">불러오는 중…</div></div>
+        </div>
+    </div>
+  </main>
+</div>
+
+<div id="modal" class="ov hide"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+var SB_URL  = 'https://uamlualqqcqmpdkprjfs.supabase.co';
+var SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhbWx1YWxxcWNxbXBka3ByamZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNjE0OTMsImV4cCI6MjExMDYzNzQ5M30._f4p4pfcKaYbmjKRXOPpkMo7Ydcc26oVVI6lRFYsLkY';
+var DOMAIN  = 'gwdeaf.or.kr';
+var FN_URL  = SB_URL + '/functions/v1/att';
+var sb = window.supabase.createClient(SB_URL, SB_ANON, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
+var ME = null, NOTICES = [];
+
+function $(id){ return document.getElementById(id); }
+function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
+function show(id){ ['login','blocked','app'].forEach(function(x){ $(x).classList.toggle('hide', x !== id); }); }
+function toast(t){ var d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(function(){ d.remove(); }, 2600); }
+function fmtDate(iso){ var d = new Date(iso); return d.toLocaleDateString('ko-KR', { timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit' }).replace(/\.\s*/g,'.').replace(/\.$/,''); }
+function num(n){ n = Number(n) || 0; return (Math.round(n * 10) / 10).toString(); }
+
+async function doLogin(){
+  $('loginmsg').textContent = '';
+  var r = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + '/', queryParams: { hd: DOMAIN, prompt: 'select_account' } } });
+  if (r.error) $('loginmsg').textContent = '로그인을 시작하지 못했습니다: ' + r.error.message;
+}
+async function doLogout(){ try { await sb.auth.signOut(); } catch(e){} location.href = '/'; }
+
+async function start(){
+  var s = await sb.auth.getSession();
+  if (!s.data || !s.data.session) { show('login'); return; }
+  var r = await sb.rpc('whoami');
+  if (r.error) { show('blocked'); $('blk-t').textContent = '확인하지 못했습니다'; $('blk-d').textContent = r.error.message; return; }
+  var w = r.data;
+  if (!w || !w.ok) {
+    show('blocked');
+    var reason = w && w.reason, em = (w && w.email) || (s.data.session.user && s.data.session.user.email) || '';
+    var t = '등록되지 않은 계정입니다', d = esc(em) + ' 계정은 아직 등록되어 있지 않습니다.<br>지회 담당자에게 등록을 요청하세요.';
+    if (reason === 'inactive') { t = '사용이 중지된 계정입니다'; d = esc(em) + ' 계정은 사용이 중지되었습니다.<br>지회 담당자에게 문의하세요.'; }
+    if (reason === 'bad_domain') { t = '허용되지 않은 계정입니다'; d = '업무용 계정(@' + DOMAIN + ')으로 로그인하세요.<br>현재 계정: ' + esc(em); }
+    $('blk-t').textContent = t; $('blk-d').innerHTML = d; return;
+  }
+  ME = w; render(); show('app');
+  loadNotices(); loadAtt(); if (w.can_manage) loadMgr();
+}
+
+function hasPerm(prefix){ return (ME.perms || []).some(function(p){ return p.indexOf(prefix) === 0; }); }
+function render(){
+  var name = ME.name || (ME.email || '').split('@')[0];
+  $('hello').textContent = '안녕하세요, ' + name + ' 님';
+  $('today').textContent = new Date().toLocaleDateString('ko-KR', { timeZone:'Asia/Seoul', year:'numeric', month:'long', day:'numeric', weekday:'long' });
+  $('me-av').textContent = name.charAt(0);
+  $('me-nm').textContent = name;
+  $('me-sub').textContent = ME.chapter_name + (ME.position ? ' · ' + ME.position : '');
+  var roleTxt = ME.role === 'admin' ? '도협회 관리자' : ME.role === 'lead' ? '지회 담당자' : (ME.can_manage ? '공동 관리자' : '');
+  $('chips').innerHTML = '<span class="chip pri">' + esc(ME.chapter_name) + '</span>' + (roleTxt ? '<span class="chip">' + roleTxt + '</span>' : '') + (ME.dept ? '<span class="chip">' + esc(ME.dept) + '</span>' : '');
+  var nav = '<a class="on" href="/"><span class="ic">🏠</span>홈</a>'
+    + '<a href="/att/"><span class="ic">🗓</span>근태관리</a>'
+    + (hasPerm('vehicle.') ? '<a href="/car/"><span class="ic">🚗</span>차량운행일지</a>' : '')
+    + (hasPerm('edu.') ? '<span class="dis"><span class="ic">📚</span>수어교육관리<span class="tag">준비 중</span></span>' : '')
+    + (ME.can_manage ? '<a href="/access.html"><span class="ic">🔑</span>직원·권한 관리</a>' : '');
+  $('nav').innerHTML = nav;
+  $('notice-add').classList.toggle('hide', !ME.can_manage);
+  $('mgr-card').classList.toggle('hide', !ME.can_manage);
+}
+
+/* ── 공지사항 ── */
+async function loadNotices(){
+  var r = await sb.rpc('list_notices', { p_limit: 30 });
+  if (r.error) { $('notices').innerHTML = '<div class="empty">공지를 불러오지 못했습니다.<br>' + esc(r.error.message) + '</div>'; return; }
+  NOTICES = r.data || [];
+  if (!NOTICES.length) { $('notices').innerHTML = '<div class="empty">등록된 공지가 없습니다.</div>'; return; }
+  $('notices').innerHTML = NOTICES.map(function(n, i){
+    return '<div class="nt"><div class="nth" onclick="toggleNotice(' + i + ')">'
+      + (n.important ? '<span class="badge b-imp">중요</span>' : '')
+      + '<span class="badge ' + (n.all ? 'b-all' : 'b-chap') + '">' + esc(n.scope) + '</span>'
+      + '<span class="t">' + esc(n.title) + '</span><span class="d">' + fmtDate(n.created_at) + '</span></div>'
+      + '<div class="ntb hide" id="nb' + i + '">' + esc(n.body || '(내용 없음)')
+      + '<div class="meta"><span>작성: ' + esc(n.author) + '</span>'
+      + (n.can_edit ? '<button class="btn sm" onclick="openNotice(' + i + ')">수정</button><button class="btn sm red" onclick="delNotice(' + n.id + ')">삭제</button>' : '')
+      + '</div></div></div>';
+  }).join('');
+}
+function toggleNotice(i){ $('nb' + i).classList.toggle('hide'); }
+function openNotice(i){
+  var n = (i === undefined) ? null : NOTICES[i];
+  $('modal').innerHTML = '<div class="modal"><h3>' + (n ? '공지 수정' : '공지 쓰기') + '</h3>'
+    + '<label>제목</label><input type="text" id="nt-t" maxlength="100" value="' + esc(n ? n.title : '') + '">'
+    + '<label>내용</label><textarea id="nt-b">' + esc(n ? n.body : '') + '</textarea>'
+    + '<label class="ck"><input type="checkbox" id="nt-i"' + (n && n.important ? ' checked' : '') + '> 중요 공지로 표시</label>'
+    + (ME.role === 'admin' && (!n || n.all) ? '<label class="ck"><input type="checkbox" id="nt-a"' + (n && n.all ? ' checked' : '') + (n ? ' disabled' : '') + '> 전체 지회에 보이는 공지</label>' : '')
+    + '<div class="mfoot"><button class="btn" onclick="closeModal()">취소</button><button class="btn pri" onclick="saveNotice(' + (n ? n.id : 'null') + ')">저장</button></div></div>';
+  $('modal').classList.remove('hide');
+}
+function closeModal(){ $('modal').classList.add('hide'); $('modal').innerHTML = ''; }
+async function saveNotice(id){
+  var t = $('nt-t').value.trim(); if (!t) { toast('제목을 입력하세요.'); return; }
+  var all = $('nt-a') ? $('nt-a').checked : false;
+  var r = await sb.rpc('save_notice', { p_id: id, p_title: t, p_body: $('nt-b').value, p_important: $('nt-i').checked, p_all: all });
+  if (r.error) { toast(r.error.message); return; }
+  closeModal(); toast('저장했습니다.'); loadNotices();
+}
+async function delNotice(id){
+  if (!confirm('이 공지를 삭제할까요?')) return;
+  var r = await sb.rpc('delete_notice', { p_id: id });
+  if (r.error) { toast(r.error.message); return; }
+  toast('삭제했습니다.'); loadNotices();
+}
+
+/* ── 내 근태 (근태 서버 함수 호출) ── */
+async function attCall(fn, arg){
+  var s = await sb.auth.getSession(); var tok = s.data && s.data.session && s.data.session.access_token;
+  var r = await fetch(FN_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=UTF-8', 'Authorization':'Bearer ' + tok, 'apikey': SB_ANON },
+    body: JSON.stringify({ fn: fn, arg: arg === undefined ? null : arg }) });
+  var t = await r.text(); return JSON.parse(t);
+}
+function ringSvg(used, total){
+  var pct = total > 0 ? Math.min(1, used / total) : 0, R = 34, C = 2 * Math.PI * R;
+  return '<svg class="ringsvg" width="84" height="84" viewBox="0 0 84 84"><circle cx="42" cy="42" r="' + R + '" fill="none" stroke="#e9edf5" stroke-width="9"/>'
+    + '<circle cx="42" cy="42" r="' + R + '" fill="none" stroke="#2f5bd6" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + (C * pct).toFixed(1) + ' ' + C.toFixed(1) + '" transform="rotate(-90 42 42)"/>'
+    + '<text x="42" y="47" text-anchor="middle" font-size="15" font-weight="800" fill="#1f2937">' + Math.round(pct * 100) + '%</text></svg>';
+}
+async function loadAtt(){
+  var el = $('att');
+  try {
+    var w = await attCall('whoami');
+    if (!w || !w.ok) { el.innerHTML = '<div class="note">근태 정보를 불러오지 못했습니다.<br>' + esc((w && w.msg) || '') + '</div>'; return; }
+    if (!w.staffName) { el.innerHTML = '<div class="note">근태 직원목록에 내 구글 계정이 아직 연결되어 있지 않습니다.<br>지회 담당자에게 확인을 요청하세요.</div>'; return; }
+    var y = new Date().getFullYear();
+    var b = await attCall('getMyLeaveBalance', JSON.stringify({ name: w.staffName, year: y }));
+    var c = await attCall('getMyCompLeave', JSON.stringify({ name: w.staffName }));
+    if (!b || !b.ok) { el.innerHTML = '<div class="note">연가 정보를 불러오지 못했습니다.</div>'; return; }
+    var used = (Number(b.sisuUsedDays) || 0) + (Number(b.leavedDays) || 0), granted = Number(b.granted) || 0;
+    el.innerHTML = '<div class="ring">' + ringSvg(used, granted)
+      + '<div><div class="big">' + num(b.remaining) + '<small> 일</small></div><div class="lab">' + y + '년 남은 연가</div></div></div>'
+      + '<div class="rows"><div><span>연가 부여</span><b>' + num(granted) + '일</b></div>'
+      + '<div><span>휴가·시수로 사용</span><b>' + num(used) + '일</b></div>'
+      + '<div><span>대체휴무 잔여</span><b>' + num(c && c.remaining) + '일</b></div></div>';
+  } catch(e) {
+    el.innerHTML = '<div class="note">근태 서버에 연결하지 못했습니다.<br>(Edge Function att 배포를 확인하세요)</div>';
+  }
+}
+
+/* ── 지회 관리 요약 (담당자·공동 관리자) ── */
+async function loadMgr(){
+  var r = await sb.rpc('list_staff');
+  if (r.error) { $('mgr').innerHTML = '<div class="empty" style="grid-column:1/-1">' + esc(r.error.message) + '</div>'; return; }
+  var list = r.data || [], act = list.filter(function(s){ return s.active; }).length, off = list.length - act;
+  $('mgr').innerHTML = '<a class="mbox" href="/access.html"><div class="n">' + act + '명</div><div class="l">사용 중인 직원' + (off ? ' (중지 ' + off + ')' : '') + '</div></a>'
+    + '<a class="mbox" href="/access.html"><div class="n">결재라인</div><div class="l">부서별 결재칸 설정</div></a>'
+    + '<a class="mbox" href="/access.html"><div class="n">변경 기록</div><div class="l">권한 변경 내역 보기</div></a>';
+}
+
+start();
+sb.auth.onAuthStateChange(function(ev){ if (ev === 'SIGNED_OUT') show('login'); });
+</script>
 </body>
 </html>

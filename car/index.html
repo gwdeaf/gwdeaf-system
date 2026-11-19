@@ -237,6 +237,8 @@ body.pc .head{margin-bottom:6px}
 </head>
 <body>
 <div id="app"></div>
+<a id="homeFab" href="/" style="position:fixed;right:12px;bottom:12px;z-index:60;background:#fff;color:#3b5bdb;border:1px solid #dfe3ee;border-radius:22px;padding:9px 14px;font-weight:700;font-size:14px;text-decoration:none;box-shadow:0 2px 8px rgba(0,0,0,.12)">🏠 업무 홈</a>
+<style>@media print{#homeFab{display:none!important}}</style>
 <div class="toast" id="toast"></div>
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
@@ -245,7 +247,7 @@ body.pc .head{margin-bottom:6px}
 const SB_URL = "https://uamlualqqcqmpdkprjfs.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhbWx1YWxxcWNxbXBka3ByamZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNjE0OTMsImV4cCI6MjExMDYzNzQ5M30._f4p4pfcKaYbmjKRXOPpkMo7Ydcc26oVVI6lRFYsLkY";
 const sb = supabase.createClient(SB_URL, SB_KEY);
-let SESSION = null, CH = null, ROLE = null, ALLCFG = null;  // SESSION: 로그인 상태, CH: 이 지회 번호, ALLCFG: 사용 중단 포함 전체 목록
+let SESSION = null, CH = null, ROLE = null, ALLCFG = null, CAN_MANAGE = false;  // SESSION: 로그인 상태, CH: 이 지회 번호, ALLCFG: 사용 중단 포함 전체 목록
 const PALETTE = [{c:"#3b5bdb",bg:"#eaeefd"},{c:"#3d8361",bg:"#e8f3ee"},{c:"#b5622e",bg:"#faeee4"},{c:"#7239d8",bg:"#f1edff"},{c:"#d6336c",bg:"#fdeaf1"},{c:"#0c8599",bg:"#e3f6f9"}];
 let DRIVERS = [], CARS = [];
 let RES = [], pendingRes = null, rPurpose = "업무";
@@ -613,13 +615,13 @@ function toggleFull(){
 }
 let adminPin="", adminTab="log", adminDraft=null, adminRecs=null, adminMaint=null, adminCar="", adminEditRow=null, adminEditMaint=null;
 function loadingCard(){ return `<div class="card empty" style="margin-top:12px">불러오는 중...</div>`; }
-function openAdmin(){ view="admin"; adminPin=""; adminDraft=null; adminRecs=null; adminMaint=null; adminTab="log"; adminCar=""; adminEditRow=null; adminEditMaint=null; adminOn={}; adminPrefill=null; render(); }
+function openAdmin(){ if(!CAN_MANAGE){ toast("차량 관리 권한이 없습니다"); return; } view="admin"; adminPin="google"; adminDraft=null; adminRecs=null; adminMaint=null; adminTab="log"; adminCar=""; adminEditRow=null; adminEditMaint=null; adminOn={}; adminPrefill=null; adminGo("log"); }
 function adminView(){
   if(!adminPin) return adminGate();
   if(!adminDraft) adminDraft = ALLCFG ? {cars:ALLCFG.cars.map(c=>({...c})), drivers:ALLCFG.drivers.map(x=>({...x}))} : {cars:CARS.map(c=>({n:c.n,p:c.p||"",d:c.d||"",g:c.g||10,u:true})), drivers:DRIVERS.map(n=>({n,u:true}))};
   const tabs=[["log","📋 운행일지"],["print","🖨 일지 인쇄"],["maint","🔧 정비기록"],["cfg","🚗 차량·운전자"],["faq","❓ 도움말"]];
   const body = adminTab==="log" ? adminLogView() : adminTab==="print" ? adminPrintView() : adminTab==="maint" ? adminMaintView() : adminTab==="faq" ? adminFaqView() : adminCfgView();
-  $("#app").innerHTML = `<div class="topbar"><button class="back" onclick="goHome()">← 돌아가기</button><button class="back" onclick="toggleFull()">⛶ 전체화면</button></div>
+  $("#app").innerHTML = `<div class="topbar"><button class="back" onclick="location.href='/'">← 업무 홈</button><button class="back" onclick="toggleFull()">⛶ 전체화면</button></div>
   <div class="head"><h1>관리자<span>화면</span></h1></div>
   <div class="adm"><nav class="side">${tabs.map(([k,l])=>`<button class="${adminTab===k?'on':''}" onclick="adminGo('${k}')">${l}</button>`).join("")}</nav>
   <section class="cont">${body}</section></div>
@@ -1123,7 +1125,7 @@ async function initSession(){
   try{ const r=await sb.rpc("whoami"); w=r.data; }catch(e){}
   if(!w || !w.ok){ SESSION=null; CH=null; BLOCK=(w&&w.reason)||"error"; return false; }
   if(!(w.perms||[]).some(x=>String(x).startsWith("vehicle."))){ SESSION=null; CH=null; BLOCK="no_perm"; return false; }
-  CH = w.chapter_id; ROLE = w.role; SESSION = data.session;
+  CH = w.chapter_id; ROLE = w.role; SESSION = data.session; CAN_MANAGE = (w.perms||[]).indexOf("vehicle.manage")>=0;
   return true;
 }
 async function logout(){ SESSION=null; CH=null; ROLE=null; clearCaches(); location.href="/"; }
@@ -1321,7 +1323,7 @@ async function post(d){
 
 // 하단 메뉴: 관리자 계정에만 🔐 관리자 버튼을 보여 줍니다
 function footHtml(){
-  return `<div style="text-align:center;margin-top:26px"><button class="back" style="color:#aaa" onclick="openAdmin()">🔐 관리자</button> <button class="back" style="color:#aaa" onclick="logout()">🏠 업무 시스템 홈</button></div>`;
+  return "";   // 관리자 화면은 업무 시스템 홈의 '시스템 관리'에서 들어옵니다
 }
 
 /* ---------- 직원용 링크 ---------- */
@@ -1332,7 +1334,11 @@ async function copyStaffLink(){
 }
 
 // 처음 열 때: 로그인되어 있으면 바로 시작, 아니면 로그인 화면
-(async()=>{ const ok=await initSession(); render(); if(ok) loadResv(); })();
+(async()=>{
+  const ok=await initSession();
+  if(ok && new URLSearchParams(location.search).get("admin")==="1"){ if(CAN_MANAGE){ openAdmin(); } else { toast("차량 관리 권한이 없습니다"); } }
+  render(); if(ok) loadResv();
+})();
 
 </script>
 </body>

@@ -617,8 +617,8 @@ function openAdmin(){ view="admin"; adminPin=""; adminDraft=null; adminRecs=null
 function adminView(){
   if(!adminPin) return adminGate();
   if(!adminDraft) adminDraft = ALLCFG ? {cars:ALLCFG.cars.map(c=>({...c})), drivers:ALLCFG.drivers.map(x=>({...x}))} : {cars:CARS.map(c=>({n:c.n,p:c.p||"",d:c.d||"",g:c.g||10,u:true})), drivers:DRIVERS.map(n=>({n,u:true}))};
-  const tabs=[["log","📋 운행일지"],["print","🖨 일지 인쇄"],["maint","🔧 정비기록"],["cfg","🚗 차량·운전자"],["pw","🔑 비밀번호"],["faq","❓ 도움말"]];
-  const body = adminTab==="log" ? adminLogView() : adminTab==="print" ? adminPrintView() : adminTab==="maint" ? adminMaintView() : adminTab==="pw" ? adminPwView() : adminTab==="faq" ? adminFaqView() : adminCfgView();
+  const tabs=[["log","📋 운행일지"],["print","🖨 일지 인쇄"],["maint","🔧 정비기록"],["cfg","🚗 차량·운전자"],["faq","❓ 도움말"]];
+  const body = adminTab==="log" ? adminLogView() : adminTab==="print" ? adminPrintView() : adminTab==="maint" ? adminMaintView() : adminTab==="faq" ? adminFaqView() : adminCfgView();
   $("#app").innerHTML = `<div class="topbar"><button class="back" onclick="goHome()">← 돌아가기</button><button class="back" onclick="toggleFull()">⛶ 전체화면</button></div>
   <div class="head"><h1>관리자<span>화면</span></h1></div>
   <div class="adm"><nav class="side">${tabs.map(([k,l])=>`<button class="${adminTab===k?'on':''}" onclick="adminGo('${k}')">${l}</button>`).join("")}</nav>
@@ -1058,23 +1058,11 @@ function adminCfgView(){
   <div class="drvgrid">${drivers.map((x,i)=>`<div class="drvcell"><input value="${esc(x.n)}" placeholder="이름" oninput="adminDraft.drivers[${i}].n=this.value"><label class="useck"><input type="checkbox" ${x.u!==false?'checked':''} onchange="adminDraft.drivers[${i}].u=this.checked"> 사용</label><button onclick="adminDel('drivers',${i})">삭제</button></div>`).join("")}</div>
   </div>`;
 }
-/* 비밀번호 변경 (관리자 탭) */
-function adminPwView(){
-  return `<div class="card cfgcard">
-  <div class="cfghead"><div><b class="cfgttl">🔑 비밀번호 변경</b><div class="lbl cfgnote">지회 로그인 비밀번호를 바꿉니다. 바꾼 뒤에는 직원들에게도 알려 주세요.</div></div>
-  <div class="hbtns"><button class="btn-save" id="pwBtn" onclick="changePw()">💾 변경</button></div></div>
-  <div class="fgrid">
-  <label>현재 비밀번호<input type="password" id="pwOld" autocomplete="current-password"></label>
-  <label>새 비밀번호 (6자 이상)<input type="password" id="pwNew" autocomplete="new-password"></label>
-  <label>새 비밀번호 확인<input type="password" id="pwNew2" autocomplete="new-password"></label>
-  </div>
-  <div class="err" id="err"></div></div>`;
-}
 /* 관리자 도움말 (자주 묻는 질문) */
 function adminFaqView(){
   const Q=[
     ["관리자 번호를 잊었어요","관리자 번호는 화면에서 확인하거나 바꿀 수 없습니다. 개발 담당자에게 문의하세요."],
-    ["지회 비밀번호를 바꾸고 싶어요","🔑 비밀번호 탭에서 현재 비밀번호, 새 비밀번호(6자 이상), 새 비밀번호 확인을 입력하고 💾 변경을 누르세요. 직원 화면에는 변경 버튼이 없습니다."],
+    ["로그인은 어떻게 하나요","업무 시스템 홈에서 구글 계정(@gwdeaf.or.kr)으로 로그인합니다. 별도의 지회 아이디·비밀번호는 쓰지 않습니다."],
     ["직원 화면에 차량이나 운전자가 안 보여요","🚗 차량·운전자 탭에서 사용 체크가 켜져 있는지 확인하고 💾 저장을 누르세요."],
     ["그만둔 직원이나 안 쓰는 차량은 어떻게 하나요","사용 체크를 끄세요. 직원 화면에서 숨겨지고 기록은 남습니다. 삭제는 목록에서 완전히 지우므로 신중하게 누르세요."],
     ["기름칸 수를 바꿨는데 예전 기록이 그대로예요","예전 기록의 숫자는 자동으로 바뀌지 않습니다. 📋 운행일지에서 해당 기록을 열어 칸을 다시 누르고 저장하세요. 화면의 칸 모양만 새 칸 수에 맞춰 보입니다."],
@@ -1087,7 +1075,7 @@ function adminFaqView(){
     ["인쇄 쪽은 어떻게 나뉘나요","기록은 저장 연도별로 20줄씩 나뉘고, 쪽 번호는 01번부터 붙습니다. 차량별 현황에서 쪽이 채워진 정도를 볼 수 있습니다."],
     ["주유칸 색은 어떤 기준인가요","남은 칸의 비율로 정해집니다. 20% 이하는 빨강, 60% 이하는 주황, 60%를 넘으면 초록입니다. 칸 하나는 전체의 1/칸 수입니다."],
     ["자주 가는 곳 목록은 어디에 저장되나요","각 기기 브라우저에만 저장되고 다른 기기와 공유되지 않습니다. 브라우저 데이터를 지우면 목록도 사라집니다."],
-    ["직원용 링크를 보냈는데 로그인이 안 돼요","링크에는 비밀번호가 없습니다. 지회 아이디와 비밀번호를 따로 알려 주었는지 확인하고, 그래도 안 되면 개발 담당자에게 문의하세요."]
+    ["직원용 링크를 보냈는데 들어가지지 않아요","직원이 업무 시스템에 구글로 로그인할 수 있도록 직원·권한 관리에 등록되어 있고 차량운행일지 권한이 있는지 확인하세요."]
   ];
   return `<div class="card cfgcard">
   <div class="cfghead"><div><b class="cfgttl">❓ 도움말</b><div class="lbl cfgnote">궁금한 내용을 누르면 답이 펼쳐집니다.</div></div></div>
@@ -1116,36 +1104,29 @@ function clearCaches(){
 // 지회 아이디는 영문·숫자로 만듭니다 (예: gangneung). 실제 메일을 보내지 않는 내부 주소로 바꿔서 사용합니다.
 const LOGIN_DOMAIN = "@gwdeaf.local";
 function loginView(){
+  // 구글 로그인은 업무 시스템 홈에서 합니다 (로그인하면 이 화면에서도 자동으로 이어집니다)
+  if(!BLOCK){ location.replace("/"); return; }
+  const msg={not_registered:"이 구글 계정은 업무 시스템에 등록되어 있지 않습니다. 지회 담당자에게 등록을 요청해 주세요.",
+    inactive:"이 계정은 사용이 중지되었습니다. 지회 담당자에게 문의해 주세요.",
+    bad_domain:"@gwdeaf.or.kr 구글 계정으로 로그인해 주세요.",
+    no_perm:"이 계정에는 차량운행일지 사용 권한이 없습니다. 지회 담당자에게 권한을 요청해 주세요."}[BLOCK]||"로그인 정보를 확인하지 못했습니다. 홈에서 다시 로그인해 주세요.";
   $("#app").innerHTML = `<div class="head"><h1>차량<span>운행</span>일지</h1></div>
-  <div class="card"><b style="font-size:calc(17px * var(--k))">지회 로그인</b>
-  <p class="lbl" style="margin-top:6px;line-height:1.6">지회 아이디와 비밀번호로 한 번 로그인하면 이 기기에 계속 저장됩니다.</p>
-  <label>지회 아이디</label><input type="text" id="lgId" autocapitalize="off" autocomplete="username">
-  <label>비밀번호</label><input type="password" id="lgPw" autocomplete="current-password">
-  <div class="err" id="err"></div><button class="main" id="lgBtn" onclick="doLogin()">로그인</button></div>`;
-}
-async function doLogin(){
-  const id=$("#lgId").value.trim(), pw=$("#lgPw").value, err=$("#err"), btn=$("#lgBtn");
-  if(!id||!pw) return err.textContent="아이디와 비밀번호를 입력해 주세요.";
-  err.textContent=""; btn.disabled=true; btn.textContent="로그인 중...";
-  const {error}=await sb.auth.signInWithPassword({email:id+LOGIN_DOMAIN, password:pw});
-  const ok = !error && await initSession();
-  if(!ok){
-    await sb.auth.signOut();
-    err.textContent = error ? "아이디 또는 비밀번호가 맞지 않습니다." : "이 계정에 지회가 연결되어 있지 않습니다. 관리자에게 알려 주세요.";
-    btn.disabled=false; btn.textContent="로그인"; return;
-  }
-  view="home"; render(); loadResv();
+  <div class="card"><p style="line-height:1.7">${msg}</p>
+  <button class="main" onclick="logout()">업무 시스템 홈으로</button></div>`;
 }
 // 로그인 상태와 이 계정의 지회 번호를 확인합니다
+let BLOCK = "";
 async function initSession(){
   const {data}=await sb.auth.getSession();
-  if(!data.session){ SESSION=null; CH=null; return false; }
-  const {data:p}=await sb.from("profiles").select("chapter_id, role").maybeSingle();
-  CH = p ? p.chapter_id : null; ROLE = p ? p.role : null;
-  SESSION = CH ? data.session : null;
-  return !!SESSION;
+  if(!data.session){ SESSION=null; CH=null; BLOCK=""; return false; }
+  let w=null;
+  try{ const r=await sb.rpc("whoami"); w=r.data; }catch(e){}
+  if(!w || !w.ok){ SESSION=null; CH=null; BLOCK=(w&&w.reason)||"error"; return false; }
+  if(!(w.perms||[]).some(x=>String(x).startsWith("vehicle."))){ SESSION=null; CH=null; BLOCK="no_perm"; return false; }
+  CH = w.chapter_id; ROLE = w.role; SESSION = data.session;
+  return true;
 }
-async function logout(){ await sb.auth.signOut(); SESSION=null; CH=null; ROLE=null; clearCaches(); view="home"; render(); }
+async function logout(){ SESSION=null; CH=null; ROLE=null; clearCaches(); location.href="/"; }
 
 /* ---------- 데이터 저장·불러오기 (Supabase) ---------- */
 const toInt = v => { const s=String(v??"").replace(/[^0-9]/g,""); return s ? Number(s) : null; };
@@ -1340,26 +1321,11 @@ async function post(d){
 
 // 하단 메뉴: 관리자 계정에만 🔐 관리자 버튼을 보여 줍니다
 function footHtml(){
-  return `<div style="text-align:center;margin-top:26px"><button class="back" style="color:#aaa" onclick="openAdmin()">🔐 관리자</button> <button class="back" style="color:#aaa" onclick="logout()">↩ 로그아웃</button></div>`;
-}
-
-/* ---------- 비밀번호 변경 ---------- */
-async function changePw(){
-  const oldPw=$("#pwOld").value, n1=$("#pwNew").value, n2=$("#pwNew2").value, err=$("#err"), btn=$("#pwBtn");
-  if(!oldPw) return err.textContent="현재 비밀번호를 입력해 주세요.";
-  if(n1.length<6) return err.textContent="새 비밀번호는 6자 이상이어야 합니다.";
-  if(n1!==n2) return err.textContent="새 비밀번호가 서로 다릅니다.";
-  err.textContent=""; btn.disabled=true; btn.textContent="변경 중...";
-  const {error:e1}=await sb.auth.signInWithPassword({email:SESSION.user.email, password:oldPw});
-  if(e1){ err.textContent="현재 비밀번호가 맞지 않습니다."; btn.disabled=false; btn.textContent="💾 변경"; return; }
-  const {error:e2}=await sb.auth.updateUser({password:n1});
-  if(e2){ err.textContent="변경에 실패했습니다. 다시 시도해 주세요."; btn.disabled=false; btn.textContent="💾 변경"; return; }
-  if(view==="admin"){ ["pwOld","pwNew","pwNew2"].forEach(i=>{ $("#"+i).value=""; }); btn.disabled=false; btn.textContent="💾 변경"; toast("비밀번호가 변경되었습니다"); return; }
-  toast("비밀번호가 변경되었습니다"); goHome();
+  return `<div style="text-align:center;margin-top:26px"><button class="back" style="color:#aaa" onclick="openAdmin()">🔐 관리자</button> <button class="back" style="color:#aaa" onclick="logout()">🏠 업무 시스템 홈</button></div>`;
 }
 
 /* ---------- 직원용 링크 ---------- */
-// 링크에는 비밀번호를 넣지 않습니다. 직원은 링크로 들어가서 지회 직원 아이디와 비밀번호를 한 번만 입력합니다.
+// 직원은 링크로 들어가면 구글 로그인(업무 시스템 홈)으로 이어집니다.
 async function copyStaffLink(){
   const l=location.origin+location.pathname;
   try{ await navigator.clipboard.writeText(l); toast("직원용 링크가 복사되었습니다"); }catch(e){ prompt("아래 링크를 복사하세요", l); }

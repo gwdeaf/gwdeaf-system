@@ -6,7 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>근태관리 시스템</title>
 <link id="favicon" rel="icon" type="image/png" href="">
-<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@300;400;500;700&family=Noto+Serif+KR:wght@400;600&display=swap" rel="stylesheet">
 <style>
   :root {
     --primary:#1a3a5c; --primary-light:#2d5986; --accent:#c8a862; --accent-light:#e8d4a0;
@@ -303,6 +302,61 @@
   body.mobile .sidebar-spacer{display:none !important;}
   body.mobile .view.view-wide{max-width:none !important;}
   @media print { #boot-msg,#settings-modal,#pw-modal{display:none !important;} }
+
+  /* ===== 화면 스타일 통일 (홈 대시보드와 같은 글꼴·라이트 테마) — 인쇄 서식에는 영향 없음 ===== */
+  @media screen {
+  :root{--primary:#2f5bd6;--primary-light:#4a73e8;--accent:#2f5bd6;--accent-light:#e5e9f2;--bg:#f5f7fb;--border:#e5e9f2;--border-strong:#b8c0d0;--text:#1f2937;--text-muted:#6b7280;--success:#1f9d6b;--success-bg:#e7f7f0;--danger:#d64545;--shadow:0 1px 3px rgba(31,41,55,.04);--font:-apple-system,"Noto Sans KR","Malgun Gothic",sans-serif;}
+  body,input,select,textarea,button,.btn,.tab,.hdr-btn,.header h1,.alt-table input,.alt-table select,.hours-table input{font-family:var(--font);}
+  body{font-size:15px;}
+  .header{background:#fff;color:var(--text);border-bottom:1px solid var(--border);box-shadow:none;}
+  .header h1{font-size:1.05rem;font-weight:800;letter-spacing:0;color:var(--text);}
+  .header-badge{background:#eaf0ff;color:var(--primary);}
+  #header-name-badge{color:var(--primary)!important;background:#eaf0ff!important;border:0!important;border-radius:20px!important;}
+  .hdr-btn{background:#fff;color:#374151;border:1px solid var(--border);border-radius:10px;font-weight:600;}
+  .hdr-btn:hover{background:#f3f5fa;}
+  .sidebar{background:#fff;border-right:1px solid var(--border);padding:.8rem .6rem;}
+  .sidebar-group{color:#8a93a5;border-left:0;font-size:.72rem;letter-spacing:.04em;padding:.8rem .7rem .3rem;margin:.2rem 0 0;}
+  .sidebar-divider{border-top:1px solid var(--border);margin:.5rem .4rem .2rem;}
+  .tab{color:#374151;font-weight:600;border-radius:10px;border-left:0;padding:.6rem .8rem;margin-bottom:2px;font-size:.86rem;}
+  .tab:hover:not(.active){background:#f3f5fa;color:#111827;}
+  .tab.active,.tab.tab-alt.active,.tab.tab-leave.active{background:#eaf0ff;color:var(--primary);font-weight:700;border-left:0;}
+  .tab.tab-leave:hover:not(.active){background:#f3f5fa;color:#111827;}
+  .card{border-radius:16px;padding:1.3rem 1.5rem;}
+  .card-title{color:#1f2937;font-size:.92rem;letter-spacing:0;text-transform:none;border-bottom:1px solid var(--border);}
+  .card-title-alt{color:#8a5200;border-bottom-color:#f3dfb8;}
+  .card-alt{background:#fffaf0;border-color:#f3dfb8;}
+  input,select,textarea{border-radius:10px;padding:9px 12px;}
+  input:focus,select:focus,textarea:focus{border-color:var(--primary);box-shadow:0 0 0 3px rgba(47,91,214,.14);}
+  input[readonly]{background:#f5f7fb;}
+  .btn{border-radius:10px;font-weight:600;}
+  .btn-accent{background:#eaf0ff;color:var(--primary);font-weight:700;} .btn-accent:hover{background:#dbe5ff;}
+  .btn-alt{background:#fff1d6;color:#8a5200;} .btn-alt:hover{background:#ffe5b4;}
+  .btn-outline{border-color:var(--primary);} 
+  .progress-bar-fill{background:var(--primary);}
+  .progress-bar-wrap,.mini-bar{background:#eaeef6;}
+  .alert{border-radius:10px;}
+  .alert-info{background:#eaf0ff;color:#1f3a8a;border-left-color:var(--primary);}
+  .alert-warn{border-left-color:#f0b429;}
+  .hours-table th,.adm-table th{background:#f3f5fa;color:#4b5563;font-weight:700;}
+  .hours-table th:first-child,.hours-table th:last-child{border-radius:0;}
+  .adm-table thead tr.grp-row th{background:#eaf0ff;color:var(--primary);}
+  .adm-table thead .sep{border-left:1px solid var(--border);}
+  .hours-table td,.adm-table td{border-color:#edf0f6;}
+  .hours-table tr:nth-child(even) td,.adm-table tbody tr:nth-child(even) td{background:#fafbfd;}
+  .adm-table tbody tr.clickable:hover td{background:#eef3ff;} .adm-table tbody tr.selected td{background:#e2ebff;}
+  .adm-table .sep{border-left-color:#edf0f6;}
+  .alt-table th{background:#fdecc8;color:#7a4f00;} .alt-table td{border-color:#f0e3c4;}
+  .alt-table th:first-child,.alt-table th:last-child{border-radius:0;}
+  .alt-panel{border-radius:12px;} .alt-divider{color:var(--primary);}
+  .stat-box{border-radius:12px;background:#f5f8ff;border-color:#dfe7fb;}
+  .kpi{border-radius:14px;} .detail-box{border-radius:12px;}
+  .dash-row{border-radius:12px;} .dash-row:hover{background:#f5f8ff;}
+  .seg{border-radius:10px;} .seg button{font-weight:600;}
+  .row-btn{border-radius:8px;}
+  .notice-card{background:#f5f8ff;border-color:#dfe7fb;border-left-color:var(--primary);border-radius:12px;}
+  .nav-badge{background:#ffb020;color:#4a2b00;}
+  body.mobile .tab.active{border-bottom:3px solid var(--primary)!important;}
+  }
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 </head>
@@ -324,51 +378,51 @@
 <!-- 직원 메뉴 (선임은 맨 아래 '선임 확인' 묶음이 추가로 보임) -->
 <nav class="sidebar" id="tabs-staff" style="display:none">
   <div class="sidebar-group">📍 출퇴근</div>
-  <button class="tab" onclick="switchTab('punch')">📍 출퇴근 찍기</button>
-  <button class="tab" onclick="switchTab('attend')">📅 월별 근태현황</button>
-  <button class="tab" onclick="switchTab('trip')">🚗 출장 신청·내역</button>
+  <button class="tab" data-g="punch" onclick="switchTab('punch')">📍 출퇴근 찍기</button>
+  <button class="tab" data-g="punch" onclick="switchTab('attend')">📅 월별 근태현황</button>
+  <button class="tab" data-g="trip" onclick="switchTab('trip')">🚗 출장 신청·내역</button>
   <hr class="sidebar-divider">
   <div class="sidebar-group">🏖 근태관리</div>
-  <button class="tab tab-leave" onclick="switchTab('leave')">📊 내 근태 현황</button>
-  <button class="tab tab-leave" onclick="switchTab('leave-apply')">🗓️ 휴가 신청</button>
-  <button class="tab tab-leave" onclick="switchTab('overtime')">⏰ 시간외 신청</button>
-  <button class="tab tab-leave" onclick="switchTab('comp-apply')">🔄 대체휴무 신청</button>
-  <button class="tab tab-leave" onclick="switchTab('promo')">🗓 연가 사용 계획서</button>
-  <button class="tab tab-leave" onclick="switchTab('leavehist')">📋 내 신청 내역</button>
+  <button class="tab tab-leave" data-g="leave" onclick="switchTab('leave')">📊 내 근태 현황</button>
+  <button class="tab tab-leave" data-g="leave" onclick="switchTab('leave-apply')">🗓️ 휴가 신청</button>
+  <button class="tab tab-leave" data-g="leave" onclick="switchTab('overtime')">⏰ 시간외 신청</button>
+  <button class="tab tab-leave" data-g="leave" onclick="switchTab('comp-apply')">🔄 대체휴무 신청</button>
+  <button class="tab tab-leave" data-g="leave" onclick="switchTab('promo')">🗓 연가 사용 계획서</button>
+  <button class="tab tab-leave" data-g="leave" onclick="switchTab('leavehist')">📋 내 신청 내역</button>
   <hr class="sidebar-divider">
   <div class="sidebar-group">📋 시수</div>
-  <button class="tab" onclick="switchTab('write')">✏️ 시수 입력</button>
-  <button class="tab" onclick="switchTab('myrecord')">📑 내 시수 확인</button>
+  <button class="tab" data-g="punch" onclick="switchTab('write')">✏️ 시수 입력</button>
+  <button class="tab" data-g="punch" onclick="switchTab('myrecord')">📑 내 시수 확인</button>
   <hr class="sidebar-divider">
   <div class="sidebar-group">🔄 대체시수</div>
-  <button class="tab tab-alt" onclick="switchTab('altwrite')">📅 대체 시수 발생일</button>
-  <button class="tab tab-alt" onclick="switchTab('altuse')">✍️ 대체 시수 입력</button>
-  <button class="tab tab-alt" onclick="switchTab('altrecord')">📋 내 대체 시수 확인</button>
+  <button class="tab tab-alt" data-g="punch" onclick="switchTab('altwrite')">📅 대체 시수 발생일</button>
+  <button class="tab tab-alt" data-g="punch" onclick="switchTab('altuse')">✍️ 대체 시수 입력</button>
+  <button class="tab tab-alt" data-g="punch" onclick="switchTab('altrecord')">📋 내 대체 시수 확인</button>
   <div id="nav-senior-group" style="display:none">
     <hr class="sidebar-divider">
     <div class="sidebar-group">✅ 선임 확인</div>
-    <button class="tab tab-leave" onclick="switchTabSenior('leavemgr')">📋 신청 승인/반려 (근태)<span class="nav-badge" id="senior-pending-badge" style="display:none">0</span></button>
-    <button class="tab" onclick="switchTabSenior('dashboard')">👤 시수 신청 현황 확인</button>
-    <button class="tab tab-alt" onclick="switchTabSenior('altdashboard')">📊 대체 시수 신청 현황</button>
+    <button class="tab tab-leave" data-g="leave" onclick="switchTabSenior('leavemgr')">📋 신청 승인/반려 (근태)<span class="nav-badge" id="senior-pending-badge" style="display:none">0</span></button>
+    <button class="tab" data-g="punch" onclick="switchTabSenior('dashboard')">👤 시수 신청 현황 확인</button>
+    <button class="tab tab-alt" data-g="punch" onclick="switchTabSenior('altdashboard')">📊 대체 시수 신청 현황</button>
   </div>
 </nav>
 
 <!-- 관리자 메뉴 -->
 <nav class="sidebar" id="tabs-admin" style="display:none">
   <div class="sidebar-group">🛠 관리자</div>
-  <button class="tab" data-adm="dashboard" onclick="switchAdminTab('dashboard')">📊 대시보드</button>
-  <button class="tab" data-adm="attend" onclick="switchAdminTab('attend')">🕘 출퇴근 관리</button>
-  <button class="tab" data-adm="trip" onclick="switchAdminTab('trip')">🚗 출장 관리</button>
-  <button class="tab" data-adm="approval" onclick="switchAdminTab('approval')">📋 신청 현황<span class="nav-badge" id="adm-pending-badge" style="display:none">0</span></button>
-  <button class="tab" data-adm="annual" onclick="switchAdminTab('annual')">📅 연차 관리</button>
-  <button class="tab" data-adm="comp" onclick="switchAdminTab('comp')">🔄 대체휴무</button>
-  <button class="tab" data-adm="promo" onclick="switchAdminTab('promo')">🗓 연가 촉진</button>
-  <button class="tab" data-adm="notice" onclick="switchAdminTab('notice')">📢 공지사항</button>
+  <button class="tab" data-adm="dashboard" data-g="all" onclick="switchAdminTab('dashboard')">📊 대시보드</button>
+  <button class="tab" data-adm="attend" data-g="punch" onclick="switchAdminTab('attend')">🕘 출퇴근 관리</button>
+  <button class="tab" data-adm="trip" data-g="trip" onclick="switchAdminTab('trip')">🚗 출장 관리</button>
+  <button class="tab" data-adm="approval" data-g="leave" onclick="switchAdminTab('approval')">📋 신청 현황<span class="nav-badge" id="adm-pending-badge" style="display:none">0</span></button>
+  <button class="tab" data-adm="annual" data-g="leave" onclick="switchAdminTab('annual')">📅 연차 관리</button>
+  <button class="tab" data-adm="comp" data-g="leave" onclick="switchAdminTab('comp')">🔄 대체휴무</button>
+  <button class="tab" data-adm="promo" data-g="leave" onclick="switchAdminTab('promo')">🗓 연가 촉진</button>
+  <button class="tab" data-adm="notice" data-g="leave" onclick="switchAdminTab('notice')">📢 공지사항</button>
   <div class="sidebar-spacer"></div>
   <hr class="sidebar-divider">
   <div class="sidebar-group">⚙️ 설정</div>
-  <button class="tab" data-adm="staff" onclick="switchAdminTab('staff')">👥 직원 관리</button>
-  <button class="tab" data-adm="settings" onclick="switchAdminTab('settings')">🏢 기관 설정</button>
+  <button class="tab" data-adm="staff" data-g="all" onclick="switchAdminTab('staff')">👥 직원 관리</button>
+  <button class="tab" data-adm="settings" data-g="all" onclick="switchAdminTab('settings')">🏢 기관 설정</button>
 </nav>
 
 <div class="content-area">
@@ -579,8 +633,8 @@
             <th style="background:#8a9099;" rowspan="2">번<br>호</th>
             <th colspan="5" style="background:#9a6820;border-right:2px solid #ccc;">🕐 발생 (읽기전용)</th>
             <th style="background:#555;padding:0;" rowspan="2"></th>
-            <th colspan="4" style="background:#2d5986;">🌴 사용일시 입력</th>
-            <th style="background:#2d5986;" rowspan="2">사용<br>확인</th>
+            <th colspan="4" style="background:#4a73e8;">🌴 사용일시 입력</th>
+            <th style="background:#4a73e8;" rowspan="2">사용<br>확인</th>
           </tr>
           <tr>
             <th style="background:#b88030;">월</th>
@@ -655,11 +709,11 @@
       </div>
 
       <!-- 사용 섹션 -->
-      <div style="font-size:0.78rem;font-weight:700;color:#1a3a5c;letter-spacing:0.06em;margin-bottom:0.5rem;padding:0.4rem 0.6rem;background:#eef4fb;border-radius:5px;border-left:3px solid #2d5986;">🌴 사용 내역</div>
+      <div style="font-size:0.78rem;font-weight:700;color:#2f5bd6;letter-spacing:0.06em;margin-bottom:0.5rem;padding:0.4rem 0.6rem;background:#eef4fb;border-radius:5px;border-left:3px solid #4a73e8;">🌴 사용 내역</div>
       <div style="overflow-x:auto">
         <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
           <thead>
-            <tr style="background:#2d5986;color:white">
+            <tr style="background:#4a73e8;color:white">
               <th style="padding:6px 5px;text-align:center;">월</th>
               <th style="padding:6px 5px;text-align:center;">일</th>
               <th style="padding:6px 5px;text-align:center;">요일</th>
@@ -780,11 +834,11 @@
 
   <!-- 사용 확인 -->
   <div class="card">
-    <div style="font-size:0.78rem;font-weight:700;color:#1a3a5c;letter-spacing:0.06em;margin-bottom:0.8rem;padding:0.4rem 0.6rem;background:#eef4fb;border-radius:5px;border-left:3px solid #2d5986;">🌴 사용 선임 확인</div>
+    <div style="font-size:0.78rem;font-weight:700;color:#2f5bd6;letter-spacing:0.06em;margin-bottom:0.8rem;padding:0.4rem 0.6rem;background:#eef4fb;border-radius:5px;border-left:3px solid #4a73e8;">🌴 사용 선임 확인</div>
     <div class="table-scroll-wrap">
       <table style="width:100%;border-collapse:collapse;font-size:0.82rem">
         <thead>
-          <tr style="background:#2d5986;color:white">
+          <tr style="background:#4a73e8;color:white">
             <th style="padding:6px 5px;text-align:center;">월</th>
             <th style="padding:6px 5px;text-align:center;">일</th>
             <th style="padding:6px 5px;text-align:center;">요일</th>
@@ -1244,7 +1298,7 @@
       <button class="btn btn-accent"  id="ot-btn-end"   onclick="otTimerEnd()"   style="min-width:140px;font-size:1rem;display:none;">⏹ 종료</button>
     </div>
     <div id="ot-timer-times" style="display:none;margin-top:0.5rem;font-size:0.82rem;color:var(--text-muted);background:#f5f3ee;border-radius:6px;padding:0.6rem 0.8rem;line-height:1.8;">
-      <div id="ot-timer-start-label" style="color:#1a3a5c;"></div>
+      <div id="ot-timer-start-label" style="color:#2f5bd6;"></div>
       <div id="ot-timer-end-label" style="color:#c0392b;"></div>
     </div>
     <div style="font-size:0.75rem;color:#888;text-align:center;margin-top:0.5rem;">📍 시작/종료 버튼을 누르면 GPS 위치가 자동 기록됩니다</div>
@@ -1294,7 +1348,7 @@
 
   <!-- 주간 현황 -->
   <div class="card" id="ot-week-info" style="display:none;background:#f0f5fb;border-color:#c2d8f0;">
-    <div class="card-title" style="color:#1a3a5c;">📊 해당 주 근무 현황</div>
+    <div class="card-title" style="color:#2f5bd6;">📊 해당 주 근무 현황</div>
     <div style="display:flex;gap:1rem;flex-wrap:wrap;">
       <div class="stat-box"><div class="stat-num" id="ot-wi-standard" style="font-size:1.2rem;">-</div><div class="stat-label">기준시간</div></div>
       <div class="stat-box stat-warn"><div class="stat-num" id="ot-wi-sisu" style="font-size:1.2rem;">-</div><div class="stat-label">시수 차감</div></div>
@@ -1782,9 +1836,9 @@
 
 <script>
 // ★★ 설치할 때 아래 두 줄만 채웁니다 (Supabase → Project Settings → API) ★★
-var SB_URL  = 'https://uamlualqqcqmpdkprjfs.supabase.co';
-var SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhbWx1YWxxcWNxbXBka3ByamZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNjE0OTMsImV4cCI6MjExMDYzNzQ5M30._f4p4pfcKaYbmjKRXOPpkMo7Ydcc26oVVI6lRFYsLkY';
-var APP_VERSION = '2026.11.19-2';   // 서버(index.ts)의 APP_VERSION 과 같게 유지
+var SB_URL  = 'https://uamlualqqcqmpdkprjfs.supabase.co';   // 예) https://abcdefgh.supabase.co
+var SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhbWx1YWxxcWNxbXBka3ByamZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNjE0OTMsImV4cCI6MjExMDYzNzQ5M30._f4p4pfcKaYbmjKRXOPpkMo7Ydcc26oVVI6lRFYsLkY';   // anon(public) 키 — 화면에 들어가도 되는 키입니다. (service_role 키는 절대 넣지 마세요!)
+var APP_VERSION = '2026.11.19-3';   // 서버(index.ts)의 APP_VERSION 과 같게 유지
 // ===== 직원 데이터 (시트에서 동적 로드) =====
 let STAFF = [];
 let APPROVAL_CONFIG = [];
@@ -1939,7 +1993,35 @@ function init(cb) {
 }
 
 // 왼쪽 메뉴: 직원용 / 관리자용 중 하나만 표시 (id가 없으면 모두 숨김)
+// ── 화면 묶음: 홈 메뉴에서 ?m=leave(휴가 관리) / ?m=trip(출장 관리) / ?m=punch(출퇴근·시수)로 들어오면 그 묶음 메뉴만 보임. 없으면 전체 ──
+var NAV_MODE = (function(){
+  var m = '';
+  try {
+    m = (new URLSearchParams(location.search).get('m') || '').toLowerCase();
+    if (['leave','trip','punch'].indexOf(m) >= 0) sessionStorage.setItem('att_nav_mode', m);
+    else { m = sessionStorage.getItem('att_nav_mode') || ''; if (['leave','trip','punch'].indexOf(m) < 0) m = ''; }
+  } catch(e) { m = ''; }
+  return m;
+})();
+var NAV_NAMES = { leave: '휴가 관리', trip: '출장 관리', punch: '출퇴근·시수' };
+function applyNavMode() {
+  ['tabs-staff','tabs-admin'].forEach(function(id){
+    var nav = document.getElementById(id); if (!nav) return;
+    var label = null, any = false;
+    function closeLabel(){ if (label) label.style.display = (!NAV_MODE || any) ? '' : 'none'; }
+    nav.querySelectorAll('.sidebar-group, .tab, hr.sidebar-divider').forEach(function(el){
+      if (el.classList.contains('sidebar-group')) { closeLabel(); label = el; any = false; return; }
+      if (el.tagName === 'HR') { el.style.display = NAV_MODE ? 'none' : ''; return; }
+      var g = el.getAttribute('data-g') || 'all';
+      var show = !NAV_MODE || g === 'all' || g === NAV_MODE;
+      el.style.display = show ? '' : 'none';
+      if (show) any = true;
+    });
+    closeLabel();
+  });
+}
 function showSidebar(id) {
+  applyNavMode();
   ['tabs-staff','tabs-admin'].forEach(function(sid){
     document.getElementById(sid).style.display = (sid===id) ? 'flex' : 'none';
   });
@@ -2580,7 +2662,7 @@ function updateBadge(count) {
   try {
     var canvas=document.createElement('canvas'); canvas.width=32; canvas.height=32;
     var ctx=canvas.getContext('2d');
-    ctx.fillStyle='#1a3a5c'; ctx.beginPath(); ctx.arc(16,16,15,0,2*Math.PI); ctx.fill();
+    ctx.fillStyle='#2f5bd6'; ctx.beginPath(); ctx.arc(16,16,15,0,2*Math.PI); ctx.fill();
     if (count>0) {
       ctx.fillStyle='#e74c3c'; ctx.beginPath(); ctx.arc(24,8,9,0,2*Math.PI); ctx.fill();
       ctx.fillStyle='white'; ctx.font='bold 11px Arial'; ctx.textAlign='center'; ctx.textBaseline='middle';
@@ -3051,7 +3133,7 @@ function printAltUse() {
             '<th rowspan="2" style="width:7mm">번호</th>' +
             '<th colspan="5" style="background:#9a6820;border-right:2px solid #ccc;">🕐 발생 (확인완료)</th>' +
             '<th rowspan="2" style="background:#666;width:4mm;padding:0;"></th>' +
-            '<th colspan="4" style="background:#2d5986;">🌴 사용일시</th>' +
+            '<th colspan="4" style="background:#4a73e8;">🌴 사용일시</th>' +
             '<th rowspan="2" style="width:12mm">사용확인</th>' +
           '</tr>' +
           '<tr>' +
@@ -3456,7 +3538,7 @@ function applyOrgName(name) {
   if (!name) return;
   window._orgName = name;
   var el = document.getElementById('login-org-name'); if (el) el.textContent = name;
-  var h1 = document.getElementById('header-title');   if (h1) h1.textContent = name + ' 근태관리';
+  var h1 = document.getElementById('header-title');   if (h1) h1.textContent = name + ' ' + (NAV_NAMES[NAV_MODE] || '근태관리');
   document.title = name + ' 근태관리';
 }
 function refreshOrgName() {
@@ -3538,8 +3620,9 @@ function enterUser(res) {
   updateModeBtn();
   setLeaveUserBadge(res.name + (isSenior ? ' (선임)' : ''));
   refreshOrgName();
-  showView('leave');
-  loadLeaveDashboard();
+  if (NAV_MODE === 'trip') switchTab('trip');
+  else if (NAV_MODE === 'punch') switchTab('punch');
+  else { showView('leave'); loadLeaveDashboard(); }
   if (isSenior) refreshSeniorBadge();
   // 시수 화면용 정보는 뒤에서 조용히 준비
   init(function(){ if (isSenior) startAutoRefresh(); });
@@ -3567,7 +3650,7 @@ function enterAdmin() {
   setHeaderName('관리자');
   updateModeBtn();
   refreshOrgName();
-  switchAdminTab('dashboard');
+  switchAdminTab(NAV_MODE==='trip' ? 'trip' : NAV_MODE==='punch' ? 'attend' : NAV_MODE==='leave' ? 'approval' : 'dashboard');
 }
 
 function doLogout() {
@@ -3945,7 +4028,7 @@ function otTimerStart() {
     document.getElementById('ot-timer-status').style.color = '#10b981';
     var startTimeStr = otTimerStartTime.toTimeString().slice(0,5);
     var gpsHtml = gps
-      ? ' · <a href="' + otGpsMapUrl(gps) + '" target="_blank" style="color:#1a3a5c;text-decoration:underline;">' + otGpsLabel(gps) + '</a>'
+      ? ' · <a href="' + otGpsMapUrl(gps) + '" target="_blank" style="color:#2f5bd6;text-decoration:underline;">' + otGpsLabel(gps) + '</a>'
       : ' · <span style="color:#c0392b;">위치 미수집</span>';
     document.getElementById('ot-timer-start-label').innerHTML = '🟢 시작 ' + startTimeStr + gpsHtml;
     document.getElementById('ot-timer-times').style.display = '';
@@ -3976,7 +4059,7 @@ function otTimerEnd() {
     document.getElementById('ot-btn-end').style.display = 'none';
     document.getElementById('ot-timer-times').style.display = '';
     var gpsStartHtml = otGpsStart
-      ? ' · <a href="' + otGpsMapUrl(otGpsStart) + '" target="_blank" style="color:#1a3a5c;text-decoration:underline;">' + otGpsLabel(otGpsStart) + '</a>'
+      ? ' · <a href="' + otGpsMapUrl(otGpsStart) + '" target="_blank" style="color:#2f5bd6;text-decoration:underline;">' + otGpsLabel(otGpsStart) + '</a>'
       : ' · <span style="color:#c0392b;">위치 미수집</span>';
     var gpsEndHtml = gps
       ? ' · <a href="' + otGpsMapUrl(gps) + '" target="_blank" style="color:#c0392b;text-decoration:underline;">' + otGpsLabel(gps) + '</a>'

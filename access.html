@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>권한 관리 · 강원도수어문화원</title>
+<title>직원·권한 관리 · 강원특별자치도농아인협회 업무 시스템</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,"Noto Sans KR","Malgun Gothic",sans-serif;background:#f4f2ee;color:#222;font-size:15px}
@@ -79,7 +79,7 @@ async function boot(){
   render();
 }
 function loginView(){
-  $("#app").innerHTML = `<div class="center"><h1>강원도수어문화원 통합 시스템</h1><p class="muted">업무용 구글 계정으로 로그인하세요.</p>
+  $("#app").innerHTML = `<div class="center"><h1>강원특별자치도농아인협회 업무 시스템</h1><p class="muted">업무용 구글 계정으로 로그인하세요.</p>
     <button class="btn" onclick="login()">구글 계정으로 로그인</button></div>`;
 }
 async function login(){
@@ -104,7 +104,7 @@ function render(){
   tabs.push(["me","내 권한"]);
   $("#app").innerHTML = `<div class="top"><div><h1>${esc(me.chapter_name)} · ${esc(me.name)}</h1>
       <div class="muted">${esc(me.email)} <span class="badge">${ROLE[me.role]}</span>${me.role==="staff"&&me.can_manage?'<span class="badge o">공동 관리자</span>':""}</div></div>
-      <button class="btn sub sm" onclick="logout()">로그아웃</button></div>
+      <div><a class="btn sub sm" href="/" style="text-decoration:none;display:inline-block">🏠 홈으로</a> <button class="btn sub sm" onclick="logout()">로그아웃</button></div></div>
     <div class="tabs">${tabs.map(t=>`<button class="${tab===t[0]?"on":""}" onclick="go('${t[0]}')">${t[1]}</button>`).join("")}</div>
     <div id="body"></div>`;
   ({staff:staffView, lines:linesView, log:logView, chapters:chaptersView, me:meView}[tab] || meView)();

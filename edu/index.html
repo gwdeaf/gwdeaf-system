@@ -11,6 +11,12 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 html.embed #topLogout{display:none!important}
+/* 홈 화면 안에 끼울 때: 초록 띠와 자체 왼쪽 메뉴는 홈 메뉴와 겹치므로 숨김 */
+html.embed .tabs{display:none!important}
+html.embed body:has(#tabs:not(.hidden)){padding-left:0!important}
+html.embed .top{background:transparent!important;box-shadow:none!important;border:0!important;margin-left:0!important;padding:6px 16px 0!important;min-height:0!important;position:static!important}
+html.embed .top h1,html.embed .top .who{display:none!important}
+html.embed .top .help-btn{color:#1f4d3a;border-color:#b9cbc2}
 #pwForm,#rsForm,#phForm,#sealBox{display:none!important}
 :root {
   --pine: #1f4d3a;
@@ -654,6 +660,7 @@ async function boot() {
   loadNotices();
   $('#topLogout').onclick = doLogout;
   go('courses');
+  try { if (window.parent !== window) window.parent.postMessage({ type: 'edu-ready', hide: webMode() ? [] : ['apply', 'files'] }, location.origin); } catch (e) {}
   try { const hk = 'helpSeen:' + (u.id || u.name || ''); if (!localStorage.getItem(hk) && (!navigator.webdriver || window.__helpTest)) { localStorage.setItem(hk, '1'); setTimeout(openHelp, 400); } } catch (e) {}   // 처음 들어오면 사용설명서를 먼저 보여 줌
 }
 function isAdmin() { return S.init && S.init.user.role === '도협회'; }
@@ -662,6 +669,7 @@ function isAdmin() { return S.init && S.init.user.role === '도협회'; }
    탭 이동
    ========================================================= */
 document.querySelectorAll('#tabs button').forEach(b => b.onclick = () => go(b.dataset.tab));
+window.addEventListener('message', e => { if (e.origin === location.origin && e.source === window.parent && e.data && e.data.type === 'edu-go' && S.init) go(e.data.tab); });
 
 /* ---------- 뒤로 가기 / 제목 눌러 첫 화면 ---------- */
 function navPush(st) {   // 화면을 옮길 때마다 기록해 두어, 휴대폰·브라우저의 뒤로 가기 버튼도 같이 동작
@@ -696,6 +704,7 @@ async function go(tab, keepInq) {
   const navOf = { fee: 'apply', stats: 'report', search: 'courses', notice: 'files', dispatch: 'courses' }[tab] || tab;
   document.querySelectorAll('#tabs button').forEach(b =>
     b.setAttribute('aria-current', b.dataset.tab === navOf ? 'page' : 'false'));
+  try { if (window.parent !== window) window.parent.postMessage({ type: 'edu-tab', tab: navOf }, location.origin); } catch (e) {}
   drawSwitch(tab);
   if (tab !== 'inquiry' && S.init) refreshInqBadge();
   window.scrollTo(0, 0);

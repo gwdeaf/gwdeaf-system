@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>증서·증명 발급</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+
+  body { font-family: 'Malgun Gothic', sans-serif; margin: 0; background: #f5f7fa; font-size: 16px; color: #222; }
+  header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; background: #2f5bd6; color: #fff; padding: 12px 16px; }
+  header h1 { font-size: 18px; margin: 0 0 4px; }
+  #who { font-size: 13px; opacity: .9; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 16px; background: #fff; border-bottom: 1px solid #ddd; }
+  button { font-size: 15px; padding: 10px 14px; border: 0; border-radius: 6px; background: #2f5bd6; color: #fff; cursor: pointer; }
+  button.sub { background: #e6e9ef; color: #222; }
+  button.danger { background: #c0392b; }
+  main { padding: 12px 16px; }
+  .card { background: #fff; border-radius: 8px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.08); cursor: pointer; }
+  .badge { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #e6e9ef; }
+  .badge.ok { background: #d4efdf; }
+  .badge.cancel { background: #f5b7b1; }
+  label { display: block; margin-top: 10px; font-weight: bold; font-size: 14px; }
+  input, select, textarea { width: 100%; box-sizing: border-box; font-size: 16px; padding: 10px; margin-top: 4px; border: 1px solid #bbb; border-radius: 6px; }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dotted #ddd; }
+  .row span:first-child { color: #666; white-space: nowrap; }
+  .msg { padding: 10px; border-radius: 6px; margin: 10px 0; display: none; }
+  .msg.err { background: #fdecea; color: #922; display: block; }
+  .msg.ok { background: #e9f7ef; color: #1e6b3b; display: block; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+
+  body.embed header, body.embed #logoutBtn { display: none; }
+  @media (max-width: 640px) { nav button { flex: 1 1 auto; } main { padding: 10px; } table { font-size: 12px; } }
+
+  table.t { width:100%; border-collapse:collapse; background:#fff; font-size:14px; }
+  table.t th, table.t td { border-bottom:1px solid #e5e7eb; padding:8px 6px; text-align:left; vertical-align:top; }
+  table.t th { background:#f1f5f9; font-size:13px; white-space:nowrap; }
+  table.t tr.click { cursor:pointer; } table.t tr.click:hover { background:#f8fafc; }
+  .grid2 { display:grid; grid-template-columns:1fr 1fr; gap:0 12px; } @media (max-width:640px){ .grid2 { grid-template-columns:1fr; } }
+  .hint { color:#64748b; font-size:13px; margin-top:4px; }
+  .chip { display:inline-block; background:#eef2ff; color:#3730a3; border-radius:12px; padding:3px 10px; margin:3px 4px 0 0; font-size:13px; cursor:pointer; }
+  .tbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px; } .tbar input, .tbar select { width:auto; flex:1 1 140px; margin:0; }
+
+  .paper { position:relative; background:#fff; max-width:180mm; min-height:250mm; margin:0 auto; padding:22mm 20mm; box-shadow:0 1px 4px rgba(0,0,0,.15); box-sizing:border-box; font-family:'Batang','바탕',serif; color:#111; }
+  .pno { font-size:13px; } .ptitle { text-align:center; font-size:30px; letter-spacing:6px; margin:20mm 0 16mm; }
+  .pbody { white-space:pre-wrap; font-size:17px; line-height:2.1; min-height:110mm; }
+  .porg { text-align:center; font-size:22px; font-weight:bold; margin-top:14mm; } .sealwrap { position:relative; display:inline-block; padding-right:20px; }
+  .seal { position:absolute; right:-34px; top:50%; transform:translateY(-50%); width:72px; height:72px; object-fit:contain; opacity:.92; }
+  .pfoot { text-align:center; font-size:12px; color:#555; margin-top:12mm; }
+  .void { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:110px; color:rgba(200,0,0,.18); transform:rotate(-25deg); pointer-events:none; }
+  @page { size:A4; margin:0; }
+  @media print { header, nav, #msg, .noprint { display:none !important; } body { background:#fff; } main { padding:0; } .paper { box-shadow:none; max-width:none; width:210mm; min-height:297mm; } }
+</style>
+<link rel="stylesheet" href="/ui.css?v=1">
+</head>
+<body>
+<header>
+  <div><h1 style="margin:0">증서·증명 발급</h1><div id="who">불러오는 중…</div></div>
+</header>
+<nav id="topNav" style="display:none">
+  <button data-tab="issue" id="btnIssue" onclick="showIssue()">발급하기</button>
+  <button data-tab="list" class="sub" onclick="showList()">발급대장</button>
+  <button data-tab="set" id="btnSet" class="sub" onclick="showSettings()" style="display:none">증명서 설정</button>
+  <button id="logoutBtn" class="sub" onclick="logout()">로그아웃</button>
+</nav>
+<main>
+  <div id="msg" class="msg"></div>
+  <div id="view"></div>
+</main>
+<script>
+const SUPABASE_URL = 'https://uamlualqqcqmpdkprjfs.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhbWx1YWxxcWNxbXBka3ByamZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNjE0OTMsImV4cCI6MjExMDYzNzQ5M30._f4p4pfcKaYbmjKRXOPpkMo7Ydcc26oVVI6lRFYsLkY';
+const EMBED = new URLSearchParams(location.search).get('embed') === '1';
+if (EMBED) document.body.classList.add('embed');
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+async function rpc(name, a) { const { data, error } = await sb.rpc(name, a || {}); if (error) throw new Error(error.message || '오류가 났습니다.'); return data; }
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const won = n => Number(n || 0).toLocaleString('ko-KR') + '원';
+function msg(text, type) { const m = $('msg'); m.textContent = text || ''; m.className = 'msg ' + (type || ''); if (text) window.scrollTo(0, 0); }
+function todayStr() { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); }
+async function loginGoogle() {
+  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname, queryParams: { hd: 'gwdeaf.or.kr', prompt: 'select_account' } } });
+  if (error) alert(error.message);
+}
+async function logout() { await sb.auth.signOut(); location.href = location.origin + location.pathname; }
+function needLogin() {
+  $('topNav').style.display = 'none';
+  $('view').innerHTML = '<div class="card" style="cursor:default"><h2>로그인</h2><p>업무용 구글 계정(@gwdeaf.or.kr)으로 로그인하세요.</p><button onclick="loginGoogle()">구글 계정으로 로그인</button></div>';
+}
+function cannotUse(e) {
+  $('topNav').style.display = 'none'; $('who').textContent = '';
+  $('view').innerHTML = `<div class="card" style="cursor:default"><h2>사용할 수 없습니다</h2><p>${esc(e.message)}</p><button class="sub" onclick="logout()">다른 계정으로 로그인</button></div>`;
+}
+function setTab(id) { document.querySelectorAll('#topNav button[data-tab]').forEach(b => b.classList.toggle('sub', b.dataset.tab !== id)); }
+
+// ===== 증서·증명 발급 =====
+let ME = null, TYPES = [], MEMBERS = null;
+const AUTO = ['발급일', '기관명', '발급번호', '이름'];
+const SAMPLES = {
+  '재직증명서': { target: '직원', body: '성      명 : {이름}\n생년월일 : {생년월일}\n소      속 : {기관명} {부서}\n직      위 : {직위}\n재직기간 : {입사일} ~ 현재\n용      도 : {용도}\n\n위 사람은 현재 본 기관에 재직 중임을 증명합니다.\n\n{발급일}' },
+  '경력증명서': { target: '직원', body: '성      명 : {이름}\n생년월일 : {생년월일}\n소      속 : {기관명} {부서}\n직      위 : {직위}\n근무기간 : {입사일} ~ {퇴사일}\n담당업무 : {담당업무}\n용      도 : {용도}\n\n위와 같이 근무하였음을 증명합니다.\n\n{발급일}' },
+  '수료증':     { target: '기타', body: '성      명 : {이름}\n생년월일 : {생년월일}\n과  정  명 : {과정명}\n교육기간 : {교육기간}\n\n위 사람은 본 기관에서 실시한 위 과정을 성실히 이수하였기에 이 증서를 수여합니다.\n\n{발급일}' },
+  '회원확인서': { target: '회원', body: '성      명 : {이름}\n생년월일 : {생년월일}\n가  입  일 : {가입일}\n용      도 : {용도}\n\n위 사람은 {기관명}의 회원임을 확인합니다.\n\n{발급일}' },
+  '위촉장':     { target: '기타', body: '성      명 : {이름}\n\n귀하를 {기관명} {위촉직}(으)로 위촉합니다.\n위촉기간 : {위촉기간}\n\n{발급일}' },
+  '감사장':     { target: '기타', body: '{이름} 귀하\n\n{감사내용}\n이에 깊은 감사의 마음을 담아 이 감사장을 드립니다.\n\n{발급일}' },
+};
+const fieldsOf = body => [...new Set((String(body).match(/\{([^{}]+)\}/g) || []).map(s => s.slice(1, -1)))].filter(k => AUTO.indexOf(k) < 0);
+
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) return needLogin();
+  try {
+    ME = await rpc('cert_me');
+    $('who').textContent = `${ME.chapter_name} · ${ME.name || ME.email}${ME.dept ? ' · ' + ME.dept : ''}`;
+    $('btnIssue').style.display = ME.can_issue ? '' : 'none';
+    $('btnSet').style.display = ME.can_manage ? '' : 'none';
+    if (!ME.can_issue && !ME.can_view && !ME.can_manage) throw new Error('증명서 권한이 없습니다. 지회 담당자에게 요청하세요.');
+    $('topNav').style.display = 'flex';
+    ME.can_issue ? showIssue() : (ME.can_view ? showList() : showSettings());
+  } catch (e) { cannotUse(e); }
+}
+sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_IN' && !ME) init(); });
+
+// ---- 발급하기 ----
+async function showIssue() {
+  setTab('issue'); msg('');
+  $('view').innerHTML = '<p>불러오는 중…</p>';
+  try { TYPES = await rpc('cert_types_list', { p_all: false }); } catch (e) { $('view').innerHTML = `<p>${esc(e.message)}</p>`; return; }
+  if (!TYPES.length) { $('view').innerHTML = '<div class="card" style="cursor:default">발급할 수 있는 증명서가 없습니다.' + (ME.can_manage ? ' [증명서 설정]에서 먼저 만들어 주세요.' : ' 지회 담당자에게 요청하세요.') + '</div>'; return; }
+  $('view').innerHTML = `<div class="card" style="cursor:default">
+    <label>증명서 종류</label>
+    <select id="iType" onchange="drawFields()">${TYPES.map(t => `<option value="${t.id}">${esc(t.name)}${t.dept ? ' (' + esc(t.dept) + ')' : ''}</option>`).join('')}</select>
+    <div id="iFields"></div>
+    <label>미리보기</label>
+    <div id="iPrev" style="white-space:pre-wrap;border:1px dashed #cbd5e1;border-radius:6px;padding:12px;background:#fafafa;min-height:80px;font-size:14px"></div>
+    <div class="actions"><button onclick="doIssue()">발급하기</button></div>
+    <div class="hint">발급하면 번호가 매겨지고 발급대장에 남습니다. 발급 후 인쇄 화면이 열립니다.</div></div>`;
+  drawFields();
+}
+function curType() { return TYPES.find(t => String(t.id) === $('iType').value); }
+async function drawFields() {
+  const t = curType(); if (!t) return;
+  let h = `<label>${t.target === '기타' ? '받는 사람(또는 단체)' : (t.target === '회원' ? '회원 이름' : '직원 이름')}</label><input id="f_이름" list="memList" oninput="pickMember();preview()">`;
+  fieldsOf(t.body).forEach(k => {
+    const date = /일$/.test(k) && !/기간/.test(k);
+    h += `<label>${esc(k)}</label><input data-k="${esc(k)}" ${date ? 'placeholder="예) 2024년 3월 1일"' : ''} oninput="preview()">`;
+  });
+  h += '<datalist id="memList"></datalist>';
+  $('iFields').innerHTML = h;
+  if (t.target === '회원') {
+    if (MEMBERS === null) { try { MEMBERS = await rpc('member_list', {}); } catch (e) { MEMBERS = []; } }
+    $('memList').innerHTML = MEMBERS.map(m => `<option value="${esc(m.name)}">${esc(m.birth || '')} ${esc(m.phone || '')}</option>`).join('');
+  }
+  preview();
+}
+function pickMember() {
+  const t = curType(); if (!t || t.target !== '회원' || !MEMBERS) return;
+  const m = MEMBERS.find(x => x.name === $('f_이름').value.trim()); if (!m) return;
+  const set = (k, v) => { const el = document.querySelector(`#iFields input[data-k="${k}"]`); if (el && !el.value && v) el.value = v; };
+  set('생년월일', m.birth); set('가입일', m.join_date); set('회원번호', m.member_no); set('주소', m.address); set('연락처', m.phone);
+}
+function vars() { const v = {}; document.querySelectorAll('#iFields input[data-k]').forEach(el => v[el.dataset.k] = el.value.trim()); return v; }
+function preview() {
+  const t = curType(); if (!t) return;
+  const v = vars(); v['이름'] = $('f_이름').value.trim(); v['기관명'] = ME.chapter_name; v['발급번호'] = '제0000-0000호';
+  const d = new Date(); v['발급일'] = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
+  $('iPrev').textContent = t.body.replace(/\{([^{}]+)\}/g, (s, k) => v[k] ? v[k] : s);
+}
+async function doIssue() {
+  const t = curType(); const name = $('f_이름').value.trim();
+  if (!name) return msg('이름을 입력하세요.', 'err');
+  if (!confirm(`${t.name}을(를) ${name} 님에게 발급할까요?`)) return;
+  try { const r = await rpc('cert_issue', { p_type_id: t.id, p_target_name: name, p_vars: vars() }); msg(`✅ ${r.no} 발급했습니다.`, 'ok'); showPrint(r.no); }
+  catch (e) { msg(e.message, 'err'); }
+}
+
+// ---- 발급대장 ----
+async function showList(q, y) {
+  setTab('list'); msg('');
+  y = y ?? new Date().getFullYear();
+  $('view').innerHTML = `<div class="tbar"><select id="lYear" onchange="showList($('lQ').value, this.value)"><option value="">전체 연도</option>${[0,1,2,3].map(i => { const v = new Date().getFullYear() - i; return `<option value="${v}" ${String(v) === String(y) ? 'selected' : ''}>${v}년</option>`; }).join('')}</select>
+    <input id="lQ" placeholder="이름·증명서·번호 검색" value="${esc(q || '')}" onkeydown="if(event.key==='Enter')showList(this.value, $('lYear').value)"><button onclick="showList($('lQ').value, $('lYear').value)">검색</button>
+    <button class="sub" onclick="downloadList()">엑셀(CSV) 받기</button></div><div id="lBody"><p>불러오는 중…</p></div>`;
+  try {
+    const list = await rpc('cert_list', { p_year: y ? Number(y) : null, p_q: q || null });
+    window._LIST = list;
+    $('lBody').innerHTML = !list.length ? '<p>발급 내역이 없습니다.</p>' : `<div style="overflow-x:auto"><table class="t"><thead><tr><th>발급번호</th><th>발급일</th><th>증명서</th><th>받는 사람</th><th>발급자</th><th>상태</th></tr></thead><tbody>${
+      list.map(r => `<tr class="click" onclick="showPrint('${esc(r.no)}')"><td>${esc(r.no)}</td><td>${esc(r.issue_date)}</td><td>${esc(r.type_name)}</td><td>${esc(r.target_name)}</td><td>${esc(r.issued_name)}${r.issued_dept ? ' (' + esc(r.issued_dept) + ')' : ''}</td><td><span class="badge ${r.status === '취소' ? 'cancel' : 'ok'}">${esc(r.status)}</span></td></tr>`).join('')}</tbody></table></div>`;
+  } catch (e) { $('lBody').innerHTML = `<p>${esc(e.message)}</p>`; }
+}
+function downloadList() {
+  const rows = [['발급번호', '발급일', '증명서', '받는 사람', '발급자', '부서', '상태']].concat((window._LIST || []).map(r => [r.no, r.issue_date, r.type_name, r.target_name, r.issued_name, r.issued_dept, r.status]));
+  const csv = '﻿' + rows.map(r => r.map(c => '"' + String(c ?? '').replace(/"/g, '""') + '"').join(',')).join('\r\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = '증명서_발급대장.csv'; a.click();
+}
+
+// ---- 인쇄 화면 ----
+async function showPrint(no) {
+  setTab('');
+  try {
+    const c = await rpc('cert_get', { p_no: no });
+    const d = new Date(c.issue_date);
+    $('view').innerHTML = `<div class="actions noprint" style="margin-top:0;margin-bottom:10px">
+        <button onclick="window.print()">🖨 인쇄 / PDF 저장</button><button class="sub" onclick="showList()">발급대장</button>
+        ${c.status !== '취소' && ME.can_issue ? `<button class="danger" onclick="cancelCert('${esc(no)}')">발급 취소</button>` : ''}</div>
+      ${c.status === '취소' ? `<div class="msg err noprint">취소된 발급본입니다. (사유: ${esc(c.cancel_reason)})</div>` : ''}
+      <div id="paper" class="paper">
+        ${c.status === '취소' ? '<div class="void">취 소</div>' : ''}
+        <div class="pno">${esc(c.no)}</div>
+        <h1 class="ptitle">${esc(c.type_name.split('').join(' '))}</h1>
+        <div class="pbody">${esc(c.body)}</div>
+        <div class="porg"><span class="sealwrap">${esc(c.chapter_name)}${c.chapter_name.indexOf('협회') < 0 ? '' : ''}${c.seal ? `<img src="${esc(c.seal)}" class="seal" alt="직인">` : ' (직인)'}</span></div>
+        <div class="pfoot">${esc(c.address)}${c.phone ? ' · ☎ ' + esc(c.phone) : ''}</div>
+      </div>`;
+  } catch (e) { msg(e.message, 'err'); }
+}
+async function cancelCert(no) {
+  const r = prompt('취소 사유를 입력하세요. (취소해도 발급대장에는 남습니다)'); if (r === null) return;
+  try { await rpc('cert_cancel', { p_no: no, p_reason: r }); msg('취소했습니다.', 'ok'); showPrint(no); } catch (e) { msg(e.message, 'err'); }
+}
+
+// ---- 증명서 설정 (지회 담당자) ----
+async function showSettings() {
+  setTab('set'); msg('');
+  try {
+    const list = await rpc('cert_types_list', { p_all: true });
+    $('view').innerHTML = `<div class="card" style="cursor:default">
+      <b>부서별 증명서 종류</b><div class="hint">부서를 비워 두면 모든 부서가 발급할 수 있습니다. 부서를 정하면 그 부서 직원(과 지회 담당자)만 발급합니다. 부서 이름은 [직원·권한 관리]의 부서와 같게 적어 주세요.</div>
+      <div class="actions"><button onclick="editType()">+ 새 증명서</button></div></div>
+      ${!list.length ? '<p>아직 만든 증명서가 없습니다.</p>' : `<div style="overflow-x:auto"><table class="t"><thead><tr><th>순서</th><th>증명서</th><th>부서</th><th>대상</th><th>사용</th></tr></thead><tbody>${
+        list.map(t => `<tr class="click" onclick='editType(${JSON.stringify(t.id)})'><td>${t.sort}</td><td>${esc(t.name)}</td><td>${esc(t.dept || '모든 부서')}</td><td>${esc(t.target)}</td><td>${t.active ? '사용' : '<span class="badge cancel">중지</span>'}</td></tr>`).join('')}</tbody></table></div>`}`;
+    window._TYPES_ALL = list;
+  } catch (e) { $('view').innerHTML = `<p>${esc(e.message)}</p>`; }
+}
+function editType(id) {
+  const t = (window._TYPES_ALL || []).find(x => x.id === id) || { name: '', target: '직원', dept: '', body: '', active: true, sort: 0 };
+  $('view').innerHTML = `<div class="card" style="cursor:default">
+    <b>${id ? '증명서 수정' : '새 증명서'}</b>
+    ${id ? '' : `<div class="hint" style="margin-top:8px">예시 양식 불러오기: ${Object.keys(SAMPLES).map(k => `<span class="chip" onclick="useSample('${k}')">${k}</span>`).join('')}</div>`}
+    <div class="grid2">
+      <div><label>증명서 이름</label><input id="tName" value="${esc(t.name)}" placeholder="예) 재직증명서"></div>
+      <div><label>부서 (비우면 모든 부서)</label><input id="tDept" list="deptList" value="${esc(t.dept)}" placeholder="예) 교육팀"><datalist id="deptList">${(ME.depts || []).map(d => `<option value="${esc(d)}">`).join('')}</datalist></div>
+      <div><label>발급 대상</label><select id="tTarget">${['직원', '회원', '기타'].map(v => `<option ${v === t.target ? 'selected' : ''}>${v}</option>`).join('')}</select></div>
+      <div><label>순서 (작을수록 위)</label><input id="tSort" type="number" value="${t.sort}"></div>
+    </div>
+    <label>본문 양식</label>
+    <textarea id="tBody" rows="12" style="font-family:inherit">${esc(t.body)}</textarea>
+    <div class="hint">중괄호 { } 로 감싼 말은 발급할 때 입력칸이 됩니다. 예) {생년월일} {입사일} {용도}<br>자동으로 채워지는 칸: {이름} {발급일} {기관명} {발급번호}</div>
+    <label style="display:flex;align-items:center;gap:8px"><input id="tActive" type="checkbox" style="width:auto;margin:0" ${t.active ? 'checked' : ''}> 사용 (끄면 발급 목록에서 숨김)</label>
+    <div class="actions"><button onclick="saveType(${id ? id : 'null'})">저장</button><button class="sub" onclick="showSettings()">목록</button></div></div>`;
+}
+function useSample(k) { $('tName').value = k; $('tTarget').value = SAMPLES[k].target; $('tBody').value = SAMPLES[k].body; }
+async function saveType(id) {
+  try {
+    await rpc('cert_type_save', { p_id: id, p_name: $('tName').value, p_target: $('tTarget').value, p_dept: $('tDept').value, p_body: $('tBody').value, p_active: $('tActive').checked, p_sort: Number($('tSort').value) || 0 });
+    msg('✅ 저장했습니다.', 'ok'); ME = await rpc('cert_me'); showSettings();
+  } catch (e) { msg(e.message, 'err'); }
+}
+init();
+</script>
+</body>
+</html>

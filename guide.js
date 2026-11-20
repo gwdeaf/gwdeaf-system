@@ -1,0 +1,264 @@
+/* =========================================================
+   업무 시스템 통합 사용 안내 (홈 화면 오른쪽 위 [📖 사용 안내])
+   - 내용 고치기: 아래 SECTIONS 배열만 고치면 됩니다.
+   - show: 이 사람에게 보여 줄지 (권한이 없는 시스템 설명은 숨김)
+   - 문장 규칙(모든 설명서 공통)
+     · 말투: "~합니다 / ~하세요" (존댓말, 짧은 문장)
+     · 버튼·메뉴 이름은 굵게: <b>저장</b>, 경로는 화살표: <b>직원·권한 관리 → 기관 정보</b>
+     · 차례가 있는 일은 번호 목록(ol), 나열은 점 목록(ul), 덧붙임은 회색 글씨(p.hint)
+     · 역할 이름: 도협회 관리자 / 지회 담당자 / 직원
+     · 지우는 기능이 없는 곳은 "삭제"가 아니라 "취소"라고 씁니다. (기록은 남음)
+   ========================================================= */
+(function () {
+  var has = function (ME, p) { return (ME.perms || []).some(function (x) { return x.indexOf(p) === 0; }); };
+  var isMgr = function (ME) { return ME.role === 'admin' || ME.role === 'lead' || !!ME.can_manage; };
+  var isAttAdm = function (ME) { return ME.role === 'admin' || ME.role === 'lead' || (ME.perms || []).indexOf('att.chapter_manage') >= 0; };
+  var ALL = function () { return true; };
+
+  var SECTIONS = [
+  { id: 'start', ic: '👋', t: '처음 시작하기', show: ALL, b:
+    '<ol>' +
+    '<li>업무 시스템 주소로 들어가 <b>구글 계정으로 로그인</b>을 누릅니다. 반드시 <b>업무용 구글 계정(@gwdeaf.or.kr)</b>을 고르세요.</li>' +
+    '<li>로그인하면 <b>홈</b> 화면이 나옵니다. 왼쪽 메뉴에서 쓰려는 시스템을 누르면 오른쪽에 그 화면이 열립니다.</li>' +
+    '<li>왼쪽 위 기관 이름을 누르면 언제든 홈으로 돌아옵니다.</li>' +
+    '</ol>' +
+    '<p><b>메뉴는 사람마다 다르게 보입니다.</b> 지회 담당자가 준 권한에 맞는 메뉴만 보입니다. 필요한 메뉴가 없으면 지회 담당자에게 권한을 요청하세요.</p>' +
+    '<p class="hint">휴대폰에서는 왼쪽 위 <b>☰</b>를 누르면 메뉴가 열립니다.</p>' +
+    '<p class="hint">이 안내는 화면 오른쪽 위 <b>📖 사용 안내</b>에서 언제든 다시 볼 수 있고, 낱말로 검색할 수 있습니다. 지금 보고 있는 화면의 설명이 먼저 열립니다.</p>' },
+
+  { id: 'home', ic: '🏠', t: '홈 화면 보는 법', show: ALL, b:
+    '<ul>' +
+    '<li><b>📢 공지사항</b>: 지회 공지와 도협회의 전체 공지가 나옵니다. 지회 담당자는 <b>+ 공지 쓰기</b>로 공지를 올립니다.</li>' +
+    '<li><b>👥 오늘의 현황</b>: 오늘 우리 지회에서 휴가·출장 중인 직원이 나옵니다.</li>' +
+    '<li><b>📍 오늘 출퇴근</b>: 오늘 출근·퇴근 시각이 나옵니다.</li>' +
+    '<li><b>📅 내 일정</b> · <b>🗓 일정</b>: 내 일정과 지회 공용 구글 캘린더 일정이 나옵니다.</li>' +
+    '<li><b>🗓 내 근태</b>: 남은 연차 같은 내 근태 요약입니다. <b>휴가 관리 →</b>를 누르면 휴가 화면으로 갑니다.</li>' +
+    '<li><b>🛠 시스템 관리</b>: 관리 권한이 있는 사람에게만 보이는 바로가기입니다.</li>' +
+    '</ul>' },
+
+  { id: 'punch', ic: '📍', t: '출퇴근 찍기', show: ALL, b:
+    '<ol>' +
+    '<li>홈 화면 오른쪽 위 <b>📍 출퇴근</b>(또는 <b>🟢 출근하기</b> / <b>🔴 퇴근하기</b>)을 누릅니다.</li>' +
+    '<li>휴대폰이 위치 사용을 물으면 <b>허용</b>을 누릅니다.</li>' +
+    '<li>근무지 가까이에서 기준 시각에 맞게 찍으면 바로 기록됩니다.</li>' +
+    '<li>근무지에서 멀거나, 늦게 출근했거나, 일찍 퇴근하면 <b>사유</b>를 고르거나 적어야 기록됩니다.</li>' +
+    '</ol>' +
+    '<ul>' +
+    '<li><b>출장</b> 중이면 <b>출장</b> 버튼으로 찍고 출장 사유를 적습니다. 출장 신청서가 없으면 지회 담당자에게 알림이 갑니다.</li>' +
+    '<li>허용 반경·지각 허용 시간·기준 시각은 도협회 또는 지회 담당자가 정합니다.</li>' +
+    '</ul>' +
+    '<p class="hint">잘못 찍었으면 지회 담당자에게 수정을 요청하세요. 고친 내용은 <b>근태수정이력</b>에 남습니다.</p>' },
+
+  { id: 'att', ic: '🏖', t: '휴가 · 시수 · 출장', show: ALL, b:
+    '<p><b>휴가 관리</b></p>' +
+    '<ul>' +
+    '<li><b>내 근태 현황</b>: 연차 부여·사용·남은 일수와 이번 해 사용 내역</li>' +
+    '<li><b>휴가 신청</b> · <b>시간외 신청</b> · <b>대체휴무 신청</b>: 날짜와 사유를 적고 <b>신청</b>을 누릅니다.</li>' +
+    '<li><b>연가 사용 계획서</b>: 연가 촉진 통지를 받으면 사용 계획을 적습니다.</li>' +
+    '<li><b>내 신청 내역</b>: 신청 상태(대기·승인·반려)를 확인합니다. 아직 대기 중인 신청은 <b>취소</b>할 수 있습니다.</li>' +
+    '</ul>' +
+    '<p><b>시수</b>: <b>시수 입력</b>에서 날짜별 활동 시간을 적고, <b>내 시수 확인</b>에서 합계를 봅니다.</p>' +
+    '<p><b>대체시수</b>: 쉬는 날 일한 날은 <b>대체 시수 발생일</b>에, 그 시간을 쓴 날은 <b>대체 시수 입력</b>에 적습니다.</p>' +
+    '<p><b>출퇴근 기록</b>: <b>월별 근태현황</b>에서 한 달 출퇴근 시각과 사유를 봅니다.</p>' +
+    '<p><b>출장 관리</b>: <b>출장 신청·내역</b>에서 출장을 신청하면 바로 확정됩니다. 신청서를 출력해 결재를 받고, 다녀온 뒤 복명서를 씁니다.</p>' +
+    '<p class="hint">선임으로 지정된 직원은 <b>선임 확인</b> 메뉴에서 신청을 승인하거나 반려합니다.</p>' },
+
+  { id: 'car', ic: '🚗', t: '차량운행일지', show: function (ME) { return has(ME, 'vehicle.'); }, b:
+    '<ol>' +
+    '<li>왼쪽 메뉴 <b>차량운행일지</b>에서 차량을 고릅니다. 운전자 이름은 로그인한 사람으로 자동으로 들어갑니다.</li>' +
+    '<li>출발할 때 <b>출발 계기판</b>·목적지를 적고 저장합니다.</li>' +
+    '<li>도착하면 같은 기록을 열어 <b>도착 계기판</b>·주유를 적고 저장합니다.</li>' +
+    '</ol>' +
+    '<p class="hint">차량 관리 권한이 있으면 <b>시스템 관리 → 차량 관리</b>에서 운행일지 수정, 인쇄(결재란), 정비기록, 차량·운전자 설정을 합니다. 자주 묻는 질문은 차량 관리의 <b>❓ 도움말</b>에 있습니다.</p>' },
+
+  { id: 'edu', ic: '📚', t: '수어교육관리', show: function (ME) { return has(ME, 'edu.'); }, b:
+    '<ul>' +
+    '<li><b>강좌</b>: 강좌 만들기, 수강생 등록, 출석 체크, 교육일지, 수료증</li>' +
+    '<li><b>접수·강사비</b>: 수강 접수 안내·포스터, 강사비 확인증</li>' +
+    '<li><b>보고·통계</b>: 분기별 실적 보고, 통계, 검색</li>' +
+    '<li><b>자료요청</b>: 도협회와 지회가 파일을 주고받고 공지를 봅니다.</li>' +
+    '</ul>' +
+    '<p class="hint">수어교육관리는 기능이 많아 <b>따로 자세한 설명서</b>가 있습니다. 수어교육관리 화면 오른쪽 위 <b>사용설명서</b>를 누르세요.</p>' +
+    '<p class="hint">도협회는 지회 강좌의 요약만 보고, 수강생 이름·연락처는 볼 수 없습니다.</p>' },
+
+  { id: 'doc', ic: '📝', t: '공문 작성', show: ALL, b:
+    '<ol>' +
+    '<li><b>새 문서 작성</b>을 누르고 제목·수신·본문을 적습니다. 쓰다가 멈출 때는 <b>임시 저장</b>을 누릅니다.</li>' +
+    '<li><b>결재자 추가</b>로 결재선을 정하고 <b>기안하기</b>를 누르면 문서 번호가 붙습니다.</li>' +
+    '<li>결재자는 <b>결재할 문서</b>에서 내용을 보고 <b>승인 · 확인</b> 또는 <b>반려</b>를 누릅니다.</li>' +
+    '<li>결재가 끝나면 <b>인쇄 / PDF 저장</b> 또는 <b>📁 드라이브에 PDF 저장</b>을 누릅니다.</li>' +
+    '</ol>' +
+    '<ul>' +
+    '<li><b>내가 쓴 문서</b>: 내가 기안한 문서와 진행 상태</li>' +
+    '<li><b>대장 보기</b>: 우리 지회 문서 대장 (번호·제목·결재 상태 검색, <b>엑셀(CSV) 받기</b>)</li>' +
+    '</ul>' +
+    '<p class="hint">수기 서명 결재는 출력해서 서명한 뒤, 기안자나 지회 담당자가 <b>수기 서명 완료</b>를 누릅니다. 전자 서명 이미지는 <b>직원·권한 관리 → 내 서명</b>에서 등록합니다.</p>' },
+
+  { id: 'interp', ic: '🗣', t: '통역일지', show: function (ME) { return has(ME, 'interp.'); }, b:
+    '<ol>' +
+    '<li><b>일지 쓰기</b>에서 날짜·시간·구분·의뢰자·장소·통역내용 등을 적습니다.</li>' +
+    '<li><b>💾 통역일지 저장</b>을 누릅니다. 구글 시트가 연결되어 있으면 시트의 <b>통역</b> 탭에도 자동으로 적힙니다.</li>' +
+    '</ol>' +
+    '<ul>' +
+    '<li>자주 쓰는 내용은 <b>1번에 저장</b>~<b>3번에 저장</b>으로 즐겨찾기에 넣고, <b>⭐</b> 버튼으로 불러옵니다.</li>' +
+    '<li><b>내 기록</b>: 내가 쓴 일지를 기간으로 찾습니다.</li>' +
+    '<li><b>지회 전체 기록</b>: 조회 권한이 있는 사람만 보입니다.</li>' +
+    '</ul>' +
+    '<p class="hint">시트 연결은 지회 담당자가 <b>직원·권한 관리 → 드라이브 연결</b>에서 합니다. 시트 공유에 서비스 계정을 <b>편집자</b>로 추가해야 합니다.</p>' },
+
+  { id: 'worklog', ic: '📒', t: '업무일지', show: ALL, b:
+    '<ol>' +
+    '<li>작성일을 고르고 <b>업무 · 외근 · 통화</b> 중 하나를 고른 뒤 내용을 적고 <b>계획 추가</b>를 누릅니다.</li>' +
+    '<li>끝난 일은 체크합니다. 체크를 풀면 다시 계획으로 돌아갑니다.</li>' +
+    '<li><b>업무일지 저장</b>을 누릅니다. 월을 고르면 표지와 업무일지를 따로 인쇄할 수 있습니다.</li>' +
+    '</ol>' +
+    '<p class="hint">업무일지는 <b>본인만</b> 볼 수 있습니다. 지회 담당자와 도협회도 볼 수 없습니다. 같은 구글 계정이면 휴대폰·컴퓨터에서 같은 내용이 보입니다.</p>' },
+
+  { id: 'acct', ic: '💰', t: '회계', show: function (ME) { return has(ME, 'acct.'); }, b:
+    '<p><b>순서: 품의 → 결의 → 출납·잔고</b></p>' +
+    '<ol>' +
+    '<li><b>새 품의</b>에서 사업명·기간·목·자금원천·금액·거래처를 적고 저장합니다.</li>' +
+    '<li>결재 권한이 있는 사람이 품의를 열어 <b>결재완료</b>를 누릅니다. (본인이 쓴 품의는 본인이 결재할 수 없습니다)</li>' +
+    '<li><b>새 결의</b>에서 수입·지출을 적습니다. 지출은 결재된 품의를 골라야 하고, 품의 금액을 넘을 수 없습니다.</li>' +
+    '<li><b>출납·잔고</b>에서 월별 출납부와 통장별 잔고를 봅니다. 결의를 저장하면 자동으로 계산됩니다.</li>' +
+    '</ol>' +
+    '<ul>' +
+    '<li><b>검색</b>: 연도·적요·금액 등으로 품의와 결의를 찾습니다.</li>' +
+    '<li>잘못 쓴 문서는 지우지 않고 <b>취소</b>합니다. 모든 저장·결재·취소는 기록에 남습니다.</li>' +
+    '</ul>' +
+    '<p class="hint">지회 담당자는 <b>설정</b>에서 회계연도, 목, 자금원천, 통장을 먼저 등록하세요. 연말에는 <b>출납·잔고</b>의 <b>이월 초안 만들기</b>로 다음 해 시작 잔액을 만들고, 결의에서 확인 후 결재합니다.</p>' +
+    '<p class="hint">권한은 세 가지입니다: <b>회계 조회</b>(보기만) / <b>회계 작성</b>(품의·결의 쓰기) / <b>회계 결재</b>.</p>' },
+
+  { id: 'cert', ic: '📜', t: '증서·증명 발급', show: function (ME) { return has(ME, 'cert.'); }, b:
+    '<ol>' +
+    '<li><b>발급하기</b>에서 증명서 종류를 고릅니다. 내 부서와 모든 부서용 증명서만 보입니다.</li>' +
+    '<li>받는 사람 이름과 칸을 채우고, 아래 <b>미리보기</b>를 확인합니다. 회원용 증명서는 회원 이름을 고르면 생년월일 등이 자동으로 채워집니다.</li>' +
+    '<li><b>발급하기</b>를 누르면 발급번호(예: 제2026-0001호)가 붙고 인쇄 화면이 열립니다. <b>🖨 인쇄 / PDF 저장</b>을 누릅니다.</li>' +
+    '</ol>' +
+    '<ul>' +
+    '<li><b>발급대장</b>: 발급한 증명서를 찾고 다시 인쇄하거나 <b>엑셀(CSV) 받기</b>를 합니다.</li>' +
+    '<li>잘못 발급했으면 <b>발급 취소</b>를 누르고 사유를 적습니다. 취소해도 대장에는 남습니다.</li>' +
+    '</ul>' +
+    '<p class="hint">지회 담당자는 <b>증명서 설정</b>에서 부서별 증명서와 본문 양식을 만듭니다. 본문에 <b>{입사일}</b>처럼 중괄호로 쓴 말은 발급할 때 입력칸이 되고, <b>{이름} {발급일} {기관명} {발급번호}</b>는 자동으로 채워집니다. 직인·주소·전화는 <b>기관 정보</b>에 등록한 것이 들어갑니다.</p>' },
+
+  { id: 'member', ic: '👥', t: '회원관리', show: function (ME) { return has(ME, 'member.') || (ME.is_hq && isMgr(ME)); }, b:
+    '<ul>' +
+    '<li><b>회원명단</b>: 이름·연락처·회원번호로 찾고, 상태(활동·휴회·탈퇴)로 거릅니다. <b>+ 회원 등록</b>으로 새 회원을 넣습니다.</li>' +
+    '<li>회원을 누르면 상세 정보와 <b>입회비·회비 납부</b> 기록이 나옵니다. 종류·연도·금액·납부일을 적고 <b>납부 기록</b>을 누릅니다.</li>' +
+    '<li><b>회비 내역</b>: 연도별 납부 목록과 합계</li>' +
+    '<li><b>미납자</b>: 활동 회원 중 그해 회비 납부 기록이 없는 사람</li>' +
+    '<li><b>명단 가져오기</b>: 엑셀에서 제목 줄까지 복사해 붙여넣으면 한 번에 등록합니다. 이름과 연락처가 같은 회원이 이미 있으면 건너뜁니다.</li>' +
+    '</ul>' +
+    '<p class="hint">주민등록번호는 적지 마세요. 잘못 적은 납부 기록은 지우지 않고 <b>취소</b>합니다.</p>' +
+    '<p class="hint">도협회는 <b>지회별 요약</b>에서 인원과 납부 합계만 보고, 지회 회원 명단은 볼 수 없습니다.</p>' },
+
+  { id: 'manager', ic: '🔑', t: '지회 담당자가 처음 할 일', show: isMgr, b:
+    '<ol>' +
+    '<li><b>직원·권한 관리 → 직원·권한</b>: 직원의 구글 계정·이름·부서·직위를 등록합니다.</li>' +
+    '<li>직원마다 필요한 <b>권한</b>을 체크합니다. (차량운행, 수어교육, 통역일지, 회계, 증명서, 회원관리 등)</li>' +
+    '<li><b>결재라인</b>: 부서별 근태 결재자를 정합니다.</li>' +
+    '<li><b>기관 정보</b>: 전화번호·주소와 <b>직인</b> 이미지를 등록합니다. 수료증·증명서·공문에 들어갑니다.</li>' +
+    '<li><b>드라이브 연결</b>: 지회 구글 드라이브 폴더와 통역 시트를 연결합니다.</li>' +
+    '<li>쓰는 시스템마다 설정을 마칩니다: 근태 <b>기관 설정</b>(근무지·기준 시각), 회계 <b>설정</b>, <b>증명서 설정</b>, 공문 <b>번호 설정</b>.</li>' +
+    '</ol>' +
+    '<p class="hint">지회 담당자는 자기 지회의 모든 권한을 자동으로 가집니다. 직원을 빼거나 사용을 멈추는 것도 <b>직원·권한 관리</b>에서 합니다. 바꾼 내용은 <b>변경 기록</b>에 남습니다.</p>' },
+
+  { id: 'attadmin', ic: '🛠', t: '근태 관리 (지회 담당자)', show: isAttAdm, b:
+    '<ul>' +
+    '<li><b>대시보드</b>: 오늘 출근·휴가·출장 현황</li>' +
+    '<li><b>신청 현황</b>: 휴가·시간외·대체휴무 신청을 승인하거나 반려합니다.</li>' +
+    '<li><b>출퇴근 관리</b>: 출퇴근 기록을 확인하고 고칩니다. 고친 내용은 기록에 남습니다.</li>' +
+    '<li><b>출장 관리</b> · <b>연차 관리</b> · <b>대체휴무</b> · <b>연가 촉진</b>: 연차 부여, 연가 사용 촉진 통지</li>' +
+    '<li><b>공지사항</b> · <b>직원 관리</b>(직원별 기준 출퇴근 시각)</li>' +
+    '<li><b>기관 설정</b>: 근무지 주소와 좌표, 허용 반경, 기본 출근·퇴근 시각</li>' +
+    '</ul>' +
+    '<p class="hint">회색으로 잠긴 칸은 <b>도협회 공통 설정</b>이라 지회에서 바꿀 수 없습니다.</p>' },
+
+  { id: 'hq', ic: '🏛', t: '도협회 관리자', show: function (ME) { return ME.role === 'admin'; }, b:
+    '<ul>' +
+    '<li><b>직원·권한 관리 → 지회 담당 지정</b>: 지회마다 지회 담당자를 지정합니다.</li>' +
+    '<li><b>근태 공통 설정</b>(근태 기관 설정 화면): 허용 반경, 지각·조퇴 허용 시간, 기본 출퇴근 시각을 정하면 모든 지회에 똑같이 적용됩니다. 비워 두면 지회별 설정을 씁니다.</li>' +
+    '<li><b>전체 지회 공지</b>: 공지를 쓸 때 <b>전체 지회에 보이는 공지</b>를 체크합니다.</li>' +
+    '<li>수어교육·회원은 지회별 <b>요약</b>만 보입니다. 지회의 개인정보(수강생·회원 명단, 업무일지, 회계)는 볼 수 없습니다.</li>' +
+    '</ul>' },
+
+  { id: 'terms', ic: '📖', t: '용어 설명', show: ALL, b:
+    '<ul>' +
+    '<li><b>도협회 관리자</b>: 모든 지회의 담당자를 지정하고 공통 설정을 정하는 사람</li>' +
+    '<li><b>지회 담당자</b>: 자기 지회의 직원·권한·설정을 관리하는 사람 (지회마다 1명, 공동 관리자를 둘 수 있음)</li>' +
+    '<li><b>직원</b>: 받은 권한에 맞는 메뉴만 쓰는 사람</li>' +
+    '<li><b>권한</b>: 메뉴를 쓸 수 있는 자격. 지회 담당자가 <b>직원·권한 관리</b>에서 줍니다.</li>' +
+    '<li><b>결재 / 승인</b>: 공문·회계는 <b>결재</b>, 휴가·시간외 신청은 <b>승인·반려</b>라고 합니다.</li>' +
+    '<li><b>취소</b>: 기록을 지우지 않고 "취소" 표시만 합니다. 취소한 기록도 대장에 남습니다.</li>' +
+    '<li><b>삭제</b>: 기록을 완전히 지웁니다. 되돌릴 수 없습니다.</li>' +
+    '<li><b>엑셀(CSV) 받기</b>: 목록을 엑셀에서 열 수 있는 파일로 내려받습니다.</li>' +
+    '<li><b>인쇄 / PDF 저장</b>: 인쇄 창에서 프린터 대신 <b>PDF로 저장</b>을 고르면 파일로 저장됩니다.</li>' +
+    '</ul>' },
+
+  { id: 'faq', ic: '❓', t: '이럴 땐 어떻게 하나요?', show: ALL, b:
+    '<ul>' +
+    '<li><b>"등록되지 않은 계정"이라고 나와요</b>: 업무용 구글 계정(@gwdeaf.or.kr)으로 로그인했는지 확인하세요. 맞다면 지회 담당자에게 직원 등록을 요청하세요.</li>' +
+    '<li><b>메뉴가 안 보여요</b>: 그 시스템 권한이 없는 것입니다. 지회 담당자에게 권한을 요청하세요.</li>' +
+    '<li><b>"권한이 없습니다"라고 나와요</b>: 보기 권한만 있고 쓰기·결재 권한은 없는 경우입니다. 지회 담당자에게 문의하세요.</li>' +
+    '<li><b>출퇴근 위치가 이상하게 나와요</b>: 휴대폰의 위치 서비스를 켜고, 브라우저에 위치 사용을 허용했는지 확인하세요. 실내에서는 몇십 m 차이가 날 수 있습니다.</li>' +
+    '<li><b>화면이 안 바뀌어요</b>: 새로고침(컴퓨터는 F5, 휴대폰은 화면을 아래로 당기기)을 해 보세요.</li>' +
+    '<li><b>인쇄하면 빈 쪽이 나와요</b>: 인쇄 창에서 용지 <b>A4</b>, 배율 <b>100%</b>, 여백 <b>기본값</b>을 고르고 미리보기를 확인하세요.</li>' +
+    '<li><b>엑셀 파일이 안 받아져요</b>: 브라우저의 다운로드 차단을 확인하고, 안 되면 크롬으로 시도해 보세요.</li>' +
+    '</ul>' }
+  ];
+
+  var KIND = { home: 'home', att: 'att', car: 'car', edu: 'edu', doc: 'doc', interp: 'interp', worklog: 'worklog', acct: 'acct', cert: 'cert', member: 'member', access: 'manager' };
+
+  var css = '#gdBack{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px}' +
+    '#gdBox{background:#fff;border-radius:14px;width:min(920px,100%);height:min(86vh,760px);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.25)}' +
+    '#gdHead{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid #e5e9f2}' +
+    '#gdHead h2{margin:0;font-size:18px;flex:1}#gdHead input{flex:0 1 260px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px}' +
+    '#gdHead button{border:1px solid #e5e9f2;background:#fff;border-radius:8px;padding:7px 12px;font-size:14px;cursor:pointer}' +
+    '#gdMain{flex:1;display:flex;min-height:0}#gdList{width:220px;border-right:1px solid #e5e9f2;overflow:auto;padding:8px}' +
+    '#gdList a{display:block;padding:8px 10px;border-radius:8px;color:#1f2937;text-decoration:none;font-size:14px;cursor:pointer}' +
+    '#gdList a:hover{background:#f1f5f9}#gdList a.on{background:#eaf0ff;color:#2f5bd6;font-weight:700}' +
+    '#gdBody{flex:1;overflow:auto;padding:18px 22px;font-size:15px;line-height:1.75;color:#1f2937}' +
+    '#gdBody h3{margin:0 0 10px;font-size:18px}#gdBody ol,#gdBody ul{padding-left:22px;margin:8px 0}#gdBody li{margin:4px 0}' +
+    '#gdBody p{margin:8px 0}#gdBody .hint{color:#64748b;font-size:14px}#gdBody mark{background:#fff3a3}' +
+    '@media(max-width:700px){#gdMain{flex-direction:column}#gdList{width:auto;max-height:150px;border-right:0;border-bottom:1px solid #e5e9f2;display:flex;flex-wrap:wrap;gap:4px}#gdList a{padding:6px 9px;font-size:13px}#gdHead input{flex:1 1 120px}}';
+
+  var cur = 'start', list = [];
+  function el(id) { return document.getElementById(id); }
+  function strip(h) { return h.replace(/<[^>]+>/g, ' '); }
+  function drawList(q) {
+    var shown = q ? list.filter(function (s) { return (s.t + ' ' + strip(s.b)).indexOf(q) >= 0; }) : list;
+    el('gdList').innerHTML = shown.length ? shown.map(function (s) {
+      return '<a data-id="' + s.id + '" class="' + (s.id === cur ? 'on' : '') + '">' + s.ic + ' ' + s.t + '</a>';
+    }).join('') : '<div style="padding:10px;color:#64748b;font-size:14px">찾는 내용이 없습니다.</div>';
+    Array.prototype.forEach.call(el('gdList').querySelectorAll('a'), function (a) { a.onclick = function () { show(a.dataset.id, q); }; });
+    if (q && shown.length && !shown.some(function (s) { return s.id === cur; })) show(shown[0].id, q);
+  }
+  function show(id, q) {
+    var s = list.filter(function (x) { return x.id === id; })[0] || list[0]; cur = s.id;
+    var b = s.b;
+    if (q) b = b.replace(/>([^<]+)</g, function (m, t) { return '>' + t.split(q).join('<mark>' + q + '</mark>') + '<'; });
+    el('gdBody').innerHTML = '<h3>' + s.ic + ' ' + s.t + '</h3>' + b;
+    el('gdBody').scrollTop = 0;
+    Array.prototype.forEach.call(el('gdList').querySelectorAll('a'), function (a) { a.classList.toggle('on', a.dataset.id === cur); });
+  }
+  function close() { var b = el('gdBack'); if (b) b.remove(); document.removeEventListener('keydown', onKey); }
+  function onKey(e) { if (e.key === 'Escape') close(); }
+
+  window.openGuide = function (ME, kind) {
+    ME = ME || {};
+    list = SECTIONS.filter(function (s) { try { return s.show(ME); } catch (e) { return false; } });
+    if (!el('gdStyle')) { var st = document.createElement('style'); st.id = 'gdStyle'; st.textContent = css; document.head.appendChild(st); }
+    close();
+    var w = document.createElement('div'); w.id = 'gdBack';
+    w.innerHTML = '<div id="gdBox" role="dialog" aria-label="사용 안내"><div id="gdHead"><h2>📖 사용 안내</h2>' +
+      '<input id="gdQ" type="search" placeholder="낱말 검색 (예: 권한, 인쇄)" autocomplete="off"><button id="gdX">닫기</button></div>' +
+      '<div id="gdMain"><nav id="gdList"></nav><div id="gdBody"></div></div></div>';
+    document.body.appendChild(w);
+    w.onclick = function (e) { if (e.target === w) close(); };
+    el('gdX').onclick = close;
+    el('gdQ').oninput = function () { drawList(this.value.trim()); };
+    document.addEventListener('keydown', onKey);
+    cur = KIND[kind] && list.some(function (s) { return s.id === KIND[kind]; }) ? KIND[kind] : 'start';
+    drawList(''); show(cur);
+  };
+})();

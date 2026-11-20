@@ -1722,6 +1722,16 @@
       <div class="hint" id="cfg-version"></div>
     </div>
 
+    <div class="card" id="policy-card" style="grid-column:1/-1;display:none;">
+      <div class="card-title">🏛 도협회: 근태 공통 설정 (모든 지회 동일 적용)</div>
+      <div class="hint" style="margin-bottom:0.8rem;">값을 입력하면 <b>모든 지회에 똑같이 적용</b>되고 지회 화면에서는 수정할 수 없습니다. <b>비워 두면</b> 지회가 각자 정한 값을 씁니다.</div>
+      <div class="field-row"><label>허용 반경 (m)</label><input type="number" id="pol-radius" min="30" max="5000" step="10" style="max-width:150px;" placeholder="비움=지회별"></div>
+      <div class="field-row"><label>지각 허용 (분)</label><input type="number" id="pol-late" min="0" max="120" style="max-width:150px;" placeholder="비움=5분"><span class="hint" style="margin-left:8px;">기준 출근보다 이 분 이상 늦으면 사유 필수</span></div>
+      <div class="field-row"><label>조퇴 허용 (분)</label><input type="number" id="pol-early" min="0" max="120" style="max-width:150px;" placeholder="비움=0분"><span class="hint" style="margin-left:8px;">기준 퇴근보다 이 분 넘게 일찍 찍으면 사유 필수</span></div>
+      <div class="field-row"><label>기본 출근 / 퇴근</label><input type="time" id="pol-in" style="max-width:130px;"> <input type="time" id="pol-out" style="max-width:130px;margin-left:6px;"></div>
+      <div style="margin-top:0.6rem;"><button class="btn btn-primary btn-sm" onclick="savePolicy()">공통 설정 저장</button> <span id="pol-msg" class="hint" style="margin-left:8px;"></span></div>
+    </div>
+
     <div class="card" id="province-card" style="grid-column:1/-1;display:none;">
       <div class="card-title">🏛 도협회: 지회 · 지회 담당자 관리</div>
       <div class="hint" style="margin-bottom:0.8rem;">지회마다 <b>지회 담당자(관리자) 1명</b>을 지정합니다. 담당자는 구글 계정으로 로그인해 자기 지회의 직원·설정을 관리합니다. 담당자를 바꾸면 이전 담당자는 일반 계정이 됩니다.</div>
@@ -1740,22 +1750,23 @@
     <div class="card" style="grid-column:1/-1;">
       <div class="card-title">📍 출퇴근 · 근무지 설정 (모바일 출퇴근 기록)</div>
       <div class="hint" style="margin-bottom:0.8rem;">
-        직원이 모바일에서 출퇴근을 찍으면 <b>근무지에서 허용 반경 안</b>인지, <b>기준 시각</b>에 맞는지 확인하고 벗어나면 사유를 받습니다. 주소 변환(좌표→주소)과 주소 검색에는 <b>카카오 REST API 키</b>가 필요합니다.<br>
+        직원이 모바일에서 출퇴근을 찍으면 <b>근무지에서 허용 반경 안</b>인지, <b>기준 시각</b>에 맞는지 확인하고 벗어나면 사유를 받습니다. 주소 변환(좌표→주소)과 주소 검색에는 <b>카카오 REST API 키</b>가 필요합니다. <span id="cfg-att-sharednote" style="display:none;color:var(--success);font-weight:700;">✅ 도협회가 등록한 공용 키를 사용 중이라 지회에서 키를 넣을 필요가 없습니다. 근무지 주소만 입력하세요.</span><span id="cfg-att-keyguide"><br>
         ① developers.kakao.com → <b>내 애플리케이션 → 애플리케이션 추가하기</b>(이름 자유)<br>
         ② 앱 → <b>앱 키</b>에서 <b>REST API 키</b> 복사 → 아래에 붙여넣고 저장 / 그리고 앱의 <b>제품 설정 → 카카오맵 → 사용 설정 ON</b> (꺼져 있으면 주소 변환이 거부됩니다)<br>
-        ③ 근무지 주소를 입력 → <b>주소로 좌표 찾기</b> (또는 근무지에서 <b>현재 위치로</b>) → 저장
+        </span><br>③ 근무지 주소를 입력 → <b>주소로 좌표 찾기</b> (또는 근무지에서 <b>현재 위치로</b>) → 저장
       </div>
-      <div class="field-row"><label>근무지 이름</label><input type="text" id="cfg-att-place" placeholder="예) 강원도수어문화원"></div>
+      <div class="field-row"><label>근무지 이름</label><input type="text" id="cfg-att-place" placeholder="예) 춘천지회 사무실"></div>
       <div class="field-row"><label>근무지 주소</label><input type="text" id="cfg-att-addr" placeholder="도로명 주소"><button class="btn btn-outline btn-sm" onclick="attFindCoord()" style="margin-left:8px;white-space:nowrap;">🔎 주소로 좌표 찾기</button></div>
       <div class="field-row"><label>위도 / 경도</label>
         <input type="text" id="cfg-att-lat" placeholder="위도" style="max-width:150px;"> <input type="text" id="cfg-att-lng" placeholder="경도" style="max-width:150px;margin-left:6px;">
         <button class="btn btn-outline btn-sm" onclick="attUseHere()" style="margin-left:8px;white-space:nowrap;">📍 현재 위치로</button></div>
+      <div class="hint" id="cfg-att-locknote" style="display:none;margin-bottom:0.5rem;">🔒 회색으로 잠긴 항목은 도협회 공통 설정이라 지회에서 바꿀 수 없습니다.</div>
       <div class="field-row"><label>허용 반경 (m)</label><input type="number" id="cfg-att-radius" min="30" max="5000" step="10" style="max-width:150px;"><span class="hint" style="margin-left:8px;">이 거리 안이면 사유 없이 기록 (기본 300m)</span></div>
       <div class="field-row"><label>기본 출근 / 퇴근</label><input type="time" id="cfg-att-in" style="max-width:130px;"> <input type="time" id="cfg-att-out" style="max-width:130px;margin-left:6px;"><span class="hint" style="margin-left:8px;">직원별 기준은 [직원 관리]에서 따로 지정 (단축근무 등)</span></div>
-      <div class="field-row"><label>카카오 REST API 키</label><input type="password" id="cfg-att-key" placeholder="저장하면 다시 보이지 않습니다" autocomplete="off"><span id="cfg-att-keystate" style="font-size:0.8rem;margin-left:8px;white-space:nowrap;"></span></div>
+      <div class="field-row" id="cfg-att-keyrow"><label>카카오 REST API 키</label><input type="password" id="cfg-att-key" placeholder="저장하면 다시 보이지 않습니다" autocomplete="off"><span id="cfg-att-keystate" style="font-size:0.8rem;margin-left:8px;white-space:nowrap;"></span></div>
       <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.6rem;">
         <button class="btn btn-primary" onclick="saveAttendSettings()">💾 출퇴근 설정 저장</button>
-        <button class="btn btn-outline" onclick="clearKakaoKey()">키 삭제</button>
+        <button class="btn btn-outline" id="cfg-att-keydel" onclick="clearKakaoKey()">키 삭제</button>
       </div>
       <div id="cfg-att-msg" style="font-size:0.82rem;min-height:1.2em;margin-top:0.4rem;"></div>
     </div>
@@ -3413,7 +3424,7 @@ function adminShowAlert(msg, type) {
 
 function loadAdminSettings() {
   var u = document.getElementById('cfg-link-url'); if (u) u.textContent = shareLink();
-  loadProvinceCard();
+  loadProvinceCard(); loadPolicyCard();
   gasRun('getAdminConfig', null, function(c) {
     if (!c || !c.ok) return;
     document.getElementById('cfg-org-name').value   = c.orgName || '';
@@ -6210,6 +6221,12 @@ function loadAttendSettings() {
     var set = function(id, v) { var el = document.getElementById(id); if (el) el.value = v == null ? '' : v; };
     set('cfg-att-place', c.placeName); set('cfg-att-addr', c.address); set('cfg-att-lat', c.lat); set('cfg-att-lng', c.lng); set('cfg-att-radius', c.radius); set('cfg-att-in', c.stdIn); set('cfg-att-out', c.stdOut);
     var st = document.getElementById('cfg-att-keystate'); if (st) { st.textContent = c.hasKey ? '✅ 저장됨' : '⚪ 미설정'; st.style.color = c.hasKey ? 'var(--success)' : 'var(--text-muted)'; }
+    var shared = c.keySource === 'shared';   // 공용 키가 있으면 지회는 키 입력 칸·발급 안내를 숨김
+    [['cfg-att-keyrow', !shared], ['cfg-att-keyguide', !shared], ['cfg-att-keydel', !shared]].forEach(function(x) { var el = document.getElementById(x[0]); if (el) el.style.display = x[1] ? '' : 'none'; });
+    var lk = c.locked || {};
+    [['cfg-att-radius', lk.radius], ['cfg-att-in', lk.std], ['cfg-att-out', lk.std]].forEach(function(x) { var el = document.getElementById(x[0]); if (el) { el.disabled = !!x[1]; el.title = x[1] ? '도협회 공통 설정입니다' : ''; } });
+    var ln = document.getElementById('cfg-att-locknote'); if (ln) ln.style.display = (lk.radius || lk.std) ? '' : 'none';
+    var sn = document.getElementById('cfg-att-sharednote'); if (sn) sn.style.display = shared ? 'inline' : 'none';
   }, function() {});
 }
 function attFindCoord() {
@@ -6239,6 +6256,26 @@ function saveAttendSettings() {
   gasRun('saveAttendConfig', JSON.stringify(p), function(res) {
     if (res && res.ok) { document.getElementById('cfg-att-key').value = ''; attMsg('✅ 저장했습니다.', 'ok'); loadAttendSettings(); } else attMsg((res && res.msg) || '저장하지 못했습니다.', 'warn');
   }, function(m) { attMsg('오류: ' + m, 'warn'); });
+}
+// ----- 도협회 공통 근태 정책 -----
+function polMsg(t, ok) { var el = document.getElementById('pol-msg'); if (el) { el.style.color = ok ? 'var(--success)' : 'var(--danger)'; el.textContent = t; } }
+function loadPolicyCard() {
+  var c = document.getElementById('policy-card'); if (!c) return;
+  if (!(ME && ME.isProvince)) { c.style.display = 'none'; return; }
+  c.style.display = '';
+  gasRun('provincePolicyGet', null, function(r) {
+    var p = (r && r.ok && r.policy) || {};
+    var set = function(id, v) { document.getElementById(id).value = v == null ? '' : v; };
+    set('pol-radius', p.radius); set('pol-late', p.late_grace); set('pol-early', p.early_grace); set('pol-in', p.std_in); set('pol-out', p.std_out);
+  }, function() {});
+}
+function savePolicy() {
+  var v = function(id) { return (document.getElementById(id).value || '').trim(); };
+  var p = {radius: v('pol-radius'), late_grace: v('pol-late'), early_grace: v('pol-early'), std_in: v('pol-in'), std_out: v('pol-out')};
+  polMsg('저장 중...', true);
+  gasRun('provincePolicySet', JSON.stringify(p), function(r) {
+    if (r && r.ok) { polMsg('✅ 저장했습니다. 모든 지회에 적용됩니다.', true); loadAttendSettings(); } else polMsg((r && r.msg) || '저장하지 못했습니다.', false);
+  }, function(m) { polMsg('오류: ' + m, false); });
 }
 function clearKakaoKey() {
   if (!confirm('저장된 카카오 REST API 키를 삭제할까요? (주소 변환이 멈춥니다)')) return;

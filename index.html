@@ -204,6 +204,8 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 }
 </style>
 <link rel="stylesheet" href="/ui.css?v=1">
+<style>.gbtn2{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 11px;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--text)}.gbtn2:hover{background:var(--pri-soft)}@media(max-width:600px){.gbtn2 .gtx{display:none}}</style>
+<script src="/guide.js?v=1"></script>
 </head>
 <body>
 
@@ -247,6 +249,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
     <div class="tright">
       <span class="pstat hide" id="pstat"></span>
       <button class="pbtn hide" id="pbtn" onclick="openPunch()">📍 출퇴근</button>
+      <button class="gbtn2" onclick="openGuide(ME, (CUR||'home').split(':')[0])" title="사용 안내">📖<span class="gtx"> 사용 안내</span></button>
       <div class="tuser"><div class="av sm" id="tb-av"></div><span id="tb-nm"></span></div>
     </div>
   </div>
@@ -376,9 +379,14 @@ function renderNav(){
   if (hasPerm('vehicle.')) h += topHtml('car:s:', '🚗', '차량운행일지', "go('car')");
   if (hasPerm('edu.')) {
     h += '<div class="grp"><span class="ic">📚</span>수어교육관리</div>';
-    [['courses','강좌'],['apply','접수·강사비'],['report','보고·통계'],['files','자료요청'],['me','내 정보']].forEach(function(k){ if (EDU_HIDE.indexOf(k[0]) < 0) h += kidHtml('edu', false, k[0], k[1]); });
+    [['courses','강좌'],['apply','접수·강사비'],['report','보고·통계'],['files','자료요청']].forEach(function(k){ if (EDU_HIDE.indexOf(k[0]) < 0) h += kidHtml('edu', false, k[0], k[1]); });
   }
   h += topHtml('doc:s:', '📝', '공문 작성', "go('doc')");
+  if (hasPerm('interp.')) h += topHtml('interp:s:', '🗣', '통역일지', "go('interp')");
+  h += topHtml('worklog:s:', '📒', '업무일지', "go('worklog')");
+  if (hasPerm('acct.')) h += topHtml('acct:s:', '💰', '회계', "go('acct')");
+  if (hasPerm('cert.')) h += topHtml('cert:s:', '📜', '증서·증명 발급', "go('cert')");
+  if (hasPerm('member.')) h += topHtml('member:s:', '👥', '회원관리', "go('member')");
   if (isAttAdmin() || isVehAdmin() || ME.can_manage) h += '<div class="sec">시스템 관리</div>';
   if (isAttAdmin()) {
     h += '<div class="grp"><span class="ic">🛠</span>근태 관리 (지회)</div>';
@@ -433,7 +441,7 @@ function go(kind, tab, adm){
     /* 같은 화면: 그대로 보여 줌 */
   } else {
     var url = kind === 'att' ? '/att/?embed=1&mode=' + (adm ? 'admin' : 'staff') + '&go=' + encodeURIComponent(tab)
-      : kind === 'car' ? '/car/?embed=1' + (adm ? '&admin=1' : '') : kind === 'edu' ? '/edu/?embed=1' : kind === 'doc' ? '/doc/?embed=1' : '/access.html?embed=1';
+      : kind === 'car' ? '/car/?embed=1' + (adm ? '&admin=1' : '') : kind === 'edu' ? '/edu/?embed=1' : kind === 'doc' ? '/doc/?embed=1' : kind === 'interp' ? '/interp/?embed=1' : kind === 'worklog' ? '/worklog/?embed=1' : kind === 'acct' ? '/acct/?embed=1' : kind === 'cert' ? '/cert/?embed=1' : kind === 'member' ? '/member/?embed=1' : '/access.html?embed=1';
     FR = { key:key, ready:false, tab:tab, loadedGo:tab };
     $('floading').classList.remove('hide'); fr.src = url;
   }
@@ -441,7 +449,7 @@ function go(kind, tab, adm){
   try { history.replaceState(null, '', '#' + kind + (adm ? '-admin' : '') + (tab ? '/' + tab : '')); } catch(e){}
 }
 function fromHash(){
-  var m = /^#(att|car|edu|doc|access)(-admin)?(?:\/(.+))?$/.exec(location.hash || ''); if (!m) return false;
+  var m = /^#(att|car|edu|doc|interp|worklog|acct|cert|member|access)(-admin)?(?:\/(.+))?$/.exec(location.hash || ''); if (!m) return false;
   if (m[1] === 'car' && !hasPerm('vehicle.')) return false;
   if (m[1] === 'edu' && !hasPerm('edu.')) return false;
   go(m[1], m[3] ? decodeURIComponent(m[3]) : '', !!m[2]); return true;
@@ -565,6 +573,7 @@ function render(){
   $('chips').innerHTML = '<span class="chip pri">' + esc(ME.chapter_name) + '</span>' + (roleTxt ? '<span class="chip">' + roleTxt + '</span>' : '') + (ME.dept ? '<span class="chip">' + esc(ME.dept) + '</span>' : '');
   $('tb-av').textContent = name.charAt(0); $('tb-nm').textContent = name;
   renderNav();
+  try { var gk = 'guideSeen:' + (ME.email || ''); if (!localStorage.getItem(gk)) { localStorage.setItem(gk, '1'); setTimeout(function(){ openGuide(ME, 'home'); }, 600); } } catch(e){}
   $('notice-add').classList.toggle('hide', !ME.can_manage);
   var anyAdm = ME.can_manage || isAttAdmin() || isVehAdmin();
   $('mgr-card').classList.toggle('hide', !anyAdm);

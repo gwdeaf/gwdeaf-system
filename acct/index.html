@@ -1,0 +1,648 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>회계시스템</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+
+  body { font-family: 'Malgun Gothic', sans-serif; margin: 0; background: #f5f7fa; font-size: 16px; color: #222; }
+  header { display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px; background: #2f5bd6; color: #fff; padding: 12px 16px; }
+  header h1 { font-size: 18px; margin: 0 0 4px; }
+  #who { font-size: 13px; opacity: .9; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 16px; background: #fff; border-bottom: 1px solid #ddd; }
+  button { font-size: 15px; padding: 10px 14px; border: 0; border-radius: 6px; background: #2f5bd6; color: #fff; cursor: pointer; }
+  button.sub { background: #e6e9ef; color: #222; }
+  button.danger { background: #c0392b; }
+  main { padding: 12px 16px; }
+  .card { background: #fff; border-radius: 8px; padding: 12px; margin-bottom: 10px; box-shadow: 0 1px 2px rgba(0,0,0,.08); cursor: pointer; }
+  .badge { display: inline-block; font-size: 12px; padding: 2px 8px; border-radius: 10px; background: #e6e9ef; }
+  .badge.ok { background: #d4efdf; }
+  .badge.cancel { background: #f5b7b1; }
+  label { display: block; margin-top: 10px; font-weight: bold; font-size: 14px; }
+  input, select, textarea { width: 100%; box-sizing: border-box; font-size: 16px; padding: 10px; margin-top: 4px; border: 1px solid #bbb; border-radius: 6px; }
+  .row { display: flex; justify-content: space-between; gap: 12px; padding: 8px 0; border-bottom: 1px dotted #ddd; }
+  .row span:first-child { color: #666; white-space: nowrap; }
+  .msg { padding: 10px; border-radius: 6px; margin: 10px 0; display: none; }
+  .msg.err { background: #fdecea; color: #922; display: block; }
+  .msg.ok { background: #e9f7ef; color: #1e6b3b; display: block; }
+  .actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 14px; }
+
+  body.embed header, body.embed #logoutBtn { display: none; }
+  @media (max-width: 640px) { nav button { flex: 1 1 auto; } main { padding: 10px; } table { font-size: 12px; } }
+</style>
+<link rel="stylesheet" href="/ui.css?v=1">
+</head>
+<body>
+<header>
+  <div><h1 style="margin:0">회계시스템</h1><div id="who">불러오는 중…</div></div>
+</header>
+<nav id="topNav" style="display:none">
+  <button onclick="showList()">품의 목록</button>
+  <button id="btnNew" onclick="showForm()">새 품의</button>
+  <button onclick="showResList()">결의 목록</button>
+  <button id="btnNewRes" onclick="showResForm()">새 결의</button>
+  <button onclick="showLedger()">출납·잔고</button>
+  <button onclick="showSearch()">검색</button>
+  <button id="btnSet" class="sub" onclick="showSettings()" style="display:none">설정</button>
+  <button id="logoutBtn" class="sub" onclick="logout()">로그아웃</button>
+</nav>
+<main>
+  <div id="msg" class="msg"></div>
+  <div id="view"></div>
+</main>
+<script>
+const SUPABASE_URL = 'https://uamlualqqcqmpdkprjfs.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhbWx1YWxxcWNxbXBka3ByamZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNjE0OTMsImV4cCI6MjExMDYzNzQ5M30._f4p4pfcKaYbmjKRXOPpkMo7Ydcc26oVVI6lRFYsLkY';
+const EMBED = new URLSearchParams(location.search).get('embed') === '1';
+if (EMBED) document.body.classList.add('embed');
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+// ===== 공통 =====
+let OPTS = null;   // 로그인 사용자, 회계연도, 목·자금원천 목록
+let ME = null;
+let RES = null;    // 결의 입력 선택지 (품의, 통장, 목, 자금원천)
+
+// 서버(DB) 함수 연결: 화면에서 쓰는 이름 → Supabase 함수
+const FN = {
+  getFormOptions: () => ['acct_options', {}],
+  listProposals: (y) => ['acct_prop_list', { p_year: y ? Number(y) : null }],
+  getProposal: (no) => ['acct_prop_get', { p_no: no }],
+  saveProposal: (d) => ['acct_prop_save', { p: d }],
+  approveProposal: (no) => ['acct_prop_approve', { p_no: no }],
+  cancelProposal: (no, r) => ['acct_prop_cancel', { p_no: no, p_reason: r }],
+  getResolutionOptions: () => ['acct_res_options', {}],
+  listResolutions: (y) => ['acct_res_list', { p_year: y ? Number(y) : null }],
+  getResolution: (no) => ['acct_res_get', { p_no: no }],
+  saveResolution: (d) => ['acct_res_save', { p: d }],
+  approveResolution: (no) => ['acct_res_approve', { p_no: no }],
+  cancelResolution: (no, r) => ['acct_res_cancel', { p_no: no, p_reason: r }],
+  getLedger: (y, m) => ['acct_ledger', { p_year: y ? Number(y) : null, p_month: m ? Number(m) : null }],
+  getAccountBalances: (y) => ['acct_balances', { p_year: y ? Number(y) : null }],
+  createCarryOver: (y) => ['acct_carry', { p_from: Number(y) }],
+  searchDocs: (p) => ['acct_search', { p: p }],
+  getManage: () => ['acct_manage_get', {}],
+  setYear: (y) => ['acct_year_set', { p_year: Number(y) }],
+  saveCode: (k, c, n, u) => ['acct_code_save', { p_kind: k, p_code: c, p_name: n, p_use: u }],
+  saveAccount: (i, b, n, h, u) => ['acct_account_save', { p_id: i, p_bank: b, p_number: n, p_holder: h, p_use: u }]
+};
+async function api(fn, ...args) {
+  const [name, a] = FN[fn](...args);
+  const { data, error } = await sb.rpc(name, a);
+  if (error) throw new Error(error.message || '오류가 났습니다.');
+  return data;
+}
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
+  ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const won = n => Number(n || 0).toLocaleString('ko-KR') + '원';
+const badge = s => `<span class="badge ${s === '결재완료' ? 'ok' : (s === '취소' ? 'cancel' : '')}">${esc(s)}</span>`;
+
+function msg(text, type) {
+  const m = $('msg');
+  m.textContent = text || '';
+  m.className = 'msg ' + (type || '');
+  if (text) window.scrollTo(0, 0);
+}
+
+// 목·자금원천 코드를 '이름 (코드)'로 보여 줌
+function nameOf(kind, code) {
+  const c = (OPTS[kind] || []).find(x => x['코드'] === code);
+  return c ? `${c['이름']} (${code})` : (code || '');
+}
+
+function optHtml(list, cur) {
+  return list.map(c => `<option value="${esc(c['코드'])}" ${c['코드'] === cur ? 'selected' : ''}>${esc(c['이름'])} (${esc(c['코드'])})</option>`).join('');
+}
+
+function monthOpts(cur) {
+  let h = '<option value="">전체</option>';
+  for (let m = 1; m <= 12; m++) {
+    h += `<option value="${m}" ${String(m) === String(cur) ? 'selected' : ''}>${m}월</option>`;
+  }
+  return h;
+}
+
+function todayStr() {
+  const d = new Date();
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+
+async function loginGoogle() {
+  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname, queryParams: { hd: 'gwdeaf.or.kr', prompt: 'select_account' } } });
+  if (error) alert(error.message);
+}
+async function logout() { await sb.auth.signOut(); location.href = location.origin + location.pathname; }
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) {
+    $('topNav').style.display = 'none';
+    $('view').innerHTML = '<div class="card" style="cursor:default"><h2>로그인</h2><p>업무용 구글 계정(@gwdeaf.or.kr)으로 로그인하세요.</p><button onclick="loginGoogle()">구글 계정으로 로그인</button></div>';
+    return;
+  }
+  try {
+    OPTS = await api('getFormOptions');
+    ME = OPTS.user;
+    $('who').textContent = `${ME.chapter_name} · ${ME.name || ME.email} · ${OPTS.year}회계연도`;
+    $('btnNew').style.display = ME.can_write ? '' : 'none'; $('btnNewRes').style.display = ME.can_write ? '' : 'none'; $('btnSet').style.display = ME.can_manage ? '' : 'none';
+    $('topNav').style.display = 'flex';
+    showList();
+  } catch (e) {
+    $('topNav').style.display = 'none';
+    $('who').textContent = '';
+    $('view').innerHTML = `<div class="card" style="cursor:default"><h2>사용할 수 없습니다</h2><p>${esc(e.message)}</p><button class="sub" onclick="logout()">다른 계정으로 로그인</button></div>`;
+  }
+}
+sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_IN' && !ME) init(); });
+
+// ===== 4단계: 품의 =====
+async function showList() {
+  msg('');
+  $('view').innerHTML = '<p>불러오는 중…</p>';
+  try {
+    const list = await api('listProposals', OPTS.year);
+    if (!list.length) { $('view').innerHTML = '<p>등록된 품의가 없습니다.</p>'; return; }
+    $('view').innerHTML = list.map(p => `
+      <div class="card" onclick="showDetail('${esc(p['품의번호'])}')">
+        <div><b>${esc(p['품의번호'])}</b> ${badge(p['상태'])}</div>
+        <div style="margin:4px 0">${esc(p['사업명'])}</div>
+        <div style="color:#555;font-size:14px">${won(p['금액'])} · ${esc(p['거래처'])}</div>
+      </div>`).join('');
+  } catch (e) {
+    $('view').innerHTML = `<p>${esc(e.message)}</p>`;
+  }
+}
+
+async function showDetail(no) {
+  try {
+    const p = await api('getProposal', no);
+    const mine = p['작성자'] === ME.email;
+    let btns = '';
+    if (p['상태'] === '작성' && mine) btns += `<button onclick="showForm('${esc(no)}')">수정</button>`;
+    if (p['상태'] === '작성' && ME.can_approve) btns += `<button onclick="approve('${esc(no)}')">결재완료</button>`;
+    if (mine && p['상태'] !== '취소') btns += `<button class="danger" onclick="showCancel('${esc(no)}')">취소</button>`;
+    btns += `<button class="sub" onclick="showList()">목록</button>`;
+
+    const rows = [
+      ['회계연도', p['회계연도']],
+      ['작성일', p['작성일']],
+      ['작성자', p['작성자']],
+      ['사업명', p['사업명']],
+      ['사업기간', `${p['사업시작일']} ~ ${p['사업종료일']}`],
+      ['목(계정)', nameOf('목', p['목코드'])],
+      ['자금원천', nameOf('자금원천', p['자금원천코드'])],
+      ['금액', won(p['금액'])],
+      ['거래처', p['거래처']],
+      ['첨부목록', p['첨부목록']],
+      ['산출근거', p['산출근거']],
+      ['결재자', p['결재자']],
+      ['결재일', p['결재일']]
+    ];
+    if (p['상태'] === '취소') rows.push(['취소사유', p['취소사유']], ['취소일시', p['취소일시']]);
+
+    $('view').innerHTML = `<h2>${esc(no)} ${badge(p['상태'])}</h2>` +
+      rows.map(([k, v]) => `<div class="row"><span>${esc(k)}</span><span style="text-align:right">${esc(v)}</span></div>`).join('') +
+      `<div class="actions">${btns}</div>`;
+  } catch (e) {
+    msg(e.message, 'err');
+  }
+}
+
+async function approve(no) {
+  try {
+    await api('approveProposal', no);
+    await showDetail(no);
+    msg('결재가 완료되었습니다. 이제 수정할 수 없습니다.', 'ok');
+  } catch (e) {
+    msg(e.message, 'err');
+  }
+}
+
+function showCancel(no) {
+  if ($('cancelBox')) return;
+  $('view').insertAdjacentHTML('beforeend',
+    `<div id="cancelBox" class="card" style="cursor:default">
+       <label>취소 사유 (필수)</label>
+       <textarea id="cReason" rows="2"></textarea>
+       <div class="actions"><button class="danger" onclick="cancelDoc('${esc(no)}')">취소 확정</button></div>
+     </div>`);
+}
+
+async function cancelDoc(no) {
+  try {
+    await api('cancelProposal', no, $('cReason').value);
+    await showDetail(no);
+    msg('품의를 취소했습니다. 기록은 남아 있습니다.', 'ok');
+  } catch (e) {
+    msg(e.message, 'err');
+  }
+}
+
+async function showForm(no) {
+  msg('');
+  let p = {};
+  if (no) {
+    try { p = await api('getProposal', no); } catch (e) { msg(e.message, 'err'); return; }
+  }
+  const back = no ? `showDetail('${esc(no)}')` : 'showList()';
+
+  $('view').innerHTML = `
+    <h2>${no ? '품의 수정 ' + esc(no) : '새 품의 작성'}</h2>
+    <input type="hidden" id="f_no" value="${esc(no || '')}">
+    <label>사업명</label>
+    <input id="f_name" value="${esc(p['사업명'] || '')}">
+    <label>사업 시작일</label>
+    <input type="date" id="f_start" value="${esc(p['사업시작일'] || '')}">
+    <label>사업 종료일</label>
+    <input type="date" id="f_end" value="${esc(p['사업종료일'] || '')}">
+    <label>목(계정과목)</label>
+    <select id="f_mok"><option value="">선택하세요</option>${optHtml(OPTS['목'], p['목코드'])}</select>
+    <label>자금원천</label>
+    <select id="f_src"><option value="">선택하세요</option>${optHtml(OPTS['자금원천'], p['자금원천코드'])}</select>
+    <label>금액 (원)</label>
+    <input type="number" id="f_amt" min="1" value="${esc(p['금액'] || '')}">
+    <label>거래처</label>
+    <input id="f_vendor" value="${esc(p['거래처'] || '')}">
+    <label>첨부목록</label>
+    <textarea id="f_attach" rows="2">${esc(p['첨부목록'] || '')}</textarea>
+    <label>산출근거</label>
+    <textarea id="f_basis" rows="3">${esc(p['산출근거'] || '')}</textarea>
+    <div class="actions">
+      <button onclick="save()">저장</button>
+      <button class="sub" onclick="${back}">돌아가기</button>
+    </div>`;
+}
+
+async function save() {
+  const data = {
+    품의번호: $('f_no').value,
+    사업명: $('f_name').value.trim(),
+    사업시작일: $('f_start').value,
+    사업종료일: $('f_end').value,
+    목코드: $('f_mok').value,
+    자금원천코드: $('f_src').value,
+    금액: $('f_amt').value,
+    거래처: $('f_vendor').value.trim(),
+    첨부목록: $('f_attach').value.trim(),
+    산출근거: $('f_basis').value.trim()
+  };
+  if (!data.품의번호) delete data.품의번호;
+  try {
+    const no = await api('saveProposal', data);
+    await showDetail(no);
+    msg('저장되었습니다. 품의번호: ' + no, 'ok');
+  } catch (e) {
+    msg(e.message, 'err');
+  }
+}
+
+// ===== 5단계: 결의 · 출납 · 잔고 =====
+async function loadRes() { RES = await api('getResolutionOptions'); }
+
+function accName(id) {
+  const b = ((RES && RES.통장) || []).find(x => x['통장id'] === id);
+  return b ? `${b['은행명']} ${b['계좌번호']}` : (id || '');
+}
+
+async function showResList() {
+  msg('');
+  $('view').innerHTML = '<p>불러오는 중…</p>';
+  try {
+    const list = await api('listResolutions', OPTS.year);
+    if (!list.length) { $('view').innerHTML = '<p>등록된 결의가 없습니다.</p>'; return; }
+    $('view').innerHTML = list.map(r => `
+      <div class="card" onclick="showResDetail('${esc(r['결의번호'])}')">
+        <div><b>${esc(r['결의번호'])}</b> ${badge(r['상태'])}</div>
+        <div style="margin:4px 0">${esc(r['적요'])}</div>
+        <div style="color:#555;font-size:14px">${esc(r['결의구분'])} · ${won(r['금액'])} · ${esc(r['날짜'])}</div>
+      </div>`).join('');
+  } catch (e) {
+    $('view').innerHTML = `<p>${esc(e.message)}</p>`;
+  }
+}
+
+async function showResDetail(no) {
+  try {
+    await loadRes();
+    const r = await api('getResolution', no);
+    const mine = r['작성자'] === ME.email;
+    let btns = '';
+    if (r['상태'] === '작성' && mine) btns += `<button onclick="showResForm('${esc(no)}')">수정</button>`;
+    if (r['상태'] === '작성' && ME.can_approve) btns += `<button onclick="approveRes('${esc(no)}')">결재완료</button>`;
+    if (mine && r['상태'] !== '취소') btns += `<button class="danger" onclick="showResCancel('${esc(no)}')">취소</button>`;
+    btns += `<button class="sub" onclick="showResList()">목록</button>`;
+
+    const rows = [
+      ['결의구분', r['결의구분']],
+      ['회계연도', r['회계연도']],
+      ['날짜', r['날짜']],
+      ['연결 품의', r['품의번호'] || '없음'],
+      ['목(계정)', nameOf('목', r['목코드'])],
+      ['자금원천', nameOf('자금원천', r['자금원천코드'])],
+      ['통장', accName(r['통장id'])],
+      ['적요', r['적요']],
+      ['금액', won(r['금액'])],
+      ['거래처', r['거래처']],
+      ['작성자', r['작성자']],
+      ['결재자', r['결재자']],
+      ['결재일', r['결재일']]
+    ];
+    if (r['상태'] === '취소') rows.push(['취소사유', r['취소사유']], ['취소일시', r['취소일시']]);
+
+    $('view').innerHTML = `<h2>${esc(no)} ${badge(r['상태'])}</h2>` +
+      rows.map(([k, v]) => `<div class="row"><span>${esc(k)}</span><span style="text-align:right">${esc(v)}</span></div>`).join('') +
+      `<div class="actions">${btns}</div>`;
+  } catch (e) {
+    msg(e.message, 'err');
+  }
+}
+
+async function approveRes(no) {
+  try {
+    await api('approveResolution', no);
+    await showResDetail(no);
+    msg('결의가 결재완료되었습니다.', 'ok');
+  } catch (e) {
+    msg(e.message, 'err');
+  }
+}
+
+function showResCancel(no) {
+  if ($('resCancelBox')) return;
+  $('view').insertAdjacentHTML('beforeend',
+    `<div id="resCancelBox" class="card" style="cursor:default">
+       <label>취소 사유 (필수)</label>
+       <textarea id="rReason" rows="2"></textarea>
+       <div class="actions"><button class="danger" onclick="resCancel('${esc(no)}')">취소 확정</button></div>
+     </div>`);
+}
+
+async function resCancel(no) {
+  try {
+    await api('cancelResolution', no, $('rReason').value);
+    await showResDetail(no);
+    msg('결의를 취소했습니다. 출납에는 취소로 표시됩니다.', 'ok');
+  } catch (e) {
+    msg(e.message, 'err');
+  }
+}
+
+async function showResForm(no, presetKind) {
+  msg('');
+  let r = {};
+  try {
+    await loadRes();
+    if (no) r = await api('getResolution', no);
+  } catch (e) {
+    msg(e.message, 'err');
+    return;
+  }
+  const isEdit = !!no;
+  const kind = r['결의구분'] || presetKind || '지출';
+  const 품의Opts = RES.품의.map(p =>
+    `<option value="${esc(p['품의번호'])}" ${p['품의번호'] === r['품의번호'] ? 'selected' : ''}>${esc(p['품의번호'])} ${esc(p['사업명'])} (남은 ${won(p['남은금액'])})</option>`
+  ).join('');
+  const 통장Opts = RES.통장.map(b =>
+    `<option value="${esc(b['통장id'])}" ${b['통장id'] === r['통장id'] ? 'selected' : ''}>${esc(b['은행명'])} ${esc(b['계좌번호'])}</option>`
+  ).join('');
+  const back = isEdit ? `showResDetail('${esc(no)}')` : 'showResList()';
+
+  $('view').innerHTML = `
+    <h2>${isEdit ? '결의 수정 ' + esc(no) : '새 결의 작성'}</h2>
+    <input type="hidden" id="r_no" value="${esc(no || '')}">
+    <label>결의 구분</label>
+    <select id="r_kind" onchange="toggleKind()" ${isEdit ? 'disabled' : ''}>
+      <option value="지출" ${kind === '지출' ? 'selected' : ''}>지출결의</option>
+      <option value="수입" ${kind === '수입' ? 'selected' : ''}>수입결의</option>
+    </select>
+    <div id="r_expBox">
+      <label>연결 품의 (결재완료된 것만)</label>
+      <select id="r_proposal"><option value="">선택하세요</option>${품의Opts}</select>
+    </div>
+    <div id="r_incBox">
+      <label>목(계정과목)</label>
+      <select id="r_mok"><option value="">선택하세요</option>${optHtml(RES.목, r['목코드'])}</select>
+      <label>자금원천</label>
+      <select id="r_src"><option value="">선택하세요</option>${optHtml(RES.자금원천, r['자금원천코드'])}</select>
+    </div>
+    <label>날짜</label>
+    <input type="date" id="r_date" value="${esc(r['날짜'] || todayStr())}">
+    <label>통장</label>
+    <select id="r_acc"><option value="">선택하세요</option>${통장Opts}</select>
+    <label>적요 (내용)</label>
+    <input id="r_memo" value="${esc(r['적요'] || '')}">
+    <label>금액 (원)</label>
+    <input type="number" id="r_amt" min="1" value="${esc(r['금액'] || '')}">
+    <label>거래처 (지출은 비우면 품의의 거래처 사용)</label>
+    <input id="r_vendor" value="${esc(r['거래처'] || '')}">
+    <div class="actions">
+      <button onclick="saveRes()">저장</button>
+      <button class="sub" onclick="${back}">돌아가기</button>
+    </div>`;
+  toggleKind();
+}
+
+function toggleKind() {
+  const isExp = $('r_kind').value === '지출';
+  $('r_expBox').style.display = isExp ? 'block' : 'none';
+  $('r_incBox').style.display = isExp ? 'none' : 'block';
+}
+
+async function saveRes() {
+  const kind = $('r_kind').value;
+  const data = {
+    결의번호: $('r_no').value,
+    결의구분: kind,
+    날짜: $('r_date').value,
+    통장id: $('r_acc').value,
+    적요: $('r_memo').value,
+    금액: $('r_amt').value,
+    거래처: $('r_vendor').value.trim(),
+    품의번호: kind === '지출' ? $('r_proposal').value : '',
+    목코드: kind === '수입' ? $('r_mok').value : '',
+    자금원천코드: kind === '수입' ? $('r_src').value : ''
+  };
+  if (!data.결의번호) delete data.결의번호;
+  try {
+    const no = await api('saveResolution', data);
+    await showResDetail(no);
+    msg('저장되었습니다. 결의번호: ' + no + ' (출납에 자동 반영됨)', 'ok');
+  } catch (e) {
+    msg(e.message, 'err');
+  }
+}
+
+async function showLedger(month) {
+  msg('');
+  month = month || '';
+  try {
+    await loadRes();
+    const [rows, balList] = await Promise.all([
+      api('getLedger', OPTS.year, month),
+      api('getAccountBalances', OPTS.year)
+    ]);
+    const srcName = code => {
+      const c = RES.자금원천.find(x => x['코드'] === code);
+      return c ? c['이름'] : code;
+    };
+    const balHtml = RES.통장.map(b => {
+      const items = balList.filter(x => x['통장id'] === b['통장id']);
+      const total = items.reduce((s, x) => s + x['잔고'], 0);
+      const lines = items.map(x =>
+        `<div class="row" style="padding:4px 0"><span>${esc(srcName(x['자금원천']))}</span><span>${won(x['잔고'])}</span></div>`
+      ).join('');
+      return `<div style="margin-top:10px"><b>${esc(b['은행명'])} ${esc(b['계좌번호'])}</b> · 합계 ${won(total)}${lines}</div>`;
+    }).join('') || '<p>등록된 통장이 없습니다.</p>';
+
+    const carryBtn = ME.can_approve
+      ? `<div class="actions"><button onclick="makeCarry()">${esc(OPTS.year)}년 말 잔고로 ${Number(OPTS.year) + 1}년 이월 초안 만들기</button></div>`
+      : '';
+
+    const TD = 'padding:6px 4px;border-bottom:1px solid #ddd;font-size:13px;';
+    const TH = 'text-align:left;font-size:13px;padding:6px 4px;border-bottom:2px solid #999;';
+    const body = rows.length ? rows.map(r => {
+      const gone = r['상태'] === '취소' ? 'color:#999;text-decoration:line-through;' : '';
+      const remain = (r['잔액'] == null) ? '' : won(r['잔액']);
+      return `<tr style="${gone}">
+        <td style="${TD}">${esc(r['날짜'])}</td>
+        <td style="${TD}">${esc(r['적요'])}${r['상태'] === '취소' ? ' (취소)' : ''}</td>
+        <td style="${TD}text-align:right">${Number(r['수입금액']) ? won(r['수입금액']) : ''}</td>
+        <td style="${TD}text-align:right">${Number(r['지출금액']) ? won(r['지출금액']) : ''}</td>
+        <td style="${TD}text-align:right">${remain}</td>
+      </tr>`;
+    }).join('') : '<tr><td colspan="5">기록이 없습니다.</td></tr>';
+
+    $('view').innerHTML = `
+      <h2>통장 잔고 (재원별)</h2>${balHtml}${carryBtn}
+      <h2>금전출납부 (${esc(OPTS.year)}회계연도)</h2>
+      <label>월 선택</label>
+      <select onchange="showLedger(this.value)">${monthOpts(month)}</select>
+      <table style="width:100%;border-collapse:collapse;margin-top:8px">
+        <tr>
+          <th style="${TH}">날짜</th><th style="${TH}">적요</th>
+          <th style="${TH}text-align:right">수입</th><th style="${TH}text-align:right">지출</th>
+          <th style="${TH}text-align:right">잔액</th>
+        </tr>
+        ${body}
+      </table>`;
+  } catch (e) {
+    msg(e.message, 'err');
+  }
+}
+
+async function makeCarry() {
+  try {
+    const list = await api('createCarryOver', OPTS.year);
+    await showResList();
+    msg('이월 초안 ' + list.length + '건을 만들었습니다 (' + list.join(', ') + '). 결의 상세에서 금액을 확인하고 결재완료 하세요.', 'ok');
+  } catch (e) {
+    msg(e.message, 'err');
+  }
+}
+
+// ===== 6단계: 검색 =====
+function showSearch() {
+  msg('');
+  $('view').innerHTML = `
+    <h2>검색</h2>
+    <label>회계연도 (비우면 전체)</label>
+    <input type="number" id="s_year" value="${esc(OPTS.year)}" placeholder="전체">
+    <label>문서 구분</label>
+    <select id="s_kind">
+      <option value="전체">전체</option>
+      <option value="품의">품의</option>
+      <option value="결의">결의</option>
+    </select>
+    <label>기간 시작일</label>
+    <input type="date" id="s_from">
+    <label>기간 종료일</label>
+    <input type="date" id="s_to">
+    <label>사업명 (품의만 검색)</label>
+    <input id="s_biz">
+    <label>거래처</label>
+    <input id="s_vendor">
+    <label>적요 (결의만 검색)</label>
+    <input id="s_memo">
+    <label>문서번호 (예: 2027-001, 지출-2027-001)</label>
+    <input id="s_no">
+    <div class="actions">
+      <button onclick="runSearch()">검색</button>
+      <button class="sub" onclick="showSearch()">지우기</button>
+    </div>
+    <div id="s_result" style="margin-top:12px"></div>`;
+}
+
+async function runSearch() {
+  msg('');
+  const params = {
+    년도: $('s_year').value,
+    문서구분: $('s_kind').value,
+    시작일: $('s_from').value,
+    종료일: $('s_to').value,
+    사업명: $('s_biz').value,
+    거래처: $('s_vendor').value,
+    적요: $('s_memo').value,
+    문서번호: $('s_no').value
+  };
+  $('s_result').innerHTML = '<p>검색 중…</p>';
+  try {
+    const r = await api('searchDocs', params);
+    if (!r.total) {
+      $('s_result').innerHTML = '<p>검색 결과가 없습니다.</p>';
+      return;
+    }
+    const more = r.total > r.items.length
+      ? ` (상위 ${r.items.length}건만 표시합니다. 조건을 좁혀 주세요)` : '';
+    $('s_result').innerHTML = `<p style="color:#555;font-size:14px">${r.total}건${more}</p>` +
+      r.items.map(it => `
+        <div class="card" onclick="${it.종류 === '품의' ? 'showDetail' : 'showResDetail'}('${esc(it.번호)}')">
+          <div><b>${esc(it.번호)}</b> <span class="badge">${esc(it.종류)}</span> ${badge(it.상태)}</div>
+          <div style="margin:4px 0">${esc(it.내용)}</div>
+          <div style="color:#555;font-size:14px">${esc(it.거래처)} · ${won(it.금액)} · ${esc(it.날짜)}</div>
+        </div>`).join('');
+  } catch (e) {
+    msg(e.message, 'err');
+  }
+}
+
+
+// ===== 설정 (지회 담당자) =====
+async function showSettings() {
+  msg('');
+  try {
+    const d = await api('getManage');
+    const codeRows = (k) => d.codes.filter(c => c['구분'] === k).map(c => `
+      <div class="row"><span>${esc(c['코드'])} ${esc(c['이름'])}${c['사용'] ? '' : ' <span class="badge cancel">사용 안 함</span>'}</span>
+      <span><button class="sub" onclick="toggleCode('${k}','${esc(c['코드'])}','${esc(c['이름']).replace(/'/g, '')}',${!c['사용']})">${c['사용'] ? '사용 중지' : '다시 사용'}</button></span></div>`).join('') || '<p style="color:#777">없음</p>';
+    const accRows = d.accounts.map(a => `
+      <div class="row"><span>${esc(a['통장id'])} · ${esc(a['은행명'])} ${esc(a['계좌번호'])} (${esc(a['예금주'])})${a['사용'] ? '' : ' <span class="badge cancel">사용 안 함</span>'}</span>
+      <span><button class="sub" onclick="toggleAcc('${esc(a['통장id'])}',${!a['사용']})">${a['사용'] ? '사용 중지' : '다시 사용'}</button></span></div>`).join('') || '<p style="color:#777">없음</p>';
+    $('view').innerHTML = `
+      <h2>회계 설정</h2>
+      <p style="color:#555;font-size:14px">우리 지회에만 적용됩니다. 코드는 지워지지 않고 "사용 중지"만 가능합니다. (이미 쓴 문서 보호)</p>
+      <div class="card" style="cursor:default"><b>현재 회계연도</b>
+        <div style="display:flex;gap:8px;margin-top:6px"><input type="number" id="st_year" value="${esc(d.year)}"><button onclick="setYear()">변경</button></div>
+        <div style="color:#777;font-size:13px;margin-top:6px">연도를 바꾸면 새 문서번호가 그 연도 기준으로 001부터 시작합니다.</div></div>
+      <div class="card" style="cursor:default"><b>목 (계정과목)</b>${codeRows('목')}
+        <div style="display:flex;gap:8px;margin-top:8px"><input id="st_mc" placeholder="코드 (예: M01)" style="max-width:130px"><input id="st_mn" placeholder="이름 (예: 교재인쇄비)"><button onclick="addCode('목','st_mc','st_mn')">추가</button></div>
+        <div style="color:#777;font-size:13px;margin-top:6px">연말 이월에 쓰는 "I01 전년도이월금"은 이월 초안을 만들 때 자동으로 추가됩니다.</div></div>
+      <div class="card" style="cursor:default"><b>자금원천</b>${codeRows('자금원천')}
+        <div style="display:flex;gap:8px;margin-top:8px"><input id="st_fc" placeholder="코드 (예: F01)" style="max-width:130px"><input id="st_fn" placeholder="이름 (예: 보조금)"><button onclick="addCode('자금원천','st_fc','st_fn')">추가</button></div></div>
+      <div class="card" style="cursor:default"><b>통장</b>${accRows}
+        <div style="display:grid;gap:8px;margin-top:8px"><input id="st_ai" placeholder="통장 ID (예: BA01)"><input id="st_ab" placeholder="은행명"><input id="st_an" placeholder="계좌번호"><input id="st_ah" placeholder="예금주"><button onclick="addAcc()">통장 추가</button></div></div>`;
+  } catch (e) { msg(e.message, 'err'); }
+}
+async function setYear() { try { await api('setYear', $('st_year').value); OPTS = await api('getFormOptions'); ME = OPTS.user; $('who').textContent = `${ME.chapter_name} · ${ME.name || ME.email} · ${OPTS.year}회계연도`; await showSettings(); msg('회계연도를 바꿨습니다.', 'ok'); } catch (e) { msg(e.message, 'err'); } }
+async function addCode(k, ci, ni) { try { await api('saveCode', k, $(ci).value, $(ni).value, true); OPTS = await api('getFormOptions'); ME = OPTS.user; await showSettings(); msg('저장했습니다.', 'ok'); } catch (e) { msg(e.message, 'err'); } }
+async function toggleCode(k, c, n, use) { try { await api('saveCode', k, c, n, use); OPTS = await api('getFormOptions'); ME = OPTS.user; await showSettings(); } catch (e) { msg(e.message, 'err'); } }
+async function addAcc() { try { await api('saveAccount', $('st_ai').value, $('st_ab').value, $('st_an').value, $('st_ah').value, true); await showSettings(); msg('저장했습니다.', 'ok'); } catch (e) { msg(e.message, 'err'); } }
+async function toggleAcc(id, use) {
+  try { const d = await api('getManage'); const a = d.accounts.find(x => x['통장id'] === id);
+    await api('saveAccount', a['통장id'], a['은행명'], a['계좌번호'], a['예금주'], use); await showSettings(); } catch (e) { msg(e.message, 'err'); }
+}
+
+init();
+</script>
+</body>
+</html>

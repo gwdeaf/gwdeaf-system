@@ -186,6 +186,10 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .sch:first-child{border-top:0}
 .sch .dt{flex:none;width:92px;font-weight:800;font-size:.86rem}
 .sch .dt small{display:block;color:var(--mute);font-weight:600;font-size:.75rem}
+#calbox .sch .dt{width:auto;min-width:118px;white-space:nowrap}#calbox .sch .dt small{display:inline;margin-left:4px}
+#calbox a.sch{color:inherit;text-decoration:none}#calbox a.sch:hover .tx{color:var(--pri);text-decoration:underline}
+.calfoot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
+.calopen{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 12px;font-size:.85rem;font-weight:700;color:var(--text);text-decoration:none}.calopen:hover{background:var(--pri-soft);border-color:var(--pri);color:var(--pri)}
 .sch .tx{flex:1;min-width:0;font-size:.9rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sch .tx small{display:block;color:var(--mute);font-weight:500;font-size:.76rem;overflow:hidden;text-overflow:ellipsis}
 .sch .tg{flex:none;font-size:.75rem;font-weight:800;border-radius:6px;padding:3px 7px;white-space:nowrap}
@@ -224,6 +228,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
   .col{display:contents}
   .mbox{padding:11px}
   .sch .dt{width:76px}
+  #calbox .sch .dt{min-width:104px}
   .mbox .n{font-size:1.05rem}
   .mbox .l{word-break:keep-all;font-size:.76rem}
   .mlogout{display:none!important}
@@ -508,6 +513,10 @@ window.addEventListener('message', function(e){
 });
 
 /* ── 출퇴근: 상단 버튼 + 대시보드 카드 ── */
+function calFoot(more){   // 카드 아래: 구글 캘린더 열기 (일정 추가·수정은 구글 캘린더에서)
+  return '<div class="calfoot"><span class="mute">' + esc(more || '일정을 누르면 구글 캘린더에서 열립니다') + '</span>'
+    + '<a class="calopen" href="https://calendar.google.com/calendar/r" target="_blank" rel="noopener">📅 구글 캘린더 열기 ↗</a></div>';
+}
 function seoulToday(){ return new Date().toLocaleDateString('sv-SE', { timeZone:'Asia/Seoul' }); }
 function dRange(a, b){ return !b || a === b ? md(a) : md(a) + '~' + md(b); }
 async function loadCal(){
@@ -533,15 +542,16 @@ async function loadCal(){
     legend = fail + legend;
     var wd = '일월화수목금토', items = (j.items || []).map(function(x){
       var sd = String(x.start).slice(0, 10), ed = String(x.end || x.start).slice(0, 10), tm = x.allDay ? '' : String(x.start).slice(11, 16);
-      return { s: sd, e: ed, title: x.title, tm: tm, place: x.place, ci: x.ci, cal: x.cal };
+      return { s: sd, e: ed, title: x.title, tm: tm, place: x.place, ci: x.ci, cal: x.cal, link: x.link };
     }).filter(function(x){ return x.e >= from; });
-    if (!items.length) { $('calbox').innerHTML = legend + '<div class="empty">앞으로 14일간 일정이 없습니다.' + (multi ? '' : '<br><span class="mute">연결된 캘린더: ' + esc((j.cals || []).map(function(c){ return c.name; }).join(', ')) + '</span>') + '</div>'; return; }
+    if (!items.length) { $('calbox').innerHTML = legend + '<div class="empty">앞으로 14일간 일정이 없습니다.' + (multi ? '' : '<br><span class="mute">연결된 캘린더: ' + esc((j.cals || []).map(function(c){ return c.name; }).join(', ')) + '</span>') + '</div>' + calFoot(''); return; }
     var shown = items.slice(0, 8);
     $('calbox').innerHTML = legend + shown.map(function(x){
       var d = new Date(x.s + 'T00:00:00'), ing = x.s <= from && x.e >= from;
-      return '<div class="sch" style="cursor:default"><div class="dt">' + dRange(x.s, x.e) + '<small>' + (ing ? '진행 중' : '(' + wd.charAt(d.getDay()) + ')') + (x.tm ? ' ' + x.tm : '') + '</small></div>'
-        + '<div class="tx">' + (multi ? '<i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + cidx[x.ci] + ';margin-right:5px"></i>' : '') + esc(x.title) + (x.place ? '<small>' + esc(x.place) + '</small>' : '') + '</div></div>';
-    }).join('') + (items.length > shown.length ? '<div class="mute" style="padding-top:8px">그 외 ' + (items.length - shown.length) + '건</div>' : '');
+      var tag = x.link ? 'a href="' + esc(x.link) + '" target="_blank" rel="noopener" title="구글 캘린더에서 열기"' : 'div style="cursor:default"';
+      return '<' + tag + ' class="sch"><div class="dt">' + dRange(x.s, x.e) + '<small>' + (ing ? '진행 중' : '(' + wd.charAt(d.getDay()) + ')') + (x.tm ? ' ' + x.tm : '') + '</small></div>'
+        + '<div class="tx">' + (multi ? '<i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + cidx[x.ci] + ';margin-right:5px"></i>' : '') + esc(x.title) + (x.place ? '<small>' + esc(x.place) + '</small>' : '') + '</div></' + (x.link ? 'a' : 'div') + '>';
+    }).join('') + calFoot(items.length > shown.length ? '그 외 ' + (items.length - shown.length) + '건' : '');
   } catch(e) { $('calbox').innerHTML = '<div class="note">캘린더를 불러오지 못했습니다. (' + esc(e.message || e) + ')</div>'; }
 }
 function openPunch(){

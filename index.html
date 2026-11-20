@@ -149,7 +149,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .pbtn.in{background:#16a34a}.pbtn.out{background:#dc2626}.pbtn.done{background:#e5e9f2;color:#4b5563}
 .tuser{display:flex;align-items:center;gap:8px;font-weight:700;font-size:.9rem;white-space:nowrap}
 .av.sm{width:32px;height:32px;font-size:.85rem}
-#view-home{padding:26px 30px 48px;max-width:1120px;width:100%}
+#view-home{padding:26px 30px 48px;max-width:none;width:100%}
 #view-frame{flex:1;position:relative;min-height:0}
 #frame{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--bg)}
 .floading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--mute);font-weight:600;z-index:2}
@@ -169,6 +169,20 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .prow b.t{font-size:1.15rem;color:var(--pri)}
 .prow .why{display:block;color:var(--mute);font-size:.76rem;margin-top:2px}
 .scrim{display:none}
+/* 왼쪽 메뉴: 병풍식(평소엔 접힘, 눌러서 펼침) */
+.brand{cursor:pointer}
+.brand:hover{opacity:.85}
+.nav .grp{cursor:pointer;border-radius:10px;padding:clamp(7px,1.2vh,11px) 12px;margin-top:1px}
+.nav .grp:hover{background:#f3f5fa}
+.nav .grp .arw{margin-left:auto;font-size:.7rem;color:#8a93a5;transition:transform .15s}
+.nav .grp.open .arw{transform:rotate(90deg)}
+.nav .grp.open{background:#f7f9fe}
+.nav .gbody{display:none;padding-bottom:4px}
+.nav .grp.open+.gbody{display:block}
+/* 시수·대체시수 같은 중간 제목은 눈에 띄게 */
+.nav .kls{margin:clamp(4px,.8vh,9px) 6px 2px 34px;padding:clamp(3px,.6vh,6px) 10px;font-size:.8rem;font-weight:800;color:var(--pri);background:var(--pri-soft);border-radius:7px;letter-spacing:0}
+/* 대시보드 시스템 관리: 화면 아래쪽 전체 폭 */
+#mgr-card{margin-top:18px}
 @media(max-width:860px){
   .shell{display:block}
   .side{position:fixed;left:0;top:0;bottom:0;width:272px;height:auto;transform:translateX(-102%);transition:transform .2s;box-shadow:none;border-right:1px solid var(--line)}
@@ -215,7 +229,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 <!-- 대시보드 -->
 <div id="app" class="shell hide">
   <aside class="side" id="side">
-    <div class="brand"><div class="logo" id="brand-logo"><img src="/logo.png" alt="" onerror="this.parentNode.textContent='농'"></div><span class="tx" id="brand-tx">강원특별자치도농아인협회<br>업무 시스템</span></div>
+    <div class="brand" onclick="go('home')" title="홈으로"><div class="logo" id="brand-logo"><img src="/logo.png" alt="" onerror="this.parentNode.textContent='농'"></div><span class="tx" id="brand-tx">강원특별자치도농아인협회<br>업무 시스템</span></div>
     <nav class="nav" id="nav"></nav>
     <div class="grow"></div>
     <div class="me">
@@ -245,9 +259,9 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
           <div class="ctitle"><span>📢 공지사항</span><button class="btn pri hide" id="notice-add" onclick="openNotice()">+ 공지 쓰기</button></div>
           <div id="notices"><div class="empty">불러오는 중…</div></div>
         </div>
-        <div class="card hide" id="mgr-card" style="order:4">
-          <div class="ctitle"><span>🛠 시스템 관리</span></div>
-          <div class="mgr" id="mgr"></div>
+        <div class="card" style="order:4">
+          <div class="ctitle"><span>👥 오늘의 현황</span><span class="mute" id="bd-date"></span></div>
+          <div id="board"><div class="empty">불러오는 중…</div></div>
         </div>
       </div>
       <div class="col">
@@ -267,11 +281,11 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
           <div class="ctitle"><span>🗓 내 근태</span><button class="btn" onclick="go('att','leave')">휴가 관리 →</button></div>
           <div id="att"><div class="empty">불러오는 중…</div></div>
         </div>
-        <div class="card" style="order:4">
-          <div class="ctitle"><span>👥 오늘 우리 지회 현황</span><span class="mute" id="bd-date"></span></div>
-          <div id="board"><div class="empty">불러오는 중…</div></div>
-        </div>
       </div>
+    </div>
+    <div class="card hide" id="mgr-card">
+      <div class="ctitle"><span>🛠 시스템 관리</span></div>
+      <div class="mgr" id="mgr"></div>
     </div>
   </main>
   <div id="view-frame" class="hide">
@@ -371,14 +385,31 @@ function renderNav(){
   if (isVehAdmin()) h += topHtml('car:a:', '🔧', '차량 관리', "go('car','',true)");
   if (ME.can_manage) h += topHtml('access:s:', '🔑', '직원·권한 관리', "go('access')");
   $('nav').innerHTML = h;
+  foldNav();
   markNav();
+}
+function openGrp(g){
+  document.querySelectorAll('#nav .grp.open').forEach(function(x){ if (x !== g) x.classList.remove('open'); });
+  if (g) g.classList.add('open');
+}
+function foldNav(){
+  var nav = $('nav'), cur = null;
+  Array.prototype.slice.call(nav.children).forEach(function(el){
+    if (el.classList.contains('grp')) {
+      cur = document.createElement('div'); cur.className = 'gbody'; nav.insertBefore(cur, el.nextSibling);
+      el.insertAdjacentHTML('beforeend', '<span class="arw">▸</span>');
+      el.onclick = function(){ if (el.classList.contains('open')) el.classList.remove('open'); else openGrp(el); };
+    } else if (el.classList.contains('top') || el.classList.contains('sec')) cur = null;
+    else if (cur) cur.appendChild(el);
+  });
 }
 function markNav(){
   var lb = '홈', grp = '';
   document.querySelectorAll('#nav [data-id]').forEach(function(a){
     var on = a.getAttribute('data-id') === CUR; a.classList.toggle('on', on);
-    if (on) { lb = a.getAttribute('data-lb'); var g = a, t = ''; while ((g = g.previousElementSibling)) { if (g.classList.contains('grp')) { t = g.childNodes[1] ? g.childNodes[1].textContent : g.textContent; break; } if (g.classList.contains('sec')) break; } grp = a.classList.contains('kid') ? t : ''; }
+    if (on) { lb = a.getAttribute('data-lb'); var gb = a.closest('.gbody'), g = gb ? gb.previousElementSibling : null; grp = g ? (g.childNodes[1] ? g.childNodes[1].textContent : g.textContent) : ''; if (g) openGrp(g); }
   });
+  if (CUR === 'home:s:') openGrp(null);
   $('crumb').innerHTML = grp ? '<small>' + esc(grp) + ' ›</small> ' + esc(lb) : esc(lb);
 }
 function toggleSide(){ $('side').classList.toggle('open'); $('scrim').classList.toggle('open'); }

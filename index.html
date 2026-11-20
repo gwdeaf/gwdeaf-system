@@ -285,15 +285,15 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
           <div class="ctitle"><span>👥 오늘의 현황</span><span class="mute" id="bd-date"></span></div>
           <div id="board"><div class="empty">불러오는 중…</div></div>
         </div>
+        <div class="card" id="calcard" style="order:5">
+          <div class="ctitle"><span>📅 일정</span><span class="mute" id="calname">구글 캘린더</span></div>
+          <div id="calbox"><div class="empty">불러오는 중…</div></div>
+        </div>
       </div>
       <div class="col">
         <div class="card" style="order:0">
           <div class="ctitle"><span>📍 오늘 출퇴근</span><button class="btn pri" onclick="openPunch()">기록하기</button></div>
           <div id="punch"><div class="empty">불러오는 중…</div></div>
-        </div>
-        <div class="card" id="calcard" style="order:1">
-          <div class="ctitle"><span>📅 일정</span><span class="mute" id="calname">구글 캘린더</span></div>
-          <div id="calbox"><div class="empty">불러오는 중…</div></div>
         </div>
         <div class="card" style="order:3">
           <div class="ctitle"><span>🗓 내 근태</span><button class="btn" onclick="go('att','leave')">휴가 관리 →</button></div>
@@ -514,18 +514,20 @@ async function loadCal(){
     var PAL = ['#3b6fd4','#d9534f','#2e9d6a','#e08a1e','#8a5bd0','#1aa0b8','#c2487f','#7a8a2a'], multi = (j.cals || []).length > 1, cidx = {};
     (j.cals || []).forEach(function(c, i){ cidx[c.ci] = PAL[i % PAL.length]; });
     var legend = multi ? '<div class="mute" style="display:flex;flex-wrap:wrap;gap:4px 12px;padding-bottom:6px">' + j.cals.map(function(c){ return '<span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + cidx[c.ci] + ';margin-right:4px"></i>' + esc(c.name) + '</span>'; }).join('') + '</div>' : '';
+    var fail = (j.failed && j.failed.length) ? '<div class="note" style="margin-bottom:8px">⚠️ 일정을 불러오지 못한 캘린더: ' + j.failed.map(esc).join(', ') + '</div>' : '';
+    legend = fail + legend;
     var wd = '일월화수목금토', items = (j.items || []).map(function(x){
       var sd = String(x.start).slice(0, 10), ed = String(x.end || x.start).slice(0, 10), tm = x.allDay ? '' : String(x.start).slice(11, 16);
       return { s: sd, e: ed, title: x.title, tm: tm, place: x.place, ci: x.ci, cal: x.cal };
     }).filter(function(x){ return x.e >= from; });
-    if (!items.length) { $('calbox').innerHTML = legend + '<div class="empty">앞으로 14일간 일정이 없습니다.</div>'; return; }
+    if (!items.length) { $('calbox').innerHTML = legend + '<div class="empty">앞으로 14일간 일정이 없습니다.' + (multi ? '' : '<br><span class="mute">연결된 캘린더: ' + esc((j.cals || []).map(function(c){ return c.name; }).join(', ')) + '</span>') + '</div>'; return; }
     var shown = items.slice(0, 8);
     $('calbox').innerHTML = legend + shown.map(function(x){
       var d = new Date(x.s + 'T00:00:00'), ing = x.s <= from && x.e >= from;
       return '<div class="sch" style="cursor:default"><div class="dt">' + dRange(x.s, x.e) + '<small>' + (ing ? '진행 중' : '(' + wd.charAt(d.getDay()) + ')') + (x.tm ? ' ' + x.tm : '') + '</small></div>'
         + '<div class="tx">' + (multi ? '<i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + cidx[x.ci] + ';margin-right:5px"></i>' : '') + esc(x.title) + (x.place ? '<small>' + esc(x.place) + '</small>' : '') + '</div></div>';
     }).join('') + (items.length > shown.length ? '<div class="mute" style="padding-top:8px">그 외 ' + (items.length - shown.length) + '건</div>' : '');
-  } catch(e) { card.classList.add('hide'); }
+  } catch(e) { $('calbox').innerHTML = '<div class="note">캘린더를 불러오지 못했습니다. (' + esc(e.message || e) + ')</div>'; }
 }
 function openPunch(){
   $('pframe').src = '/att/?embed=1&mode=staff&go=punch&t=' + Date.now();

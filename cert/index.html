@@ -49,7 +49,7 @@
   .pfoot { text-align:center; font-size:12px; color:#555; margin-top:12mm; }
   .void { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:110px; color:rgba(200,0,0,.18); transform:rotate(-25deg); pointer-events:none; }
   @page { size:A4; margin:0; }
-  @media print { header, nav, #msg, .noprint { display:none !important; } body { background:#fff; } main { padding:0; } .paper { box-shadow:none; max-width:none; width:210mm; min-height:297mm; } }
+  @media print { header, nav, #msg, .noprint { display:none !important; } body { background:#fff; } main { padding:0; } #lBody { padding:12mm; } #lBody h3:not(:first-child) { break-before:page; } #lBody table.t { font-size:12px; } .paper { box-shadow:none; max-width:none; width:210mm; min-height:297mm; } }
 </style>
 <link rel="stylesheet" href="/ui.css?v=1">
 </head>
@@ -59,7 +59,7 @@
 </header>
 <nav id="topNav" style="display:none">
   <button data-tab="issue" id="btnIssue" onclick="showIssue()">발급하기</button>
-  <button data-tab="list" class="sub" onclick="showList()">발급대장</button>
+  <button data-tab="list" class="sub" onclick="LTYPE='';showList()">발급대장</button>
   <button data-tab="set" id="btnSet" class="sub" onclick="showSettings()" style="display:none">증명서 설정</button>
   <button id="logoutBtn" class="sub" onclick="logout()">로그아웃</button>
 </nav>
@@ -176,23 +176,44 @@ async function doIssue() {
 }
 
 // ---- 발급대장 ----
+let LTYPE = '';   // 발급대장에서 고른 증명서 종류 ('' = 전체)
 async function showList(q, y) {
   setTab('list'); msg('');
   y = y ?? new Date().getFullYear();
-  $('view').innerHTML = `<div class="tbar"><select id="lYear" onchange="showList($('lQ').value, this.value)"><option value="">전체 연도</option>${[0,1,2,3].map(i => { const v = new Date().getFullYear() - i; return `<option value="${v}" ${String(v) === String(y) ? 'selected' : ''}>${v}년</option>`; }).join('')}</select>
-    <input id="lQ" placeholder="이름·증명서·번호 검색" value="${esc(q || '')}" onkeydown="if(event.key==='Enter')showList(this.value, $('lYear').value)"><button onclick="showList($('lQ').value, $('lYear').value)">검색</button>
-    <button class="sub" onclick="downloadList()">엑셀(CSV) 받기</button></div><div id="lBody"><p>불러오는 중…</p></div>`;
+  $('view').innerHTML = `<div class="tbar noprint"><select id="lYear" onchange="showList($('lQ').value, this.value)"><option value="">전체 연도</option>${[0,1,2,3].map(i => { const v = new Date().getFullYear() - i; return `<option value="${v}" ${String(v) === String(y) ? 'selected' : ''}>${v}년</option>`; }).join('')}</select>
+    <input id="lQ" placeholder="이름·번호 검색" value="${esc(q || '')}" onkeydown="if(event.key==='Enter')showList(this.value, $('lYear').value)"><button onclick="showList($('lQ').value, $('lYear').value)">검색</button>
+    <button class="sub" onclick="downloadList()">엑셀(CSV) 받기</button><button class="sub" onclick="window.print()">🖨 대장 인쇄</button></div>
+    <div id="lTypes" class="noprint" style="margin-bottom:10px"></div><div id="lBody"><p>불러오는 중…</p></div>`;
   try {
-    const list = await rpc('cert_list', { p_year: y ? Number(y) : null, p_q: q || null });
-    window._LIST = list;
-    $('lBody').innerHTML = !list.length ? '<p>발급 내역이 없습니다.</p>' : `<div style="overflow-x:auto"><table class="t"><thead><tr><th>발급번호</th><th>발급일</th><th>증명서</th><th>받는 사람</th><th>발급자</th><th>상태</th></tr></thead><tbody>${
-      list.map(r => `<tr class="click" onclick="showPrint('${esc(r.no)}')"><td>${esc(r.no)}</td><td>${esc(r.issue_date)}</td><td>${esc(r.type_name)}</td><td>${esc(r.target_name)}</td><td>${esc(r.issued_name)}${r.issued_dept ? ' (' + esc(r.issued_dept) + ')' : ''}</td><td><span class="badge ${r.status === '취소' ? 'cancel' : 'ok'}">${esc(r.status)}</span></td></tr>`).join('')}</tbody></table></div>`;
+    window._ALL = await rpc('cert_list', { p_year: y ? Number(y) : null, p_q: q || null });
+    window._YEAR = y;
+    drawList();
   } catch (e) { $('lBody').innerHTML = `<p>${esc(e.message)}</p>`; }
 }
+function pickType(t) { LTYPE = t; drawList(); }
+function drawList() {
+  const all = window._ALL || [];
+  const names = [...new Set(all.map(r => r.type_name))].sort();
+  if (LTYPE && names.indexOf(LTYPE) < 0) LTYPE = '';
+  const chip = (t, label, n) => `<span class="chip" style="${LTYPE === t ? 'background:#3730a3;color:#fff' : ''}" onclick="pickType('${esc(t)}')">${esc(label)} ${n}</span>`;
+  $('lTypes').innerHTML = chip('', '전체', all.length) + names.map(t => chip(t, t, all.filter(r => r.type_name === t).length)).join('');
+  // 증명서별로 묶어서, 각 증명서 안에서는 발급 순서(오래된 것부터) 연번
+  const groups = LTYPE ? [LTYPE] : names;
+  const list = [];
+  window._LIST = list;
+  if (!all.length) { $('lBody').innerHTML = '<p>발급 내역이 없습니다.</p>'; return; }
+  $('lBody').innerHTML = groups.map(t => {
+    const rows = all.filter(r => r.type_name === t).slice().sort((a, b) => String(a.no).localeCompare(String(b.no)));
+    rows.forEach((r, i) => list.push(Object.assign({ seq: i + 1 }, r)));
+    return `<h3 style="margin:14px 0 6px">${esc(t)} 발급대장 <span class="hint" style="font-weight:normal">${window._YEAR ? esc(window._YEAR) + '년 · ' : ''}${rows.length}건</span></h3>
+      <div style="overflow-x:auto"><table class="t"><thead><tr><th>연번</th><th>발급번호</th><th>발급일</th><th>받는 사람</th><th>발급자</th><th>상태</th></tr></thead><tbody>${
+      rows.map((r, i) => `<tr class="click" onclick="showPrint('${esc(r.no)}')"><td>${i + 1}</td><td>${esc(r.no)}</td><td>${esc(r.issue_date)}</td><td>${esc(r.target_name)}</td><td>${esc(r.issued_name)}${r.issued_dept ? ' (' + esc(r.issued_dept) + ')' : ''}</td><td><span class="badge ${r.status === '취소' ? 'cancel' : 'ok'}">${esc(r.status)}</span></td></tr>`).join('')}</tbody></table></div>`;
+  }).join('');
+}
 function downloadList() {
-  const rows = [['발급번호', '발급일', '증명서', '받는 사람', '발급자', '부서', '상태']].concat((window._LIST || []).map(r => [r.no, r.issue_date, r.type_name, r.target_name, r.issued_name, r.issued_dept, r.status]));
-  const csv = '﻿' + rows.map(r => r.map(c => '"' + String(c ?? '').replace(/"/g, '""') + '"').join(',')).join('\r\n');
-  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = '증명서_발급대장.csv'; a.click();
+  const rows = [['증명서', '연번', '발급번호', '발급일', '받는 사람', '발급자', '부서', '상태']].concat((window._LIST || []).map(r => [r.type_name, r.seq, r.no, r.issue_date, r.target_name, r.issued_name, r.issued_dept, r.status]));
+  const csv = '\ufeff' + rows.map(r => r.map(c => '"' + String(c ?? '').replace(/"/g, '""') + '"').join(',')).join('\r\n');
+  const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = (LTYPE || '증명서') + '_발급대장.csv'; a.click();
 }
 
 // ---- 인쇄 화면 ----

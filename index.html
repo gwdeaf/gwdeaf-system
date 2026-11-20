@@ -106,6 +106,19 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .bs.lv{background:var(--warn-soft);color:var(--warn)}
 .bs.tp{background:var(--pri-soft);color:var(--pri)}
 .bsec{font-size:.78rem;font-weight:800;color:var(--mute);margin:12px 0 4px}
+.stsum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
+.stsum button{border:1px solid var(--line);background:#fff;border-radius:20px;padding:5px 11px;font-size:.8rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;color:var(--text)}
+.stsum button.on{border-color:var(--text);box-shadow:inset 0 0 0 1px var(--text)}
+.stsum i{width:9px;height:9px;border-radius:50%;display:inline-block}
+.stgrid{display:flex;flex-wrap:wrap;gap:6px}
+.stp{border:0;border-radius:10px;padding:7px 11px;font-size:.88rem;font-weight:700;cursor:default;display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1.25;min-width:72px}
+.stp small{font-size:.7rem;font-weight:600;opacity:.85}
+.st-in{background:#e3f6ec;color:#0f7a4f}
+.st-before{background:#f1f3f6;color:#6b7280}
+.st-out{background:#e8eefc;color:#2f5bd6}
+.st-leave{background:#fff1dc;color:#b45309}
+.st-trip{background:#f1e9fd;color:#7c3aed}
+.stp .late{color:#c0392b}
 .bp{display:flex;align-items:center;gap:8px;padding:8px 2px;border-top:1px solid var(--line);font-size:.9rem}
 .bp:first-of-type{border-top:0}
 .bp .nm{font-weight:700}
@@ -278,12 +291,8 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
           <div class="ctitle"><span>📍 오늘 출퇴근</span><button class="btn pri" onclick="openPunch()">기록하기</button></div>
           <div id="punch"><div class="empty">불러오는 중…</div></div>
         </div>
-        <div class="card" style="order:1">
-          <div class="ctitle"><span>📅 내 일정</span><span class="mute">다가오는 휴가·출장</span></div>
-          <div id="mysch"><div class="empty">불러오는 중…</div></div>
-        </div>
-        <div class="card hide" id="calcard" style="order:2">
-          <div class="ctitle"><span>🗓 일정</span><span class="mute" id="calname">구글 캘린더</span></div>
+        <div class="card" id="calcard" style="order:1">
+          <div class="ctitle"><span>📅 일정</span><span class="mute" id="calname">구글 캘린더</span></div>
           <div id="calbox"><div class="empty">불러오는 중…</div></div>
         </div>
         <div class="card" style="order:3">
@@ -486,34 +495,6 @@ window.addEventListener('message', function(e){
 });
 
 /* ── 출퇴근: 상단 버튼 + 대시보드 카드 ── */
-/* ── 내 일정 (등록한 휴가·출장 중 앞으로 다가오는 것) ── */
-function seoulToday(){ return new Date().toLocaleDateString('sv-SE', { timeZone:'Asia/Seoul' }); }
-function dRange(a, b){ return !b || a === b ? md(a) : md(a) + '~' + md(b); }
-async function loadMySched(){
-  var el = $('mysch');
-  if (!ATT || !ATT.staffName) { el.innerHTML = '<div class="empty">직원 정보가 연결되면 내 휴가·출장 일정이 여기에 나옵니다.</div>'; return; }
-  try {
-    var auth = { name: ATT.staffName }, today = seoulToday(), items = [];
-    var hist = await attCall('getMyHistory', JSON.stringify({ name: ATT.staffName }));
-    (Array.isArray(hist) ? hist : []).forEach(function(h){
-      if (h.status === '반려') return;
-      if (h.type === '휴가' && h.pd && h.pd.start) items.push({ k:'lv', s:h.pd.start, e:h.pd.end || h.pd.start, t:(h.pd.leaveType || '휴가'), sub:h.pd.reason || '', st:h.status });
-      if (h.type === '대체휴무' && h.pd && h.pd.useDate) items.push({ k:'lv', s:h.pd.useDate, e:h.pd.useDate, t:'대체휴무', sub:h.pd.reason || '', st:h.status });
-    });
-    var trips = await attCall('getMyTripRequests', JSON.stringify({ auth: auth }));
-    (Array.isArray(trips) ? trips : []).forEach(function(t){ if (t.start) items.push({ k:'tp', s:t.start, e:t.end || t.start, t:'출장 · ' + (t.to || ''), sub:t.purpose || '', st:'' }); });
-    items = items.filter(function(x){ return x.e >= today; }).sort(function(a, b){ return a.s < b.s ? -1 : a.s > b.s ? 1 : 0; });
-    if (!items.length) { el.innerHTML = '<div class="empty">다가오는 휴가·출장이 없습니다.</div>'; return; }
-    var shown = items.slice(0, 6), wd = '일월화수목금토';
-    el.innerHTML = shown.map(function(x){
-      var d = new Date(x.s + 'T00:00:00'), ing = x.s <= today && x.e >= today;
-      return '<div class="sch" onclick="' + (x.k === 'tp' ? "go('att','trip')" : "go('att','leavehist')") + '"><div class="dt">' + dRange(x.s, x.e) + '<small>' + (ing ? '진행 중' : '(' + wd.charAt(d.getDay()) + ')') + '</small></div>'
-        + '<div class="tx">' + esc(x.t) + (x.sub ? '<small>' + esc(x.sub) + '</small>' : '') + '</div>'
-        + '<span class="tg ' + (x.k === 'tp' ? 'tp' : 'lv') + '">' + (x.k === 'tp' ? '출장' : esc(x.st || '휴가')) + '</span></div>';
-    }).join('') + (items.length > shown.length ? '<div class="mute" style="padding-top:8px">그 외 ' + (items.length - shown.length) + '건</div>' : '');
-  } catch(e) { $('mysch').innerHTML = '<div class="note">일정을 불러오지 못했습니다.</div>'; }
-}
-/* ── 우리 지회 일정 (지회 공용 구글 캘린더: 휴가·출장·행사. 앞으로 14일) ── */
 async function loadCal(){
   var card = $('calcard'); if (!card) return;
   try {
@@ -523,7 +504,12 @@ async function loadCal(){
     var r = await fetch(SB_URL + '/functions/v1/gdrive', { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + tok, 'apikey': SB_ANON },
       body: JSON.stringify({ action:'calList', from: from, to: to }) });
     var j = await r.json();
-    if (!j || !j.ok) { card.classList.add('hide'); return; }      // 캘린더가 연결되지 않은 지회는 카드를 숨김
+    if (!j || !j.ok) {   // 캘린더가 연결되지 않은 지회: 안내만 표시
+      $('calname').textContent = '구글 캘린더';
+      $('calbox').innerHTML = '<div class="empty" style="padding:14px 6px">아직 우리 지회 구글 캘린더가 연결되지 않았습니다.'
+        + (ME.role === 'admin' || ME.role === 'lead' ? '<br><a href="#" onclick="go(\'access\');return false">직원·권한 관리 → 드라이브 연결</a>에서 캘린더를 연결하세요.' : '<br>지회 담당자에게 연결을 요청하세요.') + '</div>';
+      return;
+    }
     card.classList.remove('hide'); $('calname').textContent = j.calendar_name || '구글 캘린더';
     var PAL = ['#3b6fd4','#d9534f','#2e9d6a','#e08a1e','#8a5bd0','#1aa0b8','#c2487f','#7a8a2a'], multi = (j.cals || []).length > 1, cidx = {};
     (j.cals || []).forEach(function(c, i){ cidx[c.ci] = PAL[i % PAL.length]; });
@@ -652,9 +638,9 @@ async function loadAtt(){
     var w = await attCall('whoami');
     if (!w || !w.ok) { el.innerHTML = '<div class="note">근태 정보를 불러오지 못했습니다.<br>' + esc((w && w.msg) || '') + '</div>'; return; }
     ATT = w; renderNav();
-    if (!w.staffName) { loadMySched();
+    if (!w.staffName) { loadCal();
        $('punch').innerHTML = '<div class="note">근태 직원목록에 구글 계정이 연결되면 출퇴근을 기록할 수 있습니다.</div>'; el.innerHTML = '<div class="note">근태 직원목록에 내 구글 계정이 아직 연결되어 있지 않습니다.<br>지회 담당자에게 확인을 요청하세요.</div>'; return; }
-    loadPunch(); loadMySched(); loadCal();
+    loadPunch(); loadCal();
     var y = new Date().getFullYear();
     var b = await attCall('getMyLeaveBalance', JSON.stringify({ name: w.staffName, year: y }));
     var c = await attCall('getMyCompLeave', JSON.stringify({ name: w.staffName }));
@@ -680,21 +666,43 @@ function personRow(x, kind){
     + '<span class="dt">' + period(x.start, x.end) + (extra ? ' · ' + esc(extra) : '') + '</span></div>'
     + '<span class="tg ' + kind + '">' + esc(kind === 'lv' ? x.type : '출장') + '</span></div>';
 }
+var BOARD = null, BFILTER = '';
+var STK = { '출근': 'in', '출근 전': 'before', '퇴근': 'out', '휴가': 'leave', '출장': 'trip' };
+var STC = { '출근': '#18a058', '출근 전': '#b8bec8', '퇴근': '#2f5bd6', '휴가': '#f59e0b', '출장': '#8b5cf6' };
 async function loadBoard(){
   var el = $('board');
   try {
     var r = await attCall('getTodayBoard');
     if (!r || !r.ok) { el.innerHTML = '<div class="note">현황을 불러오지 못했습니다.<br>' + esc((r && r.msg) || '') + '</div>'; return; }
     $('bd-date').textContent = md(r.date) + ' 기준';
-    var html = '<div class="bsum"><div class="bs lv"><div class="n">' + r.leave.length + '명</div><div class="l">휴가</div></div>'
-      + '<div class="bs tp"><div class="n">' + r.trip.length + '명</div><div class="l">출장</div></div></div>';
-    if (!r.leave.length && !r.trip.length) html += '<div class="empty" style="padding:14px 6px">오늘 휴가·출장인 직원이 없습니다.</div>';
-    if (r.leave.length) html += '<div class="bsec">휴가</div>' + r.leave.map(function(x){ return personRow(x, 'lv'); }).join('');
-    if (r.trip.length) html += '<div class="bsec">출장</div>' + r.trip.map(function(x){ return personRow(x, 'tp'); }).join('');
-    el.innerHTML = html;
+    BOARD = r; drawBoard();
   } catch(e) {
     el.innerHTML = '<div class="note">근태 서버에 연결하지 못했습니다.</div>';
   }
+}
+function boardFilter(k){ BFILTER = BFILTER === k ? '' : k; drawBoard(); }
+function drawBoard(){
+  var r = BOARD, el = $('board'); if (!r) return;
+  var ppl = r.people || [], html = '';
+  if (ppl.length) {
+    var order = ['출근', '출근 전', '퇴근', '휴가', '출장'];
+    html += '<div class="stsum">' + order.map(function(k){
+      var n = ppl.filter(function(p){ return p.status === k; }).length;
+      return '<button class="' + (BFILTER === k ? 'on' : '') + '" onclick="boardFilter(\'' + k + '\')"><i style="background:' + STC[k] + '"></i>' + k + ' <b>' + n + '</b></button>';
+    }).join('') + '</div>';
+    var shown = BFILTER ? ppl.filter(function(p){ return p.status === BFILTER; }) : ppl;
+    html += '<div class="stgrid">' + (shown.length ? shown.map(function(p){
+      var tip = [p.dept, p.position].filter(Boolean).join(' · ');
+      var sub = p.status + (p.time ? ' ' + p.time : '') + (p.note ? ' · ' + p.note : '');
+      return '<div class="stp st-' + STK[p.status] + '" title="' + esc(tip) + '">' + esc(p.name)
+        + '<small class="' + (p.note === '지각' ? 'late' : '') + '">' + esc(sub) + '</small></div>';
+    }).join('') : '<div class="empty" style="padding:10px 4px">해당하는 직원이 없습니다.</div>') + '</div>';
+  }
+  if (r.leave.length || r.trip.length) {
+    html += '<div class="bsec" style="margin-top:14px">휴가·출장 기간</div>'
+      + r.leave.map(function(x){ return personRow(x, 'lv'); }).join('') + r.trip.map(function(x){ return personRow(x, 'tp'); }).join('');
+  } else if (!ppl.length) html += '<div class="empty" style="padding:14px 6px">오늘 휴가·출장인 직원이 없습니다.</div>';
+  el.innerHTML = html;
 }
 
 /* ── 지회 관리 요약 (담당자·공동 관리자) ── */

@@ -495,6 +495,8 @@ window.addEventListener('message', function(e){
 });
 
 /* ── 출퇴근: 상단 버튼 + 대시보드 카드 ── */
+function seoulToday(){ return new Date().toLocaleDateString('sv-SE', { timeZone:'Asia/Seoul' }); }
+function dRange(a, b){ return !b || a === b ? md(a) : md(a) + '~' + md(b); }
 async function loadCal(){
   var card = $('calcard'); if (!card) return;
   try {

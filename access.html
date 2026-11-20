@@ -10,6 +10,7 @@ body{margin:0;font-family:-apple-system,"Noto Sans KR","Malgun Gothic",sans-seri
 .wrap{max-width:860px;margin:0 auto;padding:14px}
 h1{font-size:19px;margin:0}
 h2{font-size:16px;margin:0 0 8px}
+html.embed .top>div:last-child{display:none}
 .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
 .card{background:#fff;border:1px solid #ddd8cc;border-radius:10px;padding:12px;margin-bottom:10px}
 .muted{color:#777;font-size:13px}
@@ -48,6 +49,7 @@ table.log td,table.log th{border-bottom:1px solid #eee;padding:5px;text-align:le
 <div class="wrap" id="app"><div class="center muted">불러오는 중…</div></div>
 <div id="toast"></div>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>try{ if(new URLSearchParams(location.search).get("embed")==="1") document.documentElement.classList.add("embed"); }catch(e){}</script>
 <script>
 /* ===== 권한 관리 (구글 로그인 · 직원 등록 · 권한 부여 · 결재라인) ===== */
 const SB_URL = "https://uamlualqqcqmpdkprjfs.supabase.co";
@@ -101,13 +103,14 @@ function blockedView(){
 function render(){
   const tabs = me.can_manage ? [["staff","직원·권한"],["lines","결재라인"],["log","변경 기록"]] : [];
   if(me.role === "admin") tabs.push(["chapters","지회 담당 지정"]);
+  if(me.role === "admin" || me.role === "lead") tabs.push(["drive","드라이브 연결"]);
   tabs.push(["me","내 권한"]);
   $("#app").innerHTML = `<div class="top"><div><h1>${esc(me.chapter_name)} · ${esc(me.name)}</h1>
       <div class="muted">${esc(me.email)} <span class="badge">${ROLE[me.role]}</span>${me.role==="staff"&&me.can_manage?'<span class="badge o">공동 관리자</span>':""}</div></div>
       <div><a class="btn sub sm" href="/" style="text-decoration:none;display:inline-block">🏠 홈으로</a> <button class="btn sub sm" onclick="logout()">로그아웃</button></div></div>
     <div class="tabs">${tabs.map(t=>`<button class="${tab===t[0]?"on":""}" onclick="go('${t[0]}')">${t[1]}</button>`).join("")}</div>
     <div id="body"></div>`;
-  ({staff:staffView, lines:linesView, log:logView, chapters:chaptersView, me:meView}[tab] || meView)();
+  ({staff:staffView, lines:linesView, log:logView, chapters:chaptersView, drive:driveView, me:meView}[tab] || meView)();
 }
 async function go(t){
   tab = t;
@@ -116,6 +119,7 @@ async function go(t){
     else if(t==="lines"){ await loadStaff(); lines = await rpc("get_approval_lines"); drafts = {}; }
     else if(t==="log") logs = await rpc("get_access_log", {p_limit:100});
     else if(t==="chapters") chapters = await rpc("list_chapters");
+    else if(t==="drive") await loadDrive();
   }catch(e){ toast(e.message, true); }
   render();
 }
@@ -201,6 +205,34 @@ function apRemove(i){ const d = deptKeys[i]; if(confirm(d + " 부서의 결재�
 function logView(){
   $("#body").innerHTML = `<div class="card"><table class="log"><tr><th>일시</th><th>처리자</th><th>내용</th></tr>${logs.map(l=>`<tr><td>${esc(l.at)}</td><td>${esc(l.actor)}</td><td><b>${esc(ACT[l.action]||l.action)}</b> ${esc(l.target)}<div class="muted">${esc(l.detail)}</div></td></tr>`).join("") || '<tr><td colspan="3" class="muted">기록이 없습니다.</td></tr>'}</table></div>`;
 }
+
+/* 구글 드라이브 연결 */
+let drv = null;
+async function gd(body){
+  const s = await sb.auth.getSession(); const tok = s.data.session && s.data.session.access_token;
+  const r = await fetch(SB_URL + "/functions/v1/gdrive", {method:"POST", headers:{"Content-Type":"application/json", Authorization:"Bearer " + tok, apikey: SB_KEY}, body: JSON.stringify(body)});
+  const t = await r.text(); try{ return JSON.parse(t); }catch(e){ return {ok:false, msg: r.status===404 ? "서버에 gdrive 함수가 아직 설치되지 않았습니다. (설정 안내서 참고)" : "응답을 읽을 수 없습니다."}; }
+}
+async function loadDrive(){ drv = await gd({action:"status"}); }
+function driveView(){
+  if(!drv || !drv.ok){ $("#body").innerHTML = `<div class="card"><h2>드라이브 연결</h2><div class="muted">${esc((drv&&drv.msg)||"불러오지 못했습니다.")}</div></div>`; return; }
+  const guide = drv.sa_ready ? `<div class="muted">서비스 계정: <b>${esc(drv.sa_email)}</b><br>각 지회 공유 드라이브의 <b>멤버 관리</b>에 위 이메일을 <b>콘텐츠 관리자</b>로 추가한 뒤, 아래에 그 드라이브(또는 폴더)의 주소를 붙여 넣고 [연결]을 누르세요. 연결하면 <b>업무시스템</b> 폴더와 하위 폴더(출장대장·월별근태·연차현황·운행일지·교육실적)가 자동으로 만들어집니다.</div>`
+    : `<div class="muted" style="color:#c0392b">서버에 구글 서비스 계정이 아직 등록되지 않았습니다. 설정 안내서(구글드라이브_설정안내.md)의 1단계를 먼저 진행해 주세요. 그 전에는 엑셀 다운로드만 사용할 수 있습니다.</div>`;
+  $("#body").innerHTML = `<div class="card"><h2>📂 구글 드라이브 연결</h2>${guide}</div>
+    ${drv.chapters.map(c=>`<div class="card"><div class="st"><div><b>${esc(c.name)}</b> ${c.connected?'<span class="badge">연결됨</span>':'<span class="badge o">미연결</span>'}
+      ${c.connected?`<div class="muted">${esc(c.folder_name)} · 하위 폴더 ${c.subfolders.length}개</div>`:""}
+      ${c.status==="error"?`<div class="muted" style="color:#c0392b">${esc(c.status_msg)}</div>`:""}</div></div>
+      <div class="grid" style="margin-top:6px"><input id="d_f${c.id}" placeholder="드라이브 폴더 주소 붙여넣기"><button class="btn full" onclick="driveConnect(${c.id})">${c.connected?"다시 연결":"연결"}</button>${c.connected?`<button class="btn sub full" onclick="driveOff(${c.id})">연결 해제</button>`:""}</div></div>`).join("")}`;
+}
+async function driveConnect(id){
+  const f = val("d_f"+id); if(!f) return toast("폴더 주소를 붙여 넣어 주세요.", true);
+  toast("연결 중입니다...");
+  const r = await gd({action:"connect", chapterId:id, folder:f});
+  toast(r.ok ? "연결했습니다. 하위 폴더도 만들었습니다." : r.msg, !r.ok);
+  await loadDrive(); driveView();
+}
+async function driveOff(id){ if(!confirm("연결을 해제할까요? (드라이브의 파일은 지워지지 않습니다)")) return;
+  const r = await gd({action:"disconnect", chapterId:id}); toast(r.ok?"해제했습니다.":r.msg, !r.ok); await loadDrive(); driveView(); }
 
 /* 지회 담당 지정 (도협회 관리자) */
 function chaptersView(){

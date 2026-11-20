@@ -186,7 +186,8 @@
           <select id="lKind"><option>공문</option><option>업무협조전</option><option>내부결재</option></select></div>
       </div>
       <div class="btns"><button class="main" onclick="loadLedger()">불러오기</button>
-        <button onclick="downloadLedgerCsv()">엑셀(CSV) 받기</button></div>
+        <button onclick="downloadLedgerCsv()">엑셀(CSV) 받기</button>
+        <button onclick="saveLedgerSheet()">📊 구글 시트로 저장</button></div>
       <div id="ledgerMsg" class="msg"></div>
       <table><thead><tr><th>번호</th><th>시행일자</th><th>수신</th><th>제목</th><th>기안자</th><th>상태</th></tr></thead>
         <tbody id="ledgerBody"></tbody></table>
@@ -488,6 +489,7 @@ function renderView() {
   if (canManual) b.push(`<button class="main" onclick="actDoc('manual')">수기 서명 완료</button>`);
   if (canReject) b.push(`<button class="danger" onclick="rejectDoc()">반려</button>`);
   b.push(`<button onclick="copyDoc()">복사</button>`, `<button onclick="printDoc()">인쇄 / PDF 저장</button>`);
+  if (d.number && !d.deleted) b.push(`<button id="pdfBtn" onclick="savePdfDrive()">📁 드라이브에 PDF 저장</button>`);
   if (me.is_admin || isDrafter) {
     b.push(d.deleted ? `<button onclick="setDeleted(false)">되살리기</button>`
                      : `<button class="danger" onclick="setDeleted(true)">삭제</button>`);
@@ -534,7 +536,7 @@ async function setDeleted(flag) {
 
 // 인쇄 (브라우저의 "PDF로 저장"을 쓰면 PDF 파일이 됩니다)
 // 우리 지회 직인·연락처와 전자서명 이미지를 서버에서 받아 함께 찍음
-async function printDoc() {
+async function buildPrintHtml() {
   const d = current, f = d.form || {};
   let as = { seals: {}, sigs: {}, chapter_name: me.chapter_name, phone: '', center_phone: '', address: '' };
   try { const r = await sb.rpc('doc_print_assets', { p_id: d.id }); if (r.data) as = r.data; } catch (e) {}
@@ -550,7 +552,7 @@ async function printDoc() {
   }).join('');
   const seal = f.seal && as.seals[f.seal] ? `<img src="${esc(as.seals[f.seal])}" style="height:70px;vertical-align:middle;margin-left:8px">` : '';
   const contact = [as.phone && ('전화 ' + as.phone), as.center_phone && ('센터 ' + as.center_phone), as.address].filter(Boolean).join(' · ');
-  $('printArea').innerHTML = `
+  return `
     <div style="text-align:right">${esc(d.number || '')}</div>
     <h1>${esc(d.title)}</h1>
     <p>시행일자: ${esc(f.date || '')}</p>
@@ -561,9 +563,60 @@ async function printDoc() {
     <table style="margin-top:24px"><tr>${signRow}</tr><tr>${nameRow}</tr></table>
     <p style="margin-top:20px">${esc(d.drafter_name)}</p>
     ${contact ? `<p style="font-size:11px;color:#444">${esc(contact)}</p>` : ''}`;
-  const imgs = [...$('printArea').querySelectorAll('img')];
+}
+// 이미지가 다 뜰 때까지 잠깐 기다림 (최대 1.5초)
+async function waitImages(root) {
+  const imgs = [...root.querySelectorAll('img')];
   await Promise.race([Promise.all(imgs.map((im) => im.complete ? 0 : new Promise((ok) => { im.onload = im.onerror = ok; }))), new Promise((ok) => setTimeout(ok, 1500))]);
+}
+async function printDoc() {
+  $('printArea').innerHTML = await buildPrintHtml();
+  await waitImages($('printArea'));
   window.print();
+}
+
+// ---- 구글 드라이브 저장 (PDF · 대장 시트) ----
+async function gd(body) {
+  const s = await sb.auth.getSession(); const tok = s.data.session && s.data.session.access_token;
+  const r = await fetch(SUPABASE_URL + '/functions/v1/gdrive', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok, apikey: SUPABASE_ANON_KEY }, body: JSON.stringify(body) });
+  const t = await r.text();
+  try { return JSON.parse(t); } catch (e) { return { ok: false, msg: r.status === 404 ? '서버에 gdrive 함수가 아직 설치되지 않았습니다.' : '응답을 읽을 수 없습니다.' }; }
+}
+function loadScript(src) {
+  return new Promise((ok, bad) => { const el = document.createElement('script'); el.src = src; el.onload = ok; el.onerror = () => bad(new Error('PDF 만드는 도구를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.')); document.head.appendChild(el); });
+}
+// 화면에 보이는 인쇄 모양 그대로 PDF를 만들어 우리 지회 드라이브 '공문 작성/연도' 폴더에 저장
+async function savePdfDrive() {
+  const btn = $('pdfBtn'); if (btn) btn.disabled = true;
+  msg('viewMsg', 'PDF를 만들어 저장하는 중입니다...', true);
+  let box;
+  try {
+    if (!window.html2canvas) await loadScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
+    if (!window.jspdf) await loadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
+    box = document.createElement('div');
+    box.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;padding:60px 56px;background:#fff;color:#000;font-family:"Malgun Gothic","맑은 고딕",sans-serif;font-size:14px;line-height:1.6;box-sizing:border-box';
+    box.innerHTML = '<style>.pdfbox h1{font-size:22px;text-align:center;margin:10px 0 20px}.pdfbox table{border-collapse:collapse;font-size:12px}.pdfbox th,.pdfbox td{border:1px solid #000;padding:6px 10px}.pdfbox p{margin:6px 0}</style><div class="pdfbox">' + await buildPrintHtml() + '</div>';
+    document.body.appendChild(box);
+    await waitImages(box);
+    const canvas = await window.html2canvas(box, { scale: 2, backgroundColor: '#fff', useCORS: true });
+    const pdf = new window.jspdf.jsPDF({ unit: 'mm', format: 'a4' });
+    const pw = 210, ph = 297;
+    const pageCanvasH = Math.floor(canvas.width * ph / pw);      // 한 쪽에 들어가는 캔버스 높이
+    for (let y = 0, page = 0; y < canvas.height; y += pageCanvasH, page++) {
+      const part = document.createElement('canvas');
+      part.width = canvas.width; part.height = Math.min(pageCanvasH, canvas.height - y);
+      const cx = part.getContext('2d'); cx.fillStyle = '#fff'; cx.fillRect(0, 0, part.width, part.height);
+      cx.drawImage(canvas, 0, y, canvas.width, part.height, 0, 0, part.width, part.height);
+      if (page) pdf.addPage();
+      pdf.addImage(part.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, pw, part.height * pw / canvas.width);
+    }
+    const b64 = pdf.output('datauristring').split('base64,').pop();
+    const d = current;
+    const r = await gd({ action: 'savePdf', filename: (d.number || '번호없음') + ' ' + (d.title || ''), year: d.year, pdf: b64 });
+    if (!r.ok) throw new Error(r.msg || '저장하지 못했습니다.');
+    $('viewMsg').innerHTML = '<span class="ok">드라이브에 저장했습니다. </span><a href="' + esc(r.url) + '" target="_blank" rel="noopener">열기</a>';
+  } catch (e) { msg('viewMsg', errText(e)); }
+  finally { if (box) box.remove(); if (btn) btn.disabled = false; }
 }
 
 // ============ 7) 검색 ============
@@ -618,6 +671,18 @@ async function downloadLedgerCsv() {
   a.href = URL.createObjectURL(blob);
   a.download = `${$('lKind').value}_${$('lYear').value}_대장.csv`;
   document.body.appendChild(a); a.click(); a.remove();
+}
+
+async function saveLedgerSheet() {
+  const rows = await ledgerRows();
+  if (!rows) return;
+  if (!rows.length) return msg('ledgerMsg', '저장할 완료 문서가 없습니다.');
+  msg('ledgerMsg', '시트로 저장하는 중입니다...', true);
+  const kind = $('lKind').value, year = $('lYear').value;
+  const grid = [['번호', '시행일자', '수신', '제목', '기안자', '상태'], ...rows.map((d) => [d.number, d.form?.date || '', d.recipient, d.title, d.drafter_name, d.status])];
+  const r = await gd({ action: 'saveSheet', kind: '공문 대장', title: `${kind}_${year}_대장`, sheets: [{ name: kind, rows: grid, widths: [22, 12, 24, 40, 12, 8] }] });
+  if (!r.ok) return msg('ledgerMsg', r.msg || '저장하지 못했습니다.');
+  $('ledgerMsg').innerHTML = '<span class="ok">저장했습니다. </span><a href="' + esc(r.url) + '" target="_blank" rel="noopener">시트 열기</a>';
 }
 
 // ============ 9) 번호 설정 (관리자만) ============

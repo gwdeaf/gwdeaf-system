@@ -1234,6 +1234,18 @@ async function sha256(t){
   const b=await crypto.subtle.digest("SHA-256", new TextEncoder().encode(String(t)));
   return [...new Uint8Array(b)].map(x=>x.toString(16).padStart(2,"0")).join("");
 }
+// 자동 쌓기: 도착 기록이 저장되면 우리 지회 연도별 운행일지 시트에 한 줄 추가 (실패해도 기록에는 영향 없음)
+async function autoAppendLog(d, oS, oE){
+  try{
+    const s=await sb.auth.getSession(); const tok=s.data.session&&s.data.session.access_token; if(!tok) return;
+    const sd=txt(d.startDate).split("-"), year=Number(sd[0])||new Date().getFullYear();
+    const row=[toInt(sd[1]),toInt(sd[2]),d.car,d.driver,txt(d.people),d.dest,d.purpose,d.startTime,d.endTime,oS,oE,toInt(d.distance),d.fix||"",d.gauge||""];
+    const r=await fetch(SB_URL+"/functions/v1/gdrive",{method:"POST",headers:{"Content-Type":"application/json",Authorization:"Bearer "+tok,apikey:SB_KEY},
+      body:JSON.stringify({action:"append",kind:"운행일지",year,title:(ORG_NAME?ORG_NAME+" ":"")+"운행일지 "+year,sheetName:"운행일지",
+        header:["월","일","차량","운전자","탑승","행선지","목적","출발","도착","출발km","도착km","거리","차량정비·주유","잔유량"],rows:[row]})});
+    const j=await r.json().catch(()=>null); if(j&&j.ok===false&&j.code!=="not_connected") console.warn("자동 쌓기 실패:",j.msg);
+  }catch(e){}
+}
 // 저장 요청 (출발, 도착, 관리자 수정 등) 을 처리합니다
 async function post(d){
   try{
@@ -1264,6 +1276,7 @@ async function post(d){
         dest:d.dest, purpose:d.purpose, st:d.startTime, en:d.endTime, odo_s:oS, odo_e:oE, dist:toInt(d.distance),
         fix:d.fix||"", gauge:d.gauge||"", saved:d.savedAt, prev:prev, diff:diff}));
       ck(await sb.from("active").delete().eq("chapter_id",CH).eq("car",d.car));
+      autoAppendLog(d, oS, oE);
       if(d.resId) ck(await sb.from("reservations").update({status:"done"}).eq("chapter_id",CH).eq("id",Number(d.resId)));
       return {ok:true};
     }

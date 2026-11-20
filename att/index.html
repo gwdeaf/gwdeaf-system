@@ -3815,8 +3815,10 @@ function deleteLeaveHistRow(row, type) {
   if (!confirm('이 신청을 삭제하시겠습니까?\n(이미 승인·반려된 신청은 삭제되지 않습니다)')) return;
   var fnName = type==='휴가' ? 'deleteLeaveRow' : type==='시간외' ? 'deleteOvertimeRow' : type==='대체휴무' ? 'deleteCompLeaveRow' : null;
   if (!fnName) { alert('삭제할 수 없는 유형입니다.'); return; }
+  var calH = type === '휴가' ? leaveHistData.filter(function(x) { return x.row === row && x.type === '휴가'; })[0] : null;
   gasRunLeave(fnName, JSON.stringify({row:row}), function(res) {
     if (res.ok) {
+      if (calH && calH.pd && leaveUser) calCall({ action: 'calDelete', key: leaveCalKey(leaveUser.name, calH.pd.start, calH.pd.end) });
       showLeaveAlert('✅ 삭제되었습니다.', 'success', 'alert-area-leavehist');
       loadLeaveHist();
     } else {
@@ -3863,6 +3865,7 @@ function submitLeaveReq() {
       showLeaveAlert('✅ 휴가가 확정되었습니다. 신청서를 출력해 주세요. (출력 창이 안 열리면 [🖨️ 출력]을 누르세요)', 'success', 'alert-area-leave-apply');
       document.getElementById('leave-submit-btn').style.display = 'none';
       document.getElementById('leave-after-submit').style.display = 'flex';
+      leaveAutoAppend(lastLeaveReqData);
       printLeaveReq(null, true);   // 신청 즉시 출력 창 열기
     } else {
       showLeaveAlert('신청 실패: '+(res.msg||''), 'warn', 'alert-area-leave-apply');
@@ -5048,7 +5051,7 @@ function submitTrip() {
       closeTripForm();
       tripAlert('✅ 출장 신청이 접수되었습니다. (문서번호 ' + esc(res.docNo) + ') 신청서를 출력해 결재를 받으세요. (출력 창이 안 열리면 목록의 [🖨️ 인쇄]를 누르세요)', 'success');
       refreshTripList();
-      if (res.item) printTripReq(res.item);   // 신청 즉시 출력 창 열기
+      if (res.item) { tripAutoAppend(res.item); printTripReq(res.item); }   // 시트에 자동 추가 + 신청 즉시 출력 창 열기
     } else tripAlert('신청하지 못했습니다: ' + esc(res && res.msg || ''), 'warn');
   }, function(m) { btn.disabled = false; tripAlert('오류: ' + esc(m), 'warn'); });
 }
@@ -5056,7 +5059,7 @@ function cancelTrip(row) {
   var it = tripMine.filter(function(x) { return x.row === row; })[0];
   if (!it || !confirm(it.docNo + ' 출장 신청을 취소할까요?')) return;
   gasRun('deleteTripRequest', JSON.stringify({ auth: myAuth(), row: row }), function(res) {
-    if (res && res.ok) { tripAlert('취소했습니다.', 'success'); refreshTripList(); }
+    if (res && res.ok) { calCall({ action: 'calDelete', key: 'trip|' + it.docNo }); tripAlert('취소했습니다.', 'success'); refreshTripList(); }
     else tripAlert('취소하지 못했습니다: ' + esc(res && res.msg || ''), 'warn');
   }, function(m) { tripAlert('오류: ' + esc(m), 'warn'); });
 }
@@ -5377,6 +5380,33 @@ function gsheetCall(body, cb) {
     return fetch(GD_URL, { method: 'POST', headers: { 'Content-Type': 'application/json', 'Authorization': 'Bearer ' + tok, 'apikey': SB_ANON }, body: JSON.stringify(body) })
       .then(function(r) { return r.text().then(function(t) { var j = null; try { j = JSON.parse(t); } catch (e) {} if (!j) j = { ok: false, msg: r.status === 404 ? '구글 드라이브 기능이 아직 서버에 설치되지 않았습니다. (함수 gdrive)' : '응답을 읽을 수 없습니다.' }; cb(j); }); });
   }).catch(function(e) { cb({ ok: false, msg: (e && e.message) || '오류' }); });
+}
+// 자동 쌓기: 신청이 접수되면 우리 지회 연도별 시트에 한 줄 추가 (실패해도 신청에는 영향 없음)
+function autoAppend(kind, year, header, row) {
+  try {
+    gsheetCall({ action: 'append', kind: kind, year: year, title: (window._orgName ? window._orgName + ' ' : '') + kind + ' ' + year, header: header, rows: [row], sheetName: kind }, function(r) {
+      if (r && r.ok === false && r.code !== 'not_connected') console.warn('자동 쌓기 실패:', r.msg);
+    });
+  } catch (e) {}
+}
+function nowSeoul() { return new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }); }
+// 지회 공용 구글 캘린더에 일정 등록·삭제 (캘린더가 연결되지 않았거나 실패해도 신청에는 영향 없음)
+function calCall(body) {
+  try { gsheetCall(body, function(r) { if (r && r.ok === false && r.code !== 'not_connected') console.warn('캘린더 처리 실패:', r.msg); }); } catch (e) {}
+}
+function leaveCalKey(name, start, end) { return 'leave|' + name + '|' + start + '|' + end; }
+function leaveAutoAppend(d) {
+  calCall({ action: 'calAdd', key: leaveCalKey(d.name, d.start, d.end), title: '[휴가] ' + d.name, start: d.start, end: d.end });
+  autoAppend('연차현황', Number(String(d.start).slice(0, 4)) || new Date().getFullYear(),
+    ['기록일시', '성명', '부서', '직위', '휴가종류', '시작일', '종료일', '일수', '업무대행', '상태'],
+    [nowSeoul(), d.name, d.dept, d.position, d.type, d.start, d.end, Number(d.days) || d.days, d.delegate || '', d.status || '']);
+}
+function tripAutoAppend(it) {
+  calCall({ action: 'calAdd', key: 'trip|' + it.docNo, title: '[출장] ' + it.name + (it.to ? ' · ' + it.to : ''), place: it.to || '', start: it.start, end: it.end,
+    description: '목적: ' + (it.purpose || '') + ((it.passengers || []).length ? '\n동행: ' + it.passengers.join(', ') : '') });
+  autoAppend('출장대장', Number(String(it.start).slice(0, 4)) || new Date().getFullYear(),
+    ['기록일시', '문서번호', '출장인', '부서', '직위', '연락처', '동행자', '출장목적', '시작일', '종료일', '일수', '출장지', '교통편', '업무대행자', '지급출처', '비고'],
+    [nowSeoul(), it.docNo, it.name, it.dept, it.position, it.contact, (it.passengers || []).join(', '), it.purpose, it.start, it.end, it.days, it.to, it.transport, it.deputy, it.payment, it.note]);
 }
 function gsheetSave(kind, title, sheets) {
   gsheetNote('📊 구글 시트로 저장하는 중... (잠시만 기다려 주세요)');

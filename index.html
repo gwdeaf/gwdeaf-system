@@ -259,11 +259,15 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
           <div class="ctitle"><span>📅 내 일정</span><span class="mute">다가오는 휴가·출장</span></div>
           <div id="mysch"><div class="empty">불러오는 중…</div></div>
         </div>
-        <div class="card" style="order:2">
+        <div class="card hide" id="calcard" style="order:2">
+          <div class="ctitle"><span>🗓 일정</span><span class="mute" id="calname">구글 캘린더</span></div>
+          <div id="calbox"><div class="empty">불러오는 중…</div></div>
+        </div>
+        <div class="card" style="order:3">
           <div class="ctitle"><span>🗓 내 근태</span><button class="btn" onclick="go('att','leave')">휴가 관리 →</button></div>
           <div id="att"><div class="empty">불러오는 중…</div></div>
         </div>
-        <div class="card" style="order:3">
+        <div class="card" style="order:4">
           <div class="ctitle"><span>👥 오늘 우리 지회 현황</span><span class="mute" id="bd-date"></span></div>
           <div id="board"><div class="empty">불러오는 중…</div></div>
         </div>
@@ -458,6 +462,34 @@ async function loadMySched(){
     }).join('') + (items.length > shown.length ? '<div class="mute" style="padding-top:8px">그 외 ' + (items.length - shown.length) + '건</div>' : '');
   } catch(e) { $('mysch').innerHTML = '<div class="note">일정을 불러오지 못했습니다.</div>'; }
 }
+/* ── 우리 지회 일정 (지회 공용 구글 캘린더: 휴가·출장·행사. 앞으로 14일) ── */
+async function loadCal(){
+  var card = $('calcard'); if (!card) return;
+  try {
+    var s = await sb.auth.getSession(); var tok = s.data && s.data.session && s.data.session.access_token;
+    var from = seoulToday(), t = new Date(from + 'T00:00:00'); t.setDate(t.getDate() + 14);
+    var to = t.toISOString().slice(0, 10);
+    var r = await fetch(SB_URL + '/functions/v1/gdrive', { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + tok, 'apikey': SB_ANON },
+      body: JSON.stringify({ action:'calList', from: from, to: to }) });
+    var j = await r.json();
+    if (!j || !j.ok) { card.classList.add('hide'); return; }      // 캘린더가 연결되지 않은 지회는 카드를 숨김
+    card.classList.remove('hide'); $('calname').textContent = j.calendar_name || '구글 캘린더';
+    var PAL = ['#3b6fd4','#d9534f','#2e9d6a','#e08a1e','#8a5bd0','#1aa0b8','#c2487f','#7a8a2a'], multi = (j.cals || []).length > 1, cidx = {};
+    (j.cals || []).forEach(function(c, i){ cidx[c.ci] = PAL[i % PAL.length]; });
+    var legend = multi ? '<div class="mute" style="display:flex;flex-wrap:wrap;gap:4px 12px;padding-bottom:6px">' + j.cals.map(function(c){ return '<span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + cidx[c.ci] + ';margin-right:4px"></i>' + esc(c.name) + '</span>'; }).join('') + '</div>' : '';
+    var wd = '일월화수목금토', items = (j.items || []).map(function(x){
+      var sd = String(x.start).slice(0, 10), ed = String(x.end || x.start).slice(0, 10), tm = x.allDay ? '' : String(x.start).slice(11, 16);
+      return { s: sd, e: ed, title: x.title, tm: tm, place: x.place, ci: x.ci, cal: x.cal };
+    }).filter(function(x){ return x.e >= from; });
+    if (!items.length) { $('calbox').innerHTML = legend + '<div class="empty">앞으로 14일간 일정이 없습니다.</div>'; return; }
+    var shown = items.slice(0, 8);
+    $('calbox').innerHTML = legend + shown.map(function(x){
+      var d = new Date(x.s + 'T00:00:00'), ing = x.s <= from && x.e >= from;
+      return '<div class="sch" style="cursor:default"><div class="dt">' + dRange(x.s, x.e) + '<small>' + (ing ? '진행 중' : '(' + wd.charAt(d.getDay()) + ')') + (x.tm ? ' ' + x.tm : '') + '</small></div>'
+        + '<div class="tx">' + (multi ? '<i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + cidx[x.ci] + ';margin-right:5px"></i>' : '') + esc(x.title) + (x.place ? '<small>' + esc(x.place) + '</small>' : '') + '</div></div>';
+    }).join('') + (items.length > shown.length ? '<div class="mute" style="padding-top:8px">그 외 ' + (items.length - shown.length) + '건</div>' : '');
+  } catch(e) { card.classList.add('hide'); }
+}
 function openPunch(){
   $('pframe').src = '/att/?embed=1&mode=staff&go=punch&t=' + Date.now();
   $('pmodal').classList.remove('hide');
@@ -570,7 +602,7 @@ async function loadAtt(){
     ATT = w; renderNav();
     if (!w.staffName) { loadMySched();
        $('punch').innerHTML = '<div class="note">근태 직원목록에 구글 계정이 연결되면 출퇴근을 기록할 수 있습니다.</div>'; el.innerHTML = '<div class="note">근태 직원목록에 내 구글 계정이 아직 연결되어 있지 않습니다.<br>지회 담당자에게 확인을 요청하세요.</div>'; return; }
-    loadPunch(); loadMySched();
+    loadPunch(); loadMySched(); loadCal();
     var y = new Date().getFullYear();
     var b = await attCall('getMyLeaveBalance', JSON.stringify({ name: w.staffName, year: y }));
     var c = await attCall('getMyCompLeave', JSON.stringify({ name: w.staffName }));

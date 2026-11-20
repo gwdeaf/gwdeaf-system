@@ -1442,6 +1442,7 @@ function renderCourseForm(c, copyFrom) {
         if (!okEnd) return;
       }
       const d = await call('saveCourse', data);
+      if (isNew) eduAutoAppend(String(data.시작일 || '').slice(0, 4), '강좌 등록', data.강좌명, (data.시작일 || '') + ' ~ ' + (data.종료일 || ''), data.강사, data.지회명);
       if (!isAdmin() && data.주관 === '센터') S.init.hasCenter = true;
       toast(isNew ? '강좌를 등록했습니다.' : '변경 내용을 저장했습니다.');
       showDetail(d, isNew ? (head ? 'att' : 'people') : 'info');
@@ -3351,6 +3352,19 @@ async function copyText(text) {
   } catch (e) { return false; }
 }
 /* 구글 시트로 저장 (우리 지회 구글 드라이브의 '교육실적' 폴더) */
+// 자동 쌓기: 강좌 등록·실적 제출 같은 일이 생기면 우리 지회 연도별 교육실적 시트에 한 줄 추가 (실패해도 작업에는 영향 없음)
+async function eduAutoAppend(year, 구분, 제목, 기간, 강사, 지회) {
+  try {
+    const r0 = await sbc.auth.getSession(); const tok = r0 && r0.data && r0.data.session && r0.data.session.access_token; if (!tok) return;
+    const now = new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' });
+    const ch = 지회 || (S.init && S.init.user && S.init.user.chapter) || '';
+    // 도협회 사용자가 처리한 일은 도협회 드라이브에 쌓임
+    const r = await fetch(SB_URL + '/functions/v1/gdrive', { method: 'POST', headers: { 'Content-Type': 'application/json', Authorization: 'Bearer ' + tok, apikey: SB_KEY },
+      body: JSON.stringify({ action: 'append', kind: '교육실적', year: Number(year) || new Date().getFullYear(), title: ch + ' 교육실적 ' + year, sheetName: '교육실적',
+        header: ['기록일시', '지회', '구분', '제목', '기간', '강사', '처리자'], rows: [[now, ch, 구분, 제목, 기간 || '', 강사 || '', (S.init && S.init.user && S.init.user.name) || '']] }) });
+    const j = await r.json().catch(() => null); if (j && j.ok === false && j.code !== 'not_connected') console.warn('자동 쌓기 실패:', j.msg);
+  } catch (e) {}
+}
 async function saveGSheet(title, sheets) {
   const list = sheets.filter(x => x && x.rows && x.rows.length).map(x => ({ name: x.name, rows: x.rows }));
   if (!list.length) { toast('저장할 자료가 없습니다.', true); return; }
@@ -3835,6 +3849,7 @@ async function loadReport() {
         (d.확인사항.length ? `\n\n확인할 점 ${d.확인사항.length}건이 있습니다.` : ''), { ok: '제출' });
       if (!ok) return;
       await call('submitReport', d.연도, d.반기);
+      eduAutoAppend(d.연도, '실적 제출', d.연도 + '년 ' + d.반기, '', '');
       toast('제출했습니다. 도협회가 승인하면 여기에 표시됩니다.');
       loadReport();
     });

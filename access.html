@@ -305,9 +305,26 @@ function driveView(){
     : `<div class="muted" style="color:#c0392b">서버에 구글 서비스 계정이 아직 등록되지 않았습니다. 설정 안내서(구글드라이브_설정안내.md)의 1단계를 먼저 진행해 주세요. 그 전에는 엑셀 다운로드만 사용할 수 있습니다.</div>`;
   $("#body").innerHTML = `<div class="card"><h2>📂 구글 드라이브 연결</h2>${guide}</div>
     ${drv.chapters.map(c=>`<div class="card"><div class="st"><div><b>${esc(c.name)}</b> ${c.connected?'<span class="badge">연결됨</span>':'<span class="badge o">미연결</span>'}
-      ${c.connected?`<div class="muted">${esc(c.folder_name)} · 하위 폴더 ${c.subfolders.length}개</div>`:""}
+      ${c.connected?`<div class="muted">${esc(c.folder_name)} · 하위 폴더 ${c.subfolders.length}개</div>
+      <label style="display:block;margin-top:6px;font-size:14px"><input type="checkbox" style="width:auto" ${c.auto_append?"checked":""} onchange="driveAuto(${c.id},this.checked)"> 자동 쌓기 사용 <span class="muted">(출장·휴가·운행·공문·교육 기록을 시트에 자동으로 추가)</span></label>`:""}
       ${c.status==="error"?`<div class="muted" style="color:#c0392b">${esc(c.status_msg)}</div>`:""}</div></div>
-      <div class="grid" style="margin-top:6px"><input id="d_f${c.id}" placeholder="드라이브 폴더 주소 붙여넣기"><button class="btn full" onclick="driveConnect(${c.id})">${c.connected?"다시 연결":"연결"}</button>${c.connected?`<button class="btn sub full" onclick="driveOff(${c.id})">연결 해제</button>`:""}</div></div>`).join("")}`;
+      <div class="grid" style="margin-top:6px"><input id="d_f${c.id}" placeholder="드라이브 폴더 주소 붙여넣기"><button class="btn full" onclick="driveConnect(${c.id})">${c.connected?"다시 연결":"연결"}</button>${c.connected?`<button class="btn sub full" onclick="driveOff(${c.id})">연결 해제</button>`:""}</div>
+      <div style="margin-top:12px;border-top:1px solid #eee;padding-top:10px"><b>📅 공용 구글 캘린더</b> ${c.calendar_id?`<span class="badge">연결됨</span> <span class="muted">${esc(c.calendar_name)}</span>`:'<span class="badge o">미연결</span>'}
+      <div class="muted">휴가·출장이 접수되면 이 캘린더에 일정이 자동으로 생기고, 홈 화면 "우리 지회 일정"에 보입니다.</div>
+      <div class="grid" style="margin-top:6px"><input id="d_c${c.id}" placeholder="캘린더 ID 붙여넣기 (예: abc123@group.calendar.google.com)"><button class="btn full" onclick="calConnect(${c.id})">${c.calendar_id?"다시 연결":"연결"}</button>${c.calendar_id?`<button class="btn sub full" onclick="calOff(${c.id})">연결 해제</button>`:""}</div></div>
+      <div style="margin-top:12px;border-top:1px solid #eee;padding-top:10px"><b>👀 함께 볼 캘린더</b> <span class="muted">(홈 화면 일정에 합쳐서 보여 줍니다)</span>
+      ${(c.extras||[]).map(x=>`<div style="display:flex;gap:8px;align-items:center;margin:6px 0"><label style="flex:1;font-size:14px"><input type="checkbox" style="width:auto" ${x.hidden?"":"checked"} onchange="calShow(${x.id},${c.id},this.checked)"> ${esc(x.name)} ${x.global?'<span class="badge">전 지회 공용</span>':'<span class="badge o">우리 지회</span>'}</label>${x.can_edit&&!x.global?`<button class="btn sub" onclick="calExtraDel(${x.id})">삭제</button>`:""}</div>`).join("")||'<div class="muted">추가된 캘린더가 없습니다.</div>'}
+      <div class="grid" style="margin-top:6px"><input id="d_x${c.id}" placeholder="캘린더 ID"><input id="d_xn${c.id}" placeholder="표시 이름 (예: 회의실)"><button class="btn full" onclick="calExtraAdd(${c.id})">추가</button></div>
+      <div class="muted">서비스 계정에 <b>모든 일정 세부정보 보기</b>로 공유한 캘린더면 됩니다. 체크를 끄면 우리 지회 홈 화면에서만 숨겨집니다.</div></div></div>`).join("")}
+    ${drv.is_admin?`<div class="card"><h2>🌐 전 지회 공용 캘린더 (도협회 관리자)</h2>
+      <div class="muted">여기에 추가하면 <b>모든 지회</b> 홈 화면에 보입니다. 각 지회는 위 "함께 볼 캘린더"에서 끌 수 있습니다. 도협회 행사·교육 일정 등에 쓰세요.</div>
+      ${(drv.globals||[]).map(x=>`<div style="display:flex;gap:8px;align-items:center;margin:6px 0"><span style="flex:1;font-size:14px"><b>${esc(x.name)}</b> <span class="muted">${esc(x.calendar_id)}</span></span><button class="btn sub" onclick="calExtraDel(${x.id})">삭제</button></div>`).join("")||'<div class="muted" style="margin-top:6px">아직 없습니다.</div>'}
+      <div class="grid" style="margin-top:6px"><input id="d_gx" placeholder="캘린더 ID"><input id="d_gxn" placeholder="표시 이름 (예: 도협회 행사)"><button class="btn full" onclick="calExtraAdd(0,true)">공용으로 추가</button></div></div>`:""}
+    <div class="card"><h2>📅 공용 캘린더 만드는 방법</h2><div class="muted" style="line-height:1.7">
+      1. 구글 캘린더 → 왼쪽 "다른 캘린더 +" → <b>새 캘린더 만들기</b> (예: 춘천 업무일정)<br>
+      2. 그 캘린더의 <b>설정 및 공유 → 특정 사용자 또는 그룹과 공유</b>에 <b>${esc(drv.sa_email||"서비스 계정 이메일")}</b>을 <b>일정 변경 권한</b>으로 추가<br>
+      3. 같은 곳에서 우리 지회 직원들을 <b>모든 일정 세부정보 보기</b>로 추가 (다른 지회·도협회에는 공유하지 않습니다)<br>
+      4. <b>캘린더 통합 → 캘린더 ID</b>를 복사해 위 칸에 붙여 넣고 [연결]</div></div>`;
 }
 async function driveConnect(id){
   const f = val("d_f"+id); if(!f) return toast("폴더 주소를 붙여 넣어 주세요.", true);
@@ -316,6 +333,26 @@ async function driveConnect(id){
   toast(r.ok ? "연결했습니다. 하위 폴더도 만들었습니다." : r.msg, !r.ok);
   await loadDrive(); driveView();
 }
+async function driveAuto(id,on){ const r = await gd({action:"setAuto", chapterId:id, on}); toast(r.ok?(on?"자동 쌓기를 켰습니다.":"자동 쌓기를 껐습니다."):r.msg, !r.ok); await loadDrive(); driveView(); }
+async function calConnect(id){
+  const f = val("d_c"+id); if(!f) return toast("캘린더 ID를 붙여 넣어 주세요.", true);
+  toast("연결 중입니다...");
+  const r = await gd({action:"calConnect", chapterId:id, calendarId:f});
+  toast(r.ok ? "캘린더를 연결했습니다." : r.msg, !r.ok);
+  await loadDrive(); driveView();
+}
+async function calExtraAdd(id,global){
+  const f = val(global?"d_gx":"d_x"+id); if(!f) return toast("캘린더 ID를 붙여 넣어 주세요.", true);
+  toast("확인 중입니다...");
+  const r = await gd({action:"calExtraAdd", scope:global?"global":"chapter", chapterId:id||undefined, calendarId:f, name:val(global?"d_gxn":"d_xn"+id)});
+  toast(r.ok ? "추가했습니다." : r.msg, !r.ok);
+  await loadDrive(); driveView();
+}
+async function calExtraDel(id){ if(!confirm("이 캘린더를 목록에서 뺄까요? (구글 캘린더의 일정은 지워지지 않습니다)")) return;
+  const r = await gd({action:"calExtraDel", id}); toast(r.ok?"뺐습니다.":r.msg, !r.ok); await loadDrive(); driveView(); }
+async function calShow(id,cid,on){ const r = await gd({action:"calExtraShow", id, chapterId:cid, show:on}); toast(r.ok?(on?"보이게 했습니다.":"숨겼습니다."):r.msg, !r.ok); await loadDrive(); driveView(); }
+async function calOff(id){ if(!confirm("캘린더 연결을 해제할까요? (이미 만들어진 일정은 지워지지 않습니다)")) return;
+  const r = await gd({action:"calDisconnect", chapterId:id}); toast(r.ok?"해제했습니다.":r.msg, !r.ok); await loadDrive(); driveView(); }
 async function driveOff(id){ if(!confirm("연결을 해제할까요? (드라이브의 파일은 지워지지 않습니다)")) return;
   const r = await gd({action:"disconnect", chapterId:id}); toast(r.ok?"해제했습니다.":r.msg, !r.ok); await loadDrive(); driveView(); }
 

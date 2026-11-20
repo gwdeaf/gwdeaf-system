@@ -509,9 +509,19 @@ async function actDoc(action, opinion = '') {
   try {
     const { data, error } = await sb.rpc('doc_act', { p_id: current.id, p_action: action, p_opinion: opinion });
     if (error) throw error;
-    if (data === '완료') alert('모든 결재가 끝났습니다.');
+    if (data === '완료') { autoAppendDoc(current); alert('모든 결재가 끝났습니다.'); }
     openDoc(current.id);
   } catch (e) { msg('viewMsg', errText(e)); }
+}
+// 자동 쌓기: 결재가 모두 끝난 문서를 우리 지회 연도별 공문 대장 시트에 한 줄 추가
+async function autoAppendDoc(d) {
+  try {
+    const f = d.form || {};
+    const r = await gd({ action: 'append', kind: '공문 대장', year: d.year, title: (me.chapter_name || '') + ' 문서대장 ' + d.year, sheetName: '공문 대장',
+      header: ['번호', '종류', '시행일자', '수신', '제목', '기안자', '완료일시'],
+      rows: [[d.number || '', d.kind, f.date || '', d.recipient || '', d.title || '', d.drafter_name || '', new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' })]] });
+    if (r && r.ok === false && r.code !== 'not_connected') console.warn('자동 쌓기 실패:', r.msg);
+  } catch (e) {}
 }
 function rejectDoc() {
   const reason = prompt('반려 사유를 입력하세요.');

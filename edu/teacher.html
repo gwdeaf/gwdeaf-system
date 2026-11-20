@@ -1,0 +1,403 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>강사 입력</title>
+<style>
+:root { --pine:#1f4d3a; --pine-soft:#e6f0ea; --bg:#f4f7f5; --ink:#1b2b24; --muted:#5d6b64; --line:#d5ded9; --red:#b3261e; --red-soft:#fbe9e7; --amber:#8a5a00; --amber-soft:#fff3d6; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+.wrap { max-width:640px; margin:0 auto; padding:0 16px 96px; }
+header { background:var(--pine); color:#fff; padding:14px 16px; }
+header h1 { margin:0; font-size:19px; }
+header p { margin:2px 0 0; font-size:13px; opacity:.85; }
+.tabs { display:flex; gap:4px; margin:14px 0; background:#fff; border:1px solid var(--line); border-radius:12px; padding:4px; }
+.tabs button { flex:1; border:0; background:none; padding:11px 4px; border-radius:9px; font:inherit; font-weight:700; color:var(--muted); cursor:pointer; }
+.tabs button[aria-selected=true] { background:var(--pine); color:#fff; }
+.card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px; margin-bottom:12px; }
+.chips { display:flex; flex-wrap:wrap; gap:8px; margin:4px 0 12px; }
+.chip { min-width:48px; padding:9px 12px; border:1.5px solid var(--line); border-radius:999px; background:#fff; font:inherit; font-weight:700; cursor:pointer; }
+.chip.done { border-color:var(--pine); color:var(--pine); background:var(--pine-soft); }
+.chip.sel { background:var(--pine); border-color:var(--pine); color:#fff; }
+label.f { display:block; font-weight:700; font-size:14px; margin:12px 0 4px; }
+input, textarea, select { width:100%; padding:11px 12px; border:1.5px solid var(--line); border-radius:10px; font:inherit; background:#fff; }
+textarea { min-height:96px; resize:vertical; }
+.row { display:flex; align-items:center; gap:10px; }
+.spacer { flex:1; }
+.btn { border:1.5px solid var(--pine); background:#fff; color:var(--pine); padding:11px 16px; border-radius:10px; font:inherit; font-weight:700; cursor:pointer; }
+.btn.primary { background:var(--pine); color:#fff; }
+.btn.small { padding:7px 12px; font-size:14px; }
+.btn:disabled { opacity:.5; }
+.person { display:flex; align-items:center; gap:12px; width:100%; text-align:left; padding:14px; margin:0 0 8px; border:1.5px solid var(--line); border-radius:12px; background:#fff; font:inherit; cursor:pointer; }
+.person .box { width:28px; height:28px; border-radius:8px; border:2px solid #9bb0a5; display:grid; place-items:center; font-weight:900; color:#fff; flex:none; }
+.person.on { border-color:var(--pine); background:var(--pine-soft); }
+.person.on .box { background:var(--pine); border-color:var(--pine); }
+.person:disabled { opacity:.6; }
+.notice { border-radius:10px; padding:11px 13px; margin-bottom:12px; font-size:14px; }
+.notice.warn { background:var(--amber-soft); color:var(--amber); }
+.notice.err { background:var(--red-soft); color:var(--red); }
+.notice.info { background:var(--pine-soft); color:var(--pine); }
+.hint { color:var(--muted); font-size:13px; }
+.savebar { position:fixed; left:0; right:0; bottom:0; background:#fff; border-top:1px solid var(--line); padding:10px 16px; }
+.savebar .in { max-width:640px; margin:0 auto; display:flex; gap:10px; align-items:center; }
+.toast { position:fixed; left:50%; top:16px; transform:translateX(-50%); background:#1b2b24; color:#fff; padding:11px 18px; border-radius:10px; z-index:9; max-width:90%; }
+.toast.err { background:var(--red); }
+.center { text-align:center; padding:64px 20px; }
+.sig { border:1.5px dashed var(--line); border-radius:10px; background:#fff; touch-action:none; width:100%; height:150px; display:block; }
+.sigimg { max-height:90px; max-width:100%; display:block; margin:6px 0; border-bottom:1px solid var(--line); }
+table.cf { width:100%; border-collapse:collapse; font-size:14px; }
+table.cf th, table.cf td { border:1px solid var(--line); padding:6px; vertical-align:top; }
+table.cf th { background:var(--pine-soft); }
+table.cf textarea { min-height:56px; border-width:1px; padding:6px 8px; }
+.badge { display:inline-block; padding:2px 9px; border-radius:999px; font-size:12px; font-weight:700; background:var(--pine-soft); color:var(--pine); }
+</style>
+</head>
+<body>
+<div id="app"><div class="center hint">불러오는 중…</div></div>
+<script>
+const TOKEN = location.pathname.split('/').filter(Boolean).pop() || '';
+const $ = s => document.querySelector(s);
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const S = { cf: null, tab: 'att', info: null, sess: 1, draft: null, draftDate: '', draftCount: '', dirty: false, journal: null, jsess: 1, tasks: null, edit: null };
+
+async function api(fn, ...args) {
+  let res;
+  try {
+    res = await (await fetch('/api/call', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fn: fn, args: [TOKEN, ...args] }) })).json();
+  } catch (e) { throw new Error('서버에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.'); }
+  if (!res || !res.ok) { const e = new Error((res && res.error) || '처리하지 못했습니다.'); e.code = res && res.code; throw e; }
+  return res.data;
+}
+let tt;
+function toast(msg, err) {
+  const t = document.createElement('div'); t.className = 'toast' + (err ? ' err' : ''); t.textContent = msg; document.body.appendChild(t);
+  clearTimeout(tt); setTimeout(() => t.remove(), err ? 4500 : 2200);
+}
+async function act(btn, fn) {
+  if (btn) btn.disabled = true;
+  try { await fn(); } catch (e) { if (e.code === 'LINK') showDead(e.message); else toast(e.message, true); }
+  finally { if (btn) btn.disabled = false; }
+}
+function showDead(msg) {
+  $('#app').innerHTML = `<div class="center"><h2>사용할 수 없는 링크입니다</h2><p>${esc(msg)}</p></div>`;
+}
+function confirmLeave() { return !S.dirty || confirm('저장하지 않은 내용이 있습니다. 저장하지 않고 이동할까요?'); }
+
+/* ---------- 틀 ---------- */
+function shell() {
+  const c = S.info.course;
+  $('#app').innerHTML = `<header><div class="wrap" style="padding:0"><h1>${esc(c.강좌명)}</h1>
+    <p>${esc(c.지회명)} · ${esc(c.시작일)} ~ ${esc(c.종료일)} · 총 ${c.총회차}회${c.강사 ? ' · ' + esc(c.강사) + ' 강사님' : ''}${c.보조강사 ? ' · 보조 ' + esc(c.보조강사) : ''}</p></div></header>
+    <div class="wrap">
+      <div class="tabs" role="tablist">
+        <button role="tab" data-t="att" aria-selected="${S.tab === 'att'}">${c.인원만입력 ? '인원' : '출석'}</button>
+        <button role="tab" data-t="jr" aria-selected="${S.tab === 'jr'}">교육일지</button>
+        ${c.인원만입력 ? '' : `<button role="tab" data-t="tk" aria-selected="${S.tab === 'tk'}">과제</button>`}
+        ${c.수료집계 && !c.인원만입력 ? `<button role="tab" data-t="cp" aria-selected="${S.tab === 'cp'}">수료</button>` : ''}
+        ${c.확인서필요 ? `<button role="tab" data-t="cf" aria-selected="${S.tab === 'cf'}">확인서</button>` : ''}
+      </div>
+      ${S.info.locked ? `<div class="notice warn">${esc(S.info.lockedBy || '')} 보고가 제출되어 출석은 더 이상 고칠 수 없습니다. 교육일지와 과제는 계속 쓸 수 있습니다.</div>` : ''}
+      <div id="body"></div>
+      <p class="hint" style="margin-top:20px">이 링크는 ${esc(c.만료일)}까지 사용할 수 있습니다. 링크를 다른 사람에게 알려 주지 마세요.</p>
+    </div><div id="bar"></div>`;
+  document.querySelectorAll('[data-t]').forEach(b => b.onclick = async () => {
+    if (b.dataset.t === S.tab) return;
+    if (!confirmLeave()) return;
+    S.tab = b.dataset.t; S.dirty = false; shell(); render();
+  });
+}
+function render() {
+  $('#bar').innerHTML = '';
+  if (S.tab === 'att') renderAtt(); else if (S.tab === 'jr') renderJournal(); else if (S.tab === 'cf') renderConfirm(); else if (S.tab === 'cp') renderComplete(); else renderTasks();
+}
+function chips(total, sel, doneFn, attr) {
+  return '<div class="chips">' + Array.from({ length: total }, (_, i) => i + 1).map(n =>
+    `<button class="chip ${doneFn(n) ? 'done' : ''} ${n === sel ? 'sel' : ''}" ${attr}="${n}">${n}회${doneFn(n) ? ' ✓' : ''}</button>`).join('') + '</div>';
+}
+function savebar(label, id) { $('#bar').innerHTML = `<div class="savebar"><div class="in"><span class="hint" id="sbInfo" style="flex:1"></span><button class="btn primary" id="${id}">${label}</button></div></div>`; }
+
+/* ---------- 출석 ---------- */
+function heldSession(n) { const i = S.info; return i.dates[n] !== undefined || i.headcounts[n] !== undefined || i.participants.some(p => (i.attendance[p.참여자ID] || {})[n] !== undefined); }
+function loadDraft() {
+  const i = S.info, n = S.sess;
+  S.draft = new Set(i.participants.filter(p => (i.attendance[p.참여자ID] || {})[n] === 'O').map(p => p.참여자ID));
+  S.draftDate = i.dates[n] || i.today;
+  S.draftCount = i.headcounts[n] !== undefined ? String(i.headcounts[n]) : '';
+  S.dirty = false;
+}
+function pinfo(p) { return [p.성별, p.연락처, p.비고].filter(x => x).join(' · '); }
+function renderAtt() {
+  const i = S.info, c = i.course;
+  const body = $('#body');
+  const head = chips(c.총회차, S.sess, heldSession, 'data-s');
+  const dateIn = `<label class="f" for="dt">수업일</label><input type="date" id="dt" value="${esc(S.draftDate)}" ${i.locked ? 'disabled' : ''}>`;
+  if (c.인원만입력) {
+    body.innerHTML = `<div class="card"><b>회차 선택</b>${head}${dateIn}
+      <label class="f" for="hc">참석 인원 (명)</label><input type="number" inputmode="numeric" id="hc" min="0" max="10000" value="${esc(S.draftCount)}" ${i.locked ? 'disabled' : ''}></div>`;
+    $('#dt').onchange = e => { S.draftDate = e.target.value; S.dirty = true; };
+    $('#hc').oninput = e => { S.draftCount = e.target.value; S.dirty = true; };
+  } else {
+    body.innerHTML = `<div class="card"><b>회차 선택</b>${head}${dateIn}</div>
+      <div class="row" style="margin:6px 0 10px"><b>출석 체크 <span class="hint" id="cnt"></span></b><span class="spacer"></span>
+        <button class="btn small" id="allOn" ${i.locked ? 'disabled' : ''}>전체 출석</button> <button class="btn small" id="allOff" ${i.locked ? 'disabled' : ''}>전체 해제</button></div>
+      <div id="list">${i.participants.length ? i.participants.map(p => `<button class="person ${S.draft.has(p.참여자ID) ? 'on' : ''}" data-p="${esc(p.참여자ID)}" ${i.locked ? 'disabled' : ''}><span class="box">${S.draft.has(p.참여자ID) ? '✓' : ''}</span><span><b>${esc(p.이름)}</b>${pinfo(p) ? `<span class="hint" style="display:block">${esc(pinfo(p))}</span>` : ''}</span></button>`).join('')
+        : '<div class="notice info">등록된 수강생이 없습니다. 지회 담당자에게 명단 등록을 요청하세요.</div>'}</div>`;
+    const upd = () => { $('#cnt').textContent = `${S.draft.size}/${i.participants.length}명`; };
+    upd();
+    $('#dt').onchange = e => { S.draftDate = e.target.value; S.dirty = true; };
+    document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
+      const id = b.dataset.p; S.draft.has(id) ? S.draft.delete(id) : S.draft.add(id); S.dirty = true;
+      b.classList.toggle('on'); b.querySelector('.box').textContent = S.draft.has(id) ? '✓' : ''; upd();
+    });
+    $('#allOn').onclick = () => { i.participants.forEach(p => S.draft.add(p.참여자ID)); S.dirty = true; renderAtt(); };
+    $('#allOff').onclick = () => { S.draft.clear(); S.dirty = true; renderAtt(); };
+  }
+  document.querySelectorAll('[data-s]').forEach(b => b.onclick = () => { if (!confirmLeave()) return; S.sess = Number(b.dataset.s); loadDraft(); renderAtt(); });
+  if (!i.locked && (c.인원만입력 || i.participants.length)) {
+    savebar(`${S.sess}회차 저장`, 'save');
+    $('#save').onclick = () => act($('#save'), async () => {
+      S.info = c.인원만입력 ? await api('tSaveHeadcount', S.sess, S.draftCount, S.draftDate) : await api('tSaveAttendance', S.sess, [...S.draft], S.draftDate);
+      loadDraft(); renderAtt(); toast(`${S.sess}회차를 저장했습니다.`);
+    });
+  }
+}
+
+/* ---------- 교육일지 ---------- */
+/* 서명 칸: 화면에서 서명하거나, 비워 두고 인쇄 후 직접 서명. value(): 그대로면 undefined, 지움/비움이면 '', 새로 그리면 그림 */
+function sigArea(host, existing, onDraw) {
+  let cur = existing || '', pad = null;
+  const draw = () => {
+    if (cur) {
+      pad = null;
+      host.innerHTML = `<img src="${esc(cur)}" alt="저장된 서명" style="height:70px;max-width:100%;border:1px solid var(--line);border-radius:8px;background:#fff;display:block"><button type="button" class="btn small" data-sc style="margin-top:6px">서명 지우기</button>`;
+      host.querySelector('[data-sc]').onclick = () => { cur = ''; if (onDraw) onDraw(); draw(); };
+    } else {
+      host.innerHTML = '<div data-sb></div><button type="button" class="btn small" data-sx style="margin-top:6px">다시 쓰기</button>';
+      pad = sigPad(host.querySelector('[data-sb]'));
+      host.querySelector('canvas').addEventListener('pointerdown', () => { if (onDraw) onDraw(); });
+      host.querySelector('[data-sx]').onclick = () => pad.clear();
+    }
+  };
+  draw();
+  return { value() { if (cur) return undefined; return pad && !pad.empty() ? pad.png() : ''; } };
+}
+
+/* 사진: 화면에서 줄여서(긴 쪽 1000px, JPG) 올립니다 */
+async function photoDataUrl(file) {
+  if (!file || !/^image\//.test(file.type || 'image/')) throw new Error('사진 파일(JPG, PNG)만 올릴 수 있습니다.');
+  let img;
+  try { img = await new Promise((ok, no) => { const u = URL.createObjectURL(file), i = new Image(); i.onload = () => { URL.revokeObjectURL(u); ok(i); }; i.onerror = () => { URL.revokeObjectURL(u); no(); }; i.src = u; }); }
+  catch (e) { throw new Error('이 사진을 읽을 수 없습니다. JPG 또는 PNG 사진을 올려 주세요.'); }
+  const k = Math.min(1, 1000 / Math.max(img.naturalWidth, img.naturalHeight)), w = Math.round(img.naturalWidth * k), h = Math.round(img.naturalHeight * k);
+  const cv = document.createElement('canvas'); cv.width = w; cv.height = h;
+  const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, w, h); g.drawImage(img, 0, 0, w, h);
+  let q = 0.78, out = cv.toDataURL('image/jpeg', q);
+  while (out.length > 240000 && q > 0.35) { q -= 0.1; out = cv.toDataURL('image/jpeg', q); }
+  if (out.length > 240000) throw new Error('사진이 너무 큽니다. 더 작은 사진으로 올려 주세요.');
+  return out;
+}
+/* 회차 하나의 사진 칸 (보기·추가·삭제). api = { get(sn), add(sn,data), del(id) } */
+async function drawPhotos(sn, info, api, afterChange) {
+  const box = document.getElementById('jp' + sn); if (!box) return;
+  const ids = (info.sessions.find(x => x.회차 === sn) || {}).사진 || [];
+  let list = [];
+  if (ids.length) { box.innerHTML = '<span class="hint">사진 불러오는 중…</span>'; try { list = (await api.get(sn)).photos; } catch (e) { box.innerHTML = ''; return; } }
+  box.innerHTML = `<div style="display:flex;flex-wrap:wrap;gap:8px;align-items:flex-start">${list.map(p => `<div style="position:relative"><img src="${esc(p.사진)}" alt="수업 사진" style="width:92px;height:92px;object-fit:cover;border-radius:8px;border:1px solid var(--line)"><button type="button" data-pdel="${esc(p.사진ID)}" aria-label="사진 삭제" style="position:absolute;top:-6px;right:-6px;width:26px;height:26px;border-radius:50%;border:0;background:#b3261e;color:#fff;cursor:pointer">×</button></div>`).join('')}
+    ${list.length < 3 ? `<label class="btn small" style="cursor:pointer;align-self:center">+ 사진 추가<input type="file" accept="image/*" data-padd="${sn}" style="display:none"></label>` : ''}</div>`;
+  box.querySelectorAll('[data-pdel]').forEach(b => b.onclick = async () => {
+    if (!confirm('이 사진을 삭제할까요? 삭제하면 되돌릴 수 없습니다.')) return;
+    b.disabled = true;
+    try { afterChange(await api.del(b.dataset.pdel), sn); } catch (e) { toast(e.message, true); b.disabled = false; }
+  });
+  box.querySelectorAll('[data-padd]').forEach(inp => inp.onchange = async () => {
+    const f = inp.files[0]; if (!f) return;
+    const lab = inp.parentElement; lab.style.opacity = .5; lab.firstChild.textContent = '올리는 중…';
+    try { afterChange(await api.add(sn, await photoDataUrl(f)), sn); } catch (e) { toast(e.message, true); drawPhotos(sn, info, api, afterChange); }
+  });
+}
+
+async function renderJournal() {
+  const body = $('#body');
+  if (!S.journal) {
+    body.innerHTML = '<div class="center hint">불러오는 중…</div>';
+    try { S.journal = await api('tGetJournal'); } catch (e) { if (e.code === 'LINK') return showDead(e.message); toast(e.message, true); return; }
+    if (S.tab !== 'jr') return;
+  }
+  const j = S.journal, s = j.sessions[S.jsess - 1] || j.sessions[0];
+  body.innerHTML = `<div class="card"><b>회차 선택</b>${chips(j.sessions.length, s.회차, n => j.sessions[n - 1].작성, 'data-j')}
+    <label class="f" for="jd">수업일</label><input type="date" id="jd" value="${esc(s.수업일 || S.info.today)}">
+    <label class="f" for="jm">당일 참가 인원 (명)</label><input type="number" inputmode="numeric" id="jm" min="0" max="10000" value="${s.참가인원 !== '' && s.참가인원 != null ? esc(s.참가인원) : ''}" placeholder="${s.출석수 ? '출석 체크 ' + s.출석수 + '명 (비우면 자동)' : '예: 12'}">
+    <label class="f" for="jt">수업 주제</label><input id="jt" maxlength="100" value="${esc(s.주제)}" placeholder="예: 인사 표현 익히기">
+    <label class="f" for="jc">수업 내용</label><textarea id="jc" maxlength="3000" placeholder="진행한 내용, 수업 방식, 사용한 자료">${esc(s.내용)}</textarea>
+    <label class="f" for="jh">내준 과제</label><textarea id="jh" maxlength="1000" style="min-height:70px">${esc(s.과제)}</textarea>
+    <label class="f" for="jn">특이사항</label><textarea id="jn" maxlength="1000" style="min-height:70px" placeholder="학습 분위기, 다음 수업 준비사항 등">${esc(s.특이사항)}</textarea>
+    <label class="f" for="jw">작성자</label><input id="jw" maxlength="30" value="${esc(s.작성자 || j.기본작성자 || '')}">
+    <label class="f">작성자 서명 (선택)</label><div id="js"></div>
+    <p class="hint">화면에서 서명하거나, 비워 두고 인쇄한 뒤 직접 서명하세요. 작성일은 수업일이 자동으로 들어갑니다.</p>
+    <label class="f">사진 (선택, 최대 3장)</label><div id="jp${s.회차}"></div>
+    ${j.course.삭제예정일 ? `<p class="hint">사진·서명은 용량 때문에 ${esc(j.course.삭제예정일)}에 자동 삭제됩니다. (글은 남습니다.)</p>` : ''}
+    <p class="hint">수강생 이름 같은 개인정보는 적지 마세요.${s.작성 ? ' · 마지막 저장 ' + esc(s.수정일시) : ''}</p></div>`;
+  body.oninput = () => { S.dirty = true; };
+  document.querySelectorAll('[data-j]').forEach(b => b.onclick = () => { if (!confirmLeave()) return; S.jsess = Number(b.dataset.j); S.dirty = false; renderJournal(); });
+  const sg = sigArea($('#js'), s.서명, () => { S.dirty = true; });
+  const papi = { get: n => api('tGetJournalPhotos', n), add: (n, d) => api('tAddJournalPhoto', n, d), del: id => api('tDeleteJournalPhoto', id) };
+  const after = (ni, n) => { S.journal = ni; drawPhotos(n, ni, papi, after); };
+  drawPhotos(s.회차, j, papi, after);
+  savebar(`${s.회차}회차 일지 저장`, 'save');
+  $('#save').onclick = () => act($('#save'), async () => {
+    S.journal = await api('tSaveJournal', s.회차, { 수업일: $('#jd').value, 주제: $('#jt').value, 내용: $('#jc').value, 과제: $('#jh').value, 특이사항: $('#jn').value, 작성자: $('#jw').value, 작성자서명: sg.value(), 참가인원: $('#jm').value });
+    S.dirty = false; renderJournal(); toast(`${s.회차}회차 교육일지를 저장했습니다.`);
+  });
+}
+
+/* ---------- 수료 (점수 기록·수료 판정) ---------- */
+const SC_KEYS = ['출석', '발표', '과제', '중간시험', '기말시험', '기타'];
+function scoreOf(p, k) { const v = (p.점수 || {})[k]; return v === undefined || v === null ? '' : v; }
+async function renderComplete() {
+  const body = $('#body'), i = S.info, c = i.course, w = c.수료배점;
+  const label = k => k === '기타' && c.기타항목명 ? c.기타항목명 : k;
+  const total = c.총회차;
+  const rows = i.participants.map(p => {
+    const chk = String(p.수료확정 || ''), on = !!p.수료;
+    const state = chk === 'Y' ? '수료(확정)' : chk === 'N' ? '미수료(확정)' : on ? '수료 가능' : '수료 기준 미달';
+    const cls = on || chk === 'Y' ? (chk === 'N' ? 'warn' : 'info') : 'warn';
+    const inputs = w ? Object.keys(w).filter(k => k !== '출석').map(k => `<label class="hint" style="display:block;margin-top:6px">${esc(label(k))} (${w[k]}%) 점수 0~100<input type="number" inputmode="decimal" min="0" max="100" data-sc="${esc(p.참여자ID)}" data-k="${esc(k)}" value="${esc(scoreOf(p, k))}" ${i.locked ? 'disabled' : ''}></label>`).join('') : '';
+    return `<div class="card" data-card="${esc(p.참여자ID)}"><div class="row"><b>${esc(p.이름)}</b><span class="hint">${esc(pinfo(p))}</span><span class="spacer"></span><span class="badge" style="${cls === 'warn' ? 'background:var(--amber-soft);color:var(--amber)' : ''}">${state}</span></div>
+      <div class="hint" style="margin-top:4px">출석 ${p.출석횟수 || 0}/${total}회${w ? (w['출석'] ? ` (출석 ${w['출석']}%는 자동 계산)` : '') + ' · 총점 <b>' + (p.총점 == null ? 0 : p.총점) + '</b> / 기준 ' + c.수료기준 + '점' : ' · 수료 기준 출석률 ' + c.수료기준 + '%'}</div>
+      ${inputs}
+      <label class="hint" style="display:block;margin-top:8px">수료 여부<select data-cf="${esc(p.참여자ID)}"><option value="" ${chk === '' ? 'selected' : ''}>기준에 따라 자동${w ? '' : ''}</option><option value="Y" ${chk === 'Y' ? 'selected' : ''}>수료로 확정</option><option value="N" ${chk === 'N' ? 'selected' : ''}>미수료로 확정</option></select></label>
+      ${w && Object.keys(w).some(k => k !== '출석') ? `<div class="row" style="margin-top:8px"><span class="spacer"></span><button class="btn small primary" data-ssave="${esc(p.참여자ID)}" ${i.locked ? 'disabled' : ''}>점수 저장</button></div>` : ''}</div>`;
+  }).join('');
+  body.innerHTML = `<div class="notice info">${w ? `항목별 점수를 적으면 총점으로 수료 가능 여부가 계산됩니다. (기준 ${c.수료기준}점 이상)` : `출석률 ${c.수료기준}% 이상이면 수료 가능입니다.`} 최종 수료/미수료는 직접 고를 수 있습니다.</div>${rows || '<div class="notice info">등록된 수강생이 없습니다.</div>'}`;
+  document.querySelectorAll('[data-ssave]').forEach(b => b.onclick = () => act(b, async () => {
+    const pid = b.dataset.ssave, sc = {};
+    document.querySelectorAll(`[data-sc="${pid}"]`).forEach(x => { sc[x.dataset.k] = x.value; });
+    S.info = await api('tSaveScores', pid, sc); renderComplete(); toast('점수를 저장했습니다.');
+  }));
+  document.querySelectorAll('[data-cf]').forEach(sel => sel.onchange = () => act(sel, async () => {
+    S.info = await api('tSetCompletion', sel.dataset.cf, sel.value); renderComplete(); toast('수료 여부를 저장했습니다.');
+  }));
+}
+
+/* ---------- 과제 ---------- */
+async function renderTasks() {
+  const body = $('#body');
+  if (!S.tasks) {
+    body.innerHTML = '<div class="center hint">불러오는 중…</div>';
+    try { S.tasks = await api('tGetTasks'); } catch (e) { if (e.code === 'LINK') return showDead(e.message); toast(e.message, true); return; }
+    if (S.tab !== 'tk') return;
+  }
+  const t = S.tasks, ed = S.edit, sub = {};
+  Object.keys(t.submits).forEach(k => { sub[k] = new Set(t.submits[k]); });
+  const opts = '<option value="">회차 지정 안 함</option>' + Array.from({ length: t.course.총회차 }, (_, i) => `<option value="${i + 1}" ${ed && String(ed.회차) === String(i + 1) ? 'selected' : ''}>${i + 1}회차</option>`).join('');
+  body.innerHTML = `<div class="card"><b>${ed ? '과제 수정' : '과제 추가'}</b>
+      <label class="f" for="kn">과제 이름</label><input id="kn" maxlength="60" value="${esc(ed ? ed.과제명 : '')}" placeholder="예: 자기소개 영상 제출">
+      <label class="f" for="ks">회차</label><select id="ks">${opts}</select>
+      <label class="f" for="kd">마감일</label><input type="date" id="kd" value="${esc(ed ? ed.마감일 : '')}">
+      <div class="row" style="margin-top:12px"><span class="spacer"></span>${ed ? '<button class="btn" id="kc">취소</button>' : ''}<button class="btn primary" id="ksave">${ed ? '수정 저장' : '과제 추가'}</button></div></div>
+    ${t.tasks.length ? t.tasks.map(k => `<div class="card"><div class="row"><div><b>${esc(k.과제명)}</b><div class="hint">${k.회차 ? k.회차 + '회차 · ' : ''}${k.마감일 ? '마감 ' + esc(k.마감일) : '마감 없음'} · <span data-kc="${esc(k.과제ID)}">${(t.submits[k.과제ID] || []).length}/${t.people.length}</span> 제출</div></div><span class="spacer"></span>
+        <button class="btn small" data-ke="${esc(k.과제ID)}">수정</button></div>
+        <div style="margin-top:10px">${t.people.map(p => `<button class="person ${sub[k.과제ID] && sub[k.과제ID].has(p.참여자ID) ? 'on' : ''}" data-tk="${esc(k.과제ID)}" data-pid="${esc(p.참여자ID)}"><span class="box">${sub[k.과제ID] && sub[k.과제ID].has(p.참여자ID) ? '✓' : ''}</span><span>${esc(p.이름)}</span></button>`).join('')}</div></div>`).join('')
+      : '<div class="notice info">이 강좌에 과제가 없으면 그대로 두세요. 과제가 있으면 위에서 추가하고, 제출한 수강생을 눌러 체크합니다.</div>'}`;
+  $('#ksave').onclick = () => act($('#ksave'), async () => {
+    S.tasks = await api('tSaveTask', { 과제ID: ed ? ed.과제ID : '', 과제명: $('#kn').value, 회차: $('#ks').value, 마감일: $('#kd').value, 설명: ed ? ed.설명 : '' });
+    S.edit = null; renderTasks(); toast(ed ? '과제를 수정했습니다.' : '과제를 추가했습니다.');
+  });
+  if (ed) $('#kc').onclick = () => { S.edit = null; renderTasks(); };
+  document.querySelectorAll('[data-ke]').forEach(b => b.onclick = () => { S.edit = t.tasks.find(k => k.과제ID === b.dataset.ke); renderTasks(); window.scrollTo(0, 0); });
+  document.querySelectorAll('[data-tk]').forEach(b => b.onclick = async () => {
+    const tid = b.dataset.tk, pid = b.dataset.pid, on = !b.classList.contains('on');
+    b.disabled = true;
+    try {
+      await api('tSetSubmit', tid, pid, on);
+      const set = new Set(t.submits[tid] || []); on ? set.add(pid) : set.delete(pid); t.submits[tid] = [...set];
+      b.classList.toggle('on', on); b.querySelector('.box').textContent = on ? '✓' : '';
+      const c = document.querySelector(`[data-kc="${tid}"]`); if (c) c.textContent = `${t.submits[tid].length}/${t.people.length}`;
+    } catch (e) { if (e.code === 'LINK') showDead(e.message); else toast(e.message, true); }
+    finally { b.disabled = false; }
+  });
+}
+
+/* ---------- 강의확인서 ---------- */
+function sessionInfo(n) {
+  const i = S.info, p = i.participants;
+  const date = i.dates[n] || '';
+  let cnt = '';
+  if (i.course.인원만입력) { if (i.headcounts[n] !== undefined) cnt = i.headcounts[n]; }
+  else if (heldSession(n)) cnt = p.filter(x => (i.attendance[x.참여자ID] || {})[n] === 'O').length;
+  return { date: date, cnt: cnt };
+}
+function sigPad(host) {
+  host.innerHTML = '<canvas class="sig"></canvas>';
+  const cv = host.firstChild, W = 480, H = 160;
+  cv.width = W; cv.height = H;
+  const g = cv.getContext('2d'); g.lineWidth = 3.2; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#111';
+  let down = false, drawn = false, last = null;
+  const pos = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; };
+  cv.addEventListener('pointerdown', e => { e.preventDefault(); down = true; last = pos(e); cv.setPointerCapture(e.pointerId); g.beginPath(); g.moveTo(last.x, last.y); g.lineTo(last.x + .1, last.y + .1); g.stroke(); drawn = true; });
+  cv.addEventListener('pointermove', e => { if (!down) return; e.preventDefault(); const p = pos(e); g.beginPath(); g.moveTo(last.x, last.y); g.lineTo(p.x, p.y); g.stroke(); last = p; });
+  const up = () => { down = false; };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  return { clear() { g.clearRect(0, 0, W, H); drawn = false; }, empty() { return !drawn; }, png() { return cv.toDataURL('image/png'); } };
+}
+async function renderConfirm() {
+  const body = $('#body'), i = S.info, c = i.course;
+  if (!S.cf) {
+    body.innerHTML = '<div class="center hint">불러오는 중…</div>';
+    try {
+      S.cf = await api('tGetConfirm');
+      if (!S.cf.내용.some(x => x)) {   // 처음이면 교육일지의 수업 주제로 미리 채움
+        try { const j = await api('tGetJournal'); S.cf.내용 = S.cf.내용.map((x, k) => x || ((j.sessions[k] || {}).주제 || '')); } catch (e) { if (e.code === 'LINK') throw e; }
+      }
+    } catch (e) { S.cf = null; if (e.code === 'LINK') return showDead(e.message); toast(e.message, true); return; }
+    if (S.tab !== 'cf') return;
+  }
+  const d = S.cf, signed = !!(d.강사서명 || d.기관서명), total = c.총회차;
+  const rows = Array.from({ length: total }, (_, k) => { const n = k + 1, s = sessionInfo(n); return `<tr><td style="text-align:center;white-space:nowrap">${n}회</td><td style="white-space:nowrap">${esc(s.date) || '<span class="hint">-</span>'}</td><td style="text-align:center">${esc(s.cnt)}</td>
+    <td>${signed ? esc(d.내용[k]).replace(/\n/g, '<br>') : `<textarea data-c="${k}" maxlength="200" rows="2" placeholder="예: 인사 표현 익히기">${esc(d.내용[k])}</textarea>`}</td></tr>`; }).join('');
+  const sigCard = (who, img, at, extra) => `<div class="card"><b>${who} 서명</b>${img ? `<img class="sigimg" src="${esc(img)}" alt="${who} 서명"><div class="hint">${extra ? esc(extra) + ' · ' : ''}${esc(at)}</div><span class="badge">서명 완료</span>` : `<div id="pad-${who === '강사' ? 'a' : 'b'}"></div><div class="row" style="margin-top:8px"><button class="btn small" data-clr="${who}">지우기</button><span class="spacer"></span><button class="btn primary" data-sign="${who}">${who} 서명 저장</button></div>`}</div>`;
+  body.innerHTML = `<div class="notice info">회차별 교육내용을 적고 저장한 뒤, 강사님과 기관 담당자가 차례로 서명합니다. 서명이 끝나면 내용은 고칠 수 없고, 지회 담당자가 인쇄합니다.</div>
+    <div class="card" style="padding:8px"><table class="cf"><tr><th style="width:42px">회차</th><th style="width:84px">수업일</th><th style="width:44px">인원</th><th>교육내용</th></tr>${rows}</table>
+    ${signed ? '' : '<div class="row" style="margin-top:10px"><span class="spacer"></span><button class="btn primary" id="cfSave">교육내용 저장</button></div>'}</div>
+    ${sigCard('강사', d.강사서명, d.강사서명일시, c.강사 || '')}
+    <div class="card"><b>기관 담당자 서명</b>${d.기관서명 ? `<img class="sigimg" src="${esc(d.기관서명)}" alt="기관 담당자 서명"><div class="hint">${esc(d.기관소속)} ${esc(d.기관담당자)} · ${esc(d.기관서명일시)}</div><span class="badge">서명 완료</span>` : `
+      <p class="hint" style="margin-top:4px">기관 담당자에게 휴대폰을 건네 직접 서명해 달라고 요청하세요.</p>
+      <label class="f" for="cfOrg">소속·직위</label><input id="cfOrg" maxlength="60" placeholder="예: ${esc(c.기관명 || '○○초등학교')} 교무부장">
+      <label class="f" for="cfNm">성명</label><input id="cfNm" maxlength="30">
+      <div id="pad-b" style="margin-top:10px"></div><div class="row" style="margin-top:8px"><button class="btn small" data-clr="기관">지우기</button><span class="spacer"></span><button class="btn primary" data-sign="기관">기관 담당자 서명 저장</button></div>`}</div>
+    ${d.완료 ? '<div class="notice info"><b>확인서가 완성되었습니다.</b> 지회 담당자가 강좌 화면에서 인쇄할 수 있습니다.</div>' : ''}
+    ${signed ? '<div class="card"><p class="hint" style="margin-top:0">내용이나 서명을 고쳐야 하면 서명을 모두 지우고 다시 시작해야 합니다.</p><button class="btn" id="cfReset">서명 지우고 내용 고치기</button></div>' : ''}`;
+  body.oninput = e => { if (e.target.matches && e.target.matches('[data-c]')) S.dirty = true; };
+  const pads = {};
+  if (!d.강사서명) pads['강사'] = sigPad($('#pad-a'));
+  if (!d.기관서명) pads['기관'] = sigPad($('#pad-b'));
+  const readContents = () => [...document.querySelectorAll('[data-c]')].map(t => t.value);
+  document.querySelectorAll('[data-clr]').forEach(b => b.onclick = () => pads[b.dataset.clr] && pads[b.dataset.clr].clear());
+  if ($('#cfSave')) $('#cfSave').onclick = () => act($('#cfSave'), async () => { S.cf = await api('tSaveConfirm', readContents()); S.dirty = false; renderConfirm(); toast('교육내용을 저장했습니다.'); });
+  document.querySelectorAll('[data-sign]').forEach(b => b.onclick = () => act(b, async () => {
+    const who = b.dataset.sign, pad = pads[who];
+    if (S.dirty) throw new Error('교육내용을 먼저 저장해 주세요.');
+    if (!d.내용.some(x => x)) throw new Error('교육내용을 먼저 적고 저장해 주세요.');
+    if (pad.empty()) throw new Error('서명란에 서명해 주세요.');
+    const info = { png: pad.png() };
+    if (who === '기관') { info.org = $('#cfOrg').value; info.name = $('#cfNm').value; if (!info.name.trim()) throw new Error('기관 담당자 성명을 입력해 주세요.'); }
+    if (!confirm(`${who === '강사' ? '강사' : '기관 담당자'} 서명을 저장할까요? 서명 후에는 교육내용을 고칠 수 없습니다.`)) return;
+    S.cf = await api('tSignConfirm', who, info); S.dirty = false; renderConfirm(); toast('서명을 저장했습니다.');
+  }));
+  if ($('#cfReset')) $('#cfReset').onclick = () => act($('#cfReset'), async () => { if (!confirm('두 서명을 모두 지우고 내용을 고칠 수 있게 할까요?')) return; S.cf = await api('tResetConfirm'); renderConfirm(); toast('서명을 지웠습니다.'); });
+}
+
+/* ---------- 시작 ---------- */
+(async function () {
+  if (!/^[0-9a-f]{40}$/.test(TOKEN)) return showDead('링크 주소가 올바르지 않습니다. 받은 링크 전체를 다시 열어 주세요.');
+  try { S.info = await api('tInfo'); } catch (e) { return showDead(e.message); }
+  const i = S.info;
+  S.sess = (Array.from({ length: i.course.총회차 }, (_, k) => k + 1).find(n => !heldSession(n))) || i.course.총회차;
+  loadDraft(); shell(); render();
+})();
+</script>
+</body>
+</html>

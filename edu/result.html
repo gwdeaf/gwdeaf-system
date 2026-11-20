@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>만족도 결과</title>
+<style>
+:root { --pine:#1f4d3a; --pine-soft:#e6f0ea; --bg:#f4f7f5; --ink:#1b2b24; --muted:#5d6b64; --line:#d5ded9; --red:#b3261e; --red-soft:#fbe9e7; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+.wrap { max-width:560px; margin:0 auto; padding:0 16px 48px; }
+header { background:var(--pine); color:#fff; padding:16px; }
+header h1 { margin:0; font-size:20px; } header p { margin:2px 0 0; font-size:13px; opacity:.85; }
+.card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px; margin-top:14px; }
+.btn { width:100%; margin-top:16px; border:0; background:var(--pine); color:#fff; padding:14px; border-radius:10px; font:inherit; font-weight:700; font-size:17px; cursor:pointer; }
+.btn:disabled { opacity:.5; }
+.hint { color:var(--muted); font-size:13px; }
+.err { background:var(--red-soft); color:var(--red); border-radius:10px; padding:10px 12px; margin-top:12px; font-size:14px; }
+.center { text-align:center; padding:56px 20px; }
+.hp { position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
+textarea { width:100%; min-height:90px; padding:12px; border:1.5px solid var(--line); border-radius:10px; font:inherit; }
+.stat span { color:var(--muted); font-size:13px; }
+.num { font-variant-numeric:tabular-nums; }
+.btn2 { border:1.5px solid var(--pine); background:#fff; color:var(--pine); padding:10px 16px; border-radius:10px; font:inherit; font-weight:700; cursor:pointer; }
+@media print { body { background:#fff; } .noprint { display:none !important; } .card { border:0; padding:0; } }
+</style>
+</head>
+<body>
+<div id="app"><div class="center hint">불러오는 중…</div></div>
+<script>
+const TOKEN = location.pathname.split('/').filter(Boolean).pop() || '';
+const $ = s => document.querySelector(s);
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+async function api(fn, ...args) {
+  let res;
+  try { res = await (await fetch('/api/call', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fn: fn, args: [TOKEN, ...args] }) })).json(); }
+  catch (e) { throw new Error('서버에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.'); }
+  if (!res || !res.ok) { const e = new Error((res && res.error) || '처리하지 못했습니다.'); e.code = res && res.code; throw e; }
+  return res.data;
+}
+function dead(msg) { $('#app').innerHTML = `<div class="center"><h2>볼 수 없는 링크입니다</h2><p>${esc(msg)}</p></div>`; }
+const SCALE_COLORS = ['#d3e6dc', '#a4cbb5', '#6fae8b', '#3f8a64', '#1f4d3a'];   // 1점(연함) → 5점(진함): 한 가지 색의 명도 단계
+function surveyChartHtml(R) {
+  if (!R || !R.응답수) return '<p class="hint">아직 응답이 없습니다.</p>';
+  const legend = `<div style="display:flex;gap:12px;flex-wrap:wrap;font-size:13px;margin:6px 0 12px">${[1, 2, 3, 4, 5].map(i => `<span style="display:inline-flex;align-items:center;gap:5px"><i style="width:12px;height:12px;border-radius:3px;background:${SCALE_COLORS[i - 1]};display:inline-block"></i>${i}점</span>`).join('')}</div>`;
+  const txtQ = (q, i) => `<div style="margin:0 0 14px"><div style="font-size:14px">${i + 1}. ${esc(q.문항)} <span class="hint">(글 답변 ${q.답변.length})</span></div>${q.답변.length ? `<ul style="margin:4px 0 0;padding-left:18px">${q.답변.map(t => `<li style="white-space:pre-wrap;margin:3px 0">${esc(t)}</li>`).join('')}</ul>` : '<p class="hint" style="margin:2px 0 0">답변 없음</p>'}</div>`;
+  const bars = R.문항.map((q, i) => q.유형 === '글' ? txtQ(q, i) : `<div style="margin:0 0 14px"><div style="display:flex;gap:8px;font-size:14px"><span>${i + 1}. ${esc(q.문항)}</span><span style="flex:1"></span><b class="num">평균 ${q.평균.toFixed(2)}</b></div>
+    <div style="display:flex;height:26px;border-radius:6px;overflow:hidden;gap:2px;margin-top:4px" role="img" aria-label="${esc(q.문항)} 점수 분포 ${q.분포.map((c, j) => (j + 1) + '점 ' + c + '명').join(', ')}">${q.분포.map((c, j) => c ? `<div title="${j + 1}점 ${c}명" style="flex:${c};background:${SCALE_COLORS[j]};color:${j >= 3 ? '#fff' : '#1b2b24'};font-size:12px;display:grid;place-items:center;min-width:18px">${c}</div>` : '').join('')}</div></div>`).join('');
+  return `<div class="num" style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:10px"><div class="stat"><b style="font-size:26px;display:block">${R.응답수}</b><span>응답 수</span></div><div class="stat"><b style="font-size:26px;display:block">${R.전체평균.toFixed(2)}<small style="font-size:15px;color:var(--muted)"> / 5</small></b><span>전체 평균</span></div></div>
+    <div class="hint" style="margin:0">막대는 점수별 응답 인원입니다.</div>${legend}${bars}
+    ${R.의견.length ? `<h4 style="margin:16px 0 6px">의견 (${R.의견.length})</h4><ul style="margin:0;padding-left:18px">${R.의견.map(t => `<li style="white-space:pre-wrap;margin:4px 0">${esc(t)}</li>`).join('')}</ul>` : ''}`;
+}
+(async () => {
+  let d;
+  try { d = await api('resultInfo'); } catch (e) { return dead(e.message); }
+  const period = d.시작일 && d.종료일 ? `${d.시작일} ~ ${d.종료일}` : '';
+  $('#app').innerHTML = `<header><div class="wrap" style="padding:0"><h1>${esc(d.강좌명)}</h1><p>${esc(d.지회명)} · 만족도 조사 결과${period ? ' · ' + esc(period) : ''}${d.강사 ? ' · ' + esc(d.강사) + ' 강사님' : ''}</p></div></header>
+  <div class="wrap"><div class="card">${surveyChartHtml(d.결과)}</div>
+  <button class="btn2 noprint" id="pr" style="margin-top:14px">인쇄 / PDF 저장</button>
+  <p class="hint noprint">읽기 전용 화면입니다. 응답자 정보는 없습니다.</p></div>`;
+  $('#pr').onclick = () => window.print();
+})();
+</script>
+</body>
+</html>

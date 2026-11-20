@@ -1,0 +1,32 @@
+'use strict';
+process.env.ENCRYPTION_KEY = 'test-key-test-key-test-key-1234567890';
+const http = require('http'), fs = require('fs'), path = require('path');
+const { handle, makeContext, Host } = require('../lib/runtime');
+const { MemoryDb } = require('../lib/db_memory');
+const { chromium } = require('playwright');
+let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) pass++; else { fail++; console.log('FAIL', n, x === undefined ? '' : String(x).slice(0, 300)); } };
+(async () => {
+  const ctx0 = makeContext(new Host()), S = ctx0.__x.SHEETS, H = ctx0.makeHash_, db = new MemoryDb(S);
+  await db.applyOps([{ k: 'insert', t: '회원정보', v: [{ 아이디: 'cc', 비밀번호: H('ccpw1234'), 지회명: '춘천시지회', 담당자: 'cc', 권한: '지회', 사용여부: 'Y', 최근접속: '', 인쇄설정: '' }] }]);
+  const call = (fn, ...a) => handle(db, { fn, args: a });
+  const cc = (await call('login', 'cc', 'ccpw1234')).data;
+  await call('saveCourse', cc.token, { 지회명: '춘천시지회', 강좌명: '초급 1기', 시작일: '2026-11-01', 종료일: '2026-12-31', 총회차: 2, 회당시간: 2, 수준: '초급', 교육구분: '내부', 주관: '지회', 수료기준: 50 });
+  const srv = http.createServer(async (q, s) => { if (q.method === 'POST') { let b = ''; for await (const c of q) b += c; s.setHeader('Content-Type', 'application/json'); return s.end(JSON.stringify(await handle(db, JSON.parse(b)))); } if (q.url === '/qrcode.js') { s.setHeader('Content-Type', 'text/javascript'); return s.end(fs.readFileSync(path.join(__dirname, '../public/qrcode.js'))); } s.setHeader('Content-Type', 'text/html; charset=utf-8'); s.end(fs.readFileSync(path.join(__dirname, '../public/index.html'))); }).listen(0);
+  const br = await chromium.launch(), errs = [];
+  const cx = await br.newContext({ viewport: { width: 1200, height: 900 } }); await cx.addInitScript(() => { window.__helpTest = true; }); const pg = await cx.newPage(); pg.on('pageerror', e => errs.push(e.message));
+  await pg.goto('http://127.0.0.1:' + srv.address().port + '/'); await pg.fill('#lid', 'cc'); await pg.fill('#lpw', 'ccpw1234'); await pg.click('#lbtn'); await pg.waitForSelector('.course');
+  await pg.waitForSelector('#helpDlg[open]'); ok('처음 입장하면 사용설명서가 먼저 열림', (await pg.textContent('#helpList details[open] summary')).includes('처음 시작하기'));
+  ok('새 기능이라는 제목 없음', !(await pg.textContent('#helpList')).includes('새 기능'));
+  { const all = await pg.textContent('#helpList'); await pg.fill('#helpQ', ''); const t = await pg.textContent('#helpList'); ok('지회 설명서: 도협회 전용 항목·문장 없음', !t.includes('도협회: 파견 교육 요청 보내기') && !t.includes('도협회: 보고 확인') && !t.includes('보고 현황') && !t.includes('도협회는 지회 강좌의 일지'), t.length); ok('지회 설명서: 반기·연간 대신 분기별', !t.includes('반기·연간') && t.includes('분기별')); }
+  await pg.click('#helpClose'); await pg.reload(); await pg.waitForSelector('.course'); await pg.waitForTimeout(900); ok('다시 들어오면 자동으로 안 열림', !(await pg.$('#helpDlg[open]')));
+  await pg.click('#helpBtn'); await pg.fill('#helpQ', '통계'); await pg.click('#helpList a[data-go=stats]');
+  await pg.waitForTimeout(400); ok('통계로 이동', (await pg.getAttribute('[data-tab=report]', 'aria-current')) === 'page' && (await pg.getAttribute('[data-sw=stats]', 'aria-selected')) === 'true' && !(await pg.$eval('#helpDlg', d => d.open)));
+  await pg.click('[data-tab=courses]'); await pg.waitForSelector('.course');
+  await pg.click('#helpBtn'); await pg.fill('#helpQ', '수료증 발급'); await pg.click('#helpList a[data-ct=cert]');
+  await pg.waitForTimeout(300); ok('강좌 없이 누르면 안내', (await pg.textContent('body')).includes('강좌를 먼저 열어'));
+  await pg.click('#helpClose'); await pg.click('.course'); await pg.waitForSelector('[data-cts~=cert]');
+  await pg.click('#helpBtn'); await pg.fill('#helpQ', '수료증 발급'); await pg.click('#helpList a[data-ct=cert]');
+  await pg.waitForSelector('.subtabs [data-ct=cert][aria-selected=true]'); ok('강좌 안에서 수료증 탭으로 이동', true);
+  ok('에러 없음', errs.length === 0, errs.join('|'));
+  console.log('도움말 링크 통과', pass, '/ 실패', fail); await br.close(); srv.close(); process.exit(fail ? 1 : 0);
+})();

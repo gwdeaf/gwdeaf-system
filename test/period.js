@@ -1,0 +1,34 @@
+'use strict';
+process.env.ENCRYPTION_KEY = 'test-key-test-key-test-key-1234567890';
+const { handle, makeContext, Host } = require('../lib/runtime');
+const { MemoryDb } = require('../lib/db_memory');
+let pass = 0, fail = 0; const ok = (n, c, x) => { if (c) pass++; else { fail++; console.log('FAIL', n, x === undefined ? '' : JSON.stringify(x).slice(0, 300)); } };
+(async () => {
+  const ctx0 = makeContext(new Host()), S = ctx0.__x.SHEETS, H = ctx0.makeHash_, db = new MemoryDb(S);
+  const mem = (id, pw, ch, role) => ({ 아이디: id, 비밀번호: H(pw), 지회명: ch, 담당자: id, 권한: role, 사용여부: 'Y', 최근접속: '', 인쇄설정: '' });
+  await db.applyOps([{ k: 'insert', t: '회원정보', v: [mem('admin', 'adminpw1', '도협회', '도협회'), mem('cc', 'ccpw1234', '춘천시지회', '지회')] }]);
+  const call = (fn, ...a) => handle(db, { fn, args: a });
+  const adm = (await call('login', 'admin', 'adminpw1')).data, cc = (await call('login', 'cc', 'ccpw1234')).data;
+  const mk = async (name, start, end) => (await call('saveCourse', cc.token, { 지회명: '춘천시지회', 강좌명: name, 시작일: start, 종료일: end, 총회차: 1, 회당시간: 1, 수준: '초급', 교육구분: '내부', 주관: '지회', 수료기준: 50 })).data.course.강좌ID;
+  const a = await mk('1월반', '2027-01-10', '2027-01-30'), b = await mk('5월반', '2027-05-10', '2027-05-30'), c = await mk('8월반', '2027-08-10', '2027-08-30'), d = await mk('11월반', '2027-11-10', '2027-11-30');
+  let r;
+  for (const [id, n] of [[a, '가'], [b, '나'], [c, '다'], [d, '라']]) { r = await call('addParticipants', cc.token, id, [{ 이름: n }]); const pid = r.data.detail.participants[0].참여자ID; await call('saveAttendance', cc.token, id, 1, [pid], ''); }
+  r = await call('getReportStatus', cc.token, 2027, '1분기'); ok('1분기=1강좌', r.ok && r.data.rows[0].수치.강좌수 === 1, r);
+  r = await call('getReportStatus', cc.token, 2027, '상반기'); ok('상반기(누계)=2강좌', r.data.rows[0].수치.강좌수 === 2, r.data);
+  r = await call('getReportStatus', cc.token, 2027, '3분기'); ok('3분기(누계)=3강좌', r.data.rows[0].수치.강좌수 === 3);
+  r = await call('getReportStatus', cc.token, 2027, '연간'); ok('연간=4강좌', r.data.rows[0].수치.강좌수 === 4);
+  r = await call('getReportStatus', cc.token, 2027, '하반기'); ok('하반기는 더 이상 보고 단위 아님', !r.ok, r);
+  r = await call('getReportDetail', cc.token, '', 2027, '연간'); ok('연간 분기별 1/1/1/1', r.ok && ['1분기', '2분기', '3분기', '4분기'].every(k => r.data.분기별[k].강좌수 === 1), r.data && r.data.분기별);
+  r = await call('submitReport', cc.token, 2027, '1분기', '춘천시지회'); ok('1분기 제출', r.ok, r);
+  r = await call('saveAttendance', cc.token, a, 1, [], ''); ok('1월 강좌 잠김', !r.ok, r);
+  r = await call('saveAttendance', cc.token, b, 1, [], ''); ok('5월 강좌는 수정 가능', r.ok, r);
+  r = await call('mk', 1); r = await call('saveCourse', cc.token, { 지회명: '춘천시지회', 강좌명: '2월 새 강좌', 시작일: '2027-02-10', 종료일: '2027-02-20', 총회차: 1, 회당시간: 1, 수준: '초급', 교육구분: '내부', 주관: '지회', 수료기준: 50 }); ok('1분기 제출 후 2월 신규 등록 잠김', !r.ok, r);
+  r = await call('saveCourse', cc.token, { 지회명: '춘천시지회', 강좌명: '4월 새 강좌', 시작일: '2027-04-10', 종료일: '2027-04-20', 총회차: 1, 회당시간: 1, 수준: '초급', 교육구분: '내부', 주관: '지회', 수료기준: 50 }); ok('4월 신규는 가능', r.ok, r);
+  r = await call('submitReport', cc.token, 2027, '상반기', '춘천시지회'); ok('상반기 제출', r.ok);
+  r = await call('saveAttendance', cc.token, b, 1, [], ''); ok('상반기 제출 후 5월 강좌 잠김', !r.ok);
+  r = await call('saveAttendance', cc.token, c, 1, [], ''); ok('8월 강좌는 아직 수정 가능', r.ok);
+  r = await call('rejectReport', adm.token, '춘천시지회', 2027, '1분기', '재확인'); ok('1분기 반려', r.ok, r);
+  r = await call('saveAttendance', cc.token, a, 1, [], ''); ok('상반기가 아직 제출 상태면 1월 강좌 여전히 잠김', !r.ok);
+  r = await call('getInitData', cc.token); console.log(r.ok ? '' : '', 'init', r.ok);
+  console.log('보고기간 통과', pass, '/ 실패', fail); process.exit(fail ? 1 : 0);
+})();

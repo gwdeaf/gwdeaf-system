@@ -1,0 +1,62 @@
+{
+  "regions": [
+    "icn1"
+  ],
+  "functions": {
+    "api/*.js": {
+      "maxDuration": 30
+    }
+  },
+  "crons": [
+    {
+      "path": "/api/keepalive",
+      "schedule": "0 18 * * 0"
+    },
+    {
+      "path": "/api/cleanup",
+      "schedule": "30 18 * * *"
+    }
+  ],
+  "rewrites": [
+    {
+      "source": "/t/:token",
+      "destination": "/edu/teacher.html"
+    },
+    {
+      "source": "/a/:token",
+      "destination": "/edu/apply.html"
+    },
+    {
+      "source": "/s/:token",
+      "destination": "/edu/survey.html"
+    },
+    {
+      "source": "/r/:token",
+      "destination": "/edu/result.html"
+    },
+    {
+      "source": "/g/:token",
+      "destination": "/edu/group.html"
+    },
+    {
+      "source": "/q/:token",
+      "destination": "/edu/attend.html"
+    },
+    {
+      "source": "/p/:token",
+      "destination": "/edu/receipt.html"
+    },
+    {
+      "source": "/x/:token",
+      "destination": "/edu/refund.html"
+    },
+    {
+      "source": "/f/:token",
+      "destination": "/edu/fee.html"
+    },
+    {
+      "source": "/lib/:path*",
+      "destination": "/404.html"
+    }
+  ]
+}

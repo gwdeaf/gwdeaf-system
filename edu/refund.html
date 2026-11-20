@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>수강료 환불 요청</title>
+<style>
+:root { --pine:#1f4d3a; --pine-soft:#e6f0ea; --bg:#f4f7f5; --ink:#1b2b24; --muted:#5d6b64; --line:#d5ded9; --red:#b3261e; --red-soft:#fbe9e7; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.6 system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+.wrap { max-width:480px; margin:0 auto; padding:0 16px 48px; }
+header { background:var(--pine); color:#fff; padding:16px; }
+header h1 { margin:0; font-size:20px; }
+header p { margin:2px 0 0; font-size:14px; opacity:.9; }
+.card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; margin-top:14px; }
+.sess { text-align:center; font-size:22px; font-weight:800; color:var(--pine); }
+.sess small { display:block; font-size:14px; font-weight:400; color:var(--muted); }
+label.f { display:block; font-weight:700; font-size:15px; margin:16px 0 4px; }
+input { width:100%; padding:14px; border:1.5px solid var(--line); border-radius:10px; font:inherit; background:#fff; }
+.btn { width:100%; margin-top:18px; border:0; background:var(--pine); color:#fff; padding:16px; border-radius:10px; font:inherit; font-weight:700; font-size:18px; cursor:pointer; }
+.btn:disabled { opacity:.5; }
+.hint { color:var(--muted); font-size:14px; }
+.err { background:var(--red-soft); color:var(--red); border-radius:10px; padding:12px; margin-top:14px; font-size:15px; }
+.center { text-align:center; padding:48px 20px; }
+.ok { font-size:56px; }
+.hp { position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
+.rc { border:2px solid #222; padding:16px; margin-top:14px; background:#fff; }
+.rc h2 { text-align:center; letter-spacing:.3em; margin:4px 0 0; font-size:24px; }
+.rc .sub { text-align:center; margin:0 0 12px; font-size:14px; color:var(--muted); }
+.rc table { width:100%; border-collapse:collapse; font-size:15px; }
+.rc th, .rc td { border:1px solid #888; padding:8px; text-align:left; }
+.rc th { background:#f1f1f1; width:32%; }
+.rc .by { text-align:right; margin-top:14px; line-height:1.9; }
+.rc .seal img { height:46px; vertical-align:middle; }
+.btn.sec { background:#fff; color:var(--pine); border:1.5px solid var(--pine); }
+.row { display:grid; grid-template-columns:1fr; gap:0; }
+@media print { header, .noprint { display:none !important; } body { background:#fff; } .rc { border-width:2px; margin:0; } }
+</style>
+</head>
+<body>
+<div id="app"><div class="center hint">불러오는 중…</div></div>
+<script>
+const TOKEN = location.pathname.split('/').filter(Boolean).pop() || '';
+const $ = s => document.querySelector(s);
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// 이 휴대폰(브라우저)을 구분하는 표시: 처음 한 번 만들어 저장해 둠
+function deviceId() {
+  const KEY = 'attendDevice';
+  let v = '';
+  try { v = localStorage.getItem(KEY) || ''; } catch (e) {}
+  if (!v) { const m = document.cookie.match(/(?:^|; )attendDevice=([0-9a-zA-Z-]{16,64})/); if (m) v = m[1]; }
+  if (!v) {
+    v = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(16) + Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2)).replace(/\./g, '').slice(0, 40);
+  }
+  try { localStorage.setItem(KEY, v); } catch (e) {}
+  document.cookie = 'attendDevice=' + v + '; max-age=31536000; path=/; SameSite=Lax';
+  return v;
+}
+async function api(fn, ...args) {
+  let res;
+  try { res = await (await fetch('/api/call', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fn: fn, args: [TOKEN, ...args] }) })).json(); }
+  catch (e) { throw new Error('서버에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.'); }
+  if (!res || !res.ok) { const e = new Error((res && res.error) || '처리하지 못했습니다.'); e.code = res && res.code; throw e; }
+  return res.data;
+}
+function dead(msg) { $('#app').innerHTML = `<div class="center"><h2>열 수 없습니다</h2><p>${esc(msg)}</p></div>`; }
+function won(n) { return (Number(n) || 0).toLocaleString('ko-KR') + '원'; }
+(async () => {
+  let c;
+  try { c = await api('refundInfo'); } catch (e) { return dead(e.message); }
+  const head = `<header><div class="wrap" style="padding:0"><h1>수강료 환불 요청</h1><p>${esc(c.지회명)} · ${esc(c.강좌명)}</p></div></header>`;
+  if (c.이미요청) { $('#app').innerHTML = head + '<div class="wrap"><div class="card center"><div class="ok">📨</div><h2>이미 요청이 접수되었습니다</h2><p class="hint">담당자가 확인한 뒤 환불해 드립니다.</p></div></div>'; return; }
+  $('#app').innerHTML = head + `<div class="wrap"><div class="card">
+    <p style="margin:0">납부 금액 <b>${won(c.금액)}</b>${c.납부일 ? ' (' + esc(c.납부일) + ')' : ''}${c.영수번호 ? '<br><span class="hint">영수번호 ' + esc(c.영수번호) + '</span>' : ''}</p>
+    <form id="f" autocomplete="off">
+      <label class="f" for="rb">환불 받을 은행</label><input type="text" id="rb" maxlength="30" required placeholder="예: 농협">
+      <label class="f" for="ra">계좌번호</label><input type="text" id="ra" inputmode="numeric" maxlength="30" required placeholder="숫자만 입력">
+      <label class="f" for="rh">예금주</label><input type="text" id="rh" maxlength="30" required>
+      <label class="f" for="rr">환불 사유 (선택)</label><input type="text" id="rr" maxlength="200">
+      <label style="display:flex;gap:8px;align-items:flex-start;margin-top:16px;font-size:15px"><input type="checkbox" id="ag" style="width:auto;margin-top:5px"> <span>환불 처리를 위해 계좌 정보를 수집·이용하는 것에 동의합니다. 환불이 끝나면 담당자가 정보를 삭제합니다.</span></label>
+      <div class="hp" aria-hidden="true"><label>웹사이트<input type="text" id="w" tabindex="-1" autocomplete="off"></label></div>
+      <div id="e"></div><button class="btn" id="b">환불 요청하기</button></form></div></div>`;
+  $('#f').onsubmit = async ev => {
+    ev.preventDefault();
+    const b = $('#b'); b.disabled = true; $('#e').innerHTML = '';
+    try {
+      await api('refundSubmit', { 은행: $('#rb').value, 계좌: $('#ra').value, 예금주: $('#rh').value, 사유: $('#rr').value, 동의: $('#ag').checked, website: $('#w').value });
+      $('#app').innerHTML = head + '<div class="wrap"><div class="card center" style="padding:36px 16px"><div class="ok">✅</div><h2>환불 요청이 접수되었습니다</h2><p class="hint">담당자가 확인한 뒤 환불해 드립니다.</p></div></div>';
+    } catch (e) {
+      if (e.code === 'LINK') return dead(e.message);
+      $('#e').innerHTML = `<div class="err">${esc(e.message)}</div>`; b.disabled = false;
+    }
+  };
+})();
+</script>
+</body>
+</html>

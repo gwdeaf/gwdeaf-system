@@ -1,0 +1,121 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>강사료 지급 확인서</title>
+<style>
+:root { --pine:#1f4d3a; --pine-soft:#e6f0ea; --bg:#f4f7f5; --ink:#1b2b24; --muted:#5d6b64; --line:#d5ded9; --red:#b3261e; --red-soft:#fbe9e7; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+.wrap { max-width:560px; margin:0 auto; padding:0 16px 48px; }
+header { background:var(--pine); color:#fff; padding:16px; } header h1 { margin:0; font-size:20px; } header p { margin:2px 0 0; font-size:13px; opacity:.85; }
+.card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px; margin-top:14px; }
+dl { margin:0; display:grid; grid-template-columns:84px 1fr; gap:6px 10px; font-size:15px; } dt { color:var(--muted); } dd { margin:0; }
+.btn { width:100%; margin-top:16px; border:0; background:var(--pine); color:#fff; padding:14px; border-radius:10px; font:inherit; font-weight:700; font-size:17px; cursor:pointer; }
+.btn:disabled { opacity:.5; } .btn2 { border:1.5px solid var(--pine); background:#fff; color:var(--pine); padding:8px 14px; border-radius:10px; font:inherit; font-weight:700; cursor:pointer; margin-top:6px; }
+.hint { color:var(--muted); font-size:13px; } .err { background:var(--red-soft); color:var(--red); border-radius:10px; padding:10px 12px; margin-top:12px; font-size:14px; }
+.center { text-align:center; padding:56px 20px; } .num { font-variant-numeric:tabular-nums; }
+.line { border-top:1px solid var(--line); padding:10px 0; } .line:first-child { border-top:0; }
+.sig { width:100%; height:auto; aspect-ratio:3/1; border:1.5px dashed #9bb0a5; border-radius:10px; background:#fff; touch-action:none; display:block; }
+.row { display:flex; gap:8px; align-items:center; } .sp { flex:1; }
+@media print { body { background:#fff; } .noprint { display:none !important; } .card { border:1px solid #999; } }
+</style>
+</head>
+<body>
+<div id="app"><div class="center hint">불러오는 중…</div></div>
+<script>
+const TOKEN = location.pathname.split('/').filter(Boolean).pop() || '';
+const $ = s => document.querySelector(s);
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const n = v => Number(v || 0).toLocaleString('ko-KR');
+async function api(fn, ...args) {
+  let res;
+  try { res = await (await fetch('/api/call', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fn: fn, args: [TOKEN, ...args] }) })).json(); }
+  catch (e) { throw new Error('서버에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.'); }
+  if (!res || !res.ok) { const e = new Error((res && res.error) || '처리하지 못했습니다.'); e.code = res && res.code; throw e; }
+  return res.data;
+}
+function dead(msg) { $('#app').innerHTML = `<div class="center"><h2>열 수 없습니다</h2><p>${esc(msg)}</p></div>`; }
+function sigPad(host) {
+  host.innerHTML = '<canvas class="sig"></canvas>';
+  const cv = host.firstChild, W = 480, H = 160;
+  cv.width = W; cv.height = H;
+  const g = cv.getContext('2d'); g.lineWidth = 3.2; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#111';
+  let down = false, drawn = false, last = null;
+  const pos = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; };
+  cv.addEventListener('pointerdown', e => { e.preventDefault(); down = true; last = pos(e); cv.setPointerCapture(e.pointerId); g.beginPath(); g.moveTo(last.x, last.y); g.lineTo(last.x + .1, last.y + .1); g.stroke(); drawn = true; });
+  cv.addEventListener('pointermove', e => { if (!down) return; e.preventDefault(); const p = pos(e); g.beginPath(); g.moveTo(last.x, last.y); g.lineTo(p.x, p.y); g.stroke(); last = p; });
+  const up = () => { down = false; };
+  cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  return { clear() { g.clearRect(0, 0, W, H); drawn = false; }, empty() { return !drawn; }, png() { return cv.toDataURL('image/png'); } };
+}
+
+const TAXL = { '없음': '원천세 없음', '사업소득': '사업소득 3.3%', '기타소득': '기타소득 8.8%' };
+/* 확인서를 사진(PNG)으로 그려서 보여주고 저장 */
+function savePic(c) {
+  const W = 800, pad = 36, f = 'system-ui,"Apple SD Gothic Neo","Noto Sans KR",sans-serif';
+  const cv = document.createElement('canvas'), g0 = cv.getContext('2d');
+  const wrap = (g, t, w) => { const out = []; String(t == null ? '' : t).split('\n').forEach(par => { let ln = ''; for (const ch of par) { if (g.measureText(ln + ch).width > w) { out.push(ln); ln = ch; } else ln += ch; } out.push(ln); }); return out; };
+  const rows = [];   // [글자크기, 굵게, 색, 글, 오른쪽글]
+  const add = (sz, bold, col, t, r) => rows.push([sz, bold, col, t, r || '']);
+  add(26, 1, '#111', '강사료 지급 확인서'); add(15, 0, '#555', `${c.지회명} · ${c.강사명} 강사님`); add(0);
+  add(15, 0, '#111', `기간  ${c.기간시작} ~ ${c.기간종료}`);
+  add(15, 0, '#111', `입금 계좌  ${[c.은행, c.계좌끝 ? '계좌 끝 4자리 ' + c.계좌끝 : '', c.예금주 ? '(예금주 ' + c.예금주 + ')' : ''].filter(x => x).join(' ')}`); add(0);
+  c.항목.forEach(l => { add(16, 1, '#111', `${l.강좌명} (${l.구분})`, n(l.금액) + '원'); add(14, 0, '#555', `${l.일시}${l.시간 ? ' · ' + l.시간 + '시간' : ''}`); if (l.강의내용) add(14, 0, '#111', l.강의내용); add(6); });
+  add(16, 0, '#111', '강사료 합계', n(c.총액) + '원'); add(14, 0, '#555', `소득세 (${TAXL[c.원천세] || ''})`, '- ' + n(c.소득세) + '원'); add(14, 0, '#555', '지방소득세', '- ' + n(c.지방소득세) + '원');
+  add(19, 1, '#111', '실지급액', n(c.실지급액) + '원'); if (c.비고) add(14, 0, '#555', '비고: ' + c.비고); add(10);
+  // 높이 계산
+  let h = pad, plan = [];
+  rows.forEach(([sz, b, col, t, r]) => { if (!sz) { h += 10; return; } g0.font = `${b ? 'bold ' : ''}${sz}px ${f}`; const ls = t ? wrap(g0, t, W - pad * 2 - (r ? 150 : 0)) : []; plan.push([sz, b, col, ls, r, h]); h += ls.length * (sz + 8) + 4; });
+  const sigH = 130; cv.width = W; cv.height = h + sigH + pad;
+  const g = cv.getContext('2d'); g.fillStyle = '#fff'; g.fillRect(0, 0, W, cv.height); g.textBaseline = 'top';
+  plan.forEach(([sz, b, col, ls, r, y]) => { g.font = `${b ? 'bold ' : ''}${sz}px ${f}`; g.fillStyle = col; ls.forEach((ln, k) => g.fillText(ln, pad, y + k * (sz + 8))); if (r) { g.textAlign = 'right'; g.fillText(r, W - pad, y); g.textAlign = 'left'; } });
+  const done = () => {
+    g.font = `14px ${f}`; g.fillStyle = '#555'; g.fillText(`서명일시 ${c.서명일시 || ''}`, pad, h + 96);
+    g.fillStyle = '#111'; g.font = `bold 15px ${f}`; g.fillText('수령(확인)자 서명', pad, h + 6);
+    $('#pv').innerHTML = `<p class="hint" style="margin-top:10px"><b>아래 사진을 길게 눌러 "이미지 저장"</b>을 하세요. 아래 버튼으로도 받을 수 있습니다.</p><img alt="강사료 지급 확인서" style="width:100%;border:1px solid var(--line);border-radius:8px" src="${cv.toDataURL('image/png')}"><a class="btn2" id="dl" style="display:block;text-align:center;margin-top:8px;text-decoration:none">이미지 파일로 받기</a>`;
+    $('#dl').onclick = ev => { ev.preventDefault(); cv.toBlob(b => { const a = document.createElement('a'); a.href = URL.createObjectURL(b); a.download = '강사료확인서.png'; document.body.appendChild(a); a.click(); a.remove(); }); };
+  };
+  if (c.서명) { const im = new Image(); im.onload = () => { g.drawImage(im, pad + 160, h - 4, 200, 90); done(); }; im.onerror = done; im.src = c.서명; } else done();
+}
+function draw(c) {
+  const signed = c.상태 === '서명완료';
+  $('#app').innerHTML = `<header><div class="wrap" style="padding:0"><h1>강사료 지급 확인서</h1><p>${esc(c.지회명)} · ${esc(c.강사명)} 강사님</p></div></header>
+  <div class="wrap"><div class="card"><dl><dt>기간</dt><dd>${esc(c.기간시작)} ~ ${esc(c.기간종료)}</dd><dt>입금 계좌</dt><dd>${esc([c.은행, c.계좌끝 ? '계좌 끝 4자리 ' + c.계좌끝 : '', c.예금주 ? '(예금주 ' + c.예금주 + ')' : ''].filter(x => x).join(' '))}</dd></dl></div>
+    <div class="card"><b>강의 내역</b><div style="margin-top:6px">${c.항목.map(l => `<div class="line"><div class="row"><b>${esc(l.강좌명)}</b><span class="hint">${esc(l.구분)}</span><span class="sp"></span><b class="num">${n(l.금액)}원</b></div>
+      <div class="hint">${esc(l.일시)}${l.시간 ? ' · ' + esc(l.시간) + '시간' : ''}</div>${l.강의내용 ? `<div style="font-size:14px">${esc(l.강의내용)}</div>` : ''}</div>`).join('')}</div>
+      <div class="line"><div class="row"><span>강사료 합계</span><span class="sp"></span><b class="num">${n(c.총액)}원</b></div><div class="row hint"><span>소득세 (${esc(TAXL[c.원천세] || '')})</span><span class="sp"></span><span class="num">- ${n(c.소득세)}원</span></div>
+      <div class="row hint"><span>지방소득세</span><span class="sp"></span><span class="num">- ${n(c.지방소득세)}원</span></div><div class="row" style="font-size:19px;margin-top:4px"><b>실지급액</b><span class="sp"></span><b class="num">${n(c.실지급액)}원</b></div></div>
+      ${c.비고 ? `<p class="hint">비고: ${esc(c.비고)}</p>` : ''}</div>
+    ${signed ? `<div class="card" style="text-align:center"><div style="font-size:40px">✅</div><b>서명이 완료되었습니다</b><div class="hint">${esc(c.서명일시)}</div><img src="${esc(c.서명)}" alt="서명" style="height:70px;margin-top:8px;border:1px solid var(--line);border-radius:8px;background:#fff">
+      <div class="noprint"><button class="btn" id="pr">인쇄 / PDF 저장</button><button class="btn2" id="pic" style="margin-top:8px">사진(이미지)으로 저장</button>
+      <p class="hint">휴대폰에서 인쇄가 안 되면 "사진으로 저장"을 눌러 주세요. 카카오톡 등에서 연 화면이라면 오른쪽 위 메뉴의 "다른 브라우저로 열기"도 방법입니다.</p><div id="pv"></div></div></div>`
+    : `<form class="card" id="f">${c.입력받음 ? `<b>입금 정보 입력</b><p class="hint">보조금 정산에 필요합니다. 입력한 내용은 암호화되어 저장되며, 지급 업무에만 사용됩니다.</p>
+      <label>은행</label><input id="bk" value="${esc(c.은행 || '')}" placeholder="예: 농협" autocomplete="off"><label>계좌번호 (숫자와 -)</label><input id="ac" inputmode="numeric" placeholder="${c.계좌있음 ? '이미 입력됨 (바꿀 때만 입력)' : '예: 123-45-678901'}" autocomplete="off"><label>예금주</label><input id="ow" value="${esc(c.예금주 || '')}" autocomplete="off">
+      <label>주민등록번호</label><input id="rn" inputmode="numeric" maxlength="14" placeholder="${c.주민있음 ? '이미 입력됨 (바꿀 때만 입력)' : '000000-0000000'}" autocomplete="off"><hr style="border:0;border-top:1px solid var(--line);margin:12px 0">` : ''}<b>위 금액을 확인했습니다. 아래에 서명해 주세요.</b><div id="sg" style="margin-top:8px"></div><button type="button" class="btn2" id="sx">다시 쓰기</button><div id="e"></div><button class="btn" id="b">서명 제출</button></form>`}</div>`;
+  if (signed) {
+    $('#pr').onclick = () => { try { window.print(); } catch (e) { $('#pv').innerHTML = '<div class="err">이 화면에서는 인쇄를 쓸 수 없습니다. "사진으로 저장"을 눌러 주세요.</div>'; } };
+    $('#pic').onclick = () => savePic(c);
+    return;
+  }
+  const pad = sigPad($('#sg'));
+  $('#sx').onclick = () => pad.clear();
+  $('#f').onsubmit = async ev => {
+    ev.preventDefault(); const b = $('#b'); b.disabled = true; $('#e').innerHTML = '';
+    if (pad.empty()) { $('#e').innerHTML = '<div class="err">서명을 해 주세요.</div>'; b.disabled = false; return; }
+    let info = {};
+    if (c.입력받음) {
+      info = { 은행: $('#bk').value.trim(), 계좌번호: $('#ac').value.trim(), 예금주: $('#ow').value.trim(), 주민번호: $('#rn').value.trim() };
+      if (!info.은행 || !info.예금주 || (!info.계좌번호 && !c.계좌있음) || (!info.주민번호 && !c.주민있음)) { $('#e').innerHTML = '<div class="err">은행, 계좌번호, 예금주, 주민등록번호를 모두 입력해 주세요.</div>'; b.disabled = false; return; }
+    }
+    try { draw(await api('feeSign', pad.png(), info)); }
+    catch (e) { if (e.code === 'LINK') return dead(e.message); $('#e').innerHTML = `<div class="err">${esc(e.message)}</div>`; b.disabled = false; }
+  };
+}
+(async () => { try { draw(await api('feeInfo')); } catch (e) { dead(e.message); } })();
+</script>
+</body>
+</html>

@@ -1,0 +1,65 @@
+'use strict';
+process.env.ENCRYPTION_KEY = 'test-key-test-key-test-key-1234567890';
+const http = require('http'), fs = require('fs'), path = require('path');
+const { handle, makeContext, Host } = require('../lib/runtime');
+const { MemoryDb } = require('../lib/db_memory');
+const { chromium } = require('playwright');
+let pass = 0, fail = 0;
+const ok = (n, c, x) => { if (c) pass++; else { fail++; console.log('FAIL', n, x === undefined ? '' : String(x).slice(0, 300)); } };
+(async () => {
+  const ctx0 = makeContext(new Host()), S = ctx0.__x.SHEETS, H = ctx0.makeHash_, db = new MemoryDb(S);
+  const mem = (id, pw, ch, role) => ({ 아이디: id, 비밀번호: H(pw), 지회명: ch, 담당자: id, 권한: role, 사용여부: 'Y', 최근접속: '', 인쇄설정: '' });
+  await db.applyOps([{ k: 'insert', t: '회원정보', v: [mem('admin', 'adminpw1', '도협회', '도협회'), mem('cc', 'ccpw1234', '춘천시지회', '지회'), mem('wj', 'wjpw1234', '원주시지회', '지회')] }]);
+  const call = (fn, ...a) => handle(db, { fn, args: a });
+  const ad = (await call('login', 'admin', 'adminpw1')).data, cc = (await call('login', 'cc', 'ccpw1234')).data, wj = (await call('login', 'wj', 'wjpw1234')).data;
+  let r = await call('saveNotice', cc.token, { 제목: 'x', 내용: 'y' }); ok('지회는 공지 못 올림', !r.ok);
+  r = await call('saveNotice', ad.token, { 제목: '', 내용: 'y' }); ok('제목 필수', !r.ok);
+  r = await call('saveNotice', ad.token, { 제목: 'x', 내용: '  ' }); ok('내용 필수', !r.ok);
+  r = await call('saveNotice', ad.token, { 제목: 'x', 내용: 'y', 시작일: '2026-12-10', 종료일: '2026-12-01' }); ok('기간 순서 검사', !r.ok);
+  r = await call('saveNotice', ad.token, { 제목: 'x', 내용: 'y', 대상: ['없는지회'] }); ok('없는 지회 거부', !r.ok);
+  r = await call('saveNotice', ad.token, { 제목: '전체 공지', 내용: '모두 보세요', 대상: ['전체'] }); ok('전체 공지', r.ok && r.data.목록.length === 1 && r.data.목록[0].상태 === '게시중', r.error);
+  const all = r.data.목록[0].공지ID;
+  r = await call('saveNotice', ad.token, { 제목: '춘천 공지', 내용: '춘천만', 대상: ['춘천시지회'] }); ok('선택 공지', r.ok && r.data.목록.length === 2, r.error);
+  const only = r.data.목록.find(n => n.제목 === '춘천 공지').공지ID;
+  r = await call('saveNotice', ad.token, { 제목: '예약', 내용: '미래', 시작일: '2050-01-01' });
+  const fut = r.data.목록.find(n => n.제목 === '예약'); ok('시작 전은 예약', fut.상태 === '예약');
+  r = await call('saveNotice', ad.token, { 제목: '지난 공지', 내용: '과거', 종료일: '2020-01-01' });
+  ok('기간 지나면 기간종료', r.data.목록.find(n => n.제목 === '지난 공지').상태 === '기간종료');
+  r = await call('getNotices', cc.token); ok('춘천: 전체+춘천 2건만(예약·종료 제외)', r.ok && r.data.목록.length === 2 && !r.data.관리 && r.data.목록.every(n => n.대상 === undefined), r.data.목록.map(n => n.제목));
+  r = await call('getNotices', wj.token); ok('원주: 전체 1건', r.data.목록.length === 1 && r.data.목록[0].제목 === '전체 공지');
+  r = await call('getNotices', ad.token); ok('도협회: 관리 목록 4건', r.data.관리 && r.data.목록.length === 4);
+  r = await call('setNoticeStatus', cc.token, all, false); ok('지회는 내리기 불가', !r.ok);
+  r = await call('setNoticeStatus', ad.token, all, false); ok('내리기', r.ok && r.data.목록.find(n => n.공지ID === all).상태 === '내림');
+  r = await call('getNotices', wj.token); ok('내리면 지회에서 사라짐', r.data.목록.length === 0);
+  r = await call('setNoticeStatus', ad.token, all, true); r = await call('getNotices', wj.token); ok('다시 게시', r.data.목록.length === 1);
+  r = await call('saveNotice', ad.token, { 공지ID: only, 제목: '춘천 공지(수정)', 내용: '수정됨', 대상: ['원주시지회'] });
+  ok('수정: 대상 변경', r.ok); r = await call('getNotices', cc.token); ok('춘천에서는 사라짐', r.data.목록.every(n => n.제목 !== '춘천 공지(수정)'));
+  r = await call('getNotices', wj.token); ok('원주에 나타남', r.data.목록.some(n => n.제목 === '춘천 공지(수정)'));
+  r = await call('deleteNotice', ad.token, only); ok('삭제', r.ok && !r.data.목록.some(n => n.공지ID === only));
+  r = await call('getNotices', wj.token); ok('삭제하면 지회에서도 사라짐', r.data.목록.length === 1);
+  // 화면
+  const srv = http.createServer(async (q, s2) => {
+    if (q.method === 'POST' && q.url === '/api/call') { let b = ''; for await (const c of q) b += c; s2.setHeader('Content-Type', 'application/json'); return s2.end(JSON.stringify(await handle(db, JSON.parse(b)))); }
+    try { const f = q.url === '/' ? 'index.html' : q.url.slice(1); s2.setHeader('Content-Type', f.endsWith('.js') ? 'text/javascript' : 'text/html; charset=utf-8'); s2.end(fs.readFileSync(path.join(__dirname, '../public', f))); } catch (e) { s2.statusCode = 404; s2.end('x'); }
+  }).listen(0);
+  const base = 'http://127.0.0.1:' + srv.address().port, br = await chromium.launch(), errs = [];
+  const open = async (id, pw, w) => { const pg = await (await br.newContext({ viewport: { width: w || 1100, height: 900 } })).newPage(); pg.on('pageerror', e => errs.push(e.message)); pg.on('dialog', d => d.accept());
+    await pg.goto(base + '/'); await pg.fill('#lid', id); await pg.fill('#lpw', pw); await pg.click('#lbtn'); await pg.waitForSelector('#tabs:not(.hidden)'); return pg; };
+  await call('saveNotice', ad.token, { 제목: '두번째 공지', 내용: '둘째 내용', 대상: ['원주시지회'] });
+  const wp = await open('wj', 'wjpw1234', 390);
+  await wp.waitForSelector('#nb .nbar');
+  ok('지회 화면 맨 위에 공지 띠', (await wp.textContent('#nb')).includes('두번째 공지') || (await wp.textContent('#nb')).includes('전체 공지'));
+  ok('더 보기 버튼(2건)', !!(await wp.$('#nbTgl')));
+  await wp.click('#nbTgl'); ok('펼침', !(await wp.$eval('#nbMore', e => e.classList.contains('hidden'))));
+  await wp.click('[data-tab=report]'); await wp.waitForTimeout(300);
+  ok('다른 화면에서도 계속 보임', !!(await wp.$('#nb .nbar')));
+  const ap = await open('admin', 'adminpw1');
+  ok('도협회는 띠 없음', !(await ap.$('#nb .nbar')));
+  await ap.click('[data-tab=files]'); await ap.click('[data-sw=notice]'); await ap.waitForSelector('#ntForm');
+  ok('공지 목록 표시', (await ap.$$('[data-n]')).length === 4);
+  await ap.fill('#ntT', '새 공지'); await ap.fill('#ntB', '내용입니다'); await ap.click('#ntSave'); await ap.waitForFunction(() => document.querySelectorAll('[data-n]').length === 5);
+  ok('화면에서 공지 올리기', true);
+  await ap.click('[data-noff]'); await ap.click('#dlgOk'); await ap.waitForSelector('[data-non]'); ok('화면에서 내리기', true);
+  ok('화면 오류 없음', errs.length === 0, errs.join('|'));
+  console.log('공지 통과', pass, '/ 실패', fail); await br.close(); srv.close();
+})().catch(e => { console.log(e); process.exit(1); });

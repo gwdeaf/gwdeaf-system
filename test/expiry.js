@@ -1,0 +1,27 @@
+'use strict';
+process.env.ENCRYPTION_KEY = 'test-key-test-key-test-key-1234567890';
+const { handle, makeContext, Host } = require('../lib/runtime');
+const { MemoryDb } = require('../lib/db_memory');
+let pass = 0, fail = 0;
+const ok = (n, c, x) => { if (c) pass++; else { fail++; console.log('FAIL', n, JSON.stringify(x).slice(0, 300)); } };
+(async () => {
+  const ctx0 = makeContext(new Host()), S = ctx0.__x.SHEETS, H = ctx0.makeHash_;
+  const db = new MemoryDb(S);
+  await db.applyOps([{ k: 'insert', t: '회원정보', v: [{ 아이디: 'cc', 비밀번호: H('ccpw1234'), 지회명: '춘천시지회', 담당자: 'cc', 권한: '지회', 사용여부: 'Y', 최근접속: '', 인쇄설정: '' }] }]);
+  const call = (fn, ...a) => handle(db, { fn, args: a });
+  const cc = (await call('login', 'cc', 'ccpw1234')).data;
+  let r = await call('saveCourse', cc.token, { 지회명: '춘천시지회', 강좌명: 'A', 시작일: '2026-11-01', 종료일: '2026-12-31', 총회차: 3, 회당시간: 2, 수준: '초급', 교육구분: '내부', 주관: '지회', 수료기준: 50 });
+  const id = r.data.course.강좌ID;
+  const tok = (await call('createTeacherLink', cc.token, id)).data.token;
+  r = await call('getTeacherLink', cc.token, id); ok('기본 기한', r.data.만료일 === '2027-01-14' && !r.data.직접설정, r.data);
+  r = await call('setLinkExpiry', cc.token, id, '2027-03-31'); ok('직접 설정', r.ok && r.data.만료일 === '2027-03-31' && r.data.직접설정, r);
+  r = await call('tInfo', tok); ok('링크 정상 사용', r.ok, r);
+  r = await call('setLinkExpiry', cc.token, id, '2020-01-01'); ok('과거 날짜 거부', !r.ok, r);
+  r = await call('setLinkExpiry', cc.token, id, '2026-11-10'); ok('오늘(11/13) 이전 거부', !r.ok, r);
+  r = await call('setLinkExpiry', cc.token, id, ''); ok('기본으로 되돌림', r.ok && r.data.만료일 === '2027-01-14' && !r.data.직접설정, r);
+  r = await call('saveCourse', cc.token, { 강좌ID: id, 지회명: '춘천시지회', 강좌명: 'A', 시작일: '2026-11-01', 종료일: '2026-12-31', 총회차: 3, 회당시간: 2, 수준: '초급', 교육구분: '내부', 주관: '지회', 수료기준: 50 });
+  await call('setLinkExpiry', cc.token, id, '2027-02-01');
+  r = await call('saveCourse', cc.token, { 강좌ID: id, 지회명: '춘천시지회', 강좌명: 'A2', 시작일: '2026-11-01', 종료일: '2026-12-31', 총회차: 3, 회당시간: 2, 수준: '초급', 교육구분: '내부', 주관: '지회', 수료기준: 50 });
+  r = await call('getTeacherLink', cc.token, id); ok('강좌 수정해도 기한 유지', r.data.만료일 === '2027-02-01', r.data);
+  console.log('기한 통과', pass, '/ 실패', fail); process.exit(fail ? 1 : 0);
+})();

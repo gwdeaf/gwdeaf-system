@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>출석 체크</title>
+<style>
+:root { --pine:#1f4d3a; --pine-soft:#e6f0ea; --bg:#f4f7f5; --ink:#1b2b24; --muted:#5d6b64; --line:#d5ded9; --red:#b3261e; --red-soft:#fbe9e7; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:17px/1.6 system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+.wrap { max-width:480px; margin:0 auto; padding:0 16px 48px; }
+header { background:var(--pine); color:#fff; padding:16px; }
+header h1 { margin:0; font-size:20px; }
+header p { margin:2px 0 0; font-size:14px; opacity:.9; }
+.card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:18px; margin-top:14px; }
+.sess { text-align:center; font-size:22px; font-weight:800; color:var(--pine); }
+.sess small { display:block; font-size:14px; font-weight:400; color:var(--muted); }
+label.f { display:block; font-weight:700; font-size:15px; margin:16px 0 4px; }
+input { width:100%; padding:14px; border:1.5px solid var(--line); border-radius:10px; font:inherit; background:#fff; }
+.btn { width:100%; margin-top:18px; border:0; background:var(--pine); color:#fff; padding:16px; border-radius:10px; font:inherit; font-weight:700; font-size:18px; cursor:pointer; }
+.btn:disabled { opacity:.5; }
+.hint { color:var(--muted); font-size:14px; }
+.err { background:var(--red-soft); color:var(--red); border-radius:10px; padding:12px; margin-top:14px; font-size:15px; }
+.center { text-align:center; padding:48px 20px; }
+.ok { font-size:56px; }
+.hp { position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
+</style>
+</head>
+<body>
+<div id="app"><div class="center hint">불러오는 중…</div></div>
+<script>
+const TOKEN = location.pathname.split('/').filter(Boolean).pop() || '';
+const $ = s => document.querySelector(s);
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+// 이 휴대폰(브라우저)을 구분하는 표시: 처음 한 번 만들어 저장해 둠
+function deviceId() {
+  const KEY = 'attendDevice';
+  let v = '';
+  try { v = localStorage.getItem(KEY) || ''; } catch (e) {}
+  if (!v) { const m = document.cookie.match(/(?:^|; )attendDevice=([0-9a-zA-Z-]{16,64})/); if (m) v = m[1]; }
+  if (!v) {
+    v = (window.crypto && crypto.randomUUID) ? crypto.randomUUID() : (Date.now().toString(16) + Math.random().toString(16).slice(2) + Math.random().toString(16).slice(2)).replace(/\./g, '').slice(0, 40);
+  }
+  try { localStorage.setItem(KEY, v); } catch (e) {}
+  document.cookie = 'attendDevice=' + v + '; max-age=31536000; path=/; SameSite=Lax';
+  return v;
+}
+async function api(fn, ...args) {
+  let res;
+  try { res = await (await fetch('/api/call', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fn: fn, args: [TOKEN, ...args] }) })).json(); }
+  catch (e) { throw new Error('서버에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.'); }
+  if (!res || !res.ok) { const e = new Error((res && res.error) || '처리하지 못했습니다.'); e.code = res && res.code; throw e; }
+  return res.data;
+}
+function dead(msg) { $('#app').innerHTML = `<div class="center"><h2>출석할 수 없습니다</h2><p>${esc(msg)}</p></div>`; }
+(async () => {
+  let c;
+  try { c = await api('attendInfo'); } catch (e) { return dead(e.message); }
+  const head = `<header><div class="wrap" style="padding:0"><h1>${esc(c.강좌명)}</h1><p>${esc(c.지회명)} · 출석 체크</p></div></header>`;
+  if (!c.열림) { $('#app').innerHTML = head + '<div class="wrap"><div class="card center" style="padding:32px 16px"><h2 style="margin-top:0">지금은 출석을 받지 않습니다</h2><p class="hint">수업 기간이 아니거나 모든 회차가 끝났습니다. 강사에게 문의해 주세요.</p></div></div>'; return; }
+  $('#app').innerHTML = head + `<div class="wrap">
+    <div class="card"><div class="sess">${c.회차}회차 출석<small>${esc(c.수업일)}</small></div>
+    <form id="f" autocomplete="off">
+      <label class="f" for="n">이름</label><input type="text" id="n" maxlength="30" required autocomplete="off">
+      <label class="f" for="p">연락처 뒤 4자리</label><input type="tel" id="p" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="예: 5678" autocomplete="off">
+      <p class="hint" style="margin:4px 0 0">명단에 연락처가 없는 분은 비워 두세요.</p>
+      <label class="f">자필 서명 <span class="hint" style="margin:0">(손가락으로 이름을 써 주세요)</span></label>
+      <canvas id="sg" width="600" height="220" style="width:100%;height:110px;border:1.5px solid var(--line);border-radius:10px;background:#fff;touch-action:none"></canvas>
+      <div style="text-align:right"><button type="button" id="sgc" style="border:0;background:none;color:var(--muted);font:inherit;font-size:13px;cursor:pointer;text-decoration:underline">서명 지우기</button></div>
+      <div class="hp" aria-hidden="true"><label>웹사이트<input type="text" id="w" tabindex="-1" autocomplete="off"></label></div>
+      <div id="e"></div>
+      <button class="btn" id="b">출석하기</button>
+    </form></div>
+    <p class="hint" style="text-align:center">한 휴대폰으로는 한 사람만 출석할 수 있습니다.<br>휴대폰이 없는 분은 강사에게 말씀해 주세요.</p></div>`;
+  const cv = $('#sg'), g = cv.getContext('2d'); let ink = 0, down = false;
+  g.lineWidth = 5; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#111';
+  const pt = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height]; };
+  cv.onpointerdown = e => { down = true; cv.setPointerCapture(e.pointerId); const [x, y] = pt(e); g.beginPath(); g.moveTo(x, y); g.lineTo(x + .1, y + .1); g.stroke(); ink++; e.preventDefault(); };
+  cv.onpointermove = e => { if (!down) return; const [x, y] = pt(e); g.lineTo(x, y); g.stroke(); ink++; e.preventDefault(); };
+  cv.onpointerup = cv.onpointercancel = () => { down = false; };
+  $('#sgc').onclick = () => { g.clearRect(0, 0, cv.width, cv.height); ink = 0; };
+  $('#f').onsubmit = async ev => {
+    ev.preventDefault();
+    const b = $('#b'); b.disabled = true; $('#e').innerHTML = '';
+    if (ink < 8) { $('#e').innerHTML = '<div class="err">자필 서명을 해 주세요.</div>'; b.disabled = false; return; }
+    const sm = document.createElement('canvas'); sm.width = 300; sm.height = 110; sm.getContext('2d').drawImage(cv, 0, 0, 300, 110);
+    try {
+      const r = await api('attendSubmit', { 이름: $('#n').value, 뒤4자리: $('#p').value, 기기: deviceId(), 서명: sm.toDataURL('image/png'), website: $('#w').value });
+      if (!r.done) { $('#e').innerHTML = `<div class="err">${esc(r.사유)}${r.남은횟수 != null ? `<br>(다시 시도할 수 있는 횟수: ${r.남은횟수}번)` : ''}</div>`; b.disabled = false; return; }
+      $('#app').innerHTML = head + `<div class="wrap"><div class="card center" style="padding:36px 16px"><div class="ok">✅</div><h2 style="margin:8px 0">${esc(r.이름)}님<br>${r.회차}회차 ${r.이미 ? '출석이 이미 되어 있습니다' : '출석되었습니다'}</h2><p class="hint">${esc(r.수업일)} · ${esc(r.강좌명)}</p></div></div>`;
+    } catch (e) {
+      if (e.code === 'LINK') return dead(e.message);
+      $('#e').innerHTML = `<div class="err">${esc(e.message)}</div>`; b.disabled = false;
+    }
+  };
+})();
+</script>
+</body>
+</html>

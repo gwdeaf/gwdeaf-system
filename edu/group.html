@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>수강 신청</title>
+<style>
+:root { --pine:#1f4d3a; --pine-soft:#e6f0ea; --bg:#f4f7f5; --ink:#1b2b24; --muted:#5d6b64; --line:#d5ded9; --red:#b3261e; --red-soft:#fbe9e7; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.6 system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+.wrap { max-width:520px; margin:0 auto; padding:0 16px 48px; }
+header { background:var(--pine); color:#fff; padding:16px; }
+header h1 { margin:0; font-size:20px; }
+header p { margin:2px 0 0; font-size:13px; opacity:.85; }
+.card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:16px; margin-top:14px; }
+dl { margin:0; display:grid; grid-template-columns:78px 1fr; gap:6px 10px; font-size:15px; }
+dt { color:var(--muted); } dd { margin:0; }
+label.f { display:block; font-weight:700; font-size:14px; margin:14px 0 4px; }
+input[type=text], input[type=tel] { width:100%; padding:12px; border:1.5px solid var(--line); border-radius:10px; font:inherit; background:#fff; }
+.btn { width:100%; margin-top:16px; border:0; background:var(--pine); color:#fff; padding:14px; border-radius:10px; font:inherit; font-weight:700; font-size:17px; cursor:pointer; }
+.btn:disabled { opacity:.5; }
+.agree { display:flex; gap:10px; align-items:flex-start; margin-top:16px; font-size:14px; background:var(--bg); padding:12px; border-radius:10px; }
+.agree input { width:22px; height:22px; flex:none; margin-top:2px; }
+.hint { color:var(--muted); font-size:13px; }
+.err { background:var(--red-soft); color:var(--red); border-radius:10px; padding:10px 12px; margin-top:12px; font-size:14px; }
+.center { text-align:center; padding:56px 20px; }
+.btn2 { flex:1; border:1.5px solid var(--pine); background:#fff; color:var(--pine); border-radius:10px; font:inherit; font-weight:700; cursor:pointer; }
+#pc { position:fixed; inset:0; background:rgba(0,0,0,.55); z-index:20; display:none; padding:16px; }
+#pc .box { background:#fff; border-radius:12px; max-width:500px; margin:0 auto; height:100%; max-height:560px; display:flex; flex-direction:column; overflow:hidden; }
+#pc .top { padding:10px 14px; display:flex; justify-content:space-between; align-items:center; font-weight:700; }
+#pc .top button { border:0; background:none; font-size:22px; cursor:pointer; }
+#pcb { flex:1; }
+.hp { position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
+.ok { font-size:44px; }
+.st { border:1px solid var(--line); border-radius:10px; padding:10px 12px; margin-top:10px; }
+.st b.s { display:inline-block; padding:2px 10px; border-radius:99px; font-size:13px; background:var(--pine-soft); color:var(--pine); }
+.st b.s.r { background:var(--red-soft); color:var(--red); } .st b.s.w { background:#fff4d6; color:#7a5b00; }
+
+@media print { body { background:#fff; } .noprint { display:none !important; } .card { border:1px solid #999; margin-top:0; } }
+</style>
+</head>
+<body>
+<div id="pc"><div class="box"><div class="top">우편번호 찾기<button type="button" id="pcx" aria-label="닫기">✕</button></div><div id="pcb"></div></div></div>
+<div id="app"><div class="center hint">불러오는 중…</div></div>
+<script>
+const TOKEN = location.pathname.split('/').filter(Boolean).pop() || '';
+const $ = s => document.querySelector(s);
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+async function api(fn, ...args) {
+  let res;
+  try { res = await (await fetch('/api/call', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fn: fn, args: [TOKEN, ...args] }) })).json(); }
+  catch (e) { throw new Error('서버에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.'); }
+  if (!res || !res.ok) { const e = new Error((res && res.error) || '처리하지 못했습니다.'); e.code = res && res.code; throw e; }
+  return res.data;
+}
+function statusBox() {   // 접수 결과(대기·승인·반려) 확인: 신청할 때 적은 이름과 연락처가 맞아야 보임
+  return `<form class="card noprint" id="sf" autocomplete="off"><h3 style="margin:0 0 4px">내 접수 결과 확인</h3><p class="hint" style="margin:0">신청할 때 적은 이름과 연락처를 입력하면 승인·대기 상태를 볼 수 있습니다.</p>
+    <label class="f" for="sn">이름</label><input type="text" id="sn" maxlength="30" required>
+    <label class="f" for="sp">연락처</label><input type="tel" id="sp" inputmode="tel" maxlength="20" placeholder="010-0000-0000" required>
+    <div id="se"></div><button class="btn" id="sb" style="background:#fff;color:var(--pine);border:1.5px solid var(--pine)">접수 결과 확인</button></form>`;
+}
+function bindStatus() {
+  const f = $('#sf'); if (!f) return;
+  f.onsubmit = async ev => {
+    ev.preventDefault(); const b = $('#sb'); b.disabled = true;
+    try {
+      const r = await api('applyStatus', { 이름: $('#sn').value, 연락처: $('#sp').value });
+      $('#se').innerHTML = r.결과.length ? r.결과.map(x => `<div class="st"><b>${esc(x.강좌명)}</b> <b class="s ${x.상태 === '반려' ? 'r' : x.상태 === '대기' ? 'w' : ''}">${x.상태 === '대기' ? '접수 완료 · 확인 중' : x.상태 === '승인' ? '수강 확정' : '수강 불가'}</b>
+        <div class="hint" style="margin-top:4px">${esc(x.안내)}<br>접수 ${esc(x.신청일시.slice(0, 16))}${x.처리일시 ? ' · 처리 ' + esc(x.처리일시.slice(0, 16)) : ''}</div></div>`).join('')
+        : '<div class="err">일치하는 접수가 없습니다. 이름과 연락처를 신청할 때 적은 그대로 입력해 주세요.</div>';
+    } catch (e) { $('#se').innerHTML = `<div class="err">${esc(e.message)}</div>`; }
+    b.disabled = false;
+  };
+}
+function dead(msg) { $('#app').innerHTML = `<div class="wrap"><div class="center"><h2>신청할 수 없습니다</h2><p>${esc(msg)}</p></div>${statusBox()}</div>`; bindStatus(); }
+(async () => {
+  let c;
+  try { c = await api('groupInfo'); } catch (e) { return dead(e.message); }
+  const per = x => x.시작일 && x.종료일 ? `${x.시작일} ~ ${x.종료일}` : '';
+  const one = c.강좌.length === 1;
+  $('#app').innerHTML = `<header><div class="wrap" style="padding:0"><h1>${esc(c.제목)}</h1><p>${esc(c.지회명)} 수강 신청</p></div></header>
+  <div class="wrap">
+    ${c.안내 ? `<div class="card"><p style="white-space:pre-wrap;margin:0">${esc(c.안내)}</p></div>` : ''}
+    <form class="card" id="f" autocomplete="off">
+      <b>신청할 강좌를 선택하세요${one ? '' : ' (여러 개 선택 가능)'}</b>
+      <div id="cl" style="margin-top:8px">${c.강좌.map((x, k) => `<label class="agree" style="margin-top:8px;cursor:pointer"><input type="checkbox" name="cc" value="${esc(x.강좌ID)}" ${one ? 'checked' : ''}><span><b>${esc(x.강좌명)}</b><br>
+        <span class="hint">${esc(per(x))}${x.총회차 ? ` · 총 ${x.총회차}회(회당 ${x.회당시간}시간)` : ''}${x.기관명 ? ` · ${esc(x.기관명)}` : ''}${x.수준 && x.수준 !== '구분없음' ? ` · ${esc(x.수준)}` : ''}${x.강사 ? ` · ${esc(x.강사)} 강사` : ''} · 접수 마감 ${esc(x.마감일)}</span></span></label>`).join('')}</div>
+      <label class="f" for="n">이름</label><input type="text" id="n" maxlength="30" required>
+      <label class="f" for="p">연락처 (휴대폰)</label><input type="tel" id="p" inputmode="tel" maxlength="20" placeholder="010-0000-0000" required>
+      <label class="f" for="z">주소 (선택)</label>
+      <div style="display:flex;gap:8px"><input type="text" id="z" readonly placeholder="우편번호" style="width:120px;flex:none"><button type="button" class="btn2" id="zb">우편번호 찾기</button></div>
+      <input type="text" id="a1" readonly placeholder="기본 주소" style="margin-top:8px">
+      <input type="text" id="a2" maxlength="80" placeholder="상세 주소 (동·호수 등)" style="margin-top:8px">
+      <label class="f" for="m">전달할 말 (선택)</label><input type="text" id="m" maxlength="100" placeholder="예: 통역 지원이 필요합니다">
+      <div class="hp" aria-hidden="true"><label>웹사이트<input type="text" id="w" tabindex="-1" autocomplete="off"></label></div>
+      <label class="agree"><input type="checkbox" id="a"><span><b>개인정보 수집·이용에 동의합니다.</b><br>수집 항목: 이름, 연락처, 주소(선택), 전달할 말 · 목적: 수강 신청 접수와 수업 안내 · 보관: 교육 종료 후 지체 없이 파기</span></label>
+      <div id="e"></div>
+      <button class="btn" id="b">신청하기</button>
+    </form>
+    ${statusBox()}
+  </div>`;
+  bindStatus();
+  const addrText = () => { const z = $('#z').value.trim(), a = $('#a1').value.trim(), b = $('#a2').value.trim(); return a || b ? ((z ? '(' + z + ') ' : '') + a + (b ? ' ' + b : '')).trim() : ''; };
+  const closePc = () => { $('#pc').style.display = 'none'; $('#pcb').innerHTML = ''; };
+  $('#pcx').onclick = closePc;
+  $('#zb').onclick = () => {      // 카카오(다음) 우편번호 서비스: 무료, 별도 키 없음
+    const open = () => { $('#pc').style.display = 'block'; new daum.Postcode({ width: '100%', height: '100%', oncomplete: d => {
+      $('#z').value = d.zonecode; $('#a1').value = d.roadAddress || d.jibunAddress; closePc(); $('#a2').focus(); } }).embed($('#pcb')); };
+    if (window.daum && daum.Postcode) return open();
+    const sc = document.createElement('script'); sc.src = 'https://t1.kakaocdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js';
+    sc.onload = open; sc.onerror = () => { $('#e').innerHTML = '<div class="err">우편번호 검색을 불러오지 못했습니다. 주소를 직접 입력해 주세요.</div>'; $('#a1').readOnly = false; $('#a1').placeholder = '주소를 직접 입력'; };
+    document.head.appendChild(sc);
+  };
+  $('#f').onsubmit = async ev => {
+    ev.preventDefault();
+    const b = $('#b'); b.disabled = true; $('#e').innerHTML = '';
+    try {
+      const picked = [...document.querySelectorAll('input[name=cc]:checked')].map(x => x.value);
+      if (!picked.length) { $('#e').innerHTML = '<div class="err">신청할 강좌를 하나 이상 선택해 주세요.</div>'; b.disabled = false; return; }
+      const r = await api('groupSubmit', { 강좌IDs: picked, 이름: $('#n').value, 연락처: $('#p').value, 비고: $('#m').value, 주소: addrText(), 동의: $('#a').checked, website: $('#w').value });
+      const nm = $('#n').value.trim(), ph = $('#p').value.trim(), ad = addrText(), mm = $('#m').value.trim();
+      const now = new Date(), pad = x => String(x).padStart(2, '0'), at = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+      const dup = r.결과.length && r.결과.every(x => x.이미접수);
+      $('#app').innerHTML = `<div class="wrap"><div class="center noprint" style="padding:32px 0 8px"><div class="ok">✅</div><h2 style="margin:6px 0">${dup ? '이미 접수되어 있습니다' : '신청이 접수되었습니다'}</h2><p style="margin:0">담당자가 확인한 뒤 연락드립니다.</p></div>
+        <div class="card" id="rcpt"><h3 style="margin:0 0 10px;text-align:center">수강 신청 접수증</h3><dl>
+          <dt>기관</dt><dd>${esc(c.지회명)}</dd>
+          <dt>신청 강좌</dt><dd>${r.결과.map(x => esc(x.강좌명) + (x.이미접수 ? ' <span class="hint">(이미 접수됨)</span>' : '')).join('<br>')}</dd>
+          <dt>이름</dt><dd>${esc(nm)}</dd><dt>연락처</dt><dd>${esc(ph)}</dd>${ad ? `<dt>주소</dt><dd>${esc(ad)}</dd>` : ''}${mm ? `<dt>전달할 말</dt><dd>${esc(mm)}</dd>` : ''}
+          <dt>접수 일시</dt><dd>${at}</dd></dl>
+          <p class="hint" style="margin:10px 0 0">접수 확인용 화면입니다. 담당자 확인 후 최종 안내됩니다.</p></div>
+        <button class="btn noprint" id="pr">접수 내용 인쇄 / PDF 저장</button>
+        <p class="hint noprint" style="text-align:center">휴대폰은 화면을 캡처해 두셔도 됩니다.</p>${statusBox()}</div>`;
+      bindStatus();
+      $('#pr').onclick = () => window.print();
+    } catch (e) {
+      if (e.code === 'LINK') return dead(e.message);
+      $('#e').innerHTML = `<div class="err">${esc(e.message)}</div>`; b.disabled = false;
+    }
+  };
+})();
+</script>
+</body>
+</html>

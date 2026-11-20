@@ -129,6 +129,15 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .nav .kid.on{background:var(--pri-soft);color:var(--pri);font-weight:700}
 .nav .kls{padding:8px 12px 2px 44px;font-size:.68rem;font-weight:800;color:#a3aab8;letter-spacing:.03em}
 .nav .sec{margin:14px 12px 2px;padding-top:12px;border-top:1px solid var(--line);font-size:.72rem;font-weight:800;color:#8a93a5;letter-spacing:.04em}
+/* 화면 높이에 맞춰 간격을 줄여, 스크롤 없이 한 화면에 보이게 */
+.grow{display:none}
+.nav{gap:1px;scrollbar-width:thin}
+.nav .top{padding:clamp(5px,1.1vh,10px) 12px}
+.nav .grp{padding:clamp(5px,1vh,12px) 12px 2px;font-size:clamp(.8rem,1.6vh,.92rem)}
+.nav .kid{padding:clamp(2px,.55vh,7px) 12px clamp(2px,.55vh,7px) 44px;font-size:clamp(.74rem,1.55vh,.85rem)}
+.nav .kls{padding:clamp(3px,.6vh,8px) 12px 1px 44px}
+.nav .sec{margin:clamp(6px,1vh,14px) 12px 2px;padding-top:clamp(5px,1vh,12px)}
+.brand{padding-bottom:clamp(6px,1.5vh,18px)}
 .content{display:flex;flex-direction:column;min-width:0;min-height:100vh}
 .topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;height:58px;padding:0 24px;background:rgba(245,247,251,.92);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
 .menubtn{display:none;border:1px solid var(--line);background:#fff;border-radius:9px;width:38px;height:38px;font-size:1.1rem}
@@ -328,7 +337,7 @@ var ORG = '강원특별자치도농아인협회';
 function chapLabel(){ var n = (ME.chapter_name || '').trim(); if (!n || ME.is_hq) return ''; return /지회$/.test(n) ? n : n + '지회'; }
 
 /* ── 왼쪽 메뉴 (하위 메뉴 항상 표시) · 오른쪽 내용 전환 ── */
-var ATT = null, PUNCH = null, CUR = 'home:s:', FR = { key:'', ready:false, tab:'', loadedGo:'' };
+var EDU_HIDE = [], ATT = null, PUNCH = null, CUR = 'home:s:', FR = { key:'', ready:false, tab:'', loadedGo:'' };
 function mid(kind, adm, tab){ return kind + ':' + (adm ? 'a' : 's') + ':' + (tab || ''); }
 function kidHtml(kind, adm, tab, label){
   return '<a class="kid" data-id="' + mid(kind, adm, tab) + '" data-lb="' + esc(label) + '" onclick="go(\'' + kind + '\',\'' + tab + '\',' + (adm ? 'true' : 'false') + ')">' + esc(label) + '</a>';
@@ -345,7 +354,10 @@ function renderNav(){
     h += '<div class="kls">선임 확인</div>' + kidHtml('att', false, 'senior:leavemgr', '신청 승인/반려') + kidHtml('att', false, 'senior:dashboard', '시수 신청 현황') + kidHtml('att', false, 'senior:altdashboard', '대체 시수 현황');
   h += '<div class="grp"><span class="ic">🚌</span>출장 관리</div>' + kidHtml('att', false, 'trip', '출장 신청·내역');
   if (hasPerm('vehicle.')) h += topHtml('car:s:', '🚗', '차량운행일지', "go('car')");
-  if (hasPerm('edu.')) h += topHtml('edu:s:', '📚', '수어교육관리', "go('edu')");
+  if (hasPerm('edu.')) {
+    h += '<div class="grp"><span class="ic">📚</span>수어교육관리</div>';
+    [['courses','강좌'],['apply','접수·강사비'],['report','보고·통계'],['files','자료요청'],['me','내 정보']].forEach(function(k){ if (EDU_HIDE.indexOf(k[0]) < 0) h += kidHtml('edu', false, k[0], k[1]); });
+  }
   h += topHtml('doc:s:', '📝', '공문 작성', "go('doc')");
   if (isAttAdmin() || isVehAdmin() || ME.can_manage) h += '<div class="sec">시스템 관리</div>';
   if (isAttAdmin()) {
@@ -378,6 +390,8 @@ function go(kind, tab, adm){
   var key = kind + ':' + (adm ? 'a' : 's'), fr = $('frame');
   if (kind === 'att' && FR.key === key && FR.ready) {
     FR.tab = tab; fr.contentWindow.postMessage({ type:'att-go', tab:tab }, location.origin);
+  } else if (kind === 'edu' && FR.key === key) {
+    FR.tab = tab; if (FR.ready && tab) fr.contentWindow.postMessage({ type:'edu-go', tab:tab }, location.origin);
   } else if (FR.key === key && kind !== 'att') {
     /* 같은 화면: 그대로 보여 줌 */
   } else {
@@ -404,6 +418,16 @@ window.addEventListener('message', function(e){
     if (FR.tab !== FR.loadedGo) { FR.loadedGo = FR.tab; e.source.postMessage({ type:'att-go', tab:FR.tab }, location.origin); }
   }
   if (d.type === 'att-punch') setPunch(d.today);
+  if (d.type === 'edu-ready' && e.source === $('frame').contentWindow) {
+    FR.ready = true; $('floading').classList.add('hide');
+    var hide = d.hide || []; if (hide.join() !== EDU_HIDE.join()) { EDU_HIDE = hide; renderNav(); }
+    if (FR.tab && FR.tab !== 'courses') e.source.postMessage({ type:'edu-go', tab:FR.tab }, location.origin);
+  }
+  if (d.type === 'edu-tab' && e.source === $('frame').contentWindow && FR.key === 'edu:s') {
+    if (!document.querySelector('#nav [data-id="' + mid('edu', false, d.tab) + '"]')) return;
+    FR.tab = d.tab; CUR = mid('edu', false, d.tab); markNav();
+    try { history.replaceState(null, '', '#edu/' + d.tab); } catch(x){}
+  }
 });
 
 /* ── 출퇴근: 상단 버튼 + 대시보드 카드 ── */

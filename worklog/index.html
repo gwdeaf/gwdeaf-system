@@ -97,6 +97,8 @@
 #repeatDeleteDialog p{font-size:13px}
 #repeatDeleteDialog fieldset{margin:0;border:1px solid var(--line);border-radius:8px}
 #repeatDeleteDialog label{display:flex;align-items:center;gap:6px;min-height:38px}
+/* 작성자·부서는 직원 관리 값으로 자동 입력 */
+#entryFields .field:not(#entryDateField),#entryInfoToggle{display:none!important}
 </style>
 </head>
 <body>
@@ -227,7 +229,7 @@ renderWriter();
 if(restored)showLocalDraftStatus()
 }
 function syncDraftFromFields(){draft.date=$('entryDate').value||today();draft.author=$('entryAuthor').value.trim();draft.dept=$('entryDept').value.trim()}
-function renderWriter(){ $('entryDate').value=draft.date||today();$('entryAuthor').value=draft.author||'';$('entryDept').value=draft.dept||'';updateAuthorDisplay();let submitted=draft.submitted;$('entryStatus').textContent=draft.updatedAt?'저장됨':'작성 중';$('entryStatus').className='badge '+(draft.updatedAt?'status-완료':'status-진행-중');$('saveState').textContent=draft.updatedAt?`마지막 저장: ${new Date(draft.updatedAt).toLocaleString('ko-KR')}`:'아직 저장하지 않은 내용입니다.';renderTasks();renderRecords();renderCalendar()}
+function renderWriter(){ if(window.WL_ME&&WL_ME.name){draft.author=WL_ME.name;draft.dept=WL_ME.dept||'';} $('entryDate').value=draft.date||today();$('entryAuthor').value=draft.author||'';$('entryDept').value=draft.dept||'';updateAuthorDisplay();let submitted=draft.submitted;$('entryStatus').textContent=draft.updatedAt?'저장됨':'작성 중';$('entryStatus').className='badge '+(draft.updatedAt?'status-완료':'status-진행-중');$('saveState').textContent=draft.updatedAt?`마지막 저장: ${new Date(draft.updatedAt).toLocaleString('ko-KR')}`:'아직 저장하지 않은 내용입니다.';renderTasks();renderRecords();renderCalendar()}
 function renderTasks(){let root=$('taskList');const lanes=[{key:'plan',title:'📋 계획',items:draft.tasks.filter(t=>!taskDone(t))},{key:'done',title:'✅ 완료',items:draft.tasks.filter(t=>taskDone(t)&&taskCategory(t)==='업무')},{key:'field',title:'🚶 외근',items:draft.tasks.filter(t=>taskDone(t)&&taskCategory(t)==='외근')},{key:'call',title:'📞 통화',items:draft.tasks.filter(t=>taskDone(t)&&taskCategory(t)==='통화')}];const draw=t=>{const done=taskDone(t),category=taskCategory(t);return `<article class="plan-item ${done?'done':''}" data-task="${esc(t.id)}"><label class="plan-check"><input type="checkbox" class="task-check" aria-label="${done?'계획으로 되돌리기':(category==='업무'?'완료':category)+' 칸으로 이동'}" data-id="${esc(t.id)}" ${done?'checked':''}></label><div class="plan-copy"><p>${esc(t.detail)}</p>${!done?categoryBadge(category):''}${t.recurrenceId||t.repeat?'<small>↻ 반복 일정</small>':''}</div><div class="plan-tools"><button class="btn small edit-task" data-id="${esc(t.id)}" type="button">수정</button><button class="btn small danger delete-task" data-id="${esc(t.id)}" type="button">삭제</button></div></article>`};const renderLane=l=>`<section class="category-lane"><header class="category-lane-head"><h4>${l.title}</h4><span class="lane-count">${l.items.length}건</span></header><div class="lane-section">${l.items.length?l.items.map(draw).join(''):'<div class="lane-empty">기록이 없습니다.</div>'}</div></section>`;
   $('taskPlan').innerHTML=renderLane(lanes[0]);
   root.innerHTML=lanes.slice(1).map(renderLane).join('');
@@ -244,7 +246,7 @@ function setRepeatForm(enabled){$('repeatEnabled').checked=enabled;$('repeatOpti
 const daysOfWeek = [...$('repeatDays').querySelectorAll('input:checked')].map(input => Number(input.value));
 repeat = {frequency, until};
 if (usesRepeatDays(frequency) && daysOfWeek.length) repeat.daysOfWeek = daysOfWeek}draft.tasks.push({id:uid(),category:selectedCategory,status:'진행 중',title:'',detail,note:'',...(repeat?{repeat}:{})});$('taskDetail').value='';setRepeatForm(false);renderWriter()}
-function updateRecord(){syncDraftFromFields();if(!draft.author){toast('작성자명을 입력해 주세요.');$('entryAuthor').focus();return}if(!draft.dept){toast('부서명을 입력해 주세요.');$('entryDept').focus();return}if(!draft.tasks.length){toast('업무 항목을 한 개 이상 추가해 주세요.');return}let existing=findRecord(draft.author,draft.date);draft.id=existing?.id||draft.id||uid();draft.tasks.forEach(t=>{t.category=taskCategory(t);if(t.repeat&&!t.recurrenceId){const rule={id:uid(),author:draft.author,dept:draft.dept,startDate:draft.date,until:t.repeat.until,frequency:t.repeat.frequency,...(t.repeat.daysOfWeek ? {daysOfWeek:t.repeat.daysOfWeek} : {}),category:t.category,title:'',detail:t.detail,note:'',skipDates:[]};db.repeatRules=db.repeatRules||[];db.repeatRules.push(rule);t.recurrenceId=rule.id;delete t.repeat}else if(t.recurrenceId){const rule=(db.repeatRules||[]).find(x=>x.id===t.recurrenceId);if(rule&&rule.startDate===draft.date){rule.category=t.category;rule.title='';rule.detail=t.detail;rule.note=''}}if(t.status==='외근'||t.status==='통화')t.status='진행 중'});draft.updatedAt=new Date().toISOString();draft.submitted=false;draft.submittedAt=null;let idx=db.records.findIndex(r=>r.id===draft.id);if(idx>=0)db.records[idx]=JSON.parse(JSON.stringify(draft));else db.records.push(JSON.parse(JSON.stringify(draft)));if(!db.people.some(p=>p.name===draft.author))db.people.push({name:draft.author,dept:draft.dept});else{let p=person(draft.author);p.dept=draft.dept}activeId=draft.id;persist();localStorage.setItem(KEY+'_author',draft.author);initSelects();$('currentAuthor').value=draft.author;renderWriter();clearLocalDraft(draft.date);if($('taskDetail').value)saveLocalDraft();toast('업무일지를 이 기기에 저장했습니다.')}
+function updateRecord(){syncDraftFromFields();if(!draft.author){toast('작성자명을 입력해 주세요.');$('entryAuthor').focus();return}if(!draft.tasks.length){toast('업무 항목을 한 개 이상 추가해 주세요.');return}let existing=findRecord(draft.author,draft.date);draft.id=existing?.id||draft.id||uid();draft.tasks.forEach(t=>{t.category=taskCategory(t);if(t.repeat&&!t.recurrenceId){const rule={id:uid(),author:draft.author,dept:draft.dept,startDate:draft.date,until:t.repeat.until,frequency:t.repeat.frequency,...(t.repeat.daysOfWeek ? {daysOfWeek:t.repeat.daysOfWeek} : {}),category:t.category,title:'',detail:t.detail,note:'',skipDates:[]};db.repeatRules=db.repeatRules||[];db.repeatRules.push(rule);t.recurrenceId=rule.id;delete t.repeat}else if(t.recurrenceId){const rule=(db.repeatRules||[]).find(x=>x.id===t.recurrenceId);if(rule&&rule.startDate===draft.date){rule.category=t.category;rule.title='';rule.detail=t.detail;rule.note=''}}if(t.status==='외근'||t.status==='통화')t.status='진행 중'});draft.updatedAt=new Date().toISOString();draft.submitted=false;draft.submittedAt=null;let idx=db.records.findIndex(r=>r.id===draft.id);if(idx>=0)db.records[idx]=JSON.parse(JSON.stringify(draft));else db.records.push(JSON.parse(JSON.stringify(draft)));if(!db.people.some(p=>p.name===draft.author))db.people.push({name:draft.author,dept:draft.dept});else{let p=person(draft.author);p.dept=draft.dept}activeId=draft.id;persist();localStorage.setItem(KEY+'_author',draft.author);initSelects();$('currentAuthor').value=draft.author;renderWriter();clearLocalDraft(draft.date);if($('taskDetail').value)saveLocalDraft();toast('업무일지를 이 기기에 저장했습니다.')}
 function removeDraftTask(id) {
   draft.tasks = draft.tasks.filter(task => task.id !== id);
   if (editingTaskId === id) {
@@ -530,7 +532,7 @@ async function boot(){
    localStorage.setItem(ACTIVE,row.account.id);
    location.reload();return;
   }
-  account=row.account;
+  account=row.account;window.WL_ME={name:row.account.name||'',dept:row.account.dept||''};try{const ea=$('entryAuthor'),ed=$('entryDept');if(ea&&WL_ME.name){ea.value=WL_ME.name;ed.value=WL_ME.dept;ea.dispatchEvent(new Event('change'));ed.dispatchEvent(new Event('input'));}}catch(e){}
   showApp('동기화 중','');
   await sync();
  }catch(e){
@@ -550,6 +552,26 @@ window.addEventListener('focus',()=>{if(account&&ready)sync()});
 window.addEventListener('online',()=>{if(account&&ready)sync()});
 setInterval(()=>{if(account&&ready)sync()},30000);
 boot();
+})();
+</script>
+<script>
+/* 업무 시스템 안에서 열 때: 위쪽 띠와 기본 정보 칸을 숨기고,
+   일지 작성/캘린더 전환 · 작성일자 · 작성 상태는 홈 화면 제목 옆에 표시 */
+(function(){
+  if (new URLSearchParams(location.search).get('embed') !== '1' || window.parent === window) return;
+  var st = document.createElement('style'); st.textContent = '#topbar,.entry-info{display:none!important}'; document.head.appendChild(st);
+  var $ = function(id){ return document.getElementById(id); };
+  var view = function(){ return $('calendarTab') && $('calendarTab').classList.contains('active') ? 'calendar' : 'writer'; };
+  var tell = function(){ try { window.parent.postMessage({ type: 'wl-view', view: view(), date: ($('entryDate') || {}).value || '', status: ($('entryStatus') || {}).textContent || '' }, location.origin); } catch(e){} };
+  window.addEventListener('message', function(e){
+    if (e.origin !== location.origin || !e.data) return;
+    if (e.data.type === 'wl-tab') { var b = $(e.data.tab === 'calendar' ? 'calendarTab' : 'writerTab'); if (b) b.click(); }
+    if (e.data.type === 'wl-date' && /^\d{4}-\d{2}-\d{2}$/.test(e.data.date || '')) { var d = $('entryDate'); d.value = e.data.date; d.dispatchEvent(new Event('change')); }
+  });
+  var d = $('entryDate'); if (d) { d.addEventListener('change', function(){ setTimeout(tell, 0); }); }
+  if (window.MutationObserver) { var s = $('entryStatus'); if (s) new MutationObserver(tell).observe(s, { childList: true, characterData: true, subtree: true }); var ct = $('calendarTab'); if (ct) new MutationObserver(tell).observe(ct, { attributes: true, attributeFilter: ['class'] }); }
+  var lastDate = ''; setInterval(function(){ var v = ($('entryDate') || {}).value || ''; if (v !== lastDate) { lastDate = v; tell(); } }, 700);
+  tell();
 })();
 </script>
 </body>

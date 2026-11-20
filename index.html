@@ -143,6 +143,8 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .menubtn{display:none;border:1px solid var(--line);background:#fff;border-radius:9px;width:38px;height:38px;font-size:1.1rem}
 .crumb{font-weight:800;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .crumb small{font-weight:600;color:var(--mute)}
+.wldate{display:flex;align-items:center;gap:6px;margin-left:8px;flex-shrink:0}.wldate.hide{display:none}.wldate input{border:1px solid var(--line);border-radius:8px;padding:5px 8px;font:inherit;font-size:.88rem;background:#fff}.wlst{font-size:.75rem;font-weight:700;color:var(--pri);background:var(--pri-soft);border-radius:20px;padding:3px 9px;white-space:nowrap}.wlst:empty{display:none}@media(max-width:600px){.wlst{display:none}.wldate input{padding:4px 5px;font-size:.8rem;max-width:128px}}
+.wltabs{display:flex;gap:2px;background:#eef2f8;border-radius:10px;padding:3px;margin-left:10px;flex-shrink:0}.wltabs.hide{display:none}.wltabs button{border:0;background:transparent;border-radius:8px;padding:6px 12px;font-size:.88rem;font-weight:700;color:var(--mute);cursor:pointer;white-space:nowrap}.wltabs button.on{background:#fff;color:var(--pri);box-shadow:0 1px 3px rgba(0,0,0,.08)}@media(max-width:600px){.wltabs button{padding:5px 8px;font-size:.8rem}}
 .tright{margin-left:auto;display:flex;align-items:center;gap:10px}
 .pstat{font-size:.8rem;color:var(--mute);font-weight:600;white-space:nowrap}
 .pbtn{border:0;border-radius:10px;padding:9px 15px;font-weight:800;font-size:.88rem;color:#fff;background:var(--pri);white-space:nowrap}
@@ -246,6 +248,8 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
   <div class="topbar">
     <button class="menubtn" onclick="toggleSide()">☰</button>
     <div class="crumb" id="crumb">홈</div>
+    <div class="wltabs hide" id="wltabs"><button data-t="writer" class="on" onclick="wlTab('writer')">✍️ 일지 작성</button><button data-t="calendar" onclick="wlTab('calendar')">🗓️ 캘린더</button></div>
+    <div class="wldate hide" id="wldate"><input type="date" id="wl-date" onchange="wlDate(this.value)" title="작성일자"><span class="wlst" id="wl-st"></span></div>
     <div class="tright">
       <span class="pstat hide" id="pstat"></span>
       <button class="pbtn hide" id="pbtn" onclick="openPunch()">📍 출퇴근</button>
@@ -421,7 +425,12 @@ function markNav(){
   });
   if (CUR === 'home:s:') openGrp(null);
   $('crumb').innerHTML = grp ? '<small>' + esc(grp) + ' ›</small> ' + esc(lb) : esc(lb);
+  $('wltabs').classList.toggle('hide', CUR.indexOf('worklog:') !== 0);
+  if (CUR.indexOf('worklog:') !== 0) $('wldate').classList.add('hide');
 }
+function wlTab(t){ try { $('frame').contentWindow.postMessage({ type: 'wl-tab', tab: t }, location.origin); } catch(e){} wlMark(t); }
+function wlMark(t){ document.querySelectorAll('#wltabs button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-t') === t); }); $('wldate').classList.toggle('hide', t !== 'writer' || CUR.indexOf('worklog:') !== 0); }
+function wlDate(v){ try { $('frame').contentWindow.postMessage({ type: 'wl-date', date: v }, location.origin); } catch(e){} }
 function toggleSide(){ $('side').classList.toggle('open'); $('scrim').classList.toggle('open'); }
 function closeSide(){ $('side').classList.remove('open'); $('scrim').classList.remove('open'); }
 function go(kind, tab, adm){
@@ -458,6 +467,7 @@ $('frame').addEventListener('load', function(){ if (FR.key && FR.key.indexOf('at
 window.addEventListener('message', function(e){
   if (e.origin !== location.origin) return;
   var d = e.data || {};
+  if (d.type === 'wl-view' && e.source === $('frame').contentWindow) { wlMark(d.view); if (d.date && document.activeElement !== $('wl-date')) $('wl-date').value = d.date; $('wl-st').textContent = d.status || ''; return; }
   if (d.type === 'att-ready' && e.source === $('frame').contentWindow) {
     FR.ready = true; $('floading').classList.add('hide');
     if (FR.tab !== FR.loadedGo) { FR.loadedGo = FR.tab; e.source.postMessage({ type:'att-go', tab:FR.tab }, location.origin); }

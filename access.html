@@ -300,36 +300,72 @@ async function gd(body){
   const t = await r.text(); try{ return JSON.parse(t); }catch(e){ return {ok:false, msg: r.status===404 ? "서버에 gdrive 함수가 아직 설치되지 않았습니다. (설정 안내서 참고)" : "응답을 읽을 수 없습니다."}; }
 }
 async function loadDrive(){ drv = await gd({action:"status"}); }
+let DOPEN = null;   // 펼쳐 둔 지회 (다시 그려도 유지)
+function driveOpen(id){ DOPEN = DOPEN === id ? null : id; driveView(); setTimeout(()=>{ const el = document.getElementById("dc"+id); if(el && DOPEN === id) el.scrollIntoView({block:"start", behavior:"smooth"}); }, 30); }
 function driveView(){
   if(!drv || !drv.ok){ $("#body").innerHTML = `<div class="card"><h2>드라이브 연결</h2><div class="muted">${esc((drv&&drv.msg)||"불러오지 못했습니다.")}</div></div>`; return; }
-  const guide = drv.sa_ready ? `<div class="muted">서비스 계정: <b>${esc(drv.sa_email)}</b><br>각 지회 공유 드라이브의 <b>멤버 관리</b>에 위 이메일을 <b>콘텐츠 관리자</b>로 추가한 뒤, 아래에 그 드라이브(또는 폴더)의 주소를 붙여 넣고 [연결]을 누르세요. 연결하면 <b>업무시스템</b> 폴더와 하위 폴더(출장대장·월별근태·연차현황·운행일지·교육실적)가 자동으로 만들어집니다.</div>`
-    : `<div class="muted" style="color:#c0392b">서버에 구글 서비스 계정이 아직 등록되지 않았습니다. 설정 안내서(구글드라이브_설정안내.md)의 1단계를 먼저 진행해 주세요. 그 전에는 엑셀 다운로드만 사용할 수 있습니다.</div>`;
-  $("#body").innerHTML = `<div class="card"><h2>📂 구글 드라이브 연결</h2>${guide}</div>
-    ${drv.chapters.map(c=>`<div class="card"><div class="st"><div><b>${esc(c.name)}</b> ${c.connected?'<span class="badge">연결됨</span>':'<span class="badge o">미연결</span>'}
-      ${c.connected?`<div class="muted">${esc(c.folder_name)} · 하위 폴더 ${c.subfolders.length}개</div>
-      <label style="display:block;margin-top:6px;font-size:14px"><input type="checkbox" style="width:auto" ${c.auto_append?"checked":""} onchange="driveAuto(${c.id},this.checked)"> 자동 쌓기 사용 <span class="muted">(출장·휴가·운행·공문·교육 기록을 시트에 자동으로 추가)</span></label>`:""}
-      ${c.status==="error"?`<div class="muted" style="color:#c0392b">${esc(c.status_msg)}</div>`:""}</div></div>
-      <div class="grid" style="margin-top:6px"><input id="d_f${c.id}" placeholder="드라이브 폴더 주소 붙여넣기"><button class="btn full" onclick="driveConnect(${c.id})">${c.connected?"다시 연결":"연결"}</button>${c.connected?`<button class="btn sub full" onclick="driveOff(${c.id})">연결 해제</button>`:""}</div>
-      <div style="margin-top:12px;border-top:1px solid #eee;padding-top:10px"><b>📅 공용 구글 캘린더</b> ${c.calendar_id?`<span class="badge">연결됨</span> <span class="muted">${esc(c.calendar_name)}</span>`:'<span class="badge o">미연결</span>'}
-      <div class="muted">휴가·출장이 접수되면 이 캘린더에 일정이 자동으로 생기고, 홈 화면 "우리 지회 일정"에 보입니다.</div>
-      <div class="grid" style="margin-top:6px"><input id="d_c${c.id}" placeholder="캘린더 ID 붙여넣기 (예: abc123@group.calendar.google.com)"><button class="btn full" onclick="calConnect(${c.id})">${c.calendar_id?"다시 연결":"연결"}</button>${c.calendar_id?`<button class="btn sub full" onclick="calOff(${c.id})">연결 해제</button>`:""}</div></div>
-      <div style="margin-top:12px;border-top:1px solid #eee;padding-top:10px"><b>🗣 통역일지 구글 시트</b> ${c.interp_sheet_id?`<span class="badge">연결됨</span> <span class="muted">'${esc(c.interp_sheet_name)}' 탭</span>`:'<span class="badge o">미연결</span>'}
-      <div class="muted">통역일지를 저장하면 시스템에 보관하고, 연결된 시트의 '통역' 탭 F열부터 빈 줄에 자동으로 한 줄 추가합니다. (미연결이어도 시스템에는 저장됩니다)</div>
-      <div class="grid" style="margin-top:6px"><input id="d_i${c.id}" placeholder="통역일지 구글 시트 주소 붙여넣기"><button class="btn full" onclick="interpConnect(${c.id})">${c.interp_sheet_id?"다시 연결":"연결"}</button>${c.interp_sheet_id?`<button class="btn sub full" onclick="interpOff(${c.id})">연결 해제</button>`:""}</div>
-      <div class="muted">먼저 그 시트의 <b>공유</b>에 <b>${esc(drv.sa_email||"서비스 계정 이메일")}</b>을 <b>편집자</b>로 추가하세요.</div></div>
-      <div style="margin-top:12px;border-top:1px solid #eee;padding-top:10px"><b>👀 함께 볼 캘린더</b> <span class="muted">(홈 화면 일정에 합쳐서 보여 줍니다)</span>
-      ${(c.extras||[]).map(x=>`<div style="display:flex;gap:8px;align-items:center;margin:6px 0"><label style="flex:1;font-size:14px"><input type="checkbox" style="width:auto" ${x.hidden?"":"checked"} onchange="calShow(${x.id},${c.id},this.checked)"> ${esc(x.name)} ${x.global?'<span class="badge">전 지회 공용</span>':'<span class="badge o">우리 지회</span>'}</label>${x.can_edit&&!x.global?`<button class="btn sub" onclick="calExtraDel(${x.id})">삭제</button>`:""}</div>`).join("")||'<div class="muted">추가된 캘린더가 없습니다.</div>'}
-      <div class="grid" style="margin-top:6px"><input id="d_x${c.id}" placeholder="캘린더 ID"><input id="d_xn${c.id}" placeholder="표시 이름 (예: 회의실)"><button class="btn full" onclick="calExtraAdd(${c.id})">추가</button></div>
-      <div class="muted">서비스 계정에 <b>모든 일정 세부정보 보기</b>로 공유한 캘린더면 됩니다. 체크를 끄면 우리 지회 홈 화면에서만 숨겨집니다.</div></div></div>`).join("")}
-    ${drv.is_admin?`<div class="card"><h2>🌐 전 지회 공용 캘린더 (도협회 관리자)</h2>
-      <div class="muted">여기에 추가하면 <b>모든 지회</b> 홈 화면에 보입니다. 각 지회는 위 "함께 볼 캘린더"에서 끌 수 있습니다. 도협회 행사·교육 일정 등에 쓰세요.</div>
-      ${(drv.globals||[]).map(x=>`<div style="display:flex;gap:8px;align-items:center;margin:6px 0"><span style="flex:1;font-size:14px"><b>${esc(x.name)}</b> <span class="muted">${esc(x.calendar_id)}</span></span><button class="btn sub" onclick="calExtraDel(${x.id})">삭제</button></div>`).join("")||'<div class="muted" style="margin-top:6px">아직 없습니다.</div>'}
-      <div class="grid" style="margin-top:6px"><input id="d_gx" placeholder="캘린더 ID"><input id="d_gxn" placeholder="표시 이름 (예: 도협회 행사)"><button class="btn full" onclick="calExtraAdd(0,true)">공용으로 추가</button></div></div>`:""}
-    <div class="card"><h2>📅 공용 캘린더 만드는 방법</h2><div class="muted" style="line-height:1.7">
-      1. 구글 캘린더 → 왼쪽 "다른 캘린더 +" → <b>새 캘린더 만들기</b> (예: 춘천 업무일정)<br>
-      2. 그 캘린더의 <b>설정 및 공유 → 특정 사용자 또는 그룹과 공유</b>에 <b>${esc(drv.sa_email||"서비스 계정 이메일")}</b>을 <b>일정 변경 권한</b>으로 추가<br>
-      3. 같은 곳에서 우리 지회 직원들을 <b>모든 일정 세부정보 보기</b>로 추가 (다른 지회·도협회에는 공유하지 않습니다)<br>
-      4. <b>캘린더 통합 → 캘린더 ID</b>를 복사해 위 칸에 붙여 넣고 [연결]</div></div>`;
+  const sa = esc(drv.sa_email||"서비스 계정 이메일"), chs = drv.chapters || [];
+  if(chs.length === 1 && DOPEN === null) DOPEN = chs[0].id;
+  const ok = (v, t) => `<span class="dpill ${v?"on":""}">${v?"✅":"⚪"} ${t}</span>`;
+  const head = drv.sa_ready
+    ? `<div class="card"><h2>📂 드라이브·캘린더 연결</h2>
+        <div class="muted">아래 <b>서비스 계정</b>을 각 드라이브·캘린더·시트의 공유에 추가한 뒤 주소(ID)를 붙여 넣으면 연결됩니다.</div>
+        <div class="dsa"><span>서비스 계정</span><b id="saMail">${sa}</b><button class="btn sub" onclick="navigator.clipboard&&navigator.clipboard.writeText('${sa}').then(()=>toast('복사했습니다.'))">복사</button></div></div>`
+    : `<div class="card"><h2>📂 드라이브·캘린더 연결</h2><div class="muted" style="color:#c0392b">서버에 구글 서비스 계정이 아직 등록되지 않았습니다. 설정 안내서(구글드라이브_설정안내.md)의 1단계를 먼저 진행해 주세요.</div></div>`;
+  // 한눈에 보기 (지회가 여러 개일 때)
+  const table = chs.length > 1 ? `<div class="card"><h2>🗂 지회별 연결 현황</h2><div class="muted">지회 이름을 누르면 그 지회 설정이 펼쳐집니다.</div>
+    <div style="overflow-x:auto"><table class="dtab"><tr><th>지회</th><th>드라이브</th><th>공용 캘린더</th><th>함께 볼 캘린더</th><th>통역 시트</th></tr>
+    ${chs.map(c=>`<tr class="${DOPEN===c.id?"on":""}" onclick="driveOpen(${c.id})"><td><b>${esc(c.name)}</b></td><td>${c.connected?"✅":(c.status==="error"?"⚠️":"⚪")}</td><td>${c.calendar_id?"✅":"⚪"}</td>
+      <td>${(c.extras||[]).filter(x=>!x.global).length ? (c.extras||[]).filter(x=>!x.global).length+"개" : "-"}</td><td>${c.interp_sheet_id?"✅":"⚪"}</td></tr>`).join("")}</table></div></div>` : "";
+  const sec = (n, title, on, desc, body, how) => `<div class="dsec"><div class="dsec-h"><span class="dnum">${n}</span><b>${title}</b>${on===null?"":(on?'<span class="badge">연결됨</span>':'<span class="badge o">미연결</span>')}</div>
+    <div class="muted">${desc}</div>${body}${how?`<details class="dhow"><summary>설정 방법</summary><div>${how}</div></details>`:""}</div>`;
+  const panel = c => {
+    const open = DOPEN === c.id, mine = (c.extras||[]).filter(x=>!x.global), glob = (c.extras||[]).filter(x=>x.global);
+    return `<div class="card dch ${open?"open":""}" id="dc${c.id}">
+      <div class="dch-h" onclick="driveOpen(${c.id})"><span class="dname">${esc(c.name)}</span>
+        <span class="dpills">${ok(c.connected,"드라이브")}${ok(c.calendar_id,"공용 캘린더")}${ok(mine.length,"함께 볼 "+mine.length)}${ok(c.interp_sheet_id,"통역 시트")}</span>
+        <span class="darw">${open?"접기 ▴":"펼치기 ▾"}</span></div>
+      ${open?`<div class="dch-b">
+      ${sec(1,"📁 구글 드라이브 폴더", c.connected,
+        c.connected?`<b>${esc(c.folder_name)}</b> · 하위 폴더 ${c.subfolders.length}개`:"출장대장·월별근태·연차현황·운행일지·교육실적 폴더가 자동으로 만들어집니다.",
+        `${c.status==="error"?`<div class="muted" style="color:#c0392b">⚠️ ${esc(c.status_msg)}</div>`:""}
+        ${c.connected?`<label class="dck"><input type="checkbox" ${c.auto_append?"checked":""} onchange="driveAuto(${c.id},this.checked)"> 자동 쌓기 <span class="muted">(출장·휴가·운행·공문·교육 기록을 시트에 자동 추가)</span></label>`:""}
+        <div class="drow"><input id="d_f${c.id}" placeholder="드라이브(또는 폴더) 주소 붙여넣기"><button class="btn" onclick="driveConnect(${c.id})">${c.connected?"다시 연결":"연결"}</button>${c.connected?`<button class="btn sub" onclick="driveOff(${c.id})">해제</button>`:""}</div>`,
+        `공유 드라이브의 <b>멤버 관리</b>에 서비스 계정(${sa})을 <b>콘텐츠 관리자</b>로 추가 → 드라이브 주소를 복사해 붙여넣기`)}
+      ${sec(2,"📅 공용 구글 캘린더 (휴가·출장 자동 등록)", !!c.calendar_id,
+        c.calendar_id?`<b>${esc(c.calendar_name)}</b> · 휴가·출장 신청이 이 캘린더에 자동으로 들어가고 홈 화면에 보입니다.`:"휴가·출장 신청이 자동으로 들어가는 캘린더입니다. (지회당 1개)",
+        `<div class="drow"><input id="d_c${c.id}" placeholder="캘린더 ID (예: abc123@group.calendar.google.com)"><button class="btn" onclick="calConnect(${c.id})">${c.calendar_id?"다시 연결":"연결"}</button>${c.calendar_id?`<button class="btn sub" onclick="calOff(${c.id})">해제</button>`:""}</div>`,
+        `구글 캘린더 → 캘린더 <b>설정 및 공유</b> → 특정 사용자와 공유에 서비스 계정을 <b>일정 변경</b> 권한으로 추가 → 아래 <b>캘린더 통합 → 캘린더 ID</b> 복사<br>새로 만들 때: 왼쪽 "다른 캘린더 +" → 새 캘린더 만들기. 직원들은 <b>모든 일정 세부정보 보기</b>로 공유하세요.`)}
+      ${sec(3,"👀 함께 볼 캘린더 (보기만)", null,
+        "홈 화면 일정에 함께 보여 줄 캘린더입니다. (예: 회의실, 교육 일정) <b>이 지회 홈 화면에만</b> 보입니다.",
+        `${mine.map(x=>`<div class="dx"><label><input type="checkbox" ${x.hidden?"":"checked"} onchange="calShow(${x.id},${c.id},this.checked)"> ${esc(x.name)}</label>${x.can_edit?`<button class="btn sub" onclick="calExtraDel(${x.id})">삭제</button>`:""}</div>`).join("")||'<div class="muted" style="margin:6px 0">추가한 캘린더가 없습니다.</div>'}
+        ${glob.length?`<div class="muted" style="margin-top:8px">🌐 도협회가 추가한 <b>전 지회 공용</b> 캘린더 (체크를 끄면 이 지회 홈에서만 숨김)</div>${glob.map(x=>`<div class="dx"><label><input type="checkbox" ${x.hidden?"":"checked"} onchange="calShow(${x.id},${c.id},this.checked)"> ${esc(x.name)} <span class="badge">전 지회 공용</span></label></div>`).join("")}`:""}
+        <div class="drow"><input id="d_x${c.id}" placeholder="캘린더 ID"><input id="d_xn${c.id}" placeholder="표시 이름 (예: 회의실)" style="max-width:200px"><button class="btn" onclick="calExtraAdd(${c.id})">추가</button></div>`,
+        `캘린더 공유에 서비스 계정을 <b>모든 일정 세부정보 보기</b>로 추가 → 캘린더 ID 복사`)}
+      ${sec(4,"🗣 통역일지 구글 시트", !!c.interp_sheet_id,
+        c.interp_sheet_id?`<b>'${esc(c.interp_sheet_name)}'</b> 탭 · 통역일지를 저장하면 F열부터 빈 줄에 자동으로 한 줄 추가합니다.`:"통역일지를 저장할 때 기존 시트의 '통역' 탭에도 자동으로 적습니다. (미연결이어도 시스템에는 저장됨)",
+        `<div class="drow"><input id="d_i${c.id}" placeholder="통역일지 구글 시트 주소 붙여넣기"><button class="btn" onclick="interpConnect(${c.id})">${c.interp_sheet_id?"다시 연결":"연결"}</button>${c.interp_sheet_id?`<button class="btn sub" onclick="interpOff(${c.id})">해제</button>`:""}</div>`,
+        `그 시트의 <b>공유</b>에 서비스 계정을 <b>편집자</b>로 추가 → 시트 주소 복사`)}
+      </div>`:""}</div>`;
+  };
+  const global = drv.is_admin ? `<div class="card"><details ${(drv.globals||[]).length?"":""}><summary style="cursor:pointer"><b>🌐 전 지회 공용 캘린더</b> <span class="muted">(도협회 관리자 · ${(drv.globals||[]).length}개)</span></summary>
+      <div class="muted" style="margin-top:8px">여기에 추가하면 <b>18개 지회 모두</b>의 홈 화면에 보입니다. 도협회만 볼 캘린더는 위 <b>도협회</b> 칸의 ③에 넣으세요.</div>
+      ${(drv.globals||[]).map(x=>`<div class="dx"><span><b>${esc(x.name)}</b> <span class="muted">${esc(x.calendar_id)}</span></span><button class="btn sub" onclick="calExtraDel(${x.id})">삭제</button></div>`).join("")||'<div class="muted" style="margin-top:6px">아직 없습니다.</div>'}
+      <div class="drow"><input id="d_gx" placeholder="캘린더 ID"><input id="d_gxn" placeholder="표시 이름 (예: 도협회 행사)" style="max-width:200px"><button class="btn" onclick="calExtraAdd(0,true)">공용으로 추가</button></div></details></div>` : "";
+  $("#body").innerHTML = `<style>
+    .dsa{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:10px;background:#f3f6fb;border-radius:10px;padding:8px 12px}.dsa span{font-size:13px;color:#64748b}.dsa b{font-size:14px;word-break:break-all}
+    .dtab{width:100%;border-collapse:collapse;margin-top:8px;font-size:14px}.dtab th,.dtab td{padding:8px 6px;border-bottom:1px solid #e5e9f2;text-align:center}.dtab th{background:#f6f8fc;font-size:13px}.dtab td:first-child,.dtab th:first-child{text-align:left}
+    .dtab tr{cursor:pointer}.dtab tr:hover td{background:#f8fafc}.dtab tr.on td{background:#eaf0ff}
+    .dch{padding:0;overflow:hidden}.dch-h{display:flex;align-items:center;gap:10px;flex-wrap:wrap;padding:14px 16px;cursor:pointer;background:#fafbfd;border-left:5px solid #cbd5e1}
+    .dch.open .dch-h{background:#eaf0ff;border-left-color:#2f5bd6}.dname{font-size:17px;font-weight:800;min-width:90px}.dpills{display:flex;gap:5px;flex-wrap:wrap;flex:1}
+    .dpill{font-size:12px;border-radius:20px;padding:3px 9px;background:#f1f3f6;color:#6b7280;font-weight:600}.dpill.on{background:#e3f6ec;color:#0f7a4f}.darw{font-size:13px;color:#2f5bd6;font-weight:700;white-space:nowrap}
+    .dch-b{padding:6px 16px 16px}.dsec{border:1px solid #e5e9f2;border-radius:12px;padding:12px 14px;margin-top:12px;background:#fff}
+    .dsec-h{display:flex;align-items:center;gap:8px;margin-bottom:4px;font-size:15px}.dnum{width:22px;height:22px;border-radius:50%;background:#2f5bd6;color:#fff;font-size:12px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;flex:none}
+    .drow{display:flex;gap:6px;flex-wrap:wrap;margin-top:8px}.drow input{flex:1 1 220px;min-width:0;margin:0}.drow .btn{flex:none}
+    .dck{display:block;margin-top:8px;font-size:14px}.dck input{width:auto}
+    .dx{display:flex;gap:8px;align-items:center;justify-content:space-between;margin:6px 0;font-size:14px}.dx label{flex:1}.dx input{width:auto}
+    .dhow{margin-top:8px;font-size:13px;color:#64748b}.dhow summary{cursor:pointer;color:#2f5bd6;font-weight:600}.dhow div{margin-top:6px;line-height:1.7}
+  </style>${head}${table}${chs.map(panel).join("")}${global}`;
 }
 async function driveConnect(id){
   const f = val("d_f"+id); if(!f) return toast("폴더 주소를 붙여 넣어 주세요.", true);

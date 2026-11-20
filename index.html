@@ -159,7 +159,17 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .wldate{display:flex;align-items:center;gap:6px;margin-left:8px;flex-shrink:0}.wldate.hide{display:none}.wldate input{border:1px solid var(--line);border-radius:8px;padding:5px 8px;font:inherit;font-size:.88rem;background:#fff}.wlst{font-size:.75rem;font-weight:700;color:var(--pri);background:var(--pri-soft);border-radius:20px;padding:3px 9px;white-space:nowrap}.wlst:empty{display:none}@media(max-width:600px){.wlst{display:none}.wldate input{padding:4px 5px;font-size:.8rem;max-width:128px}}
 .wltabs{display:flex;gap:2px;background:#eef2f8;border-radius:10px;padding:3px;margin-left:10px;flex-shrink:0}.wltabs.hide{display:none}.wltabs button{border:0;background:transparent;border-radius:8px;padding:6px 12px;font-size:.88rem;font-weight:700;color:var(--mute);cursor:pointer;white-space:nowrap}.wltabs button.on{background:#fff;color:var(--pri);box-shadow:0 1px 3px rgba(0,0,0,.08)}@media(max-width:600px){.wltabs button{padding:5px 8px;font-size:.8rem}}
 .tright{margin-left:auto;display:flex;align-items:center;gap:10px}
-.pstat{font-size:.8rem;color:var(--mute);font-weight:600;white-space:nowrap}
+.pstat{font-size:.82rem;color:var(--text);font-weight:600;white-space:nowrap;background:#f3f5f9;border-radius:10px;padding:7px 11px;cursor:pointer}
+.pstat b{color:var(--pri)}.pstat .tp{color:#7c3aed}.pstat .sl{display:none}
+.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
+.qbtn{border:1px solid var(--line);background:#fff;border-radius:12px;padding:12px 10px;text-align:left;cursor:pointer;font-size:.9rem;font-weight:700;color:var(--text);display:flex;flex-direction:column;gap:3px;min-height:58px}
+.qbtn:hover{background:var(--pri-soft);border-color:var(--pri)}
+.qbtn .ic{font-size:1.15rem}.qbtn small{font-size:.72rem;color:var(--mute);font-weight:600}
+.tuser{cursor:pointer}
+.mylist{max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:4px 10px;margin-top:6px}
+.mylist label{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.9rem;cursor:pointer}
+.mylist label:last-child{border-bottom:0}.mylist small{color:var(--mute)}
+.myinfo .r{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:.9rem}.myinfo .r span:first-child{color:var(--mute)}
 .pbtn{border:0;border-radius:10px;padding:9px 15px;font-weight:800;font-size:.88rem;color:#fff;background:var(--pri);white-space:nowrap}
 .pbtn.in{background:#16a34a}.pbtn.out{background:#dc2626}.pbtn.done{background:#e5e9f2;color:#4b5563}
 .tuser{display:flex;align-items:center;gap:8px;font-weight:700;font-size:.9rem;white-space:nowrap}
@@ -205,7 +215,9 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
   .scrim.open{display:block;position:fixed;inset:0;background:rgba(17,24,39,.35);z-index:35}
   .menubtn{display:inline-block}
   .topbar{padding:0 12px;gap:8px}
-  .pstat,.tuser span{display:none}
+  .tuser span{display:none}
+  .pstat{padding:6px 8px;font-size:.74rem}
+  .pstat .lb{display:none}.pstat .sl{display:inline}
   .pbtn{padding:8px 11px;font-size:.82rem}
   #view-home{padding:18px 14px 40px}
   .grid{display:flex;flex-direction:column;gap:18px;align-items:stretch}
@@ -253,7 +265,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
     <div class="grow"></div>
     <div class="me">
       <div class="av" id="me-av"></div>
-      <div class="info"><div class="nm" id="me-nm"></div><div class="sub" id="me-sub"></div></div>
+      <div class="info" style="cursor:pointer" onclick="openMy()" title="마이페이지"><div class="nm" id="me-nm"></div><div class="sub" id="me-sub"></div></div>
       <button onclick="doLogout()">로그아웃</button>
     </div>
   </aside>
@@ -264,10 +276,10 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
     <div class="wltabs hide" id="wltabs"><button data-t="writer" class="on" onclick="wlTab('writer')">✍️ 일지 작성</button><button data-t="calendar" onclick="wlTab('calendar')">🗓️ 캘린더</button></div>
     <div class="wldate hide" id="wldate"><input type="date" id="wl-date" onchange="wlDate(this.value)" title="작성일자"><span class="wlst" id="wl-st"></span></div>
     <div class="tright">
-      <span class="pstat hide" id="pstat"></span>
+      <span class="pstat hide" id="pstat" onclick="openPunch()" title="출퇴근 기록"></span>
       <button class="pbtn hide" id="pbtn" onclick="openPunch()">📍 출퇴근</button>
       <button class="gbtn2" onclick="openGuide(ME, (CUR||'home').split(':')[0])" title="사용 안내">📖<span class="gtx"> 사용 안내</span></button>
-      <div class="tuser"><div class="av sm" id="tb-av"></div><span id="tb-nm"></span></div>
+      <div class="tuser" onclick="openMy()" title="마이페이지"><div class="av sm" id="tb-av"></div><span id="tb-nm"></span></div>
     </div>
   </div>
   <main id="view-home">
@@ -281,23 +293,23 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
           <div class="ctitle"><span>📢 공지사항</span><button class="btn pri hide" id="notice-add" onclick="openNotice()">+ 공지 쓰기</button></div>
           <div id="notices"><div class="empty">불러오는 중…</div></div>
         </div>
-        <div class="card" style="order:4">
+        <div class="card" style="order:2">
           <div class="ctitle"><span>👥 오늘의 현황</span><span class="mute" id="bd-date"></span></div>
           <div id="board"><div class="empty">불러오는 중…</div></div>
         </div>
-        <div class="card" id="calcard" style="order:5">
-          <div class="ctitle"><span>📅 일정</span><span class="mute" id="calname">구글 캘린더</span></div>
-          <div id="calbox"><div class="empty">불러오는 중…</div></div>
+        <div class="card" style="order:3">
+          <div class="ctitle"><span>⭐ 자주 쓰는 메뉴</span><button class="btn" onclick="openMy('quick')">편집</button></div>
+          <div id="quick" class="qgrid"><div class="empty">불러오는 중…</div></div>
         </div>
       </div>
       <div class="col">
         <div class="card" style="order:0">
-          <div class="ctitle"><span>📍 오늘 출퇴근</span><button class="btn pri" onclick="openPunch()">기록하기</button></div>
-          <div id="punch"><div class="empty">불러오는 중…</div></div>
-        </div>
-        <div class="card" style="order:3">
           <div class="ctitle"><span>🗓 내 근태</span><button class="btn" onclick="go('att','leave')">휴가 관리 →</button></div>
           <div id="att"><div class="empty">불러오는 중…</div></div>
+        </div>
+        <div class="card" id="calcard" style="order:1">
+          <div class="ctitle"><span>📅 일정</span><span class="mute" id="calname">구글 캘린더</span></div>
+          <div id="calbox"><div class="empty">불러오는 중…</div></div>
         </div>
       </div>
     </div>
@@ -358,7 +370,7 @@ async function start(){
     $('blk-t').textContent = t; $('blk-d').innerHTML = d; return;
   }
   ME = w; render(); show('app');
-  loadNotices(); loadAtt(); loadBoard(); if (w.can_manage) loadMgr();
+  loadNotices(); loadAtt(); loadBoard(); loadQuick(); if (w.can_manage) loadMgr();
   fromHash();
 }
 
@@ -409,6 +421,7 @@ function renderNav(){
   if (ME.can_manage) h += topHtml('access:s:', '🔑', '직원·권한 관리', "go('access')");
   $('nav').innerHTML = h;
   foldNav();
+  if (PREFS !== undefined && $('quick')) loadQuick();
   markNav();
 }
 function openGrp(g){
@@ -550,7 +563,10 @@ function setPunch(t){
   if (!t.in) { b.textContent = '🟢 출근하기'; b.classList.add('in'); }
   else if (!t.out) { b.textContent = '🔴 퇴근하기'; b.classList.add('out'); }
   else { b.textContent = '✅ 출퇴근 완료'; b.classList.add('done'); }
-  var st = $('pstat'); st.classList.remove('hide'); st.textContent = '출근 ' + (t.in ? t.in.time : '--:--') + ' · 퇴근 ' + (t.out ? t.out.time : '--:--');
+  var st = $('pstat'); st.classList.remove('hide');
+  st.innerHTML = '<span class="lb">출근 </span><b>' + (t.in ? esc(t.in.time) : '--:--') + '</b><span class="lb"> · 퇴근 </span><span class="sl"> / </span><b>' + (t.out ? esc(t.out.time) : '--:--') + '</b>' + (t.trip ? ' <span class="tp">· 출장</span>' : '');
+  st.title = '출퇴근 기록' + (PUNCH_STD ? ' (내 기준 시각 ' + PUNCH_STD.in + ' ~ ' + PUNCH_STD.out + ')' : '') + (t.in && t.in.reason ? '\n출근 사유: ' + t.in.reason : '') + (t.out && t.out.reason ? '\n퇴근 사유: ' + t.out.reason : '');
+  if (!$('punch')) return;
   var row = function(label, x, color){
     if (!x) return '<div class="prow"><span>' + label + '</span><span class="mute">아직 기록 없음</span></div>';
     return '<div class="prow"><span>' + label + '</span><span style="text-align:right"><b class="t"' + (color ? ' style="color:' + color + '"' : '') + '>' + esc(x.time) + '</b>'
@@ -581,6 +597,72 @@ function render(){
 }
 
 /* ── 공지사항 ── */
+/* ── 자주 쓰는 메뉴 · 마이페이지 ── */
+var PREFS = null;
+var QUICK_DEFAULT = ['att:s:leave-apply', 'att:s:leave', 'att:s:trip', 'att:s:write', 'car:s:', 'edu:s:courses', 'doc:s:', 'interp:s:', 'worklog:s:', 'acct:s:', 'cert:s:', 'member:s:'];
+function navItems(){   // 왼쪽 메뉴에 있는 항목 (권한에 맞게 보이는 것만)
+  var out = [];
+  document.querySelectorAll('#nav [data-id]').forEach(function(a){
+    var id = a.getAttribute('data-id'); if (id === 'home:s:') return;
+    var gb = a.closest('.gbody'), g = gb ? gb.previousElementSibling : null;
+    var grp = g ? (g.childNodes[1] ? g.childNodes[1].textContent : g.textContent).replace('▸', '').trim() : '';
+    var ic = a.querySelector('.ic') ? a.querySelector('.ic').textContent : (g && g.querySelector('.ic') ? g.querySelector('.ic').textContent : '•');
+    out.push({ id: id, label: a.getAttribute('data-lb'), grp: grp, ic: ic, el: a });
+  });
+  return out;
+}
+async function loadPrefs(){
+  if (PREFS) return PREFS;
+  try { var r = await sb.rpc('my_prefs_get'); PREFS = (r && !r.error && r.data) || {}; } catch(e) { PREFS = {}; }
+  return PREFS;
+}
+async function loadQuick(){
+  var box = $('quick'); if (!box) return;
+  await loadPrefs();
+  var items = navItems(), byId = {}; items.forEach(function(x){ byId[x.id] = x; });
+  var ids = Array.isArray(PREFS.quick) ? PREFS.quick : QUICK_DEFAULT;
+  var list = ids.map(function(id){ return byId[id]; }).filter(Boolean);
+  box.innerHTML = list.length ? list.map(function(x){
+    return '<button class="qbtn" onclick="quickGo(\'' + esc(x.id) + '\')"><span class="ic">' + esc(x.ic) + '</span>' + esc(x.label) + (x.grp ? '<small>' + esc(x.grp) + '</small>' : '') + '</button>';
+  }).join('') : '<div class="empty" style="grid-column:1/-1">자주 쓰는 메뉴가 없습니다. <b>편집</b>을 눌러 추가하세요.</div>';
+}
+function quickGo(id){ var a = document.querySelector('#nav [data-id="' + id + '"]'); if (a) a.click(); }
+async function openMy(focus){
+  await loadPrefs();
+  var items = navItems(), cur = Array.isArray(PREFS.quick) ? PREFS.quick.slice() : QUICK_DEFAULT.slice();
+  var on = function(id){ return cur.indexOf(id) >= 0; };
+  var roleTxt = ME.role === 'admin' ? '도협회 관리자' : ME.role === 'lead' ? '지회 담당자' : (ME.can_manage ? '공동 관리자' : '직원');
+  var R = function(k, v){ return '<div class="r"><span>' + k + '</span><span>' + esc(v || '-') + '</span></div>'; };
+  $('modal').innerHTML = '<div class="modal" style="max-width:560px"><h3>👤 마이페이지</h3>'
+    + '<div class="myinfo">' + R('이름', ME.name) + R('소속', ME.chapter_name) + R('부서', ME.dept) + R('직위', ME.position) + R('구글 계정', ME.email) + R('역할', roleTxt) + '</div>'
+    + '<p class="mute" style="font-size:.8rem;margin:6px 0 0">이름·부서·직위가 틀리면 지회 담당자에게 수정을 요청하세요. (직원·권한 관리)</p>'
+    + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">'
+    + '<button class="btn" onclick="closeModal();go(\'access\')">✍️ 내 서명 · 🔐 내 권한</button>'
+    + '<button class="btn" onclick="closeModal();go(\'att\',\'leave\')">🗓 내 근태 현황</button>'
+    + '<button class="btn" onclick="closeModal();openGuide(ME,\'home\')">📖 사용 안내</button></div>'
+    + '<h3 id="my-quick" style="margin-top:18px">⭐ 자주 쓰는 메뉴 <span class="mute" style="font-size:.8rem;font-weight:600">홈 화면에 보일 버튼을 고르세요</span></h3>'
+    + '<div class="mylist" id="my-ql">' + items.map(function(x){
+        return '<label><input type="checkbox" value="' + esc(x.id) + '"' + (on(x.id) ? ' checked' : '') + ' style="width:auto"> ' + esc(x.ic) + ' ' + esc(x.label) + (x.grp ? ' <small>' + esc(x.grp) + '</small>' : '') + '</label>';
+      }).join('') + '</div>'
+    + '<div class="mfoot"><button class="btn" onclick="resetQuick()">기본값으로</button><span style="flex:1"></span><button class="btn" onclick="closeModal()">닫기</button><button class="btn pri" onclick="saveQuick()">저장</button></div></div>';
+  $('modal').classList.remove('hide');
+  if (focus === 'quick') setTimeout(function(){ var h = $('my-quick'); if (h) h.scrollIntoView({ block: 'start' }); }, 30);
+}
+async function saveQuick(){
+  var prev = Array.isArray(PREFS.quick) ? PREFS.quick : QUICK_DEFAULT, picked = [];
+  document.querySelectorAll('#my-ql input:checked').forEach(function(c){ picked.push(c.value); });
+  // 이미 있던 순서는 유지하고, 새로 고른 것은 뒤에 붙임
+  var ids = prev.filter(function(id){ return picked.indexOf(id) >= 0; }).concat(picked.filter(function(id){ return prev.indexOf(id) < 0; }));
+  var r = await sb.rpc('my_prefs_set', { p_key: 'quick', p_val: ids });
+  if (r.error) { toast(r.error.message); return; }
+  PREFS.quick = ids; closeModal(); loadQuick(); toast('자주 쓰는 메뉴를 저장했습니다.');
+}
+async function resetQuick(){
+  var r = await sb.rpc('my_prefs_set', { p_key: 'quick', p_val: null });
+  if (r.error) { toast(r.error.message); return; }
+  PREFS.quick = null; closeModal(); loadQuick(); toast('기본 메뉴로 되돌렸습니다.');
+}
+
 async function loadNotices(){
   var r = await sb.rpc('list_notices', { p_limit: 30 });
   if (r.error) { $('notices').innerHTML = '<div class="empty">공지를 불러오지 못했습니다.<br>' + esc(r.error.message) + '</div>'; return; }
@@ -643,7 +725,7 @@ async function loadAtt(){
     if (!w || !w.ok) { el.innerHTML = '<div class="note">근태 정보를 불러오지 못했습니다.<br>' + esc((w && w.msg) || '') + '</div>'; return; }
     ATT = w; renderNav();
     if (!w.staffName) { loadCal();
-       $('punch').innerHTML = '<div class="note">근태 직원목록에 구글 계정이 연결되면 출퇴근을 기록할 수 있습니다.</div>'; el.innerHTML = '<div class="note">근태 직원목록에 내 구글 계정이 아직 연결되어 있지 않습니다.<br>지회 담당자에게 확인을 요청하세요.</div>'; return; }
+       if ($('punch')) $('punch').innerHTML = '<div class="note">근태 직원목록에 구글 계정이 연결되면 출퇴근을 기록할 수 있습니다.</div>'; el.innerHTML = '<div class="note">근태 직원목록에 내 구글 계정이 아직 연결되어 있지 않습니다.<br>지회 담당자에게 확인을 요청하세요.</div>'; return; }
     loadPunch(); loadCal();
     var y = new Date().getFullYear();
     var b = await attCall('getMyLeaveBalance', JSON.stringify({ name: w.staffName, year: y }));

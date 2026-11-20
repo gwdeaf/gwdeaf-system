@@ -33,8 +33,8 @@ a{color:inherit;text-decoration:none}
 .nav a:hover{background:#f3f5fa}
 .nav a.on{background:var(--pri-soft);color:var(--pri)}
 .nav .dis{color:#a3aab8;cursor:default}
-.nav .sec{margin:14px 12px 4px;font-size:.72rem;font-weight:700;color:#8a93a5;letter-spacing:.04em}
-.nav .tag{margin-left:auto;font-size:.68rem;background:#eef0f5;color:#8a93a5;border-radius:6px;padding:2px 6px;font-weight:700}
+.nav .sec{margin:14px 12px 4px;font-size:.75rem;font-weight:700;color:#8a93a5;letter-spacing:.04em}
+.nav .tag{margin-left:auto;font-size:.75rem;background:#eef0f5;color:#8a93a5;border-radius:6px;padding:2px 6px;font-weight:700}
 .nav .ic{width:22px;text-align:center}
 .grow{flex:1}
 .me{border-top:1px solid var(--line);padding:14px 6px 0;display:flex;align-items:center;gap:10px}
@@ -67,7 +67,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .nth{display:flex;align-items:center;gap:9px;padding:13px 2px;cursor:pointer}
 .nth .t{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .nth .d{color:var(--mute);font-size:.8rem;flex:none}
-.badge{flex:none;font-size:.7rem;font-weight:800;border-radius:6px;padding:3px 7px}
+.badge{flex:none;font-size:.75rem;font-weight:800;border-radius:6px;padding:3px 7px}
 .b-imp{background:var(--red-soft);color:var(--red)}
 .b-all{background:var(--pri-soft);color:var(--pri)}
 .b-chap{background:#eef0f5;color:#6b7280}
@@ -127,8 +127,8 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .nav .kid{display:block;padding:7px 12px 7px 44px;border-radius:9px;font-size:.85rem;font-weight:600;color:#4b5563;cursor:pointer}
 .nav .kid:hover{background:#f3f5fa}
 .nav .kid.on{background:var(--pri-soft);color:var(--pri);font-weight:700}
-.nav .kls{padding:8px 12px 2px 44px;font-size:.68rem;font-weight:800;color:#a3aab8;letter-spacing:.03em}
-.nav .sec{margin:14px 12px 2px;padding-top:12px;border-top:1px solid var(--line);font-size:.72rem;font-weight:800;color:#8a93a5;letter-spacing:.04em}
+.nav .kls{padding:8px 12px 2px 44px;font-size:.75rem;font-weight:800;color:#a3aab8;letter-spacing:.03em}
+.nav .sec{margin:14px 12px 2px;padding-top:12px;border-top:1px solid var(--line);font-size:.75rem;font-weight:800;color:#8a93a5;letter-spacing:.04em}
 /* 화면 높이에 맞춰 간격을 줄여, 스크롤 없이 한 화면에 보이게 */
 .grow{display:none}
 .nav{gap:1px;scrollbar-width:thin}
@@ -160,10 +160,10 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .sch{display:flex;align-items:center;gap:10px;padding:10px 2px;border-top:1px solid var(--line);cursor:pointer}
 .sch:first-child{border-top:0}
 .sch .dt{flex:none;width:92px;font-weight:800;font-size:.86rem}
-.sch .dt small{display:block;color:var(--mute);font-weight:600;font-size:.72rem}
+.sch .dt small{display:block;color:var(--mute);font-weight:600;font-size:.75rem}
 .sch .tx{flex:1;min-width:0;font-size:.9rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 .sch .tx small{display:block;color:var(--mute);font-weight:500;font-size:.76rem;overflow:hidden;text-overflow:ellipsis}
-.sch .tg{flex:none;font-size:.72rem;font-weight:800;border-radius:6px;padding:3px 7px;white-space:nowrap}
+.sch .tg{flex:none;font-size:.75rem;font-weight:800;border-radius:6px;padding:3px 7px;white-space:nowrap}
 .prow{display:flex;justify-content:space-between;align-items:baseline;padding:10px 2px;border-bottom:1px solid var(--line);font-size:.92rem}
 .prow:last-of-type{border-bottom:0}
 .prow b.t{font-size:1.15rem;color:var(--pri)}
@@ -174,7 +174,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .brand:hover{opacity:.85}
 .nav .grp{cursor:pointer;border-radius:10px;padding:clamp(7px,1.2vh,11px) 12px;margin-top:1px}
 .nav .grp:hover{background:#f3f5fa}
-.nav .grp .arw{margin-left:auto;font-size:.7rem;color:#8a93a5;transition:transform .15s}
+.nav .grp .arw{margin-left:auto;font-size:.75rem;color:#8a93a5;transition:transform .15s}
 .nav .grp.open .arw{transform:rotate(90deg)}
 .nav .grp.open{background:#f7f9fe}
 .nav .gbody{display:none;padding-bottom:4px}
@@ -196,12 +196,14 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
   .grid{display:flex;flex-direction:column;gap:18px;align-items:stretch}
   .col{display:contents}
   .mbox{padding:11px}
+  .sch .dt{width:76px}
   .mbox .n{font-size:1.05rem}
   .mbox .l{word-break:keep-all;font-size:.76rem}
   .mlogout{display:none!important}
   .mgr{grid-template-columns:1fr 1fr 1fr}
 }
 </style>
+<link rel="stylesheet" href="/ui.css?v=1">
 </head>
 <body>
 

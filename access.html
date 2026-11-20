@@ -6,31 +6,31 @@
 <title>직원·권한 관리 · 강원특별자치도농아인협회 업무 시스템</title>
 <style>
 *{box-sizing:border-box}
-body{margin:0;font-family:-apple-system,"Noto Sans KR","Malgun Gothic",sans-serif;background:#f4f2ee;color:#222;font-size:15px}
+body{margin:0;font-family:-apple-system,"Noto Sans KR","Malgun Gothic",sans-serif;background:#f5f7fb;color:#222;font-size:15px}
 .wrap{max-width:860px;margin:0 auto;padding:14px}
 h1{font-size:19px;margin:0}
 h2{font-size:16px;margin:0 0 8px}
 html.embed .top>div:last-child{display:none}
 .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:10px}
-.card{background:#fff;border:1px solid #ddd8cc;border-radius:10px;padding:12px;margin-bottom:10px}
+.card{background:#fff;border:1px solid #e5e9f2;border-radius:10px;padding:12px;margin-bottom:10px}
 .muted{color:#777;font-size:13px}
 .tabs{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
-.tabs button{flex:1;min-width:90px;padding:9px;border:1px solid #cfc9bb;background:#fff;border-radius:8px;font-size:14px}
-.tabs button.on{background:#3b5bdb;color:#fff;border-color:#3b5bdb}
+.tabs button{flex:1;min-width:90px;padding:9px;border:1px solid #d5dbe8;background:#fff;border-radius:8px;font-size:14px}
+.tabs button.on{background:#2f5bd6;color:#fff;border-color:#2f5bd6}
 button{font:inherit;cursor:pointer}
-.btn{padding:8px 12px;border:1px solid #3b5bdb;background:#3b5bdb;color:#fff;border-radius:8px}
-.btn.sub{background:#fff;color:#3b5bdb}
+.btn{padding:8px 12px;border:1px solid #2f5bd6;background:#2f5bd6;color:#fff;border-radius:8px}
+.btn.sub{background:#fff;color:#2f5bd6}
 .btn.red{background:#fff;color:#c92a2a;border-color:#c92a2a}
 .btn.sm{padding:5px 9px;font-size:13px}
-input,select{font:inherit;padding:8px;border:1px solid #cfc9bb;border-radius:8px;width:100%;background:#fff}
+input,select{font:inherit;padding:8px;border:1px solid #d5dbe8;border-radius:8px;width:100%;background:#fff}
 .row{display:flex;gap:6px;flex-wrap:wrap;align-items:center}
 .grid{display:grid;grid-template-columns:1fr 1fr;gap:6px}
 .grid .full{grid-column:1/3}
-.badge{display:inline-block;font-size:12px;padding:2px 7px;border-radius:10px;background:#e7ecff;color:#3b5bdb;margin-left:4px}
+.badge{display:inline-block;font-size:12px;padding:2px 7px;border-radius:10px;background:#eaf0ff;color:#2f5bd6;margin-left:4px}
 .badge.g{background:#e6f6ea;color:#2b8a3e}.badge.x{background:#f1f1f1;color:#777}.badge.o{background:#fff1dc;color:#d9480f}
 .st{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap}
 .off{opacity:.55}
-.perm{background:#faf9f6;border-radius:8px;padding:8px;margin-top:8px}
+.perm{background:#f7f9fc;border-radius:8px;padding:8px;margin-top:8px}
 .perm b{display:block;margin:6px 0 2px;font-size:13px;color:#555}
 .perm label{display:flex;gap:6px;align-items:center;padding:3px 0}
 .perm input{width:auto}
@@ -44,6 +44,7 @@ table.log td,table.log th{border-bottom:1px solid #eee;padding:5px;text-align:le
 #toast.bad{background:#c92a2a}
 .center{text-align:center;padding:40px 10px}
 </style>
+<link rel="stylesheet" href="/ui.css?v=1">
 </head>
 <body>
 <div class="wrap" id="app"><div class="center muted">불러오는 중…</div></div>

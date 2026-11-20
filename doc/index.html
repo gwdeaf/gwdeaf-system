@@ -7,8 +7,8 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   * { box-sizing: border-box; }
-  body { margin: 0; font-family: "Malgun Gothic", "맑은 고딕", sans-serif; background: #f4f6f8; color: #222; font-size: 15px; }
-  header { background: #1f4e79; color: #fff; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  body { margin: 0; font-family: "Malgun Gothic", "맑은 고딕", sans-serif; background: #f5f7fb; color: #222; font-size: 15px; }
+  header { background: #2f5bd6; color: #fff; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
   header h1 { font-size: 18px; margin: 0; }
   header .who { font-size: 13px; opacity: .9; }
   nav { background: #fff; border-bottom: 1px solid #dde3ea; padding: 8px 12px; display: flex; gap: 6px; flex-wrap: wrap; }
@@ -17,8 +17,8 @@
   .screen.on { display: block; }
   h2 { font-size: 18px; margin: 4px 0 12px; }
   .card { background: #fff; border: 1px solid #dde3ea; border-radius: 8px; padding: 16px; margin-bottom: 14px; }
-  button { font: inherit; cursor: pointer; border: 1px solid #1f4e79; background: #fff; color: #1f4e79; border-radius: 6px; padding: 7px 12px; margin: 2px; }
-  button.main { background: #1f4e79; color: #fff; }
+  button { font: inherit; cursor: pointer; border: 1px solid #2f5bd6; background: #fff; color: #2f5bd6; border-radius: 6px; padding: 7px 12px; margin: 2px; }
+  button.main { background: #2f5bd6; color: #fff; }
   button.danger { border-color: #b03a2e; color: #b03a2e; }
   button:disabled { opacity: .4; cursor: default; }
   button.tab.on { background: #dfeaf5; font-weight: bold; }
@@ -39,11 +39,22 @@
   .msg.err { color: #b03a2e; } .msg.ok { color: #1e7a3c; }
   .btns { margin-top: 10px; }
   .muted { color: #777; font-size: 13px; }
-  .hint { background: #f7f9fb; border-left: 4px solid #1f4e79; padding: 8px 12px; font-size: 13px; color: #444; margin: 8px 0; }
+  .hint { background: #f7f9fb; border-left: 4px solid #2f5bd6; padding: 8px 12px; font-size: 13px; color: #444; margin: 8px 0; }
   .sub-line { color: #555; margin-left: 16px; }
   body.embed header, body.embed #logoutBtn { display: none; }
   body.embed nav { position: static; }
   #printArea { display: none; }
+  /* 모바일: 여백 줄이고, 칸 많은 표는 옆으로 밀어서 보기, 누르기 쉬운 버튼 */
+  @media (max-width: 640px) {
+    main { padding: 10px; }
+    .card { padding: 12px; }
+    nav { padding: 6px 8px; }
+    nav button { flex: 1 1 auto; }
+    button, select, input { min-height: 40px; }
+    .screen table { display: block; overflow-x: auto; white-space: nowrap; }
+    .row > div { min-width: 100%; }
+    .narrow { max-width: none; flex: 1 1 100% !important; }
+  }
   @media print {
     body > *:not(#printArea) { display: none !important; }
     #printArea { display: block !important; background: #fff; color: #000; padding: 20mm; font-family: "Malgun Gothic", sans-serif; }
@@ -53,6 +64,7 @@
     @page { size: A4; margin: 15mm; }
   }
 </style>
+<link rel="stylesheet" href="/ui.css?v=1">
 </head>
 <body>
 

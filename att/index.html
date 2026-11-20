@@ -19,7 +19,7 @@
   body{font-family:'Noto Sans KR',sans-serif;background:var(--bg);color:var(--text);min-height:100vh;overflow-x:hidden;}
   .header{background:var(--primary);color:white;padding:1rem 1.5rem;display:flex;align-items:center;justify-content:space-between;box-shadow:0 2px 8px rgba(0,0,0,0.2);}
   .header h1{font-family:'Noto Serif KR',serif;font-size:1.2rem;font-weight:600;letter-spacing:0.05em;}
-  .header-badge{font-size:0.72rem;background:rgba(255,255,255,0.15);padding:4px 10px;border-radius:20px;}
+  .header-badge{font-size:0.78rem;background:rgba(255,255,255,0.15);padding:4px 10px;border-radius:20px;}
   /* ===== 사이드바 레이아웃 ===== */
   .tabs{display:none;} /* 기존 상단탭 숨김 */
   .app-layout{display:flex;min-height:calc(100vh - 60px);}
@@ -84,7 +84,7 @@
   .dash-row:hover{border-color:var(--primary-light);background:#f0f5fb;}
   .dash-avatar{width:38px;height:38px;border-radius:50%;background:var(--primary);color:white;font-size:0.95rem;font-weight:700;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
   .dash-info{flex:1;min-width:0;} .dash-name{font-weight:700;font-size:0.95rem;} .dash-sub{font-size:0.78rem;color:var(--text-muted);margin-top:2px;}
-  .dash-badge{font-size:0.72rem;padding:3px 9px;border-radius:20px;font-weight:700;white-space:nowrap;flex-shrink:0;}
+  .dash-badge{font-size:0.78rem;padding:3px 9px;border-radius:20px;font-weight:700;white-space:nowrap;flex-shrink:0;}
   .badge-pending{background:#fff3cd;color:#856404;} .badge-done{background:var(--success-bg);color:var(--success);} .badge-partial{background:#e7f0fb;color:var(--primary);}
 
   /* ===== 대체시수 2단 레이아웃 ===== */
@@ -200,7 +200,7 @@
   .tab.tab-leave:hover:not(.active) { background:rgba(52,192,144,0.1); color:rgba(255,255,255,0.9); }
 
   /* 근태 배지 */
-  .leave-badge { display:inline-block; font-size:0.72rem; padding:2px 7px; border-radius:12px; font-weight:600; white-space:nowrap; }
+  .leave-badge { display:inline-block; font-size:0.78rem; padding:2px 7px; border-radius:12px; font-weight:600; white-space:nowrap; }
   .lb-leave { background:#dbeafe; color:#1e40af; }
   .lb-ot { background:#fce7f3; color:#9d174d; }
   .lb-sisu { background:#d1fae5; color:#065f46; }
@@ -364,6 +364,8 @@
   html.embed body{background:var(--bg);}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>html{font-size:105%}@media print{html{font-size:100%}}</style>
+<link rel="stylesheet" href="/ui.css?v=1">
 </head>
 <body>
 

@@ -1,0 +1,43 @@
+/* ============================================================
+   공통 보기 규칙 (모든 화면이 함께 씁니다 — 홈·근태·차량·교육·공문·권한)
+   글꼴/글자 크기/색을 바꾸고 싶으면 이 파일만 고치면 전체에 반영됩니다.
+   ============================================================ */
+@import url("https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css");
+
+:root{
+  --ui-font:"Pretendard Variable",Pretendard,-apple-system,BlinkMacSystemFont,"Apple SD Gothic Neo","Noto Sans KR","Malgun Gothic",sans-serif;
+  --ui-bg:#f5f7fb; --ui-text:#1f2937; --ui-mute:#6b7280; --ui-line:#e5e9f2; --ui-pri:#2f5bd6;
+}
+html{-webkit-text-size-adjust:100%;scrollbar-width:thin}
+body{
+  font-family:var(--ui-font);
+  color:var(--ui-text);
+  background:var(--ui-bg);
+  line-height:1.6;
+  letter-spacing:-.01em;
+  word-break:keep-all;
+  overflow-wrap:break-word;
+  font-variant-numeric:tabular-nums;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+}
+button,input,select,textarea{font-family:inherit}
+h1,h2,h3,h4{letter-spacing:-.02em;line-height:1.35;word-break:keep-all}
+button{transition:background-color .12s,border-color .12s,box-shadow .12s,color .12s}
+input:not([type=checkbox]):not([type=radio]),select,textarea{transition:border-color .12s,box-shadow .12s}
+input:not([type=checkbox]):not([type=radio]):focus,select:focus,textarea:focus{outline:none;border-color:var(--ui-pri);box-shadow:0 0 0 3px rgba(47,91,214,.15)}
+:focus-visible{outline:2px solid var(--ui-pri);outline-offset:2px}
+::selection{background:#cfdcff}
+::placeholder{color:#9aa3b2}
+table{font-variant-numeric:tabular-nums}
+
+/* 교육 화면: 초록 계열을 공통 파랑 계열로 (인쇄물·그래프 색은 그대로) */
+:root{
+  --pine:#2f5bd6; --pine-2:#4a73e8; --pine-soft:#eaf0ff; --mist:#f5f7fb;
+  --ink:#1f2937; --muted:#6b7280; --line:#e5e9f2;
+}
+
+/* 인쇄할 때는 화면용 꾸밈을 쓰지 않음 */
+@media print{
+  body{background:#fff;letter-spacing:normal;word-break:normal;-webkit-font-smoothing:auto}
+}

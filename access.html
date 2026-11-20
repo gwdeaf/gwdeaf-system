@@ -103,14 +103,16 @@ function blockedView(){
 function render(){
   const tabs = me.can_manage ? [["staff","직원·권한"],["lines","결재라인"],["log","변경 기록"]] : [];
   if(me.role === "admin") tabs.push(["chapters","지회 담당 지정"]);
+  if(me.can_manage) tabs.push(["org","기관 정보"]);
   if(me.role === "admin" || me.role === "lead") tabs.push(["drive","드라이브 연결"]);
+  tabs.push(["sign","내 서명"]);
   tabs.push(["me","내 권한"]);
   $("#app").innerHTML = `<div class="top"><div><h1>${esc(me.chapter_name)} · ${esc(me.name)}</h1>
       <div class="muted">${esc(me.email)} <span class="badge">${ROLE[me.role]}</span>${me.role==="staff"&&me.can_manage?'<span class="badge o">공동 관리자</span>':""}</div></div>
       <div><a class="btn sub sm" href="/" style="text-decoration:none;display:inline-block">🏠 홈으로</a> <button class="btn sub sm" onclick="logout()">로그아웃</button></div></div>
     <div class="tabs">${tabs.map(t=>`<button class="${tab===t[0]?"on":""}" onclick="go('${t[0]}')">${t[1]}</button>`).join("")}</div>
     <div id="body"></div>`;
-  ({staff:staffView, lines:linesView, log:logView, chapters:chaptersView, drive:driveView, me:meView}[tab] || meView)();
+  ({staff:staffView, lines:linesView, log:logView, chapters:chaptersView, drive:driveView, org:orgView, sign:signView, me:meView}[tab] || meView)();
 }
 async function go(t){
   tab = t;
@@ -120,6 +122,8 @@ async function go(t){
     else if(t==="log") logs = await rpc("get_access_log", {p_limit:100});
     else if(t==="chapters") chapters = await rpc("list_chapters");
     else if(t==="drive") await loadDrive();
+    else if(t==="org") org = await rpc("get_org_profile");
+    else if(t==="sign"){ mySign = await rpc("get_my_signature"); sigStat = me.can_manage ? await rpc("list_signature_status") : null; }
   }catch(e){ toast(e.message, true); }
   render();
 }
@@ -205,6 +209,87 @@ function apRemove(i){ const d = deptKeys[i]; if(confirm(d + " 부서의 결재�
 function logView(){
   $("#body").innerHTML = `<div class="card"><table class="log"><tr><th>일시</th><th>처리자</th><th>내용</th></tr>${logs.map(l=>`<tr><td>${esc(l.at)}</td><td>${esc(l.actor)}</td><td><b>${esc(ACT[l.action]||l.action)}</b> ${esc(l.target)}<div class="muted">${esc(l.detail)}</div></td></tr>`).join("") || '<tr><td colspan="3" class="muted">기록이 없습니다.</td></tr>'}</table></div>`;
 }
+
+/* 기관 정보 (전화번호·직인) — 모든 시스템이 함께 씀 */
+let org = null;
+const SEAL_NAMES = {"지회":"지회(기관) 직인","센터":"센터 직인"};
+function orgView(){
+  if(!org){ $("#body").innerHTML = '<div class="card muted">불러오는 중...</div>'; return; }
+  $("#body").innerHTML = `<div class="card"><h2>🏢 ${esc(org.name)} 기관 정보</h2>
+    <div class="muted">여기에 입력한 전화번호와 직인은 수어교육관리(포스터·수료증 등)와 공문 시스템에서 함께 사용합니다. 우리 기관 것만 보이고, 다른 기관은 볼 수 없습니다.</div>
+    <div class="grid" style="margin-top:8px"><input id="o_phone" placeholder="${org.is_hq?"도협회 전화번호":"지회 전화번호"} (예: 033-000-0000)" value="${esc(org.phone)}">
+    ${org.is_hq?"":`<input id="o_center" placeholder="센터 전화번호" value="${esc(org.center_phone)}">`}
+    <input id="o_direct" placeholder="직통번호 (선택)" value="${esc(org.direct_phone)}">
+    <input id="o_addr" placeholder="주소 (선택)" value="${esc(org.address)}">
+    <button class="btn full" onclick="orgSave()">저장</button></div></div>
+    <div class="card"><h2>🔴 직인</h2><div class="muted">PNG·JPG 이미지를 올리면 자동으로 크기를 줄입니다. 배경이 투명한 PNG가 가장 깔끔합니다.</div>
+    ${Object.keys(SEAL_NAMES).filter(k=>!(org.is_hq&&k==="센터")).map(k=>`<div class="st" style="margin-top:10px"><div><b>${SEAL_NAMES[k]}</b>
+      ${org.seals[k]?`<div><img src="${esc(org.seals[k])}" style="max-height:80px;max-width:160px;border:1px solid #ddd;margin-top:4px"></div>`:'<div class="muted">등록된 직인이 없습니다.</div>'}</div>
+      <div><input type="file" accept="image/png,image/jpeg,image/webp" id="o_f_${k}" style="display:none" onchange="orgSeal('${k}',this)">
+      <button class="btn sub sm" onclick="$('#o_f_${k}').click()">${org.seals[k]?"바꾸기":"올리기"}</button>
+      ${org.seals[k]?`<button class="btn sub sm" onclick="orgSealDel('${k}')">삭제</button>`:""}</div></div>`).join("")}</div>`;
+}
+function orgSave(){ act("save_org_profile", {p_phone:val("o_phone"), p_center:$("#o_center")?val("o_center"):"", p_direct:val("o_direct"), p_address:val("o_addr")}, "저장했습니다.", async()=>{ org = await rpc("get_org_profile"); orgView(); }); }
+function shrinkImage(file){
+  return new Promise((ok,bad)=>{
+    const fr = new FileReader();
+    fr.onerror = ()=>bad(new Error("이미지를 읽지 못했습니다."));
+    fr.onload = ()=>{ const im = new Image(); im.onerror = ()=>bad(new Error("이미지 형식을 확인할 수 없습니다."));
+      im.onload = ()=>{ for(let side of [320,240,180,120]){
+          const r = Math.min(1, side/Math.max(im.width, im.height)), c = document.createElement("canvas");
+          c.width = Math.max(1,Math.round(im.width*r)); c.height = Math.max(1,Math.round(im.height*r));
+          c.getContext("2d").drawImage(im,0,0,c.width,c.height);
+          const d = c.toDataURL("image/png"); if(d.length <= 140000) return ok(d);
+        } bad(new Error("이미지가 너무 복잡합니다. 단순한 직인 이미지를 올려 주세요.")); };
+      im.src = fr.result; };
+    fr.readAsDataURL(file);
+  });
+}
+async function orgSeal(kind, input){
+  const f = input.files && input.files[0]; if(!f) return;
+  try{ const img = await shrinkImage(f); await rpc("save_org_seal", {p_kind:kind, p_image:img}); toast("직인을 저장했습니다."); org = await rpc("get_org_profile"); orgView(); }
+  catch(e){ toast(e.message, true); }
+}
+function orgSealDel(kind){ if(confirm("직인을 삭제할까요?")) act("delete_org_seal", {p_kind:kind}, "삭제했습니다.", async()=>{ org = await rpc("get_org_profile"); orgView(); }); }
+
+/* 내 서명 — 본인 서명 이미지를 보관해 두면 공문·서식에서 꺼내 씁니다 */
+let mySign = "", sigStat = null, padDraw = false, padDirty = false;
+function signView(){
+  $("#body").innerHTML = `<div class="card"><h2>✍️ 내 서명</h2>
+    <div class="muted">서명 이미지를 한 번 등록해 두면 공문 결재·서식 인쇄 등에서 자동으로 사용됩니다. 같은 지회 직원만 꺼내 쓸 수 있고, 도협회·다른 지회는 볼 수 없습니다.</div>
+    <div style="margin-top:10px"><b>등록된 서명</b>${mySign?`<div><img src="${esc(mySign)}" style="max-height:90px;max-width:240px;border:1px solid #ddd;margin-top:4px;background:#fff"></div>`:'<div class="muted">아직 등록하지 않았습니다.</div>'}</div>
+    <div style="margin-top:10px"><input type="file" accept="image/png,image/jpeg,image/webp" id="sg_f" style="display:none" onchange="signUpload(this)">
+    <button class="btn sub sm" onclick="$('#sg_f').click()">📷 이미지 올리기</button>
+    ${mySign?'<button class="btn sub sm" onclick="signDel()">삭제</button>':""}</div></div>
+    <div class="card"><h2>직접 그리기</h2><div class="muted">아래 칸에 손가락이나 마우스로 서명하세요.</div>
+    <canvas id="sg_pad" width="320" height="130" style="border:1px solid #bbb;border-radius:8px;background:#fff;touch-action:none;margin-top:8px;max-width:100%"></canvas>
+    <div style="margin-top:8px"><button class="btn sub sm" onclick="padClear()">지우기</button> <button class="btn sm" onclick="padSave()">이 서명 저장</button></div></div>
+    ${sigStat?`<div class="card"><h2>우리 지회 서명 등록 현황</h2>${sigStat.map(x=>`<div class="st"><div>${esc(x.name)} <span class="muted">${esc(x.email)}</span></div><div>${x.has?"✅ 등록":'<span class="muted">미등록</span>'}</div></div>`).join("")}</div>`:""}`;
+  padInit();
+}
+function padInit(){
+  const c = $("#sg_pad"); if(!c) return; const x = c.getContext("2d"); padDirty = false;
+  x.lineWidth = 2.5; x.lineCap = "round"; x.lineJoin = "round"; x.strokeStyle = "#111";
+  const pt = e=>{ const r = c.getBoundingClientRect(); return [(e.clientX-r.left)*c.width/r.width, (e.clientY-r.top)*c.height/r.height]; };
+  c.onpointerdown = e=>{ padDraw = true; padDirty = true; const [a,b] = pt(e); x.beginPath(); x.moveTo(a,b); x.lineTo(a+0.1,b+0.1); x.stroke(); try{c.setPointerCapture(e.pointerId);}catch(_){} e.preventDefault(); };
+  c.onpointermove = e=>{ if(!padDraw) return; const [a,b] = pt(e); x.lineTo(a,b); x.stroke(); e.preventDefault(); };
+  c.onpointerup = c.onpointercancel = ()=>{ padDraw = false; };
+}
+function padClear(){ const c = $("#sg_pad"); if(c){ c.getContext("2d").clearRect(0,0,c.width,c.height); padDirty = false; } }
+async function signSave(img){
+  try{ await rpc("save_my_signature", {p_image:img}); toast("서명을 저장했습니다."); mySign = await rpc("get_my_signature"); if(me.can_manage) sigStat = await rpc("list_signature_status"); signView(); }
+  catch(e){ toast(e.message, true); }
+}
+async function signUpload(input){
+  const f = input.files && input.files[0]; if(!f) return;
+  try{ await signSave(await shrinkImage(f)); }catch(e){ toast(e.message, true); }
+}
+function padSave(){
+  const c = $("#sg_pad"); if(!c || !padDirty) return toast("먼저 서명을 그려 주세요.", true);
+  const d = c.toDataURL("image/png"); if(d.length > 140000) return toast("서명이 너무 복잡합니다. 더 간단히 그려 주세요.", true);
+  signSave(d);
+}
+function signDel(){ if(confirm("내 서명을 삭제할까요?")) act("delete_my_signature", {}, "삭제했습니다.", async()=>{ mySign = ""; if(me.can_manage) sigStat = await rpc("list_signature_status"); signView(); }); }
 
 /* 구글 드라이브 연결 */
 let drv = null;

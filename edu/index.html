@@ -11,7 +11,7 @@
 <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+KR:wght@400;500;700&display=swap" rel="stylesheet">
 <style>
 html.embed #topLogout{display:none!important}
-#pwForm,#rsForm{display:none!important}
+#pwForm,#rsForm,#phForm,#sealBox{display:none!important}
 :root {
   --pine: #1f4d3a;
   --pine-2: #2f6b52;
@@ -4337,6 +4337,9 @@ function renderMe() {
       <div style="margin-bottom:14px"><label class="f" for="rsPw">새 임시 비밀번호 (6자 이상)</label><input type="text" id="rsPw" minlength="6" maxlength="50" autocomplete="off" required></div>
       <button class="btn primary" id="rsBtn">비밀번호 바꾸기</button>
     </form>` : ''}
+    <div class="panel" style="max-width:460px"><h3>전화번호·직인</h3>
+      <p class="hint" style="margin-top:0">포스터·수료증에 들어가는 <b>전화번호와 직인</b>은 이제 업무 시스템 홈의 <b>직원·권한 관리 → 기관 정보</b>에서 관리합니다. (지회 담당자가 입력하면 여기에도 자동으로 반영됩니다.)</p>
+      <p class="hint" style="margin:0">현재 문의 번호: <b>${esc(S.init.centerPhone || S.init.myPhone || '(입력 전)')}</b></p></div>
     <form class="panel" id="phForm" style="max-width:460px"><h3>${isAdmin() ? '전화번호' : '지회·센터 전화번호'}</h3>
       <p class="hint" style="margin-top:0">${isAdmin() ? '도협회 강좌 홍보 포스터에 <b>문의 번호</b>로 들어갑니다.' : '홍보 포스터의 <b>문의 번호</b>로 들어갑니다. <b>지회가 주관하는 교육</b>은 지회 전화번호, <b>센터가 주관하는 교육</b>은 센터 전화번호가 나옵니다. 두 번호 모두 여기에 직접 적어 주세요.'}</p>
       <div style="margin-bottom:12px"><label class="f" for="phIn">${isAdmin() ? '전화번호' : '지회 전화번호'}</label><input type="tel" id="phIn" maxlength="30" inputmode="tel" value="${esc(S.init.myPhone)}" placeholder="예: 033-000-0000"></div>

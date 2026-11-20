@@ -346,6 +346,7 @@ function renderNav(){
   h += '<div class="grp"><span class="ic">🚌</span>출장 관리</div>' + kidHtml('att', false, 'trip', '출장 신청·내역');
   if (hasPerm('vehicle.')) h += topHtml('car:s:', '🚗', '차량운행일지', "go('car')");
   if (hasPerm('edu.')) h += topHtml('edu:s:', '📚', '수어교육관리', "go('edu')");
+  h += topHtml('doc:s:', '📝', '공문 작성', "go('doc')");
   if (isAttAdmin() || isVehAdmin() || ME.can_manage) h += '<div class="sec">시스템 관리</div>';
   if (isAttAdmin()) {
     h += '<div class="grp"><span class="ic">🛠</span>근태 관리 (지회)</div>';
@@ -381,7 +382,7 @@ function go(kind, tab, adm){
     /* 같은 화면: 그대로 보여 줌 */
   } else {
     var url = kind === 'att' ? '/att/?embed=1&mode=' + (adm ? 'admin' : 'staff') + '&go=' + encodeURIComponent(tab)
-      : kind === 'car' ? '/car/?embed=1' + (adm ? '&admin=1' : '') : kind === 'edu' ? '/edu/?embed=1' : '/access.html?embed=1';
+      : kind === 'car' ? '/car/?embed=1' + (adm ? '&admin=1' : '') : kind === 'edu' ? '/edu/?embed=1' : kind === 'doc' ? '/doc/?embed=1' : '/access.html?embed=1';
     FR = { key:key, ready:false, tab:tab, loadedGo:tab };
     $('floading').classList.remove('hide'); fr.src = url;
   }
@@ -389,7 +390,7 @@ function go(kind, tab, adm){
   try { history.replaceState(null, '', '#' + kind + (adm ? '-admin' : '') + (tab ? '/' + tab : '')); } catch(e){}
 }
 function fromHash(){
-  var m = /^#(att|car|edu|access)(-admin)?(?:\/(.+))?$/.exec(location.hash || ''); if (!m) return false;
+  var m = /^#(att|car|edu|doc|access)(-admin)?(?:\/(.+))?$/.exec(location.hash || ''); if (!m) return false;
   if (m[1] === 'car' && !hasPerm('vehicle.')) return false;
   if (m[1] === 'edu' && !hasPerm('edu.')) return false;
   go(m[1], m[3] ? decodeURIComponent(m[3]) : '', !!m[2]); return true;

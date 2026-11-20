@@ -21,6 +21,7 @@ global.fetch = async (url, o) => {
   }
   if (url.includes('/staff_access')) { const em = decodeURIComponent(/email=ilike\.([^&]+)/.exec(url)[1]); return R(staff[em] ? [staff[em]] : []); }
   if (url.includes('/chapters')) return R([chapters[/id=eq\.(\d+)/.exec(url)[1]]]);
+  if (url.includes('/org_profile')) return R(url.includes('chapter_id=eq.5') ? [{ phone: '033-1', center_phone: '033-2', direct_phone: '033-3' }] : []);
   if (url.includes('/staff_grants')) return R(grants[/staff_id=eq\.(\d+)/.exec(url)[1]] || []);
   throw new Error('unexpected ' + url);
 };
@@ -36,11 +37,14 @@ global.fetch = async (url, o) => {
   ok('타 도메인 거부', /도메인/.test((await E('gmail')).err));
   ok('구글 아닌 로그인 거부', /구글/.test((await E('nogoogle')).err));
   ok('잘못된 토큰 거부', /만료/.test((await E('bad')).err));
+  const lp = await E('lead@gwdeaf.or.kr'); ok('기관 정보 전화번호 가져옴', lp.profile && lp.profile.center === '033-2', lp);
+  ok('기관 정보 없으면 null', (await E('ad@gwdeaf.or.kr')).profile === null);
   // 로그인 처리
   let r = await handle(db, { fn: 'googleLogin', args: [{ email: 'lead@gwdeaf.or.kr', name: '담당', role: '지회', chapter: '춘천시지회' }] });
   ok('구글 로그인 성공', r.ok && r.data.user.chapter === '춘천시지회' && r.data.user.role === '지회', r);
   ok('회원정보 자동 생성', db.t['회원정보'].length === 1 && db.t['회원정보'][0].아이디 === 'lead@gwdeaf.or.kr');
   const tok = r.data.token;
+  r = await handle(db, { fn: 'googleLogin', args: [lp] }); ok('로그인 시 전화번호 반영', r.ok && db.t['회원정보'][0].연락처 === '033-1' && db.t['회원정보'][0].센터연락처 === '033-2', db.t['회원정보'][0]);
   r = await handle(db, { fn: 'getInitData', args: [tok] }); ok('토큰으로 사용', r.ok, r);
   r = await handle(db, { fn: 'googleLogin', args: [{ email: 'lead@gwdeaf.or.kr', name: '새이름', role: '지회', chapter: '원주시지회' }] });
   ok('재로그인 시 지회·이름 갱신', r.ok && r.data.user.chapter === '원주시지회' && db.t['회원정보'].length === 1, r);

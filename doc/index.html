@@ -1,0 +1,650 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>공문 시스템</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Malgun Gothic", "맑은 고딕", sans-serif; background: #f4f6f8; color: #222; font-size: 15px; }
+  header { background: #1f4e79; color: #fff; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  header h1 { font-size: 18px; margin: 0; }
+  header .who { font-size: 13px; opacity: .9; }
+  nav { background: #fff; border-bottom: 1px solid #dde3ea; padding: 8px 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+  main { padding: 16px; max-width: 1100px; margin: 0 auto; }
+  .screen { display: none; }
+  .screen.on { display: block; }
+  h2 { font-size: 18px; margin: 4px 0 12px; }
+  .card { background: #fff; border: 1px solid #dde3ea; border-radius: 8px; padding: 16px; margin-bottom: 14px; }
+  button { font: inherit; cursor: pointer; border: 1px solid #1f4e79; background: #fff; color: #1f4e79; border-radius: 6px; padding: 7px 12px; margin: 2px; }
+  button.main { background: #1f4e79; color: #fff; }
+  button.danger { border-color: #b03a2e; color: #b03a2e; }
+  button:disabled { opacity: .4; cursor: default; }
+  button.tab.on { background: #dfeaf5; font-weight: bold; }
+  input, select, textarea { font: inherit; padding: 6px 8px; border: 1px solid #bfc8d2; border-radius: 6px; width: 100%; background: #fff; }
+  textarea { min-height: 110px; }
+  label { display: block; font-size: 13px; color: #555; margin: 8px 0 3px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; }
+  .row > div { flex: 1; min-width: 160px; }
+  .narrow { max-width: 180px; flex: 0 0 auto !important; }
+  table { width: 100%; border-collapse: collapse; background: #fff; font-size: 14px; }
+  th, td { border-bottom: 1px solid #e6eaef; padding: 7px 6px; text-align: left; vertical-align: top; }
+  th { background: #f0f4f8; font-weight: bold; }
+  tr.click { cursor: pointer; }
+  tr.click:hover { background: #f5f9fd; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; background: #e6eaef; }
+  .badge.wait { background: #fff1c2; } .badge.done { background: #d6f0dc; } .badge.ret { background: #f8d7d3; } .badge.run { background: #d8e8f8; }
+  .msg { margin: 8px 0; font-size: 14px; }
+  .msg.err { color: #b03a2e; } .msg.ok { color: #1e7a3c; }
+  .btns { margin-top: 10px; }
+  .muted { color: #777; font-size: 13px; }
+  .hint { background: #f7f9fb; border-left: 4px solid #1f4e79; padding: 8px 12px; font-size: 13px; color: #444; margin: 8px 0; }
+  .sub-line { color: #555; margin-left: 16px; }
+  body.embed header, body.embed #logoutBtn { display: none; }
+  body.embed nav { position: static; }
+  #printArea { display: none; }
+  @media print {
+    body > *:not(#printArea) { display: none !important; }
+    #printArea { display: block !important; background: #fff; color: #000; padding: 20mm; font-family: "Malgun Gothic", sans-serif; }
+    #printArea h1 { font-size: 22px; text-align: center; margin: 10px 0 20px; }
+    #printArea table { font-size: 12px; }
+    #printArea th, #printArea td { border: 1px solid #000; }
+    @page { size: A4; margin: 15mm; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>공문 시스템</h1>
+  <div class="who" id="whoText"></div>
+</header>
+
+<nav id="topNav" style="display:none">
+  <button onclick="goHome()">홈(문서 목록)</button>
+  <button onclick="openWrite(null)">새 문서 작성</button>
+  <button onclick="openSearch()">검색</button>
+  <button onclick="openLedger()">대장 보기</button>
+  <button id="staffBtn" onclick="openSettings()" style="display:none">번호 설정</button>
+  <button id="logoutBtn" onclick="logout()">로그아웃</button>
+</nav>
+
+<main>
+  <!-- 로그인 화면 -->
+  <section id="screenLogin" class="screen">
+    <div class="card">
+      <h2>로그인</h2>
+      <p>업무용 구글 계정(@gwdeaf.or.kr)으로 로그인하세요.</p>
+      <button class="main" onclick="loginGoogle()">구글 계정으로 로그인</button>
+      <div id="loginMsg" class="msg"></div>
+    </div>
+  </section>
+
+  <!-- 등록되지 않은 계정 -->
+  <section id="screenDenied" class="screen">
+    <div class="card">
+      <h2>사용 권한이 없습니다</h2>
+      <p>이 계정은 직원으로 등록되지 않았거나 사용이 중지되어 있습니다. 지회 담당자에게 등록을 요청하세요.</p>
+      <button onclick="logout()">다른 계정으로 로그인</button>
+    </div>
+  </section>
+
+  <!-- 홈: 문서 목록 -->
+  <section id="screenHome" class="screen">
+    <h2>문서 목록</h2>
+    <div class="card">
+      <button class="tab on" data-tab="inbox" onclick="setTab('inbox')">결재할 문서</button>
+      <button class="tab" data-tab="mine" onclick="setTab('mine')">내가 쓴 문서</button>
+      <button class="tab" data-tab="all" onclick="setTab('all')">전체 문서</button>
+      <div id="listMsg" class="msg"></div>
+      <table>
+        <thead><tr><th>번호</th><th>상태</th><th>제목</th><th>수신</th><th>기안자</th><th>수정일</th></tr></thead>
+        <tbody id="listBody"></tbody>
+      </table>
+    </div>
+  </section>
+
+  <!-- 작성 / 수정 -->
+  <section id="screenWrite" class="screen">
+    <h2 id="writeTitle">새 문서 작성</h2>
+    <div class="card">
+      <div class="row">
+        <div class="narrow"><label>문서 종류</label>
+          <select id="fKind"><option>공문</option><option>업무협조전</option><option>내부결재</option></select></div>
+        <div class="narrow"><label>시행일자</label><input type="date" id="fDate"></div>
+        <div class="narrow"><label>직인 (인쇄 시)</label><select id="fSeal"><option value="지회">지회 직인</option><option value="센터">센터 직인</option><option value="">없음</option></select></div>
+        <div><label>수신 (내부결재는 비워도 됨)</label><input id="fRecipient" placeholder="예: 강원특별자치도농아인협회장"></div>
+      </div>
+      <label>제목</label><input id="fTitle">
+      <label>본문 (한 줄이 한 항목, 줄 앞에 "- " 를 붙이면 하위 항목)</label>
+      <textarea id="fBody" placeholder="1. 관련: 2026년 예산 집행 협조&#10;- 세부 내용 첫째&#10;- 세부 내용 둘째"></textarea>
+      <label>붙임 (한 줄에 하나)</label>
+      <textarea id="fAttach" style="min-height:60px"></textarea>
+      <div class="btns">
+        <button onclick="saveDraftClick()">임시 저장</button>
+        <button class="main" onclick="submitClick()">기안하기</button>
+        <button onclick="openHome()">목록으로</button>
+      </div>
+      <div id="writeMsg" class="msg"></div>
+    </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">결재선 (위에서 아래 순서)</h3>
+      <div class="hint">방식: 전자서명·확인은 본인이 누르고, 수기서명은 출력해서 서명한 뒤 기안자나 관리자가 "수기 서명 완료"를 누릅니다. 전결은 여기서 끝나고 뒤 단계는 건너뜁니다.</div>
+      <table>
+        <thead><tr><th>직원·직책</th><th>이름</th><th>이메일</th><th>결재방식</th><th>구분</th><th></th></tr></thead>
+        <tbody id="stepsBody"></tbody>
+      </table>
+      <div class="btns">
+        <button onclick="addStepRow({})">결재자 추가</button>
+        <button onclick="saveStepsClick()">결재선 저장</button>
+      </div>
+      <div id="stepsMsg" class="msg"></div>
+    </div>
+  </section>
+
+  <!-- 문서 보기 -->
+  <section id="screenView" class="screen">
+    <div class="card">
+      <div id="viewHead"></div>
+      <div id="viewBody" style="margin-top:12px"></div>
+      <h3>결재 현황</h3>
+      <table><thead><tr><th>순서</th><th>직책</th><th>이름</th><th>방식</th><th>구분</th><th>상태</th><th>처리일시</th></tr></thead>
+        <tbody id="viewSteps"></tbody></table>
+      <div class="btns" id="viewBtns"></div>
+      <div id="viewMsg" class="msg"></div>
+    </div>
+    <div class="btns"><button onclick="openHome()">목록으로</button></div>
+  </section>
+
+  <!-- 검색 -->
+  <section id="screenSearch" class="screen">
+    <h2>검색</h2>
+    <div class="card">
+      <div class="row">
+        <div><label>검색어 (제목·수신·본문·번호)</label><input id="sQ"></div>
+        <div class="narrow"><label>종류</label>
+          <select id="sKind"><option value="">전체</option><option>공문</option><option>업무협조전</option><option>내부결재</option></select></div>
+        <div class="narrow"><label>상태</label>
+          <select id="sStatus"><option value="">전체</option><option>작성중</option><option>결재중</option><option>반려</option><option>완료</option></select></div>
+      </div>
+      <div class="btns"><button class="main" onclick="doSearch()">검색</button></div>
+      <div id="searchMsg" class="msg"></div>
+      <table><thead><tr><th>번호</th><th>상태</th><th>제목</th><th>수신</th><th>기안자</th><th>수정일</th></tr></thead>
+        <tbody id="searchBody"></tbody></table>
+    </div>
+  </section>
+
+  <!-- 대장 -->
+  <section id="screenLedger" class="screen">
+    <h2>대장 보기</h2>
+    <div class="card">
+      <div class="row">
+        <div class="narrow"><label>연도</label><select id="lYear"></select></div>
+        <div class="narrow"><label>종류</label>
+          <select id="lKind"><option>공문</option><option>업무협조전</option><option>내부결재</option></select></div>
+      </div>
+      <div class="btns"><button class="main" onclick="loadLedger()">불러오기</button>
+        <button onclick="downloadLedgerCsv()">엑셀(CSV) 받기</button></div>
+      <div id="ledgerMsg" class="msg"></div>
+      <table><thead><tr><th>번호</th><th>시행일자</th><th>수신</th><th>제목</th><th>기안자</th><th>상태</th></tr></thead>
+        <tbody id="ledgerBody"></tbody></table>
+    </div>
+  </section>
+
+  <!-- 번호 설정 (관리자) -->
+  <section id="screenSettings" class="screen">
+    <h2>문서 번호 설정</h2>
+    <div class="card">
+      <div class="hint">우리 지회 문서 번호의 모양입니다. 이미 부여된 번호는 바뀌지 않고, 앞으로 기안하는 문서부터 적용됩니다. 직원 등록은 "직원·권한 관리"에서 합니다.</div>
+      <div class="row">
+        <div><label>번호 앞 이름</label><input id="seName"></div>
+        <div class="narrow"><label>종류 표기</label><select id="seStyle"><option>표기 안 함</option><option>짧은 이름</option></select></div>
+        <div class="narrow"><label>구분 기호</label><select id="seSep"><option>하이픈</option><option>공백</option><option>없음</option></select></div>
+        <div class="narrow"><label>연도 자릿수</label><select id="seYear"><option>4</option><option>2</option></select></div>
+        <div class="narrow"><label>일련번호 자릿수</label><select id="seWidth"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></div>
+      </div>
+      <div class="hint" id="sePreview"></div>
+      <div class="btns"><button class="main" onclick="saveSettingsClick()">저장</button></div>
+      <div id="settingsMsg" class="msg"></div>
+    </div>
+  </section>
+</main>
+
+<!-- 인쇄 전용 영역 (화면에는 안 보임) -->
+<div id="printArea"></div>
+
+<script>
+// ============ 1) 설정 (Supabase 대시보드 > Project Settings > API 에서 복사) ============
+const SUPABASE_URL = 'https://uamlualqqcqmpdkprjfs.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhbWx1YWxxcWNxbXBka3ByamZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNjE0OTMsImV4cCI6MjExMDYzNzQ5M30._f4p4pfcKaYbmjKRXOPpkMo7Ydcc26oVVI6lRFYsLkY';
+const ALLOWED_DOMAIN = 'gwdeaf.or.kr';
+const TODAY_YEAR = new Date().getFullYear();
+
+// ============ 2) 공통 준비 ============
+const EMBED = new URLSearchParams(location.search).get('embed') === '1';
+if (EMBED) document.body.classList.add('embed');
+let staffList = [];     // 우리 지회 직원 (결재선 선택용)
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let me = null;          // 로그인한 직원 정보
+let tab = 'inbox';      // 목록 탭
+let current = null;     // 지금 열린 문서 (작성·보기)
+let currentSteps = [];  // 지금 문서의 결재선
+
+const $ = (id) => document.getElementById(id);
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const ko = (d) => (d ? new Date(d).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' }) : '');
+const STATUS_CLASS = { '작성중': '', '결재중': 'run', '반려': 'ret', '완료': 'done', '발송': 'done' };
+
+function showScreen(id) {
+  document.querySelectorAll('.screen').forEach((s) => s.classList.remove('on'));
+  $(id).classList.add('on');
+}
+function msg(el, text, ok) {
+  $(el).innerHTML = text ? `<span class="${ok ? 'ok' : 'err'}">${esc(text)}</span>` : '';
+}
+// 함수 호출 오류를 사람이 읽기 쉬운 말로
+function errText(e) {
+  return (e && (e.message || e.error_description)) || '알 수 없는 오류가 났습니다.';
+}
+// 목록·검색 결과 한 줄 그리기
+function rowHtml(d) {
+  return `<tr class="click" onclick="openDoc('${d.id}')">
+    <td>${esc(d.number || '(번호 없음)')}</td>
+    <td><span class="badge ${STATUS_CLASS[d.status] || ''}">${esc(d.status)}</span></td>
+    <td>${esc(d.title)}</td><td>${esc(d.recipient)}</td>
+    <td>${esc(d.drafter_name)}</td><td>${ko(d.updated_at)}</td></tr>`;
+}
+
+// ============ 3) 로그인 ============
+async function loginGoogle() {
+  msg('loginMsg', '');
+  const { error } = await sb.auth.signInWithOAuth({
+    provider: 'google',
+    options: {
+      redirectTo: location.origin + location.pathname,
+      queryParams: { hd: ALLOWED_DOMAIN, prompt: 'select_account' }   // 업무용 도메인 계정만 고르도록
+    }
+  });
+  if (error) msg('loginMsg', errText(error));
+}
+async function logout() {
+  await sb.auth.signOut();
+  location.href = location.origin + location.pathname;
+}
+// 로그인 상태 확인 → 직원 명단에 있는지 확인
+async function boot() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { $('topNav').style.display = 'none'; showScreen('screenLogin'); return; }
+  const { data, error } = await sb.rpc('doc_me');
+  if (error) { alert(errText(error)); return; }
+  if (!data || !data.active) { $('topNav').style.display = 'none'; showScreen('screenDenied'); return; }
+  me = data;
+  try { const r = await sb.rpc('doc_staff_list'); staffList = r.data || []; } catch (e) { staffList = []; }
+  $('whoText').textContent = `${me.chapter_name} · ${me.name} (${me.email})${me.is_admin ? ' · 관리자' : ''}`;
+  $('topNav').style.display = 'flex';
+  $('staffBtn').style.display = me.is_admin ? '' : 'none';
+  goHome();
+}
+// 구글 로그인 후 돌아올 때 상태가 바뀌면 다시 확인
+sb.auth.onAuthStateChange((event) => { if (event === 'SIGNED_IN') boot(); });
+
+// ============ 4) 홈(문서 목록) ============
+function goHome() { showScreen('screenHome'); setTab(tab); }
+function openHome() { goHome(); }
+function setTab(t) {
+  tab = t;
+  document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
+  loadList();
+}
+async function loadList() {
+  msg('listMsg', '');
+  let rows = [];
+  if (tab === 'inbox') {
+    // 대기 중인 결재 줄 중 각 문서의 첫 줄이 나에게 온 것만 모음
+    const { data: waiting, error } = await sb.from('doc_steps').select('doc_id,seq,email').eq('status', '대기');
+    if (error) return msg('listMsg', errText(error));
+    const firstByDoc = {};
+    waiting.forEach((s) => { if (!firstByDoc[s.doc_id] || s.seq < firstByDoc[s.doc_id].seq) firstByDoc[s.doc_id] = s; });
+    const ids = Object.values(firstByDoc).filter((s) => s.email === me.email).map((s) => s.doc_id);
+    if (ids.length) {
+      const { data, error: e2 } = await sb.from('doc_documents').select('*').in('id', ids).order('updated_at', { ascending: false });
+      if (e2) return msg('listMsg', errText(e2));
+      rows = data;
+    }
+  } else {
+    let q = sb.from('doc_documents').select('*').eq('deleted', false).order('updated_at', { ascending: false }).limit(200);
+    if (tab === 'mine') q = q.eq('drafter_email', me.email);
+    const { data, error } = await q;
+    if (error) return msg('listMsg', errText(error));
+    rows = data;
+  }
+  $('listBody').innerHTML = rows.length ? rows.map(rowHtml).join('')
+    : '<tr><td colspan="6" class="muted">문서가 없습니다.</td></tr>';
+}
+
+// ============ 5) 작성 / 수정 ============
+function bodyToText(items) {
+  return (items || []).map((it) => [it.text, ...(it.subs || []).map((s) => '- ' + s)].join('\n')).join('\n');
+}
+function textToBody(text) {
+  const items = [];
+  String(text || '').split('\n').forEach((line) => {
+    const t = line.trim();
+    if (!t) return;
+    if (t.startsWith('- ') && items.length) items[items.length - 1].subs.push(t.slice(2).trim());
+    else items.push({ text: t, subs: [] });
+  });
+  return items;
+}
+function readForm() {
+  return {
+    date: $('fDate').value,
+    seal: $('fSeal').value,
+    recipient: $('fRecipient').value.trim(),
+    title: $('fTitle').value.trim(),
+    body: textToBody($('fBody').value),
+    attachments: $('fAttach').value.split('\n').map((s) => s.trim()).filter(Boolean)
+  };
+}
+function fillForm(d) {
+  const f = d.form || {};
+  $('fKind').value = d.kind;
+  $('fDate').value = f.date || '';
+  $('fSeal').value = f.seal === undefined ? (d.kind === '공문' ? '지회' : '') : f.seal;
+  $('fRecipient').value = f.recipient || '';
+  $('fTitle').value = f.title || '';
+  $('fBody').value = bodyToText(f.body);
+  $('fAttach').value = (f.attachments || []).join('\n');
+}
+async function openWrite(id) {
+  showScreen('screenWrite');
+  msg('writeMsg', ''); msg('stepsMsg', '');
+  $('stepsBody').innerHTML = '';
+  currentSteps = [];
+  if (!id) {
+    current = null;
+    $('writeTitle').textContent = '새 문서 작성';
+    $('fKind').value = '공문'; $('fDate').value = new Date().toISOString().slice(0, 10); $('fSeal').value = '지회';
+    $('fRecipient').value = ''; $('fTitle').value = ''; $('fBody').value = ''; $('fAttach').value = '';
+    addStepRow({});
+    return;
+  }
+  const { data, error } = await sb.from('doc_documents').select('*').eq('id', id).single();
+  if (error) return alert(errText(error));
+  current = data;
+  $('writeTitle').textContent = `문서 수정 (${data.number || '번호 없음'} · ${data.status})`;
+  fillForm(data);
+  const { data: st } = await sb.from('doc_steps').select('*').eq('doc_id', id).order('seq');
+  (st && st.length ? st : [{}]).forEach((s) => addStepRow(s));
+}
+
+// 직원을 고르면 이름·이메일·직책을 채움 (같은 지회 직원만 결재자가 될 수 있음)
+function pickStaff(sel) {
+  const tr = sel.closest('tr'), p = staffList.find((x) => x.email === sel.value);
+  if (!p) return;
+  tr.querySelector('.sName').value = p.name;
+  tr.querySelector('.sEmail').value = p.email;
+  if (!tr.querySelector('.sRole').value) tr.querySelector('.sRole').value = p.position || '';
+}
+// 결재선 한 줄 추가 (입력칸 줄)
+function addStepRow(s) {
+  const tr = document.createElement('tr');
+  const opt = (list, val) => list.map((v) => `<option ${v === val ? 'selected' : ''}>${v}</option>`).join('');
+  tr.innerHTML = `
+    <td><select class="sPick" onchange="pickStaff(this)"><option value="">직접 입력</option>${staffList.map((p) => `<option value="${esc(p.email)}" ${p.email === (s.email || '') ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select><input class="sRole" placeholder="직책" value="${esc(s.role || '')}"></td>
+    <td><input class="sName" value="${esc(s.name || '')}"></td>
+    <td><input class="sEmail" value="${esc(s.email || '')}"></td>
+    <td><select class="sMethod">${opt(['확인', '전자서명', '수기서명'], s.method || '확인')}</select></td>
+    <td><select class="sType">${opt(['결재', '전결', '합의', '협조'], s.type || '결재')}</select></td>
+    <td><button class="danger" onclick="this.closest('tr').remove()">삭제</button></td>`;
+  $('stepsBody').appendChild(tr);
+}
+function readSteps() {
+  return [...document.querySelectorAll('#stepsBody tr')].map((tr) => ({
+    role: tr.querySelector('.sRole').value.trim(),
+    name: tr.querySelector('.sName').value.trim(),
+    email: tr.querySelector('.sEmail').value.trim().toLowerCase(),
+    method: tr.querySelector('.sMethod').value,
+    type: tr.querySelector('.sType').value
+  })).filter((s) => s.role || s.name || s.email);
+}
+
+// 임시 저장 → 문서 ID 돌려줌 (새 문서면 이때 ID가 생김)
+async function saveDraft() {
+  const f = readForm();
+  const kind = $('fKind').value;
+  const year = Number((f.date || '').slice(0, 4)) || TODAY_YEAR;
+  const { data, error } = await sb.rpc('doc_save_draft', { p_id: current ? current.id : null, p_year: year, p_kind: kind, p_form: f });
+  if (error) throw error;
+  current = { id: data, kind, year, number: current ? current.number : null, status: current ? current.status : '작성중' };
+  return data;
+}
+async function saveDraftClick() {
+  try { await saveDraft(); msg('writeMsg', '임시 저장했습니다.', true); }
+  catch (e) { msg('writeMsg', errText(e)); }
+}
+async function saveStepsClick() {
+  try {
+    if (!current) await saveDraft();
+    const { error } = await sb.rpc('doc_set_steps', { p_id: current.id, p_steps: readSteps() });
+    if (error) throw error;
+    msg('stepsMsg', '결재선을 저장했습니다.', true);
+  } catch (e) { msg('stepsMsg', errText(e)); }
+}
+async function submitClick() {
+  try {
+    await saveDraft();
+    const { error: se } = await sb.rpc('doc_set_steps', { p_id: current.id, p_steps: readSteps() });
+    if (se) throw se;
+    const { data, error } = await sb.rpc('doc_submit', { p_id: current.id });
+    if (error) throw error;
+    alert('기안했습니다. 번호: ' + data);
+    openDoc(current.id);
+  } catch (e) { msg('writeMsg', errText(e)); }
+}
+
+// ============ 6) 문서 보기 · 결재 · 인쇄 ============
+async function openDoc(id) {
+  showScreen('screenView');
+  msg('viewMsg', '');
+  const { data: d, error } = await sb.from('doc_documents').select('*').eq('id', id).single();
+  if (error) return alert(errText(error));
+  const { data: st } = await sb.from('doc_steps').select('*').eq('doc_id', id).order('seq');
+  current = d;
+  currentSteps = st || [];
+  renderView();
+}
+
+function renderView() {
+  const d = current;
+  const f = d.form || {};
+  const cur = currentSteps.find((s) => s.status === '대기');     // 지금 결재할 줄
+  const isDrafter = d.drafter_email === me.email;
+  const canEdit = ['작성중', '반려'].includes(d.status) && (me.is_admin || isDrafter);
+  const canManual = d.status === '결재중' && cur && cur.method === '수기서명' && (me.is_admin || isDrafter);
+  const canApprove = d.status === '결재중' && cur && cur.method !== '수기서명' && cur.email === me.email;
+  const canReject = canApprove || canManual;
+
+  $('viewHead').innerHTML = `
+    <div class="muted">${esc(d.kind)} · ${esc(d.number || '번호 없음')}</div>
+    <h2 style="margin:4px 0">${esc(d.title)}</h2>
+    <div class="muted">수신: ${esc(d.recipient || '-')} · 기안자: ${esc(d.drafter_name)} · 시행일자: ${esc(f.date || '-')} ·
+      상태: <span class="badge ${STATUS_CLASS[d.status] || ''}">${esc(d.status)}</span> ${d.deleted ? '· <b>삭제됨</b>' : ''}</div>`;
+
+  $('viewBody').innerHTML = (f.body || []).length
+    ? f.body.map((it) => `<div>${esc(it.text)}</div>` + (it.subs || []).map((s) => `<div class="sub-line">- ${esc(s)}</div>`).join('')).join('')
+    : '<span class="muted">본문 없음</span>';
+
+  $('viewSteps').innerHTML = currentSteps.length
+    ? currentSteps.map((s) => `<tr><td>${s.seq}</td><td>${esc(s.role)}</td><td>${esc(s.name)}</td><td>${esc(s.method)}</td>
+        <td>${esc(s.type)}</td><td>${esc(s.status)}</td><td>${ko(s.done_at)}</td></tr>`).join('')
+    : '<tr><td colspan="7" class="muted">결재선이 없습니다.</td></tr>';
+
+  const b = [];
+  if (canEdit) b.push(`<button onclick="openWrite('${d.id}')">수정</button>`, `<button class="main" onclick="submitExisting()">기안하기</button>`);
+  if (canApprove) b.push(`<button class="main" onclick="actDoc('approve')">승인 · 확인</button>`);
+  if (canManual) b.push(`<button class="main" onclick="actDoc('manual')">수기 서명 완료</button>`);
+  if (canReject) b.push(`<button class="danger" onclick="rejectDoc()">반려</button>`);
+  b.push(`<button onclick="copyDoc()">복사</button>`, `<button onclick="printDoc()">인쇄 / PDF 저장</button>`);
+  if (me.is_admin || isDrafter) {
+    b.push(d.deleted ? `<button onclick="setDeleted(false)">되살리기</button>`
+                     : `<button class="danger" onclick="setDeleted(true)">삭제</button>`);
+  }
+  $('viewBtns').innerHTML = b.join('');
+}
+
+async function submitExisting() {
+  try {
+    const { data, error } = await sb.rpc('doc_submit', { p_id: current.id });
+    if (error) throw error;
+    alert('기안했습니다. 번호: ' + data);
+    openDoc(current.id);
+  } catch (e) { msg('viewMsg', errText(e)); }
+}
+async function actDoc(action, opinion = '') {
+  try {
+    const { data, error } = await sb.rpc('doc_act', { p_id: current.id, p_action: action, p_opinion: opinion });
+    if (error) throw error;
+    if (data === '완료') alert('모든 결재가 끝났습니다.');
+    openDoc(current.id);
+  } catch (e) { msg('viewMsg', errText(e)); }
+}
+function rejectDoc() {
+  const reason = prompt('반려 사유를 입력하세요.');
+  if (reason && reason.trim()) actDoc('reject', reason.trim());
+}
+async function copyDoc() {
+  try {
+    const { data, error } = await sb.rpc('doc_copy', { p_id: current.id });
+    if (error) throw error;
+    alert('복사본을 만들었습니다. 결재선을 다시 지정하세요.');
+    openWrite(data);
+  } catch (e) { msg('viewMsg', errText(e)); }
+}
+async function setDeleted(flag) {
+  if (flag && !confirm('이 문서를 삭제할까요? (나중에 되살릴 수 있습니다)')) return;
+  try {
+    const { error } = await sb.rpc('doc_set_deleted', { p_id: current.id, p_deleted: flag });
+    if (error) throw error;
+    openDoc(current.id);
+  } catch (e) { msg('viewMsg', errText(e)); }
+}
+
+// 인쇄 (브라우저의 "PDF로 저장"을 쓰면 PDF 파일이 됩니다)
+// 우리 지회 직인·연락처와 전자서명 이미지를 서버에서 받아 함께 찍음
+async function printDoc() {
+  const d = current, f = d.form || {};
+  let as = { seals: {}, sigs: {}, chapter_name: me.chapter_name, phone: '', center_phone: '', address: '' };
+  try { const r = await sb.rpc('doc_print_assets', { p_id: d.id }); if (r.data) as = r.data; } catch (e) {}
+  const done = (s) => s.status === '완료' || s.status === '전결';
+  const signRow = currentSteps.map((s) => `<th>${esc(s.role)}</th>`).join('');
+  const nameRow = currentSteps.map((s) => {
+    let mark = '';
+    if (s.method !== '수기서명' && done(s)) {
+      const img = s.method === '전자서명' && as.sigs[(s.email || '').toLowerCase()];
+      mark = img ? `<img src="${esc(img)}" style="max-height:40px;max-width:90px">` : esc(s.name);
+    }
+    return `<td style="height:48px;text-align:center">${mark}</td>`;
+  }).join('');
+  const seal = f.seal && as.seals[f.seal] ? `<img src="${esc(as.seals[f.seal])}" style="height:70px;vertical-align:middle;margin-left:8px">` : '';
+  const contact = [as.phone && ('전화 ' + as.phone), as.center_phone && ('센터 ' + as.center_phone), as.address].filter(Boolean).join(' · ');
+  $('printArea').innerHTML = `
+    <div style="text-align:right">${esc(d.number || '')}</div>
+    <h1>${esc(d.title)}</h1>
+    <p>시행일자: ${esc(f.date || '')}</p>
+    <p>수신: ${esc(d.recipient || '')}</p>
+    ${(f.body || []).map((it) => `<p>${esc(it.text)}</p>` + (it.subs || []).map((s) => `<p style="margin-left:14px">- ${esc(s)}</p>`).join('')).join('')}
+    ${(f.attachments || []).length ? `<p>붙임: ${(f.attachments || []).map(esc).join(', ')}</p>` : ''}
+    <p style="text-align:center;font-size:20px;margin-top:30px">${esc(as.chapter_name || '')}${seal}</p>
+    <table style="margin-top:24px"><tr>${signRow}</tr><tr>${nameRow}</tr></table>
+    <p style="margin-top:20px">${esc(d.drafter_name)}</p>
+    ${contact ? `<p style="font-size:11px;color:#444">${esc(contact)}</p>` : ''}`;
+  const imgs = [...$('printArea').querySelectorAll('img')];
+  await Promise.race([Promise.all(imgs.map((im) => im.complete ? 0 : new Promise((ok) => { im.onload = im.onerror = ok; }))), new Promise((ok) => setTimeout(ok, 1500))]);
+  window.print();
+}
+
+// ============ 7) 검색 ============
+async function openSearch() { showScreen('screenSearch'); doSearch(); }
+async function doSearch() {
+  msg('searchMsg', '');
+  let q = sb.from('doc_documents').select('*').eq('deleted', false).order('updated_at', { ascending: false }).limit(100);
+  const text = $('sQ').value.trim().replace(/[,()*%]/g, ' ');
+  if (text) q = q.or(`title.ilike.%${text}%,search_text.ilike.%${text}%,number.ilike.%${text}%`);
+  if ($('sKind').value) q = q.eq('kind', $('sKind').value);
+  if ($('sStatus').value) q = q.eq('status', $('sStatus').value);
+  const { data, error } = await q;
+  if (error) return msg('searchMsg', errText(error));
+  $('searchBody').innerHTML = data.length ? data.map(rowHtml).join('')
+    : '<tr><td colspan="6" class="muted">검색 결과가 없습니다.</td></tr>';
+}
+
+// ============ 8) 대장 (완료된 문서를 종류·연도별로 보기) ============
+async function openLedger() {
+  showScreen('screenLedger');
+  const sel = $('lYear');
+  if (!sel.options.length) {
+    for (let y = TODAY_YEAR + 1; y >= TODAY_YEAR - 5; y--) sel.add(new Option(y + '년', y));
+    sel.value = TODAY_YEAR;
+  }
+  loadLedger();
+}
+async function ledgerRows() {
+  const { data, error } = await sb.from('doc_documents').select('*')
+    .eq('kind', $('lKind').value).eq('year', Number($('lYear').value))
+    .in('status', ['완료', '발송']).eq('deleted', false).order('number');
+  if (error) { msg('ledgerMsg', errText(error)); return null; }
+  return data;
+}
+async function loadLedger() {
+  msg('ledgerMsg', '');
+  const rows = await ledgerRows();
+  if (!rows) return;
+  $('ledgerBody').innerHTML = rows.length ? rows.map((d) => `<tr class="click" onclick="openDoc('${d.id}')">
+      <td>${esc(d.number)}</td><td>${esc(d.form?.date || '')}</td><td>${esc(d.recipient)}</td>
+      <td>${esc(d.title)}</td><td>${esc(d.drafter_name)}</td><td>${esc(d.status)}</td></tr>`).join('')
+    : '<tr><td colspan="6" class="muted">완료된 문서가 없습니다.</td></tr>';
+}
+async function downloadLedgerCsv() {
+  const rows = await ledgerRows();
+  if (!rows) return;
+  const lines = [['번호', '시행일자', '수신', '제목', '기안자', '상태'],
+    ...rows.map((d) => [d.number, d.form?.date || '', d.recipient, d.title, d.drafter_name, d.status])]
+    .map((r) => r.map((v) => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(','));
+  const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `${$('lKind').value}_${$('lYear').value}_대장.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+}
+
+// ============ 9) 번호 설정 (관리자만) ============
+const SE_IDS = { '번호 앞 이름': 'seName', '종류 표기 방식': 'seStyle', '구분 기호': 'seSep', '연도 자릿수': 'seYear', '일련번호 자릿수': 'seWidth' };
+async function openSettings() {
+  if (!me.is_admin) return;
+  showScreen('screenSettings');
+  msg('settingsMsg', '');
+  const { data, error } = await sb.rpc('doc_get_settings');
+  if (error) return msg('settingsMsg', errText(error));
+  Object.keys(SE_IDS).forEach((k) => { $(SE_IDS[k]).value = data[k]; $(SE_IDS[k]).onchange = $(SE_IDS[k]).oninput = previewNumber; });
+  previewNumber();
+}
+function previewNumber() {
+  const y = $('seYear').value === '2' ? String(TODAY_YEAR).slice(-2) : String(TODAY_YEAR);
+  const sep = { '하이픈': '-', '공백': ' ', '없음': '' }[$('seSep').value];
+  const head = $('seStyle').value === '짧은 이름' ? ($('seName').value + ' 공문').trim() : $('seName').value;
+  $('sePreview').textContent = '번호 예시: ' + (head + ' ' + y + sep + '1'.padStart(Number($('seWidth').value), '0')).trim();
+}
+async function saveSettingsClick() {
+  const p = {}; Object.keys(SE_IDS).forEach((k) => { p[k] = $(SE_IDS[k]).value.trim(); });
+  const { error } = await sb.rpc('doc_save_settings', { p_settings: p });
+  msg('settingsMsg', error ? errText(error) : '저장했습니다.', !error);
+}
+
+// ============ 10) 시작 ============
+boot();
+</script>
+</body>
+</html>

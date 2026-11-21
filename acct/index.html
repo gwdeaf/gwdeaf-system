@@ -58,7 +58,9 @@
   <button id="btnNew" onclick="showForm()">새 품의</button>
   <button onclick="showResList()">결의 목록</button>
   <button id="btnNewRes" onclick="showResForm()">새 결의</button>
-  <button onclick="showLedger()">출납·잔고</button>
+  <button onclick="showLedger()">출납부</button>
+  <button onclick="showGL()">원장</button>
+  <button onclick="showBank()">통장 내역</button>
   <button onclick="showBudget()">예산 현황</button>
   <button onclick="showSearch()">검색</button>
   <button id="btnSet" class="sub" onclick="showSettings()" style="display:none">설정</button>
@@ -169,7 +171,8 @@ async function init() {
     $('who').textContent = `${ME.chapter_name} · ${ME.name || ME.email} · ${OPTS.year}회계연도`;
     $('btnNew').style.display = ME.can_write ? '' : 'none'; $('btnNewRes').style.display = ME.can_write ? '' : 'none'; $('btnSet').style.display = ME.can_manage ? '' : 'none';
     $('topNav').style.display = 'flex';
-    showList();
+    if (SUB.go) subGo(SUB.go); else showList();
+    subReady();
   } catch (e) {
     $('topNav').style.display = 'none';
     $('who').textContent = '';
@@ -177,10 +180,21 @@ async function init() {
   }
 }
 sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_IN' && !ME) init(); });
+// ===== 하위 메뉴 (업무 시스템 왼쪽 메뉴에서 이동) =====
+const SUB = { go: new URLSearchParams(location.search).get('go') || '', ready: false };
+function subTell(t) { if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-tab', tab: t }, location.origin); } catch (e) {} }
+function subReady() { SUB.ready = true; if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-ready', tab: SUB.go }, location.origin); } catch (e) {} }
+window.addEventListener('message', (e) => {
+  if (e.origin !== location.origin || !e.data || e.data.type !== 'sub-go') return;
+  SUB.go = e.data.tab; if (SUB.ready) subGo(SUB.go);
+});
+const SUB_FN = { prop: () => showList(), res: () => showResList(), cash: () => showLedger(), ledger: () => showGL(), bank: () => showBank() };
+function subGo(t) { (SUB_FN[t] || SUB_FN.prop)(); }
+
 
 // ===== 4단계: 품의 =====
 async function showList() {
-  msg('');
+  msg(''); subTell('prop');
   $('view').innerHTML = '<p>불러오는 중…</p>';
   try {
     const list = await api('listProposals', OPTS.year);
@@ -350,6 +364,7 @@ function accName(id) {
 }
 
 async function showResList() {
+  subTell('res');
   msg('');
   $('view').innerHTML = '<p>불러오는 중…</p>';
   try {
@@ -549,57 +564,126 @@ async function saveRes() {
 }
 
 async function showLedger(month) {
-  msg('');
+  msg(''); subTell('cash');
   month = month || '';
   try {
-    await loadRes();
-    const [rows, balList] = await Promise.all([
-      api('getLedger', OPTS.year, month),
-      api('getAccountBalances', OPTS.year)
-    ]);
-    const srcName = code => {
-      const c = RES.자금원천.find(x => x['코드'] === code);
-      return c ? c['이름'] : code;
-    };
-    const balHtml = RES.통장.map(b => {
-      const items = balList.filter(x => x['통장id'] === b['통장id']);
-      const total = items.reduce((s, x) => s + x['잔고'], 0);
-      const lines = items.map(x =>
-        `<div class="row" style="padding:4px 0"><span>${esc(srcName(x['자금원천']))}</span><span>${won(x['잔고'])}</span></div>`
-      ).join('');
-      return `<div style="margin-top:10px"><b>${esc(b['은행명'])} ${esc(b['계좌번호'])}</b> · 합계 ${won(total)}${lines}</div>`;
-    }).join('') || '<p>등록된 통장이 없습니다.</p>';
-
-    const carryBtn = ME.can_approve
-      ? `<div class="actions"><button onclick="makeCarry()">${esc(OPTS.year)}년 말 잔고로 ${Number(OPTS.year) + 1}년 이월 초안 만들기</button></div>`
-      : '';
-
+    const rows = await api('getLedger', OPTS.year, month);
     const TD = 'padding:6px 4px;border-bottom:1px solid #ddd;font-size:13px;';
     const TH = 'text-align:left;font-size:13px;padding:6px 4px;border-bottom:2px solid #999;';
+    let cash = 0;
     const body = rows.length ? rows.map(r => {
-      const gone = r['상태'] === '취소' ? 'color:#999;text-decoration:line-through;' : '';
-      const remain = (r['잔액'] == null) ? '' : won(r['잔액']);
-      return `<tr style="${gone}">
+      cash += (Number(r['수입금액']) || 0) - (Number(r['지출금액']) || 0);
+      return `<tr>
         <td style="${TD}">${esc(r['날짜'])}</td>
-        <td style="${TD}">${esc(r['적요'])}${r['상태'] === '취소' ? ' (취소)' : ''}</td>
+        <td style="${TD}">${esc(r['결의번호'] || '')}</td>
+        <td style="${TD}">${esc(r['적요'])}</td>
         <td style="${TD}text-align:right">${Number(r['수입금액']) ? won(r['수입금액']) : ''}</td>
         <td style="${TD}text-align:right">${Number(r['지출금액']) ? won(r['지출금액']) : ''}</td>
-        <td style="${TD}text-align:right">${remain}</td>
+        <td style="${TD}text-align:right">${month ? '' : won(cash)}</td>
       </tr>`;
-    }).join('') : '<tr><td colspan="5">기록이 없습니다.</td></tr>';
-
+    }).join('') : '<tr><td colspan="6">기록이 없습니다.</td></tr>';
+    const inSum = rows.reduce((a, r) => a + (Number(r['수입금액']) || 0), 0), outSum = rows.reduce((a, r) => a + (Number(r['지출금액']) || 0), 0);
     $('view').innerHTML = `
-      <p style="color:#666;font-size:13px">출납부·잔고에는 <b>결재완료 표시</b>된 결의만 들어갑니다. 출납부는 날짜순으로 잔액을 계산합니다.</p>
-      <h2>통장 잔고 (재원별)</h2>${balHtml}${carryBtn}
       <h2>금전출납부 (${esc(OPTS.year)}회계연도)</h2>
+      <p style="color:#666;font-size:13px">결재완료 표시된 결의만 날짜순으로 들어갑니다. 통장·재원별 잔고는 <a href="#" onclick="showBank();return false">통장 내역</a>, 목별 집계는 <a href="#" onclick="showGL();return false">원장</a>에서 봅니다.</p>
       <label>월 선택</label>
       <select onchange="showLedger(this.value)">${monthOpts(month)}</select>
       <table style="width:100%;border-collapse:collapse;margin-top:8px">
         <tr>
-          <th style="${TH}">날짜</th><th style="${TH}">적요</th>
+          <th style="${TH}">날짜</th><th style="${TH}">결의번호</th><th style="${TH}">적요</th>
           <th style="${TH}text-align:right">수입</th><th style="${TH}text-align:right">지출</th>
-          <th style="${TH}text-align:right">잔액</th>
+          <th style="${TH}text-align:right">${month ? '' : '잔액'}</th>
         </tr>
+        ${body}
+        <tr><td colspan="3" style="${TD}font-weight:bold">${month ? month + '월 ' : ''}합계</td><td style="${TD}text-align:right;font-weight:bold">${won(inSum)}</td><td style="${TD}text-align:right;font-weight:bold">${won(outSum)}</td><td style="${TD}"></td></tr>
+      </table>`;
+  } catch (e) {
+    msg(e.message, 'err');
+  }
+}
+
+// ===== 원장: 목(계정)별 수입·지출 집계와 내역 =====
+async function showGL(mok) {
+  msg(''); subTell('ledger');
+  mok = mok || '';
+  try {
+    await loadRes();
+    const rows = await api('getLedger', OPTS.year, null);
+    const mokName = code => { const c = (RES.목 || []).find(x => x['코드'] === code) || (OPTS['목'] || []).find(x => x['코드'] === code); return c ? `${c['이름']} (${code})` : (code || '(목 정보 없음)'); };
+    const by = {};
+    rows.forEach(r => { const k = r['목코드'] || ''; const o = by[k] || (by[k] = { 수입: 0, 지출: 0, 건수: 0 }); o.수입 += Number(r['수입금액']) || 0; o.지출 += Number(r['지출금액']) || 0; o.건수++; });
+    const keys = Object.keys(by).sort();
+    const TD = 'padding:6px 4px;border-bottom:1px solid #ddd;font-size:13px;';
+    const TH = 'text-align:left;font-size:13px;padding:6px 4px;border-bottom:2px solid #999;';
+    const noMok = rows.length && rows.every(r => r['목코드'] === undefined);
+    const sum = keys.map(k => `<tr style="cursor:pointer" onclick="showGL('${esc(k)}')">
+        <td style="${TD}">${esc(mokName(k))}</td><td style="${TD}text-align:right">${by[k].건수}건</td>
+        <td style="${TD}text-align:right">${by[k].수입 ? won(by[k].수입) : ''}</td><td style="${TD}text-align:right">${by[k].지출 ? won(by[k].지출) : ''}</td></tr>`).join('')
+      || '<tr><td colspan="4">기록이 없습니다.</td></tr>';
+    let detail = '';
+    if (mok) {
+      let acc = 0;
+      const list = rows.filter(r => (r['목코드'] || '') === mok);
+      detail = `<h2>${esc(mokName(mok))} 원장</h2>
+        <table style="width:100%;border-collapse:collapse">
+          <tr><th style="${TH}">날짜</th><th style="${TH}">결의번호</th><th style="${TH}">적요</th><th style="${TH}">거래처</th>
+            <th style="${TH}text-align:right">수입</th><th style="${TH}text-align:right">지출</th><th style="${TH}text-align:right">누계</th></tr>
+          ${list.map(r => { acc += (Number(r['수입금액']) || 0) + (Number(r['지출금액']) || 0); return `<tr>
+            <td style="${TD}">${esc(r['날짜'])}</td><td style="${TD}">${esc(r['결의번호'] || '')}</td><td style="${TD}">${esc(r['적요'])}</td><td style="${TD}">${esc(r['거래처'] || '')}</td>
+            <td style="${TD}text-align:right">${Number(r['수입금액']) ? won(r['수입금액']) : ''}</td><td style="${TD}text-align:right">${Number(r['지출금액']) ? won(r['지출금액']) : ''}</td>
+            <td style="${TD}text-align:right">${won(acc)}</td></tr>`; }).join('') || '<tr><td colspan="7">기록이 없습니다.</td></tr>'}
+        </table>`;
+    }
+    $('view').innerHTML = `
+      <h2>원장 (${esc(OPTS.year)}회계연도 · 목별)</h2>
+      <p style="color:#666;font-size:13px">결재완료 표시된 결의를 목(예산 과목)별로 모읍니다. 줄을 누르면 그 목의 내역이 아래에 나옵니다.</p>
+      ${noMok ? '<p class="msg err">목 정보를 보려면 23번 SQL을 실행해 주세요.</p>' : ''}
+      <label>목 선택</label>
+      <select onchange="showGL(this.value)"><option value="">전체 목 요약</option>${keys.map(k => `<option value="${esc(k)}" ${k === mok ? 'selected' : ''}>${esc(mokName(k))}</option>`).join('')}</select>
+      <table style="width:100%;border-collapse:collapse;margin-top:8px">
+        <tr><th style="${TH}">목</th><th style="${TH}text-align:right">건수</th><th style="${TH}text-align:right">수입</th><th style="${TH}text-align:right">지출</th></tr>
+        ${sum}
+      </table>
+      ${detail}`;
+  } catch (e) {
+    msg(e.message, 'err');
+  }
+}
+
+// ===== 통장 내역: 통장별 잔고(재원별)와 입출금 내역 =====
+async function showBank(acc) {
+  msg(''); subTell('bank');
+  try {
+    await loadRes();
+    const [rows, balList] = await Promise.all([api('getLedger', OPTS.year, null), api('getAccountBalances', OPTS.year)]);
+    acc = acc || (RES.통장[0] ? RES.통장[0]['통장id'] : '');
+    const srcName = code => { const c = RES.자금원천.find(x => x['코드'] === code); return c ? c['이름'] : code; };
+    const accName = b => `${b['은행명']} ${b['계좌번호']}`;
+    const balHtml = RES.통장.map(b => {
+      const items = balList.filter(x => x['통장id'] === b['통장id']);
+      const total = items.reduce((s, x) => s + x['잔고'], 0);
+      const lines = items.map(x => `<div class="row" style="padding:4px 0"><span>${esc(srcName(x['자금원천']))}</span><span>${won(x['잔고'])}</span></div>`).join('');
+      return `<div style="margin-top:10px;${b['통장id'] === acc ? 'border-left:4px solid #3b6fd4;padding-left:8px' : ''}"><b>${esc(accName(b))}</b> · 합계 ${won(total)}${lines}</div>`;
+    }).join('') || '<p>등록된 통장이 없습니다.</p>';
+    const carryBtn = ME.can_approve
+      ? `<div class="actions"><button onclick="makeCarry()">${esc(OPTS.year)}년 말 잔고로 ${Number(OPTS.year) + 1}년 이월 초안 만들기</button></div>` : '';
+    const TD = 'padding:6px 4px;border-bottom:1px solid #ddd;font-size:13px;';
+    const TH = 'text-align:left;font-size:13px;padding:6px 4px;border-bottom:2px solid #999;';
+    let bal = 0;
+    const list = rows.filter(r => r['통장id'] === acc);
+    const body = list.map(r => { bal += (Number(r['수입금액']) || 0) - (Number(r['지출금액']) || 0); return `<tr>
+        <td style="${TD}">${esc(r['날짜'])}</td><td style="${TD}">${esc(r['적요'])}</td><td style="${TD}">${esc(srcName(r['자금원천']))}</td>
+        <td style="${TD}text-align:right">${Number(r['수입금액']) ? won(r['수입금액']) : ''}</td><td style="${TD}text-align:right">${Number(r['지출금액']) ? won(r['지출금액']) : ''}</td>
+        <td style="${TD}text-align:right">${won(bal)}</td></tr>`; }).join('') || '<tr><td colspan="6">기록이 없습니다.</td></tr>';
+    $('view').innerHTML = `
+      <h2>통장 잔고 (재원별)</h2>${balHtml}${carryBtn}
+      <h2>통장 내역 (${esc(OPTS.year)}회계연도)</h2>
+      <p style="color:#666;font-size:13px">결재완료 표시된 결의만 들어갑니다.</p>
+      <label>통장 선택</label>
+      <select onchange="showBank(this.value)">${RES.통장.map(b => `<option value="${esc(b['통장id'])}" ${b['통장id'] === acc ? 'selected' : ''}>${esc(accName(b))}</option>`).join('')}</select>
+      <table style="width:100%;border-collapse:collapse;margin-top:8px">
+        <tr><th style="${TH}">날짜</th><th style="${TH}">적요</th><th style="${TH}">재원</th>
+          <th style="${TH}text-align:right">입금</th><th style="${TH}text-align:right">출금</th><th style="${TH}text-align:right">잔액</th></tr>
         ${body}
       </table>`;
   } catch (e) {

@@ -121,7 +121,8 @@ const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const won = n => Number(n || 0).toLocaleString('ko-KR') + '원';
-const badge = s => `<span class="badge ${s === '결재완료' ? 'ok' : (s === '취소' ? 'cancel' : '')}">${esc(s)}</span>`;
+// 결의 '결재완료' = 작성 즉시 확정 (결재완료 표시 없음, 종이로 수기 결재)
+const badge = s => `<span class="badge ${s === '결재완료' ? 'ok' : (s === '취소' ? 'cancel' : '')}">${esc(s === '결재완료' ? '확정' : s)}</span>`;
 
 function msg(text, type) {
   const m = $('msg');
@@ -216,7 +217,7 @@ async function showDetail(no) {
     const mine = p['작성자'] === ME.email;
     let btns = '';
     if (p['상태'] === '작성' && mine) btns += `<button onclick="showForm('${esc(no)}')">수정</button>`;
-    if (p['상태'] === '작성' && ME.can_write) btns += `<button onclick="showResForm('', '지출', '${esc(no)}')">이 품의로 결의 쓰기</button>`;
+    if (p['상태'] !== '취소' && ME.can_write) btns += `<button onclick="showResForm('', '지출', '${esc(no)}')">이 품의로 결의 쓰기</button>`;
     if (p['상태'] !== '취소') btns += `<button class="sub" onclick="printProp('${esc(no)}')">🖨 품의서 인쇄</button>`;
     if (mine && p['상태'] !== '취소') btns += `<button class="danger" onclick="showCancel('${esc(no)}')">취소</button>`;
     btns += `<button class="sub" onclick="showList()">목록</button>`;
@@ -246,16 +247,6 @@ async function showDetail(no) {
   }
 }
 
-async function approve(no) {
-  if (!confirm('종이(수기) 결재를 마쳤나요?\n결재완료로 표시하면 더 이상 고칠 수 없습니다.')) return;
-  try {
-    await api('approveProposal', no);
-    await showDetail(no);
-    msg('결재완료로 표시했습니다. 이제 수정할 수 없습니다.', 'ok');
-  } catch (e) {
-    msg(e.message, 'err');
-  }
-}
 
 function showCancel(no) {
   if ($('cancelBox')) return;
@@ -387,8 +378,7 @@ async function showResDetail(no) {
     const r = await api('getResolution', no);
     const mine = r['작성자'] === ME.email;
     let btns = '';
-    if (r['상태'] === '작성' && mine) btns += `<button onclick="showResForm('${esc(no)}')">수정</button>`;
-    if (r['상태'] === '작성' && (ME.can_approve || (mine && ME.can_write))) btns += `<button onclick="approveRes('${esc(no)}')">결재완료 표시</button>`;
+    if (r['상태'] !== '취소' && mine) btns += `<button onclick="showResForm('${esc(no)}')">수정</button>`;
     if (r['상태'] !== '취소') btns += `<button class="sub" onclick="printRes('${esc(no)}')">🖨 결의서 인쇄</button>`;
     if (mine && r['상태'] !== '취소') btns += `<button class="danger" onclick="showResCancel('${esc(no)}')">취소</button>`;
     btns += `<button class="sub" onclick="showResList()">목록</button>`;
@@ -404,9 +394,7 @@ async function showResDetail(no) {
       ['적요', r['적요']],
       ['금액', won(r['금액'])],
       ['거래처', r['거래처']],
-      ['작성자', r['작성자']],
-      ['결재자', r['결재자']],
-      ['결재일', r['결재일']]
+      ['작성자', r['작성자']]
     ];
     if (r['상태'] === '취소') rows.push(['취소사유', r['취소사유']], ['취소일시', r['취소일시']]);
 
@@ -418,16 +406,6 @@ async function showResDetail(no) {
   }
 }
 
-async function approveRes(no) {
-  if (!confirm('종이(수기) 결재를 마쳤나요?\n결재완료로 표시하면 출납부·잔고·예산 집행에 반영되고 더 이상 고칠 수 없습니다.')) return;
-  try {
-    await api('approveResolution', no);
-    await showResDetail(no);
-    msg('결재완료로 표시했습니다. 출납부·잔고·예산 집행에 반영되었습니다.', 'ok');
-  } catch (e) {
-    msg(e.message, 'err');
-  }
-}
 
 function showResCancel(no) {
   if ($('resCancelBox')) return;
@@ -556,7 +534,7 @@ async function saveRes() {
     const src = resSrc();
     const no = await api('saveResolution', data);
     await showResDetail(no);
-    msg('저장되었습니다. 결의번호: ' + no + ' — 인쇄해서 수기 결재를 받은 뒤 "결재완료 표시"를 누르면 출납부·잔고·예산에 반영됩니다.', 'ok');
+    msg('저장되었습니다. 결의번호: ' + no + ' — 출납부·잔고·예산에 바로 반영되었습니다. 인쇄해서 수기로 결재받으세요.', 'ok');
     try { await loadBudget(); const b = BUD.find(x => x['코드'] === src); if (b) $('view').insertAdjacentHTML('afterbegin', '<b>재원별 예산 현황</b>' + budLine(b)); } catch (e) {}
   } catch (e) {
     msg(e.message, 'err');
@@ -585,7 +563,7 @@ async function showLedger(month) {
     const inSum = rows.reduce((a, r) => a + (Number(r['수입금액']) || 0), 0), outSum = rows.reduce((a, r) => a + (Number(r['지출금액']) || 0), 0);
     $('view').innerHTML = `
       <h2>금전출납부 (${esc(OPTS.year)}회계연도)</h2>
-      <p style="color:#666;font-size:13px">결재완료 표시된 결의만 날짜순으로 들어갑니다. 통장·재원별 잔고는 <a href="#" onclick="showBank();return false">통장 내역</a>, 목별 집계는 <a href="#" onclick="showGL();return false">원장</a>에서 봅니다.</p>
+      <p style="color:#666;font-size:13px">취소되지 않은 결의가 날짜순으로 들어갑니다. 통장·재원별 잔고는 <a href="#" onclick="showBank();return false">통장 내역</a>, 목별 집계는 <a href="#" onclick="showGL();return false">원장</a>에서 봅니다.</p>
       <label>월 선택</label>
       <select onchange="showLedger(this.value)">${monthOpts(month)}</select>
       <table style="width:100%;border-collapse:collapse;margin-top:8px">
@@ -636,7 +614,7 @@ async function showGL(mok) {
     }
     $('view').innerHTML = `
       <h2>원장 (${esc(OPTS.year)}회계연도 · 목별)</h2>
-      <p style="color:#666;font-size:13px">결재완료 표시된 결의를 목(예산 과목)별로 모읍니다. 줄을 누르면 그 목의 내역이 아래에 나옵니다.</p>
+      <p style="color:#666;font-size:13px">취소되지 않은 결의를 목(예산 과목)별로 모읍니다. 줄을 누르면 그 목의 내역이 아래에 나옵니다.</p>
       ${noMok ? '<p class="msg err">목 정보를 보려면 23번 SQL을 실행해 주세요.</p>' : ''}
       <label>목 선택</label>
       <select onchange="showGL(this.value)"><option value="">전체 목 요약</option>${keys.map(k => `<option value="${esc(k)}" ${k === mok ? 'selected' : ''}>${esc(mokName(k))}</option>`).join('')}</select>
@@ -678,7 +656,7 @@ async function showBank(acc) {
     $('view').innerHTML = `
       <h2>통장 잔고 (재원별)</h2>${balHtml}${carryBtn}
       <h2>통장 내역 (${esc(OPTS.year)}회계연도)</h2>
-      <p style="color:#666;font-size:13px">결재완료 표시된 결의만 들어갑니다.</p>
+      <p style="color:#666;font-size:13px">취소되지 않은 결의가 들어갑니다.</p>
       <label>통장 선택</label>
       <select onchange="showBank(this.value)">${RES.통장.map(b => `<option value="${esc(b['통장id'])}" ${b['통장id'] === acc ? 'selected' : ''}>${esc(accName(b))}</option>`).join('')}</select>
       <table style="width:100%;border-collapse:collapse;margin-top:8px">
@@ -695,7 +673,7 @@ async function makeCarry() {
   try {
     const list = await api('createCarryOver', OPTS.year);
     await showResList();
-    msg('이월 초안 ' + list.length + '건을 만들었습니다 (' + list.join(', ') + '). 결의 상세에서 금액을 확인하고 결재완료 하세요.', 'ok');
+    msg('이월 초안 ' + list.length + '건을 만들었습니다 (' + list.join(', ') + '). 결의 상세에서 금액을 확인하세요.', 'ok');
   } catch (e) {
     msg(e.message, 'err');
   }
@@ -817,13 +795,13 @@ async function showBudget() {
       const left = b['예산액'] - b['집행액'], rate = b['예산액'] ? Math.round(b['집행액'] / b['예산액'] * 1000) / 10 : null;
       return `<tr style="${bold ? 'font-weight:bold;background:#f6f8fc' : ''}"><td style="${T};text-align:left">${esc(b['이름'])}${!bold && !b['예산설정'] ? ' <span class="badge">예산 미설정</span>' : ''}</td>
         <td style="${T}">${won(b['예산액'])}</td><td style="${T}">${won(b['품의액'])}</td><td style="${T}">${won(b['집행액'])}</td>
-        <td style="${T};color:#b45309">${b['대기액'] ? won(b['대기액']) : '-'}</td><td style="${T};${left < 0 ? 'color:#c0392b' : ''}">${won(left)}</td>
+<td style="${T};${left < 0 ? 'color:#c0392b' : ''}">${won(left)}</td>
         <td style="${T}">${rate == null ? '-' : rate + '%'}</td><td style="${T}">${won(b['수입액'])}</td></tr>`;
     };
     $('view').innerHTML = `<h2>재원별 예산 현황 (${esc(OPTS.year)}회계연도)</h2>
-      <p style="color:#666;font-size:13px">집행 = 결재완료 표시된 지출결의 · 결재 대기 = 아직 결재완료 표시 전인 지출결의 · 남은 예산 = 예산 − 집행</p>
+      <p style="color:#666;font-size:13px">집행 = 작성(확정)된 지출결의 · 남은 예산 = 예산 − 집행</p>
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;background:#fff"><tr>
-        ${['재원','예산','품의','집행','결재 대기','남은 예산','집행률','수입'].map((h, i) => `<th style="${T};${i ? '' : 'text-align:left;'}border-bottom:2px solid #999">${h}</th>`).join('')}</tr>
+        ${['재원','예산','품의','집행','남은 예산','집행률','수입'].map((h, i) => `<th style="${T};${i ? '' : 'text-align:left;'}border-bottom:2px solid #999">${h}</th>`).join('')}</tr>
         ${list.map(b => row(b)).join('')}
         ${list.length > 1 ? row({ 이름: '합계', 예산액: sum('예산액'), 품의액: sum('품의액'), 집행액: sum('집행액'), 대기액: sum('대기액'), 수입액: sum('수입액'), 예산설정: true }, true) : ''}
       </table></div>

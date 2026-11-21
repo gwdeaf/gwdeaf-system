@@ -19,12 +19,12 @@
  *    실인원 = 1회 이상 출석한 사람 수
  *    수료   = 출석횟수 ÷ 총회차 ≥ 수료기준(%)
  *  - 보고 단위: 상반기 / 하반기 / 연간. 연간은 그해 상반기와 하반기를 합산해 따로 제출·승인합니다.
- *    연간 보고가 제출되거나 승인되면 그해 모든 강좌가 잠깁니다. (반려하면 풀림)
+ *    연간 보고가 제출되거나 승인되면 그해 모든 강좌가 잠깁니다. (보완 요청하면 풀림)
  *  - '인원만 입력' 강좌(학교 특강 등)는 이름 없이 회차별 인원수만 입력합니다.
  *    연인원 = 회차별 인원의 합, 실인원 = 회차별 인원 중 최대값, 수료는 집계하지 않음
  *             단, 강좌의 '수료집계'가 N이면 수료인원을 집계하지 않음(0, 화면에는 '-')
  *    총강의시간 = 실제 진행한 회차 × 회당 시간
- *  - 보고가 '제출완료' 또는 '승인'된 기간의 자료는 수정이 잠깁니다. (도협회가 '반려'하면 풀림)
+ *  - 보고가 '제출완료' 또는 '승인'된 기간의 자료는 수정이 잠깁니다. (도협회가 '보완 요청'하면 풀림. 저장 값은 호환을 위해 '반려' 그대로)
  *  - 중도 포기자는 삭제하지 마세요. 삭제하면 그 사람의 출석이 실적에서 빠집니다.
  *    (삭제는 '잘못 등록한 사람'에게만 사용)
  *  - 회원정보의 '지회명'은 사용 시작 후 바꾸지 마세요. 자료가 지회명으로 연결됩니다.
@@ -316,7 +316,7 @@ function lockInfo_(chapter, year, startDate) {
 
 function assertEditable_(chapter, year, startDate) {
   const l = lockInfo_(chapter, year, startDate);
-  if (l) fail_(`${l.name} 보고가 '${l.status}' 상태라 수정할 수 없습니다. 수정이 필요하면 도협회에 반려를 요청하세요.`);
+  if (l) fail_(`${l.name} 보고가 '${l.status}' 상태라 수정할 수 없습니다. 수정이 필요하면 도협회에 보완 요청을 부탁하세요.`);
 }
 
 function isLocked_(chapter, year, startDate) { return !!lockInfo_(chapter, year, startDate); }
@@ -1104,7 +1104,13 @@ function saveHeadcount_(user, courseId, session, count, date) {
 
 
 // ===================== 12. 실적 자동 계산 =====================
-function calcHeadcount_(c, att) {
+// 회차별 강의시간: '회차별 강사·시간'에 시작·끝 시간을 적은 회차는 그 시간, 아니면 회당 시간
+function planHourMap_(plan) { const m = {}; (plan || []).forEach(p => { m[Number(p.회차)] = p; }); return m; }
+function sumHours_(sessions, plan, hours) {
+  const m = planHourMap_(plan);
+  return Math.round(sessions.reduce((a, s) => a + planHours_(m[Number(s)], hours), 0) * 10) / 10;
+}
+function calcHeadcount_(c, att, plan) {
   const total = Number(c.총회차) || 0, hours = Number(c.회당시간) || 0;
   const by = {};
   att.forEach(a => {
@@ -1119,14 +1125,14 @@ function calcHeadcount_(c, att) {
     강좌ID: String(c.강좌ID), 지회명: c.지회명, 연도: Number(c.연도), 반기: c.반기, 강좌명: c.강좌명, 주관: c.주관 || '', 교육구분: c.교육구분 || '', 수준: c.수준 || '', 기관명: c.기관명 || '',
     기간: `${c.시작일} ~ ${c.종료일}`, 강사: c.강사, 교재: c.교재,
     총회차: total, 진행회차: ss.length, 회당시간: hours,
-    총강의시간: Math.round(ss.length * hours * 10) / 10,
+    총강의시간: sumHours_(ss, plan, hours),
     등록인원: max, 실인원: max, 연인원: sum, 수료인원: 0, 수료율: 0, 수료집계: 'N',
     계산일시: now_()
   };
 }
 
-function calcCourse_(c, parts, att) {
-  if (isHeadcount_(c)) return calcHeadcount_(c, att);
+function calcCourse_(c, parts, att, plan) {
+  if (isHeadcount_(c)) return calcHeadcount_(c, att, plan);
   const total = Number(c.총회차) || 0;
   const hours = Number(c.회당시간) || 0;
   const criteria = Number(c.수료기준);
@@ -1153,7 +1159,7 @@ function calcCourse_(c, parts, att) {
     강좌ID: String(c.강좌ID), 지회명: c.지회명, 연도: Number(c.연도), 반기: c.반기, 강좌명: c.강좌명, 주관: c.주관 || '', 교육구분: c.교육구분 || '', 수준: c.수준 || '', 기관명: c.기관명 || '',
     기간: `${c.시작일} ~ ${c.종료일}`, 강사: c.강사, 교재: c.교재,
     총회차: total, 진행회차: heldCount, 회당시간: hours,
-    총강의시간: Math.round(heldCount * hours * 10) / 10,
+    총강의시간: sumHours_(Object.keys(held), plan, hours),
     등록인원: Object.keys(active).length, 실인원: actual, 연인원: personTimes, 수료인원: completed,
     수료율: actual ? Math.min(100, Math.round(completed / actual * 1000) / 10) : 0,
     수료집계: countComp ? 'Y' : 'N',
@@ -1169,6 +1175,7 @@ function recalcCourses_(courseIds) {
   readTable_(SHEETS.COURSES).rows.forEach(c => { if (ids[String(c.강좌ID)]) courses[String(c.강좌ID)] = c; });
   const parts = groupBy_(readTable_(SHEETS.PARTICIPANTS).rows.filter(p => ids[String(p.강좌ID)]), '강좌ID');
   const att = groupBy_(readTable_(SHEETS.ATTENDANCE).rows.filter(a => ids[String(a.강좌ID)]), '강좌ID');
+  const plans = groupBy_(readTable_(SHEETS.SESSIONPLAN).rows.filter(a => ids[String(a.강좌ID)]), '강좌ID');
   const resT = readTable_(SHEETS.RESULTS);
   const existing = groupBy_(resT.rows.filter(r => ids[String(r.강좌ID)]), '강좌ID');
   const toAppend = [], toDelete = [];
@@ -1176,7 +1183,7 @@ function recalcCourses_(courseIds) {
     const c = courses[id];
     const ex = existing[id] || [];
     if (!c || c.상태 === '삭제') { ex.forEach(r => toDelete.push(r._row)); return; }
-    const r = calcCourse_(c, parts[id] || [], att[id] || []);
+    const r = calcCourse_(c, parts[id] || [], att[id] || [], plans[id] || []);
     if (ex.length) {
       r._row = ex[0]._row;
       updateRow_(resT, r);
@@ -1195,10 +1202,11 @@ function recalcAll_() {
   const courses = readTable_(SHEETS.COURSES).rows.filter(c => c.상태 !== '삭제');
   const parts = groupBy_(readTable_(SHEETS.PARTICIPANTS).rows, '강좌ID');
   const att = groupBy_(readTable_(SHEETS.ATTENDANCE).rows, '강좌ID');
+  const plans = groupBy_(readTable_(SHEETS.SESSIONPLAN).rows, '강좌ID');
   const resT = readTable_(SHEETS.RESULTS);
   const out = courses.map(c => {
     const id = String(c.강좌ID);
-    return toRowArray_(resT.headers, calcCourse_(c, parts[id] || [], att[id] || []));
+    return toRowArray_(resT.headers, calcCourse_(c, parts[id] || [], att[id] || [], plans[id] || []));
   });
   resetMemo_();
   const lastRow = resT.sh.getLastRow();
@@ -1494,8 +1502,10 @@ function getStats_(user, year, chapter) {
   const parts = groupBy_(readTable_(SHEETS.PARTICIPANTS).rows.filter(p => cid[String(p.강좌ID)] && !isDeleted_(p)), '강좌ID');
   const att = groupBy_(readTable_(SHEETS.ATTENDANCE).rows.filter(a => cid[String(a.강좌ID)]), '강좌ID');
 
-  const mk = () => { const a = []; for (let m = 1; m <= 12; m++) a.push({ 월: m, 건수: 0, 실인원: 0, 연인원: 0 }); return a; };
+  const mk = () => { const a = []; for (let m = 1; m <= 12; m++) a.push({ 월: m, 건수: 0, 실인원: 0, 연인원: 0, 강의시간: 0 }); return a; };
   const months = { 전체: mk(), 지회: mk(), 센터: mk() };
+  const plans = groupBy_(readTable_(SHEETS.SESSIONPLAN).rows.filter(p => cid[String(p.강좌ID)]), '강좌ID');
+  const monthDetail = {};   // 월 → 그달 수업한 강좌별 내역 (월별 인쇄·엑셀용)
   let guessed = 0;   // 수업일이 없어 입력일·시작일로 대신 센 회차 수
 
   courses.forEach(c => {
@@ -1515,25 +1525,30 @@ function getStats_(user, year, chapter) {
       if (head) o.count = Number(a.출석) || 0;
       else if (a.출석 === 'O') o.ids[pid] = true;
     });
-    const perMonth = {};   // m → { people:{}, pt:0, headMax:0 }
+    const perMonth = {};   // m → { people:{}, pt:0, headMax:0, sns:[] }
+    const pm = planHourMap_(plans[id]), hrs = Number(c.회당시간) || 0;
     Object.keys(sess).forEach(sn => {
       const o = sess[sn];
       let day = o.day;
       if (!day) { guessed++; day = o.guess || dateText_(c.시작일); }
       if (!day || Number(day.slice(0, 4)) !== y) return;
       const m = Number(day.slice(5, 7));
-      const b = perMonth[m] = perMonth[m] || { people: {}, pt: 0, headMax: 0 };
+      const b = perMonth[m] = perMonth[m] || { people: {}, pt: 0, headMax: 0, sns: [], hours: 0 };
+      b.sns.push(Number(sn)); b.hours += planHours_(pm[Number(sn)], hrs);
       if (head) { b.pt += o.count; b.headMax = Math.max(b.headMax, o.count); }
       else { Object.keys(o.ids).forEach(pid => { b.pt++; b.people[pid] = true; }); }
     });
     Object.keys(perMonth).forEach(m => {
       const b = perMonth[m];
       const groups = [months.전체]; if (ORGS.indexOf(c.주관) !== -1) groups.push(months[c.주관]);
+      const real = head ? b.headMax : Object.keys(b.people).length, hh = Math.round(b.hours * 10) / 10;
       groups.forEach(arr => {
         const row = arr[Number(m) - 1];
-        row.건수++; row.연인원 += b.pt;
-        row.실인원 += head ? b.headMax : Object.keys(b.people).length;
+        row.건수++; row.연인원 += b.pt; row.강의시간 = Math.round((row.강의시간 + hh) * 10) / 10;
+        row.실인원 += real;
       });
+      (monthDetail[m] = monthDetail[m] || []).push({ 지회명: c.지회명, 강좌명: c.강좌명, 주관: c.주관 || '', 교육구분: c.교육구분 || '', 수준: c.수준 || '', 강사: c.강사 || '',
+        회차: b.sns.sort((x, y) => x - y).join(', '), 회차수: b.sns.length, 강의시간: hh, 실인원: real, 연인원: b.pt });
     });
   });
 
@@ -1547,7 +1562,8 @@ function getStats_(user, year, chapter) {
     });
     return o;
   };
-  const out = { 연도: y, 대상: label, 월별: months,
+  Object.keys(monthDetail).forEach(m => monthDetail[m].sort((a, b) => (a.지회명 + a.강좌명).localeCompare(b.지회명 + b.강좌명, 'ko')));
+  const out = { 연도: y, 대상: label, 월별: months, 월상세: monthDetail,
     기간별: { '1분기': period('1분기'), 상반기: period('상반기'), '3분기': period('3분기'), 연간: period(ANNUAL) },
     지회별: null, 날짜추정: guessed };
   if (isAdmin_(user) && label === '전체') {
@@ -1588,11 +1604,11 @@ function approveReport_(user, chapter, year, half) {
 function rejectReport_(user, chapter, year, half, reason) {
   requireAdmin_(user);
   const p = parsePeriod_(year, half);
-  const why = clean_(reason, 200, '반려 사유');
-  if (!why) fail_('반려 사유를 입력해 주세요.');
+  const why = clean_(reason, 200, '보완 요청 사유');
+  if (!why) fail_('보완 요청 사유를 입력해 주세요.');
   const t = readTable_(SHEETS.REPORTS);
   const r = findReport_(t.rows, String(chapter || '').trim(), p.year, p.half);
-  if (!r || LOCKED_STATUSES.indexOf(r.상태) === -1) fail_(`'제출완료' 또는 '승인' 상태인 보고만 반려할 수 있습니다. (현재: ${r ? r.상태 : ST_NONE})`);
+  if (!r || LOCKED_STATUSES.indexOf(r.상태) === -1) fail_(`'제출완료' 또는 '승인' 상태인 보고만 보완 요청할 수 있습니다. (현재: ${r ? r.상태 : ST_NONE})`);
   Object.assign(r, { 상태: ST_REJECTED, 처리일시: now_(), 처리자: user.name || user.id, 반려사유: why });
   updateRow_(t, r);
   log_(user, '보고반려', `${chapter} ${p.year} ${p.half}: ${why}`);
@@ -1605,6 +1621,17 @@ function rejectReport_(user, chapter, year, half, reason) {
 function getCertInfo(token, courseId) { return api_(token, user => getCertInfo_(user, courseId)); }
 function saveCertSetting(token, courseId, s) { return api_(token, user => saveCertSetting_(user, courseId, s), true); }
 function listCerts(token) { return api_(token, user => listCerts_(user)); }
+function deleteCert(token, no) { return api_(token, user => deleteCert_(user, no), true); }
+// 대장에서 수료증 한 건 삭제 (잘못 발급한 경우). 지운 번호는 다시 쓸 수 있고, 그 사람은 다시 발급할 수 있음
+function deleteCert_(user, no) {
+  const owner = isAdmin_(user) ? HQ : user.chapter, key = String(no == null ? '' : no).trim();
+  if (!key) fail_('지울 수료증 번호가 없습니다.');
+  const t = readTable_(SHEETS.CERTS), r = t.rows.find(x => x.지회명 === owner && String(x.번호) === key);
+  if (!r) fail_('대장에서 해당 수료증을 찾을 수 없습니다. 새로고침 후 다시 시도해 주세요.');
+  deleteRows_(t, [r._row]);
+  log_(user, '수료증삭제', `${key} ${r.이름} (${r.강좌ID})`);
+  return listCerts_(user);
+}
 function issueCerts(token, courseId, pids, date, numbers) { return api_(token, user => issueCerts_(user, courseId, pids, date, numbers), true); }
 
 // 발급 대장: 지회는 자기 지회 것, 도협회는 도협회 강좌 것만 (지회 수강생 이름은 보내지 않음)
@@ -1647,9 +1674,17 @@ function certSetting_(c) {
   if (own) return { saved: true, s: pick(own) };
   const lv = {};
   readTable_(SHEETS.COURSES).rows.forEach(x => { lv[String(x.강좌ID)] = x.수준; });
-  const same = rows.filter(r => r.지회명 === certOwner_(c) && lv[String(r.강좌ID)] === c.수준)
-    .sort((a, b) => String(b.수정일시).localeCompare(String(a.수정일시)))[0];
-  return { saved: false, s: same ? pick(same) : certDefaults_(c) };
+  const mine = rows.filter(r => r.지회명 === certOwner_(c)).sort((a, b) => String(b.수정일시).localeCompare(String(a.수정일시)));
+  const same = mine.find(r => lv[String(r.강좌ID)] === c.수준);
+  if (same) return { saved: false, s: pick(same) };
+  // 같은 수준 서식이 없으면 같은 지회의 가장 최근 서식(번호 방식·문구·전달자)을 따르고, 수준이 붙은 앞부분만 이 강좌 수준으로 바꿈
+  const last = mine[0];
+  if (!last) return { saved: false, s: certDefaults_(c) };
+  const o = pick(last), olv = String(lv[String(last.강좌ID)] || '');
+  if (olv && olv !== '구분없음' && String(o.번호접두어).endsWith('-' + olv)) {
+    o.번호접두어 = String(o.번호접두어).slice(0, -(olv.length + 1)) + ((c.수준 && c.수준 !== '구분없음') ? '-' + c.수준 : '');
+  }
+  return { saved: false, s: o };
 }
 
 function getCertInfo_(user, courseId) {
@@ -1767,7 +1802,7 @@ function getPlan_(user, courseId) {
   const id = String(c.강좌ID), by = {}, total = Number(c.총회차) || 0, rows = [];
   planRows_(id).forEach(r => { by[Number(r.회차)] = r; });
   for (let sn = 1; sn <= total; sn++) { const x = by[sn] || {}; rows.push({ 회차: sn, 강사: String(x.강사 || ''), 시작시간: String(x.시작시간 || ''), 종료시간: String(x.종료시간 || '') }); }
-  return { 강사목록: splitNames_(c.강사).concat(splitNames_(c.보조강사).filter(x => splitNames_(c.강사).indexOf(x) === -1)), 총회차: total, 회당시간: Number(c.회당시간) || 0, 요일시간: String(c.요일시간 || ''), rows: rows };
+  return { 메인강사: mainTeacher_(c), 강사목록: splitNames_(c.강사).concat(splitNames_(c.보조강사).filter(x => splitNames_(c.강사).indexOf(x) === -1)), 총회차: total, 회당시간: Number(c.회당시간) || 0, 요일시간: String(c.요일시간 || ''), rows: rows };
 }
 function savePlan_(user, courseId, rows) {
   const c = getCourseOrFail_(courseId).c;
@@ -1788,6 +1823,7 @@ function savePlan_(user, courseId, rows) {
   if (old.length) deleteRows_(pt, old.map(x => x._row));
   if (out.length) appendRows_(readTable_(SHEETS.SESSIONPLAN), out);
   log_(user, '회차강사저장', `${id} ${out.length}회차`);
+  recalcCourses_([id]);   // 회차별 시간이 실적(총강의시간)에 바로 반영되도록
   return getPlan_(user, id);
 }
 
@@ -2768,7 +2804,7 @@ function rejectReply_(user, requestId, chapter, reason) {
   requireAdmin_(user);
   const r = reqRow_(requestId), ch = reqChapter_(user, r, chapter);
   const x = replyRowEnsure_(r.요청ID, ch);
-  x.rp.상태 = '반려'; x.rp.반려사유 = limitText_(reason, 500, '반려 사유') || '다시 확인해 주세요.'; x.rp.제출일시 = ''; x.rp.수정일시 = now_();
+  x.rp.상태 = '반려'; x.rp.반려사유 = limitText_(reason, 500, '보완 요청 사유') || '다시 확인해 주세요.'; x.rp.제출일시 = ''; x.rp.수정일시 = now_();
   updateRow_(x.t, x.rp);
   log_(user, '회신반려', `${r.요청ID} ${ch}`);
   return getRequest_(user, r.요청ID);
@@ -3060,7 +3096,7 @@ function applyContext_(linkToken) {
   return { user: { id: '접수링크', name: '접수링크', chapter: c.지회명, role: ROLE_CHAPTER }, c: c, row: row };
 }
 // ---- 접수 항목 (담당자가 켜고 끄거나 새로 추가) ----
-const APPLY_EXTRA_MAX = 6;
+const APPLY_EXTRA_MAX = 10;
 function applyFields_(row) {
   let o = {};
   try { o = JSON.parse(String(row && row.항목 || '')) || {}; } catch (e) { o = {}; }
@@ -3068,6 +3104,12 @@ function applyFields_(row) {
     id: 'x' + (i + 1), 라벨: String(x.라벨 || '').trim().slice(0, 30), 유형: x.유형 === '선택' ? '선택' : '글', 필수: x.필수 === true,
     선택지: x.유형 === '선택' ? (Array.isArray(x.선택지) ? x.선택지 : []).map(v => String(v).trim().slice(0, 30)).filter(v => v).slice(0, 8) : [] })).filter(x => x.라벨);
   return { 주소: o.주소 !== false, 전달할말: o.전달할말 !== false, 전달할말라벨: String(o.전달할말라벨 || '').trim().slice(0, 30), 추가: extra };
+}
+function chapterApplyFields_(chapter, exceptId) {   // 같은 지회 다른 강좌에서 쓴 접수 항목 (최근 순) → 불러오기·새 강좌 기본값
+  const cs = {}; readTable_(SHEETS.COURSES).rows.forEach(c => { if (c.지회명 === chapter && c.상태 !== '삭제') cs[String(c.강좌ID)] = c; });
+  return readTable_(SHEETS.APPLYLINKS).rows.filter(r => cs[String(r.강좌ID)] && String(r.강좌ID) !== String(exceptId || '') && String(r.항목 || '').trim())
+    .map(r => ({ 강좌ID: String(r.강좌ID), 강좌명: String(cs[String(r.강좌ID)].강좌명 || ''), 만든일시: String(r.만든일시 || ''), 원본: String(r.항목), 항목: applyFields_(r) }))
+    .filter(x => x.항목.추가.length).sort((a, b) => a.만든일시 < b.만든일시 ? 1 : -1).slice(0, 10);
 }
 function cleanApplyFields_(v) {
   v = v || {};
@@ -3097,7 +3139,7 @@ function applyAnswers_(fields, form) {   // 추가 항목 답변 → [{라벨, �
 function posterOf_(id) { const r = readTable_(SHEETS.POSTERS).rows.find(x => String(x.강좌ID) === String(id)); return r ? String(r.이미지 || '') : ''; }
 function applyInfo_(c, row) {
   return { 강좌명: c.강좌명, 지회명: c.지회명, 시작일: dateText_(c.시작일), 종료일: dateText_(c.종료일), 총회차: Number(c.총회차) || 0,
-    회당시간: Number(c.회당시간) || 0, 기관명: c.기관명 || '', 강사: c.강사 || '', 수준: c.수준 || '', 마감일: applyDeadline_(c, row), 안내: String(row.안내 || ''), 항목: applyFields_(row), 포스터: posterOf_(c.강좌ID) };
+    회당시간: Number(c.회당시간) || 0, 기관명: c.기관명 || '', 강사: c.강사 || '', 수준: c.수준 || '', 요일시간: String(c.요일시간 || ''), 장소: String(c.장소 || ''), 모집인원: String(c.모집인원 || ''), 마감일: applyDeadline_(c, row), 안내: String(row.안내 || ''), 항목: applyFields_(row), 포스터: posterOf_(c.강좌ID) };
 }
 // ---- 접수 결과(상태) 조회: 접수 링크의 글자 + 이름 + 연락처가 모두 맞아야 본인 것만 보임 ----
 function statusApi_(linkToken, fn) {
@@ -3137,7 +3179,8 @@ function getApply_(user, courseId) {
   const active = !!row && String(row.사용).trim().toUpperCase() !== 'N';
   const dl = applyDeadline_(c, row);
   return { link: { 있음: !!row, active: active, token: active ? String(row.토큰) : '', 마감일: row ? dateText_(row.마감일) : '', 실제마감: dl, 마감됨: !!dl && today_() > dl,
-      안내: row ? String(row.안내 || '') : '', 항목: applyFields_(row) }, items: applyItems_(id), 포스터: posterInfo_(c) };
+      안내: row ? String(row.안내 || '') : '', 항목: applyFields_(row) }, items: applyItems_(id), 포스터: posterInfo_(c),
+    지회항목: chapterApplyFields_(c.지회명, id).map(x => ({ 강좌ID: x.강좌ID, 강좌명: x.강좌명, 항목: x.항목 })) };
 }
 const POSTER_KEEP_DAYS = 14;   // 접수가 끝난 뒤 포스터 이미지를 지우기까지의 날짜
 function addDays_(ymd, n) { const d = new Date(Date.UTC(Number(ymd.slice(0, 4)), Number(ymd.slice(5, 7)) - 1, Number(ymd.slice(8, 10)) + n)); return d.toISOString().slice(0, 10); }
@@ -3171,7 +3214,10 @@ function purgeExpiredPosters_() {
   const t = readTable_(SHEETS.POSTERS);
   if (!t.rows.length) return 0;
   const courses = readTable_(SHEETS.COURSES).rows, links = readTable_(SHEETS.APPLYLINKS).rows;
+  const groups = readTable_(SHEETS.APPLYGROUPS).rows;
   const gone = t.rows.filter(r => {
+    const g = groups.find(x => String(x.묶음ID) === String(r.강좌ID));
+    if (g) { const dl = dateText_(g.마감일); return /^\d{4}-\d{2}-\d{2}$/.test(dl) && addDays_(dl, POSTER_KEEP_DAYS) < today; }   // 접수 안내(묶음) 포스터
     const c = courses.find(x => String(x.강좌ID) === String(r.강좌ID));
     if (!c || c.상태 === '삭제') return true;
     const exp = posterExpiry_(c, links.find(x => String(x.강좌ID) === String(r.강좌ID)));
@@ -3194,7 +3240,9 @@ function saveApplyLink_(user, courseId, opt) {
   const on = opt.사용 === false ? 'N' : 'Y';
   if (!row) {
     const tok = newTok();
-    appendRows_(t, [{ 강좌ID: id, 토큰해시: applyHash_(tok), 토큰: tok, 사용: on, 마감일: dl, 안내: note, 만든일시: now_(), 항목: fields === undefined ? '' : fields }]);
+    // 처음 여는 접수: 항목을 따로 정하지 않았으면 같은 지회에서 가장 최근에 쓴 접수 항목을 그대로 사용
+    const def = fields === undefined ? (chapterApplyFields_(c.지회명, id)[0] || {}).원본 || '' : fields;
+    appendRows_(t, [{ 강좌ID: id, 토큰해시: applyHash_(tok), 토큰: tok, 사용: on, 마감일: dl, 안내: note, 만든일시: now_(), 항목: def }]);
   } else {
     if (opt.새토큰 === true) { const tok = newTok(); row.토큰해시 = applyHash_(tok); row.토큰 = tok; }
     row.사용 = on; row.마감일 = dl; row.안내 = note;
@@ -3273,6 +3321,16 @@ function getSigns_(user, courseId) {   // 참여자ID → 회차 → 서명 그�
   return { 서명: out };
 }
 function getQr(token, courseId) { return api_(token, user => getQr_(user, courseId)); }
+function getAttendNow(token, courseId, session) { return api_(token, user => getAttendNow_(user, courseId, session)); }
+// 관리자 출석 화면 자동 갱신용: 한 회차에 지금 출석으로 기록된 사람 (QR로 들어온 출석이 바로 보이게)
+function getAttendNow_(user, courseId, session) {
+  const c = classCourse_(user, courseId), id = String(c.강좌ID), sn = toInt_(session);
+  const present = [];
+  readTable_(SHEETS.ATTENDANCE).rows.forEach(r => { if (String(r.강좌ID) === id && Number(r.회차) === sn && r.출석 === 'O') present.push(String(r.참여자ID)); });
+  const t = qrTarget_(c);
+  const qr = t ? readTable_(SHEETS.QRLOG).rows.filter(r => String(r.강좌ID) === id && Number(r.회차) === t.회차 && String(r.결과) === '성공').length : 0;
+  return { 회차: sn, 출석: present, 지금회차: t ? t.회차 : 0, 지금회차QR수: qr };
+}
 function saveQr(token, courseId, opt) { return api_(token, user => saveQr_(user, courseId, opt), true); }
 function attendInfo(linkToken) { return attendApi_(linkToken, (user, c, row) => attendInfo_(c)); }
 function attendSubmit(linkToken, form) { return attendApi_(linkToken, (user, c, row) => attendSubmit_(user, c, form), true); }
@@ -3312,8 +3370,16 @@ function qrTarget_(c) {   // 지금 QR로 받을 회차: 오늘 수업일로 저
   return null;
 }
 function attendInfo_(c) {
-  const t = qrTarget_(c);
-  return { 강좌명: c.강좌명, 지회명: c.지회명, 회차: t ? t.회차 : 0, 수업일: t ? t.수업일 : '', 열림: !!t };
+  const t = qrTarget_(c), cid = String(c.강좌ID);
+  // 이름을 잘못 쓰지 않도록 등록된 수강생 이름을 보여 줌 (연락처는 보내지 않음). 이번 회차에 이미 출석한 사람은 표시
+  const done = {};
+  if (t) readTable_(SHEETS.ATTENDANCE).rows.forEach(r => { if (String(r.강좌ID) === cid && Number(r.회차) === t.회차 && r.출석 === 'O') done[String(r.참여자ID)] = true; });
+  const seen = {}, names = [];
+  readTable_(SHEETS.PARTICIPANTS).rows.filter(p => String(p.강좌ID) === cid && !isDeleted_(p))
+    .sort((a, b) => String(a.이름).localeCompare(String(b.이름), 'ko'))
+    .forEach(p => { const nm = String(p.이름 || '').trim(); if (!nm) return; seen[nm] = (seen[nm] || 0) + 1; names.push({ 이름: nm, 출석: !!done[String(p.참여자ID)] }); });
+  return { 강좌명: c.강좌명, 지회명: c.지회명, 회차: t ? t.회차 : 0, 수업일: t ? t.수업일 : '', 열림: !!t,
+    명단: t ? names.map(x => ({ 이름: x.이름, 출석: x.출석, 같은이름: seen[x.이름] > 1 })) : [] };
 }
 function normName_(v) { return String(v == null ? '' : v).replace(/\s+/g, '').toLowerCase(); }
 function matchPart_(cid, name, last4) {   // 이름 + 연락처 뒤 4자리로 명단에서 한 사람 찾기 (연락처가 없으면 이름만)
@@ -3672,6 +3738,29 @@ function saveApplyGroup(token, opt) { return api_(token, user => saveApplyGroup_
 function deleteApplyGroup(token, groupId) { return api_(token, user => deleteApplyGroup_(user, groupId), true); }
 function createApplyLinks(token, courseIds) { return api_(token, user => createApplyLinks_(user, courseIds), true); }
 function groupInfo(linkToken) { return groupApi_(linkToken, (user, row, courses) => groupInfo_(row, courses)); }
+function getGroupPoster(token, groupId) { return api_(token, user => ({ 이미지: posterOf_(myGroup_(user, groupId).묶음ID) })); }
+function saveGroupPoster(token, groupId, data) { return api_(token, user => saveGroupPoster_(user, groupId, data), true); }
+function deleteGroupPoster(token, groupId) { return api_(token, user => deleteGroupPoster_(user, groupId), true); }
+function myGroup_(user, groupId) {
+  const g = readTable_(SHEETS.APPLYGROUPS).rows.find(x => String(x.묶음ID) === String(groupId) && x.지회명 === user.chapter);
+  if (!g) fail_('접수 안내를 찾을 수 없습니다.');
+  return g;
+}
+function saveGroupPoster_(user, groupId, data) {
+  const g = myGroup_(user, groupId), id = String(g.묶음ID), s = String(data == null ? '' : data);
+  if (!/^data:image\/jpeg;base64,[A-Za-z0-9+\/=]+$/.test(s) || s.length > 450000) fail_('이미지를 확인할 수 없습니다. 더 작은 사진으로 다시 올려 주세요.');
+  const t = readTable_(SHEETS.POSTERS), ex = t.rows.find(r => String(r.강좌ID) === id);
+  if (ex) { ex.이미지 = s; ex.올린일시 = now_(); updateRow_(t, ex); } else appendRows_(t, [{ 강좌ID: id, 이미지: s, 올린일시: now_() }]);
+  log_(user, '접수포스터저장', id);
+  return { 있음: true };
+}
+function deleteGroupPoster_(user, groupId) {
+  const g = myGroup_(user, groupId), id = String(g.묶음ID);
+  const t = readTable_(SHEETS.POSTERS), rows = t.rows.filter(r => String(r.강좌ID) === id);
+  if (rows.length) deleteRows_(t, rows.map(r => r._row));
+  log_(user, '접수포스터삭제', id);
+  return { 있음: false };
+}
 function groupSubmit(linkToken, form) { return groupApi_(linkToken, (user, row, courses) => groupSubmit_(row, courses, form), true); }
 
 function groupApi_(linkToken, fn, write) {
@@ -3707,7 +3796,7 @@ function groupContext_(linkToken) {
   return { user: { id: '접수링크', name: '접수링크', chapter: row.지회명, role: ROLE_CHAPTER }, row: row, courses: open };
 }
 function groupInfo_(row, courses) {
-  return { 제목: String(row.제목 || ''), 지회명: String(row.지회명 || ''), 안내: String(row.안내 || ''),
+  return { 제목: String(row.제목 || ''), 지회명: String(row.지회명 || ''), 안내: String(row.안내 || ''), 포스터: posterOf_(row.묶음ID),
     강좌: courses.map(c => ({ 강좌ID: String(c.강좌ID), 강좌명: c.강좌명, 시작일: dateText_(c.시작일), 종료일: dateText_(c.종료일), 총회차: Number(c.총회차) || 0, 회당시간: Number(c.회당시간) || 0,
       기관명: c.기관명 || '', 강사: c.강사 || '', 수준: c.수준 || '', 마감일: groupDeadline_(c, row) })) };
 }
@@ -3843,8 +3932,11 @@ function feeOwns_(user, c) {
 }
 function feeCourses_(user, name) {
   const nm = String(name == null ? '' : name).trim();
-  return readTable_(SHEETS.COURSES).rows.filter(c => feeOwns_(user, c) && nm && (nameIn_(c.강사, nm) || nameIn_(c.보조강사, nm)));
+  if (!nm) return [];
+  const byPlan = {}; readTable_(SHEETS.SESSIONPLAN).rows.forEach(p => { if (String(p.강사 || '').trim() === nm) byPlan[String(p.강좌ID)] = true; });
+  return readTable_(SHEETS.COURSES).rows.filter(c => feeOwns_(user, c) && (nameIn_(c.강사, nm) || nameIn_(c.보조강사, nm) || byPlan[String(c.강좌ID)]));
 }
+function mainTeacher_(c) { return splitNames_(c.강사)[0] || ''; }   // 메인 강사 = 강사 칸의 첫 번째 이름
 // (서버 전용) 이 강사의 강좌 번호들 — 출석·일지를 이 강좌만 읽기 위해 먼저 부름
 function feeScopeIds_(user, token, name, from, to) {
   const r = feeRange_(from, to);
@@ -3864,7 +3956,8 @@ function getFeeHub_(user, from, to) {
   readTable_(SHEETS.COURSES).rows.forEach(c => {
     if (!feeOwns_(user, c)) return;
     if (!(dateText_(c.시작일) <= r.to && dateText_(c.종료일) >= r.from)) return;
-    [[c.강사, '강사'], [c.보조강사, '보조강사']].forEach(x => {
+    const planNames = []; readTable_(SHEETS.SESSIONPLAN).rows.forEach(p => { const w = String(p.강사 || '').trim(); if (String(p.강좌ID) === String(c.강좌ID) && w && !nameIn_(c.강사, w) && planNames.indexOf(w) === -1) planNames.push(w); });
+    [[c.강사, '강사'], [c.보조강사, '보조강사'], [planNames.join(','), '강사']].forEach(x => {
       splitNames_(x[0]).forEach(nm => {
         const o = names[nm] = names[nm] || { 이름: nm, 강좌: [] };
         o.강좌.push(`${c.강좌명}${x[1] === '보조강사' ? '(보조)' : ''}${isAdmin_(user) && c.지회명 !== HQ ? ' [' + c.지회명 + ']' : ''}`);
@@ -3893,12 +3986,13 @@ function getFeeDraft_(user, name, from, to) {
     jr.forEach(j => { if (String(j.강좌ID) !== id) return; const sn = Number(j.회차); jmap[sn] = j; if (held[sn] !== undefined && !held[sn] && dateText_(j.수업일)) held[sn] = dateText_(j.수업일); });
     const sessions = Object.keys(held).map(Number).sort((a, b) => a - b).filter(sn => !held[sn] || (held[sn] >= r.from && held[sn] <= r.to));
     if (!sessions.length) return;
-    const roles = []; if (nameIn_(c.강사, nm)) roles.push('강사'); if (nameIn_(c.보조강사, nm)) roles.push('보조강사');
     const plan = {}; planRows_(id).forEach(p => { plan[Number(p.회차)] = p; });
     const hasPlan = Object.keys(plan).some(k => plan[k].강사);
+    const roles = []; if (nameIn_(c.강사, nm) || (hasPlan && Object.keys(plan).some(k => String(plan[k].강사 || '').trim() === nm))) roles.push('강사'); if (nameIn_(c.보조강사, nm)) roles.push('보조강사');
     roles.forEach(role => {
-      // 회차별 강사를 정해 둔 강좌는, 이 강사가 맡은 회차(강사를 비워 둔 회차 포함)만 계산하고 회차별 시간을 더함
-      const ss = role === '강사' && hasPlan ? sessions.filter(sn => !plan[sn] || !String(plan[sn].강사 || '').trim() || String(plan[sn].강사).trim() === nm) : sessions;
+      // 회차별 강사를 정해 둔 강좌는, 이 강사가 맡은 회차만 계산 (강사를 비워 둔 회차는 메인 강사 몫) + 회차별 시간을 더함
+      const who = sn => (plan[sn] && String(plan[sn].강사 || '').trim()) || mainTeacher_(c);
+      const ss = role === '강사' && hasPlan ? sessions.filter(sn => who(sn) === nm) : sessions;
       if (!ss.length) return;
       const hours = Math.round(ss.reduce((a, sn) => a + planHours_(plan[sn], Number(c.회당시간) || 0), 0) * 10) / 10;
       const basis = String(c.강사비기준 || ''), rate = feeMoney_(role === '강사' ? c.강사비단가 : c.보조강사비단가);

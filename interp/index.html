@@ -220,11 +220,11 @@ async function loadDash() {
     const tc = d.months.reduce((a, x) => a + x.cases, 0), th = Math.round(d.months.reduce((a, x) => a + Number(x.hours), 0) * 10) / 10, wait = d.months.reduce((a, x) => a + x.waiting, 0);
     const cm = new Date().getMonth() + 1, prev = y === y0 ? (cm === 1 ? null : d.months[cm - 2]) : d.months[11];
     $('dTitle').textContent = `통역실적 대시보드 (도협회 · ${y}년)`;
-    $('dBody').innerHTML = `<div class="kpis">${kp('승인된 통역 건수', tc + '건', '센터 보고 승인분 합계')}${kp('승인된 통역 시간', th + '시간')}${kp('검토 대기', wait + '건', '승인·반려 필요')}
+    $('dBody').innerHTML = `<div class="kpis">${kp('승인된 통역 건수', tc + '건', '센터 보고 승인분 합계')}${kp('승인된 통역 시간', th + '시간')}${kp('검토 대기', wait + '건', '승인·보완 요청 필요')}
         ${prev ? kp(`${prev.month}월 보고`, `${prev.submitted} / ${d.centers}`, '보고한 센터 수') : ''}</div>
       ${wait ? `<div class="card">검토할 보고가 ${wait}건 있습니다. <button class="main" onclick="setTab('stats')">통계 · 보고 현황 열기</button></div>` : ''}
       <div class="grid2"><div class="card"><h3>월별 통역 건수 (승인분)</h3>${bars(mon('cases'), '건')}</div><div class="card"><h3>분야별 (승인분)</h3>${bars(d.byField.map((x) => ({ label: x.field, value: x.cases })), '건')}</div></div>
-      <div class="card" style="overflow-x:auto"><h3>센터별 (${y}년)</h3><table><thead><tr><th>센터</th><th>승인된 달</th><th>검토 대기</th><th>반려</th><th>건수</th><th>시간</th></tr></thead><tbody>
+      <div class="card" style="overflow-x:auto"><h3>센터별 (${y}년)</h3><table><thead><tr><th>센터</th><th>승인된 달</th><th>검토 대기</th><th>보완 요청</th><th>건수</th><th>시간</th></tr></thead><tbody>
       ${d.byCenter.map((c) => `<tr><td>${esc(c.centerName)}</td><td>${c.approvedMonths}개월</td><td>${c.waiting || '-'}</td><td>${c.rejected || '-'}</td><td>${c.cases}건</td><td>${c.hours}시간</td></tr>`).join('') || '<tr><td colspan="6" class="muted">센터가 없습니다.</td></tr>'}</tbody></table></div>
       <p class="muted">도협회는 센터가 보고한 숫자만 봅니다. 센터의 통역일지 원본은 보지 않습니다.</p>`;
     return;
@@ -243,7 +243,7 @@ async function loadDash() {
 }
 
 // ============ 통계 · 도협회 보고 (센터 → 도협회) ============
-const ST_LABEL = { DRAFT: '미보고', SUBMITTED: '보고 완료', APPROVED: '승인 완료', REJECTED: '반려됨' };
+const ST_LABEL = { DRAFT: '미보고', SUBMITTED: '보고 완료', APPROVED: '승인 완료', REJECTED: '보완 요청' };
 let ST = null, BOARD = null;
 function lastMonth() { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
 function ymText(ym) { const [y, m] = String(ym || '').split('-'); return y ? `${y}년 ${Number(m)}월` : ''; }
@@ -276,7 +276,7 @@ function drawCenterStats() {
     : st === 'SUBMITTED' ? `<button onclick="cancelReport()">보고 취소</button> <span class="muted">보고한 달은 통역일지를 새로 입력할 수 없습니다(잠금). 고칠 내용이 있으면 보고를 취소하세요.</span>`
     : '<span class="muted">도협회가 승인하여 도협회 전체 통계에 반영되었습니다. 이 달의 통역일지는 잠겨 있습니다.</span>';
   $('stBody').innerHTML = `<div class="card"><div class="stbar"><b>${esc(d.centerName)}</b> · ${ymText(d.targetYearMonth)} ${stBadge(st, r.submittedAt)}</div>
-      ${st === 'REJECTED' ? `<div class="reject"><b>도협회 반려</b> (${dtText(r.reviewedAt)} · ${esc(r.reviewedBy || '')})<br>사유: ${esc(r.rejectReason)}<br><span style="font-size:12px">잠금이 풀렸습니다. 통역일지를 고친 뒤 [재보고]를 누르세요.</span></div>` : ''}
+      ${st === 'REJECTED' ? `<div class="reject"><b>도협회 보완 요청</b> (${dtText(r.reviewedAt)} · ${esc(r.reviewedBy || '')})<br>사유: ${esc(r.rejectReason)}<br><span style="font-size:12px">잠금이 풀렸습니다. 통역일지를 고친 뒤 [재보고]를 누르세요.</span></div>` : ''}
       ${r.submittedAt && st !== 'DRAFT' ? `<div class="muted" style="margin-top:4px">보고: ${dtText(r.submittedAt)} · ${esc((r.submittedBy || {}).name || '')} ${esc((r.submittedBy || {}).position || '')}${r.reviewedAt && st === 'APPROVED' ? ' · 승인: ' + dtText(r.reviewedAt) : ''}</div>` : ''}
       <div class="noprint" style="margin-top:10px">${btn}</div></div>
     ${snap ? '<p class="muted">아래는 <b>보고 당시 수치</b>입니다.</p>' + summaryHtml(r.summaryData) : summaryHtml(d.live)}`;
@@ -303,8 +303,8 @@ async function loadBoard(ym) {
 function drawBoard() {
   const d = BOARD, a = d.approved || {}, cnt = (k) => d.rows.filter((r) => r.status === k).length;
   $('stTitle').textContent = '센터별 통역 실적 보고 현황 (도협회)';
-  $('stBody').innerHTML = `<div class="card"><b>${ymText(d.targetYearMonth)}</b> · 승인 ${cnt('APPROVED')} · 검토 대기 ${cnt('SUBMITTED')} · 반려 ${cnt('REJECTED')} · 미보고 ${cnt('DRAFT')} (전체 ${d.rows.length}개 센터)
-      <div class="muted" style="font-size:12px;margin-top:4px">검토 대기 줄을 눌러 상세 통계를 보고 승인 또는 반려하세요.</div></div>
+  $('stBody').innerHTML = `<div class="card"><b>${ymText(d.targetYearMonth)}</b> · 승인 ${cnt('APPROVED')} · 검토 대기 ${cnt('SUBMITTED')} · 보완 요청 ${cnt('REJECTED')} · 미보고 ${cnt('DRAFT')} (전체 ${d.rows.length}개 센터)
+      <div class="muted" style="font-size:12px;margin-top:4px">검토 대기 줄을 눌러 상세 통계를 보고 승인 또는 보완 요청하세요.</div></div>
     <div class="card" style="overflow-x:auto"><table><thead><tr><th>센터명</th><th>대상 연월</th><th>총 건수</th><th>총 시간</th><th>보고 상태</th><th>보고 일시</th></tr></thead><tbody>
       ${d.rows.map((r) => `<tr class="${r.status !== 'DRAFT' ? 'click' : ''}" ${r.status !== 'DRAFT' ? `onclick="openDetail(${r.centerId})"` : ''}><td>${esc(r.centerName)}</td><td>${ymText(r.targetYearMonth)}</td>
         <td>${r.totalCases == null ? '-' : r.totalCases + '건'}</td><td>${r.totalHours == null ? '-' : r.totalHours + '시간'}</td><td>${stBadge(r.status, r.submittedAt)}</td><td>${dtText(r.submittedAt) || '-'}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">센터가 없습니다.</td></tr>'}
@@ -318,21 +318,21 @@ async function openDetail(centerId) {
   const ov = document.createElement('div'); ov.className = 'modal';
   ov.innerHTML = `<div class="card"><div class="stbar"><h2 style="margin:0">${esc(r.centerName)} · ${ymText(r.targetYearMonth)}</h2>${stBadge(r.status, r.submittedAt)}</div>
       <div class="muted">보고: ${dtText(r.submittedAt)} · ${esc((r.submittedBy || {}).name || '')} ${esc((r.submittedBy || {}).position || '')}</div>
-      ${r.status === 'REJECTED' ? `<div class="reject">반려 사유: ${esc(r.rejectReason)}</div>` : ''}
+      ${r.status === 'REJECTED' ? `<div class="reject">보완 요청 사유: ${esc(r.rejectReason)}</div>` : ''}
       ${summaryHtml(r.summaryData)}
-      ${wait ? `<label>반려 사유 (반려할 때 필수)</label><textarea id="rjReason" style="min-height:60px" placeholder="예: 10월 의료 분야 건수가 일지와 다릅니다."></textarea>` : ''}
-      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">${wait ? '<button class="main" id="apOk">✅ 승인</button><button id="apNo" style="background:#c0392b;color:#fff">반려</button>' : ''}<span style="flex:1"></span><button id="apX">닫기</button></div></div>`;
+      ${wait ? `<label>보완 요청 사유 (보완 요청할 때 필수)</label><textarea id="rjReason" style="min-height:60px" placeholder="예: 10월 의료 분야 건수가 일지와 다릅니다."></textarea>` : ''}
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">${wait ? '<button class="main" id="apOk">✅ 승인</button><button id="apNo" style="background:#c0392b;color:#fff">보완 요청</button>' : ''}<span style="flex:1"></span><button id="apX">닫기</button></div></div>`;
   document.body.appendChild(ov);
   const close = () => ov.remove();
   ov.onclick = (e) => { if (e.target === ov) close(); };
   ov.querySelector('#apX').onclick = close;
   const review = async (ok) => {
     const reason = ok ? '' : (ov.querySelector('#rjReason').value || '').trim();
-    if (!ok && !reason) { alert('반려 사유를 입력해 주세요.'); return; }
-    if (!confirm(ok ? '이 보고를 승인할까요? 도협회 전체 통계에 반영됩니다.' : '이 보고를 반려할까요? 센터의 잠금이 풀립니다.')) return;
+    if (!ok && !reason) { alert('보완 요청 사유를 입력해 주세요.'); return; }
+    if (!confirm(ok ? '이 보고를 승인할까요? 도협회 전체 통계에 반영됩니다.' : '이 보고에 보완을 요청할까요? 센터의 잠금이 풀립니다.')) return;
     const { data: b, error: e2 } = await sb.rpc('interp_report_review', { p_center: r.centerId, p_ym: r.targetYearMonth, p_ok: ok, p_reason: reason });
     if (e2) { alert(errText(e2)); return; }
-    close(); BOARD = b; drawBoard(); msg('stMsg', ok ? '승인했습니다.' : '반려했습니다.', true);
+    close(); BOARD = b; drawBoard(); msg('stMsg', ok ? '승인했습니다.' : '보완을 요청했습니다.', true);
   };
   if (wait) { ov.querySelector('#apOk').onclick = () => review(true); ov.querySelector('#apNo').onclick = () => review(false); }
 }

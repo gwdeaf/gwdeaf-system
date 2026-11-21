@@ -1530,7 +1530,7 @@ function showDetail(d, tab) {
       ${!d.명단숨김 && !head ? '<button class="btn small" id="prtSign">✍ 서명용 출석부 인쇄</button>' : ''}
       <button class="btn small" id="prtCourse">🖨 ${d.명단숨김 ? '회차 현황' : '출석부'} 인쇄 / PDF</button></div>
     ${String(c.확인서필요 || '').toUpperCase() === 'Y' ? confirmBoxHtml(c) : ''}
-    ${d.locked ? `<div class="notice warn">${esc(d.lockedBy)} 보고가 제출되어 이 강좌는 수정할 수 없습니다. 고쳐야 하면 도협회에 반려를 요청하세요.</div>` : ''}
+    ${d.locked ? `<div class="notice warn">${esc(d.lockedBy)} 보고가 제출되어 이 강좌는 수정할 수 없습니다. 고쳐야 하면 도협회에 보완 요청을 부탁하세요.</div>` : ''}
     <div class="stats num" ${head ? 'style="grid-template-columns:repeat(4,1fr)"' : ''}>
       <div class="stat"><b>${n(r.진행회차)}<small style="font-size:15px;color:var(--muted)">/${n(c.총회차)}</small></b><span>진행 회차</span></div>
       ${head ? '' : `<div class="stat"><b>${n(r.등록인원)}</b><span>등록 인원</span></div>`}
@@ -2241,7 +2241,7 @@ function drawApply(A) {
     <ul class="hint" style="margin:12px 0 0;padding-left:18px"><li>링크를 아는 사람은 누구나 신청할 수 있습니다. 신청 내용은 승인하기 전에는 명단에 들어가지 않습니다.</li>
       <li>주소는 접수 목록에서만 보이며, 승인해도 참여자 명단에는 복사되지 않습니다.</li>
       <li>이름·연락처는 암호화되어 저장되며 도협회에서는 볼 수 없습니다. 신청 화면에서 개인정보 수집·이용 동의를 받습니다.</li>
-      <li>수강생은 접수 화면 맨 아래 <b>내 접수 결과 확인</b>에서 이름·연락처를 넣고 승인·대기·반려 상태를 직접 볼 수 있습니다. (접수 링크를 닫지 않으면 마감 후에도 조회됩니다)</li></ul></div>
+      <li>수강생은 접수 화면 맨 아래 <b>내 접수 결과 확인</b>에서 이름·연락처를 넣고 승인·대기·수강 불가 상태를 직접 볼 수 있습니다. (접수 링크를 닫지 않으면 마감 후에도 조회됩니다)</li></ul></div>
   <div class="panel"><b>접수 항목</b> <span class="hint" style="margin:0">이름·연락처는 항상 받습니다. 그 밖에 받을 내용을 고르거나 새 항목을 추가하세요(최대 10개). 새 강좌에서 접수를 처음 열면 우리 지회에서 가장 최근에 쓴 항목이 자동으로 들어갑니다.</span>
     ${L.active ? `<div class="row" style="gap:18px;margin-top:8px"><label><input type="checkbox" id="fdAddr" ${fd.주소 ? 'checked' : ''}> 주소 받기</label><label><input type="checkbox" id="fdMemo" ${fd.전달할말 ? 'checked' : ''}> 전달할 말 받기</label></div>
     ${(A.지회항목 || []).length ? `<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><label class="f" for="fdLoad" style="margin:0">우리 지회 다른 강좌 항목 불러오기</label><select id="fdLoad" style="max-width:260px"><option value="">— 강좌 선택 —</option>${A.지회항목.map((x, i) => `<option value="${i}">${esc(x.강좌명)} (${x.항목.추가.length}개)</option>`).join('')}</select></div>` : ''}
@@ -2262,11 +2262,11 @@ function drawApply(A) {
     <div class="full"><label class="f" for="apA">주소 (선택)</label><input type="text" id="apA" maxlength="200" placeholder="우편번호 포함 전체 주소"></div>
     <div class="full"><label class="f" for="apM">비고 (선택)</label><input type="text" id="apM" maxlength="100"></div></div>
     <div class="row" style="margin-top:8px"><button class="btn" id="apAdd">접수 추가</button></div></div>
-  <div class="panel"><div class="row"><b>접수 목록</b><span class="hint" style="margin:0">전체 ${all.length} · 대기 ${cnt('대기')} · 승인 ${cnt('승인')} · 반려 ${cnt('반려')}</span><span class="spacer"></span>
-      <select id="apF" style="max-width:120px">${['전체', '대기', '승인', '반려'].map(k => `<option ${st.filter === k ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
+  <div class="panel"><div class="row"><b>접수 목록</b><span class="hint" style="margin:0">전체 ${all.length} · 대기 ${cnt('대기')} · 승인 ${cnt('승인')} · 수강 불가 ${cnt('반려')}</span><span class="spacer"></span>
+      <select id="apF" style="max-width:120px">${['전체', '대기', '승인', '반려'].map(k => `<option value="${k}" ${st.filter === k ? 'selected' : ''}>${k === '반려' ? '수강 불가' : k}</option>`).join('')}</select></div>
     ${shown.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th><input type="checkbox" id="apAll" aria-label="모두 선택"></th><th>이름</th><th>연락처</th><th>주소</th><th>추가 답변</th><th>비고</th><th>경로</th><th>신청일시</th><th>상태</th></tr></thead><tbody>
-      ${shown.map(x => `<tr><td><input type="checkbox" data-ap="${esc(x.접수ID)}" ${st.sel.has(x.접수ID) ? 'checked' : ''} aria-label="${esc(x.이름)} 선택"></td><td>${esc(x.이름)}</td><td>${esc(x.연락처)}</td><td>${esc(x.주소)}</td><td>${esc(ansText(x.답변))}</td><td>${esc(x.비고)}</td><td>${esc(x.신청경로)}</td><td class="num">${esc(x.신청일시)}</td><td><span class="badge ${bcls[x.상태] || ''}">${esc(x.상태)}</span></td></tr>`).join('')}</tbody></table></div>
-    <div class="row" style="margin-top:10px"><button class="btn primary" id="apOk">선택 승인 (명단 등록)</button><button class="btn" id="apNo">선택 반려</button><button class="btn danger" id="apDel">선택 삭제</button><span class="hint" style="margin:0">선택 ${st.sel.size}건</span></div>`
+      ${shown.map(x => `<tr><td><input type="checkbox" data-ap="${esc(x.접수ID)}" ${st.sel.has(x.접수ID) ? 'checked' : ''} aria-label="${esc(x.이름)} 선택"></td><td>${esc(x.이름)}</td><td>${esc(x.연락처)}</td><td>${esc(x.주소)}</td><td>${esc(ansText(x.답변))}</td><td>${esc(x.비고)}</td><td>${esc(x.신청경로)}</td><td class="num">${esc(x.신청일시)}</td><td><span class="badge ${bcls[x.상태] || ''}">${esc(x.상태 === '반려' ? '수강 불가' : x.상태)}</span></td></tr>`).join('')}</tbody></table></div>
+    <div class="row" style="margin-top:10px"><button class="btn primary" id="apOk">선택 승인 (명단 등록)</button><button class="btn" id="apNo">선택 수강 불가</button><button class="btn danger" id="apDel">선택 삭제</button><span class="hint" style="margin:0">선택 ${st.sel.size}건</span></div>`
     : '<p class="hint">접수된 내용이 없습니다.</p>'}</div>`;
   fillQr(body);
   const save = (extra, msg) => act($('#apSave'), async () => { drawApply(await call('saveApplyLink', c.강좌ID, Object.assign({ 마감일: $('#apDl').value, 안내: $('#apNote').value, 사용: true }, extra))); toast(msg); });
@@ -2377,7 +2377,7 @@ function drawCompletion() {
   }).join('');
   const wText = Object.keys(W).map(k => `${kname(k)} ${W[k]}%`).join(' · ');
   $('#cTabBody').innerHTML = `
-    ${locked ? `<div class="notice warn">${esc(d.lockedBy)} 보고가 제출되어 수료 여부를 바꿀 수 없습니다. 고쳐야 하면 도협회에 반려를 요청하세요.</div>` : ''}
+    ${locked ? `<div class="notice warn">${esc(d.lockedBy)} 보고가 제출되어 수료 여부를 바꿀 수 없습니다. 고쳐야 하면 도협회에 보완 요청을 부탁하세요.</div>` : ''}
     <div class="notice info">${wOn ? `항목별 비율(${esc(wText)})로 점수를 합산해 <b>총점 ${esc(c.수료기준)}점 이상</b>이면 수료로 자동 판정합니다. 출석은 출석률로 자동 계산되고, 나머지는 0~100점으로 입력하세요.` : `기본은 출석률(총 회차의 ${esc(c.수료기준)}% 이상)로 자동 판정합니다.`} 사정이 있으면 강사가 <b>수료로 확정 / 미수료로 확정</b>을 직접 고를 수 있고, 최종 결과는 실적 보고와 수료증에 그대로 쓰입니다.</div>
     ${d.participants.length ? `<div class="tbl-wrap"><table class="tbl"><thead><tr><th>이름</th><th class="r">출석</th>${ti && ti.tasks.length ? '<th class="r">과제 제출</th>' : ''}${wk.map(k => `<th class="r">${esc(kname(k))}<br><span class="hint" style="margin:0">${W[k]}%</span></th>`).join('')}${wOn ? '<th class="r">총점</th>' : ''}<th>${wOn ? '점수 판정' : '출석률 판정'}</th><th>수료 여부 선택</th><th>최종</th></tr></thead>
       <tbody>${rows}</tbody></table></div>` : '<div class="panel empty"><p>아직 등록된 참여자가 없습니다.</p></div>'}`;
@@ -3558,10 +3558,10 @@ function statusBlock(rep, status) {
   if (status === '미제출') line = '아직 제출하지 않았습니다.';
   if (status === '제출완료') line = `${esc(r.제출일시)} 제출 / 도협회 확인을 기다리는 중입니다.`;
   if (status === '승인') line = `${esc(r.처리일시)} 도협회 승인 (${esc(r.처리자)})`;
-  if (status === '반려') line = `${esc(r.처리일시)} 반려되었습니다. 자료를 고친 뒤 다시 제출하세요.`;
+  if (status === '반려') line = `${esc(r.처리일시)} 도협회가 보완을 요청했습니다. 자료를 고친 뒤 다시 제출하세요.`;
   return `<div class="panel"><div class="status-line">
-      <span class="status-word s-${esc(status)}">${esc(status)}</span><span class="sub" style="margin:0">${line}</span></div>
-    ${status === '반려' && r.반려사유 ? `<div class="notice err" style="margin:12px 0 0">반려 사유: ${esc(r.반려사유)}</div>` : ''}
+      <span class="status-word s-${esc(status)}">${esc(status === '반려' ? '보완 요청' : status)}</span><span class="sub" style="margin:0">${line}</span></div>
+    ${status === '반려' && r.반려사유 ? `<div class="notice err" style="margin:12px 0 0">보완 요청 사유: ${esc(r.반려사유)}</div>` : ''}
   </div>`;
 }
 
@@ -3758,7 +3758,7 @@ async function loadReport() {
    ========================================================= */
 function renderAdminReport() {
   view().innerHTML = `<h2>보고 현황</h2>
-    <p class="sub">지회를 누르면 강좌별 실적을 보고 승인하거나 반려할 수 있습니다.</p>
+    <p class="sub">지회를 누르면 강좌별 실적을 보고 승인하거나 보완 요청할 수 있습니다.</p>
     ${periodPicker()}<div id="rep"><p class="sub">불러오는 중…</p></div>`;
   bindPeriod(loadAdminReport);
   loadAdminReport();
@@ -3778,26 +3778,26 @@ async function loadAdminReport() {
         <span>전체 <b>${c.전체}</b>개 지회</span>
         <span class="badge b-승인">승인 ${c.승인}</span>
         <span class="badge b-제출완료">확인 대기 ${c.제출완료}</span>
-        <span class="badge b-반려">반려 ${c.반려}</span>
+        <span class="badge b-반려">보완 요청 ${c.반려}</span>
         <span class="badge b-미제출">미제출 ${c.미제출}</span></div></div>
       <div class="tbl-wrap"><table class="tbl num">
         <thead><tr><th>지회</th><th>상태</th><th class="r">강좌</th><th class="r hide-m">실인원</th><th class="r">연인원</th><th class="r">수료</th><th class="hide-m">제출일</th></tr></thead>
         <tbody>${d.rows.map(r => `<tr class="click" tabindex="0" data-ch="${esc(r.지회명)}">
-          <td><b>${esc(r.지회명)}</b></td><td><span class="badge b-${esc(r.상태)}">${esc(r.상태 === '제출완료' ? '확인 대기' : r.상태)}</span></td>
+          <td><b>${esc(r.지회명)}</b></td><td><span class="badge b-${esc(r.상태)}">${esc(r.상태 === '제출완료' ? '확인 대기' : r.상태 === '반려' ? '보완 요청' : r.상태)}</span></td>
           <td class="r">${n(r.수치.강좌수)}</td><td class="r hide-m">${n(r.수치.실인원)}</td>
           <td class="r">${n(r.수치.연인원)}</td><td class="r">${n(r.수치.수료인원)}</td>
           <td class="hide-m">${esc(String(r.제출일시 || '').slice(0, 10))}</td></tr>`).join('')}</tbody>
         <tfoot><tr><td>합계</td><td></td><td class="r">${n(tot.강좌수)}</td><td class="r hide-m">${n(tot.실인원)}</td>
           <td class="r">${n(tot.연인원)}</td><td class="r">${n(tot.수료인원)}</td><td class="hide-m"></td></tr></tfoot>
       </table></div>
-      <p class="hint">미제출·반려 지회의 숫자는 지금까지 입력된 값이고, 제출된 지회는 제출 시점의 값입니다.</p>
+      <p class="hint">미제출·보완 요청 지회의 숫자는 지금까지 입력된 값이고, 제출된 지회는 제출 시점의 값입니다.</p>
       <div id="cmp" style="margin-top:20px"></div>`;
     S.statusData = d;
     renderCompare();
-    $('#printAllX').onclick = () => downloadXlsx(`강원도 시군지회 ${p0(d)}`, [{ name: '보고 현황', freeze: 1, rows: [['지회', '상태', '강좌', '실인원', '연인원', '수료인원', '총강의시간', '제출일시', '처리일시', '반려사유'],
-      ...d.rows.map(x => [x.지회명, x.상태 === '제출완료' ? '확인 대기' : x.상태, x.수치.강좌수, x.수치.실인원, x.수치.연인원, x.수치.수료인원, x.수치.총강의시간, x.제출일시 || '', x.처리일시 || '', x.반려사유 || '']),
+    $('#printAllX').onclick = () => downloadXlsx(`강원도 시군지회 ${p0(d)}`, [{ name: '보고 현황', freeze: 1, rows: [['지회', '상태', '강좌', '실인원', '연인원', '수료인원', '총강의시간', '제출일시', '처리일시', '보완 요청 사유'],
+      ...d.rows.map(x => [x.지회명, x.상태 === '제출완료' ? '확인 대기' : x.상태 === '반려' ? '보완 요청' : x.상태, x.수치.강좌수, x.수치.실인원, x.수치.연인원, x.수치.수료인원, x.수치.총강의시간, x.제출일시 || '', x.처리일시 || '', x.반려사유 || '']),
       ['합계', '', tot.강좌수, tot.실인원, tot.연인원, tot.수료인원, '', '', '', '']] }]);
-    $('#printAll').onclick = () => printReport(`강원도 시군지회 ${p0(d)}`, `승인 ${c.승인} / 확인 대기 ${c.제출완료} / 반려 ${c.반려} / 미제출 ${c.미제출}`, $('#rep'));
+    $('#printAll').onclick = () => printReport(`강원도 시군지회 ${p0(d)}`, `승인 ${c.승인} / 확인 대기 ${c.제출완료} / 보완 요청 ${c.반려} / 미제출 ${c.미제출}`, $('#rep'));
     $('#rep').querySelectorAll('tr.click').forEach(tr => {
       tr.onclick = () => openAdminDetail(tr.dataset.ch);
       tr.onkeydown = e => { if (e.key === 'Enter') openAdminDetail(tr.dataset.ch); };
@@ -3826,7 +3826,7 @@ async function openAdminDetail(ch) {
       </div>
       <div class="row">
         <span class="spacer"></span>
-        ${(st === '제출완료' || st === '승인') ? '<button class="btn danger" id="rej">반려</button>' : ''}
+        ${(st === '제출완료' || st === '승인') ? '<button class="btn danger" id="rej">보완 요청</button>' : ''}
         ${st === '제출완료' ? '<button class="btn primary" id="apv">승인</button>' : ''}
         ${(st === '미제출' || st === '반려') ? '<button class="btn" id="proxy">지회 대신 제출</button>' : ''}
       </div>`;
@@ -3840,10 +3840,10 @@ async function openAdminDetail(ch) {
       toast('승인했습니다.'); reopen();
     });
     if ($('#rej')) $('#rej').onclick = () => act($('#rej'), async () => {
-      const why = await ask(`${ch} 실적을 반려합니다.\n반려하면 지회에서 다시 수정할 수 있습니다.${d.반기 === '연간' ? '' : '\n(이 기간을 포함하는 더 긴 기간의 보고가 제출되어 있으면 그 보고도 함께 반려해야 수정할 수 있습니다.)'}`, { ok: '반려', danger: true, input: '반려 사유 (지회에 보입니다)' });
+      const why = await ask(`${ch} 실적에 보완을 요청합니다.\n보완 요청하면 지회에서 다시 수정할 수 있습니다.${d.반기 === '연간' ? '' : '\n(이 기간을 포함하는 더 긴 기간의 보고가 제출되어 있으면 그 보고도 함께 보완 요청해야 수정할 수 있습니다.)'}`, { ok: '보완 요청', danger: true, input: '보완 요청 사유 (지회에 보입니다)' });
       if (!why) return;
       await call('rejectReport', ch, d.연도, d.반기, why);
-      toast('반려했습니다.'); reopen();
+      toast('보완을 요청했습니다.'); reopen();
     });
     if ($('#proxy')) $('#proxy').onclick = () => act($('#proxy'), async () => {
       if (!(await ask(`${ch} 대신 ${d.연도}년 ${d.반기} 실적을 제출할까요?`, { ok: '대신 제출' }))) return;
@@ -4108,7 +4108,7 @@ const FILE_OK = ['hwp', 'hwpx', 'xls', 'xlsx', 'csv', 'doc', 'docx', 'ppt', 'ppt
 function sizeText(b) { b = Number(b) || 0; return b >= 1048576 ? (b / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(b / 1024)) + 'KB'; }
 function replyBadge(st, done) {
   if (done) return '<span class="badge b-진행중">확인 완료</span>';
-  const m = { 제출: ['제출', 'b-진행중'], 반려: ['반려', ''], '': ['미제출', ''] }[st || ''] || ['미제출', ''];
+  const m = { 제출: ['제출', 'b-진행중'], 반려: ['보완 요청', ''], '': ['미제출', ''] }[st || ''] || ['미제출', ''];
   return `<span class="badge ${m[1]}" ${st === '반려' ? 'style="background:#fbe9e7;color:#b3261e"' : ''}>${m[0]}</span>`;
 }
 async function refreshFileBadge() {
@@ -4228,13 +4228,13 @@ function drawRequest(d) {
   if (admin) {
     body = `<h3>지회별 현황</h3><div class="tbl-wrap"><table class="tbl"><thead><tr><th>지회</th><th>상태</th><th>회신</th><th></th></tr></thead><tbody>${d.지회.map(c => `<tr data-ch="${esc(c.지회명)}">
       <td><b>${esc(c.지회명)}</b></td><td>${replyBadge(c.상태, c.확인일시 && c.상태 === '제출')}<div class="hint" style="margin:2px 0 0">${esc(c.제출일시 || '')}</div></td>
-      <td>${c.메모 ? `<div style="white-space:pre-wrap;margin-bottom:4px">${esc(c.메모)}</div>` : ''}${c.파일.length ? fileListHtml(c.파일, {}) : (c.확인일시 ? `<span class="hint">확인 후 파일 삭제됨 (${esc(c.확인일시)})</span>` : '<span class="hint">—</span>')}${c.상태 === '반려' && c.반려사유 ? `<div class="hint" style="color:var(--red)">반려: ${esc(c.반려사유)}</div>` : ''}</td>
-      <td style="white-space:nowrap">${c.파일.length || c.상태 === '제출' ? `<button class="btn small" data-rej="${esc(c.지회명)}">반려</button> ` : ''}${c.파일.length ? `<button class="btn small danger" data-confirm="${esc(c.지회명)}">확인 후 파일 삭제</button>` : ''}</td></tr>`).join('')}</tbody></table></div>
+      <td>${c.메모 ? `<div style="white-space:pre-wrap;margin-bottom:4px">${esc(c.메모)}</div>` : ''}${c.파일.length ? fileListHtml(c.파일, {}) : (c.확인일시 ? `<span class="hint">확인 후 파일 삭제됨 (${esc(c.확인일시)})</span>` : '<span class="hint">—</span>')}${c.상태 === '반려' && c.반려사유 ? `<div class="hint" style="color:var(--red)">보완 요청: ${esc(c.반려사유)}</div>` : ''}</td>
+      <td style="white-space:nowrap">${c.파일.length || c.상태 === '제출' ? `<button class="btn small" data-rej="${esc(c.지회명)}">보완 요청</button> ` : ''}${c.파일.length ? `<button class="btn small danger" data-confirm="${esc(c.지회명)}">확인 후 파일 삭제</button>` : ''}</td></tr>`).join('')}</tbody></table></div>
       <p class="hint">내려받아 확인한 뒤 <b>확인 후 파일 삭제</b>를 누르면 파일이 저장소와 기록에서 완전히 지워집니다. (되돌릴 수 없으니 먼저 내려받아 주세요)</p>`;
   } else {
     const m = d.내회신, locked = r.상태 === '종료';
     body = `<h3>내 회신 ${replyBadge(m.상태, m.확인일시 && m.상태 === '제출')}</h3>
-      ${m.상태 === '반려' ? `<div class="notice err">도협회가 반려했습니다: ${esc(m.반려사유)}<br>수정해서 다시 올리고 제출해 주세요.</div>` : ''}
+      ${m.상태 === '반려' ? `<div class="notice err">도협회가 보완을 요청했습니다: ${esc(m.반려사유)}<br>수정해서 다시 올리고 제출해 주세요.</div>` : ''}
       ${m.확인일시 && m.상태 === '제출' ? `<div class="notice info">도협회가 확인했고, 올린 파일은 삭제되었습니다. (${esc(m.확인일시)})</div>` : ''}
       <div class="panel" style="margin-bottom:10px"><div class="row"><b>올린 파일</b><span class="spacer"></span>${locked ? '' : pickBtn('replyUp', '+ 파일 올리기', true)}</div>${fileListHtml(m.파일, { del: !locked })}
         <p class="hint" style="margin:6px 0 0">한글·엑셀 등 20MB까지, 최대 10개. 파일을 올리거나 지우면 다시 제출해야 합니다.</p></div>
@@ -4273,9 +4273,9 @@ function drawRequest(d) {
   });
   if ($('#rpUndo')) $('#rpUndo').onclick = () => act($('#rpUndo'), async () => { await redo(() => call('submitReply', r.요청ID, false)); toast('제출을 취소했습니다.'); refreshFileBadge(); });
   document.querySelectorAll('[data-rej]').forEach(b => b.onclick = () => act(b, async () => {
-    const why = await ask(`${b.dataset.rej} 회신을 반려합니다.`, { ok: '반려', input: '반려 사유' });
+    const why = await ask(`${b.dataset.rej} 회신에 보완을 요청합니다.`, { ok: '보완 요청', input: '보완 요청 사유' });
     if (!why) return;
-    await redo(() => call('rejectReply', r.요청ID, b.dataset.rej, why)); toast('반려했습니다.');
+    await redo(() => call('rejectReply', r.요청ID, b.dataset.rej, why)); toast('보완을 요청했습니다.');
   }));
   document.querySelectorAll('[data-confirm]').forEach(b => b.onclick = () => act(b, async () => {
     if (!(await ask(`${b.dataset.confirm}이(가) 올린 파일을 삭제할까요?\n내려받아 확인하셨나요? 삭제하면 저장소와 기록에서 완전히 지워지고 되돌릴 수 없습니다.`, { ok: '확인 후 삭제', danger: true }))) return;
@@ -4395,7 +4395,7 @@ const HELP = [
     '<p><b>이 순서로 시작하세요</b></p>',
     '<ul>',
     '<li><b>지회</b>: 파견 교육 요청 확인·회신 → 강좌 만들기 → 수강생 등록 → 출석 체크 → 실적 보고</li>',
-    '<li class="ro-a"><b>도협회</b>: 파견 교육 요청 보내기 → 지회 문의 확인 → 보고 현황에서 승인·반려</li>',
+    '<li class="ro-a"><b>도협회</b>: 파견 교육 요청 보내기 → 지회 문의 확인 → 보고 현황에서 승인·보완 요청</li>',
     '</ul>',
     '<p class="hint">이 설명서는 오른쪽 위 <b>사용설명서</b> 버튼에서 언제든 다시 볼 수 있고, 낱말로 검색할 수도 있습니다. 궁금한 점은 💬 <b>문의</b>로 도협회에 물어보세요.</p>',
     '<p class="hint"><b>메뉴가 보이지 않으면</b> 수어교육관리 권한이 없는 것입니다. 지회 담당자에게 권한을 요청하세요.</p>' ] },
@@ -4633,8 +4633,8 @@ const HELP = [
     '<li>맞으면 맨 아래 <b>실적 제출</b> 버튼을 누릅니다.</li>',
     '</ol>',
     '<p>상태는 <b>미제출 → 제출완료 → 승인</b> 순서로 바뀝니다.</p>',
-    '<p class="hint">제출완료와 승인 상태에서는 강좌와 출석을 고칠 수 없습니다. 고쳐야 하면 도협회에 <b>반려</b>를 요청하세요.',
-    ' 반려되면 사유가 화면에 나오고 다시 수정해서 제출할 수 있습니다.</p>',
+    '<p class="hint">제출완료와 승인 상태에서는 강좌와 출석을 고칠 수 없습니다. 고쳐야 하면 도협회에 <b>보완 요청</b>을 부탁하세요.',
+    ' 보완 요청을 받으면 사유가 화면에 나오고 다시 수정해서 제출할 수 있습니다.</p>',
     '<p class="golinks">바로가기: <a href="#" data-go="report">실적 보고</a></p>' ] },
   { t: '통계 보기', f: 'all', b: [
     '<ul>',
@@ -4684,13 +4684,13 @@ const HELP = [
     '<li><b>출석</b>: 같은 회차를 다시 열어 고치고 저장하면 덮어씁니다.</li>',
     '<li><b>수강생</b>: 명단의 <b>수정</b>·<b>삭제</b> 버튼. 삭제는 잘못 등록한 경우에만 하세요.</li>',
     '<li><b>강좌</b>: <b>강좌 정보</b> 탭에서 수정하거나 <b>강좌 삭제</b>를 합니다.</li>',
-    '<li>제출완료·승인 상태라서 안 고쳐지면 도협회에 반려를 요청하세요.</li>',
+    '<li>제출완료·승인 상태라서 안 고쳐지면 도협회에 보완 요청을 부탁하세요.</li>',
     '</ul>' ] },
-  { t: '도협회: 보고 확인, 승인, 반려', f: 'admin', b: [
+  { t: '도협회: 보고 확인, 승인, 보완 요청', f: 'admin', b: [
     '<ol>',
     '<li><b>보고 현황</b>에서 연도와 기간(1분기·상반기·3분기·연간)을 고릅니다. 18개 지회의 상태가 한눈에 보입니다.</li>',
     '<li>지회를 눌러 상세 내역을 확인합니다.</li>',
-    '<li><b>승인</b> 또는 <b>반려</b>를 누릅니다. 반려할 때는 사유를 꼭 적으세요. 지회 화면에 보입니다.</li>',
+    '<li><b>승인</b> 또는 <b>보완 요청</b>을 누릅니다. 보완 요청할 때는 사유를 꼭 적으세요. 지회 화면에 보입니다.</li>',
     '<li>지회가 못 낼 사정이면 <b>지회 대신 제출</b>을 쓸 수 있습니다.</li>',
     '</ol>',
     '<p class="golinks">바로가기: <a href="#" data-go="report">보고 현황</a></p>' ] },

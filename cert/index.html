@@ -59,7 +59,7 @@
 </header>
 <nav id="topNav" style="display:none">
   <button data-tab="issue" id="btnIssue" onclick="showIssue()">발급하기</button>
-  <button data-tab="list" class="sub" onclick="LTYPE='';showList()">발급대장</button>
+  <button data-tab="list" class="sub" onclick="LTYPE='';showList()">발급 대장</button>
   <button data-tab="set" id="btnSet" class="sub" onclick="showSettings()" style="display:none">증명서 설정</button>
   <button id="logoutBtn" class="sub" onclick="logout()">로그아웃</button>
 </nav>
@@ -92,7 +92,17 @@ function cannotUse(e) {
   $('topNav').style.display = 'none'; $('who').textContent = '';
   $('view').innerHTML = `<div class="card" style="cursor:default"><h2>사용할 수 없습니다</h2><p>${esc(e.message)}</p><button class="sub" onclick="logout()">다른 계정으로 로그인</button></div>`;
 }
-function setTab(id) { document.querySelectorAll('#topNav button[data-tab]').forEach(b => b.classList.toggle('sub', b.dataset.tab !== id)); }
+function setTab(id) { document.querySelectorAll('#topNav button[data-tab]').forEach(b => b.classList.toggle('sub', b.dataset.tab !== id)); if (id === 'issue' || id === 'list') subTell(id); }
+// ===== 하위 메뉴 (업무 시스템 왼쪽 메뉴에서 이동) =====
+const SUB = { go: new URLSearchParams(location.search).get('go') || '', ready: false };
+function subTell(t) { if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-tab', tab: t }, location.origin); } catch (e) {} }
+function subReady() { SUB.ready = true; if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-ready', tab: SUB.go }, location.origin); } catch (e) {} }
+window.addEventListener('message', (e) => {
+  if (e.origin !== location.origin || !e.data || e.data.type !== 'sub-go') return;
+  SUB.go = e.data.tab; if (SUB.ready) subGo(SUB.go);
+});
+function subGo(t) { if (t === 'list' || !ME.can_issue) { LTYPE = ''; showList(); } else showIssue(); }
+
 
 // ===== 증서·증명 발급 =====
 let ME = null, TYPES = [], MEMBERS = null;
@@ -117,7 +127,8 @@ async function init() {
     $('btnSet').style.display = ME.can_manage ? '' : 'none';
     if (!ME.can_issue && !ME.can_view && !ME.can_manage) throw new Error('증명서 권한이 없습니다. 지회 담당자에게 요청하세요.');
     $('topNav').style.display = 'flex';
-    ME.can_issue ? showIssue() : (ME.can_view ? showList() : showSettings());
+    if (SUB.go && (ME.can_issue || ME.can_view)) subGo(SUB.go); else ME.can_issue ? showIssue() : (ME.can_view ? showList() : showSettings());
+    subReady();
   } catch (e) { cannotUse(e); }
 }
 sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_IN' && !ME) init(); });

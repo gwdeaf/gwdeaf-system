@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>통역일지</title>
+<title>통역실적</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   * { box-sizing: border-box; }
@@ -35,6 +35,10 @@
   .kpi b { display: block; font-size: 20px; } .kpi span { font-size: 12px; color: #667; }
   .reject { background: #fdecea; border: 1px solid #f3b4ad; color: #8a2a20; border-radius: 8px; padding: 10px 12px; margin: 8px 0; }
   .stbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .bars .bar { display: grid; grid-template-columns: 70px 1fr 70px; gap: 8px; align-items: center; font-size: 13px; margin: 4px 0; }
+  .bars .bar .t { background: #edf1f7; border-radius: 4px; height: 14px; } .bars .bar .t i { display: block; height: 100%; background: #4a78e0; border-radius: 4px; }
+  .bars .bar .v { text-align: right; color: #445; } .bars .bar .l { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .grid2 { display: grid; grid-template-columns: repeat(auto-fit, minmax(300px, 1fr)); gap: 14px; }
   .modal { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
   .modal .card { max-width: 720px; width: 100%; max-height: 90vh; overflow: auto; }
   tr.click { cursor: pointer; } tr.click:hover { background: #f3f6fb; }
@@ -52,8 +56,9 @@
 <link rel="stylesheet" href="/ui.css?v=1">
 </head>
 <body>
-<header><h1>통역일지</h1><div class="who" id="whoText"></div></header>
+<header><h1>통역실적</h1><div class="who" id="whoText"></div></header>
 <nav id="topNav" style="display:none">
+  <button class="tab" data-tab="dash" onclick="setTab('dash')">대시보드</button>
   <button class="tab on" data-tab="write" onclick="setTab('write')">일지 쓰기</button>
   <button class="tab" data-tab="mine" onclick="setTab('mine')">내 기록</button>
   <button class="tab" data-tab="all" id="allBtn" onclick="setTab('all')" style="display:none">센터 전체 기록</button>
@@ -100,6 +105,12 @@
     <div class="card"><b style="font-size:13px">⭐ 지금 입력한 내용을 즐겨찾기에 저장</b>
       <div><button onclick="savePreset(1)">1번에 저장</button><button onclick="savePreset(2)">2번에 저장</button><button onclick="savePreset(3)">3번에 저장</button></div>
       <div id="favMsg" class="msg"></div></div>
+  </section>
+
+  <section id="screenDash" class="screen">
+    <div class="stbar" style="justify-content:space-between"><h2 id="dTitle" style="margin:0">통역실적 대시보드</h2>
+      <div class="noprint"><select id="dYear" style="width:auto" onchange="loadDash()"></select></div></div>
+    <div id="dMsg" class="msg"></div><div id="dBody"><p class="muted">불러오는 중…</p></div>
   </section>
 
   <section id="screenStats" class="screen">
@@ -159,16 +170,17 @@ async function boot() {
   $('date').value = today();
   try { const r = await sb.rpc('interp_presets_get'); presets = r.data || {}; } catch (e) { presets = {}; }
   drawFav();
-  if (SUB.go) subGo(SUB.go); else setTab('write');
+  if (SUB.go) subGo(SUB.go); else setTab('dash');
   subReady();
 }
 sb.auth.onAuthStateChange((event) => { if (event === 'SIGNED_IN') boot(); });
 
-function subGo(t) { setTab(t === 'stats' ? 'stats' : (me.can_write ? 'write' : 'mine')); }
+function subGo(t) { setTab(t === 'stats' ? 'stats' : t === 'dash' ? 'dash' : (me.can_write ? 'write' : 'mine')); }
 function setTab(t) {
   tab = t;
   document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
-  subTell(t === 'stats' ? 'stats' : 'log');
+  subTell(t === 'stats' ? 'stats' : t === 'dash' ? 'dash' : 'log');
+  if (t === 'dash') { showScreen('screenDash'); loadDash(); return; }
   if (t === 'stats') { showScreen('screenStats'); if (!$('stYm').value) $('stYm').value = lastMonth(); loadStats(); return; }
   if (t === 'write') {
     showScreen('screenWrite');
@@ -188,6 +200,47 @@ window.addEventListener('message', (e) => {
   if (e.origin !== location.origin || !e.data || e.data.type !== 'sub-go') return;
   SUB.go = e.data.tab; if (SUB.ready) subGo(SUB.go);
 });
+
+// ============ 대시보드 ============
+function bars(items, unit) {
+  const max = Math.max(1, ...items.map((i) => Number(i.value) || 0));
+  return `<div class="bars">${items.map((i) => `<div class="bar"><span class="l" title="${esc(i.label)}">${esc(i.label)}</span><span class="t"><i style="width:${Math.round((Number(i.value) || 0) / max * 100)}%"></i></span><span class="v">${i.value}${unit}</span></div>`).join('') || '<p class="muted">자료가 없습니다.</p>'}</div>`;
+}
+async function loadDash() {
+  const y0 = new Date().getFullYear();
+  if (!$('dYear').options.length) $('dYear').innerHTML = [0, 1, 2, 3, 4].map((i) => `<option value="${y0 - i}">${y0 - i}년</option>`).join('');
+  const y = Number($('dYear').value || y0);
+  msg('dMsg', '');
+  const { data: d, error } = await sb.rpc('interp_dashboard', { p_year: y });
+  if (error) { $('dBody').innerHTML = ''; return msg('dMsg', /interp_dashboard/.test(errText(error)) ? '대시보드를 쓰려면 26번 SQL을 먼저 실행해 주세요.' : errText(error)); }
+  const kp = (l, v, s) => `<div class="kpi"><span>${l}</span><b>${v}</b>${s ? `<span>${s}</span>` : ''}</div>`;
+  const mon = (k) => d.months.map((x) => ({ label: x.month + '월', value: x[k] }));
+  if (d.mode === 'none') { $('dTitle').textContent = '통역실적 대시보드'; $('dBody').innerHTML = '<div class="card">도협회는 센터 보고를 검토할 권한이 있을 때 센터별 현황이 보입니다.</div>'; return; }
+  if (d.mode === 'hq') {
+    const tc = d.months.reduce((a, x) => a + x.cases, 0), th = Math.round(d.months.reduce((a, x) => a + Number(x.hours), 0) * 10) / 10, wait = d.months.reduce((a, x) => a + x.waiting, 0);
+    const cm = new Date().getMonth() + 1, prev = y === y0 ? (cm === 1 ? null : d.months[cm - 2]) : d.months[11];
+    $('dTitle').textContent = `통역실적 대시보드 (도협회 · ${y}년)`;
+    $('dBody').innerHTML = `<div class="kpis">${kp('승인된 통역 건수', tc + '건', '센터 보고 승인분 합계')}${kp('승인된 통역 시간', th + '시간')}${kp('검토 대기', wait + '건', '승인·반려 필요')}
+        ${prev ? kp(`${prev.month}월 보고`, `${prev.submitted} / ${d.centers}`, '보고한 센터 수') : ''}</div>
+      ${wait ? `<div class="card">검토할 보고가 ${wait}건 있습니다. <button class="main" onclick="setTab('stats')">통계 · 보고 현황 열기</button></div>` : ''}
+      <div class="grid2"><div class="card"><h3>월별 통역 건수 (승인분)</h3>${bars(mon('cases'), '건')}</div><div class="card"><h3>분야별 (승인분)</h3>${bars(d.byField.map((x) => ({ label: x.field, value: x.cases })), '건')}</div></div>
+      <div class="card" style="overflow-x:auto"><h3>센터별 (${y}년)</h3><table><thead><tr><th>센터</th><th>승인된 달</th><th>검토 대기</th><th>반려</th><th>건수</th><th>시간</th></tr></thead><tbody>
+      ${d.byCenter.map((c) => `<tr><td>${esc(c.centerName)}</td><td>${c.approvedMonths}개월</td><td>${c.waiting || '-'}</td><td>${c.rejected || '-'}</td><td>${c.cases}건</td><td>${c.hours}시간</td></tr>`).join('') || '<tr><td colspan="6" class="muted">센터가 없습니다.</td></tr>'}</tbody></table></div>
+      <p class="muted">도협회는 센터가 보고한 숫자만 봅니다. 센터의 통역일지 원본은 보지 않습니다.</p>`;
+    return;
+  }
+  $('dTitle').textContent = `${d.mode === 'mine' ? '내 통역실적' : d.centerName + ' 통역실적'} (${y}년)`;
+  const cm = new Date().getMonth() + 1, need = y === y0 && cm > 1 && d.months[cm - 2].status === 'DRAFT' && me.can_report && d.months[cm - 2].cases > 0;
+  $('dBody').innerHTML = `<div class="kpis">${kp('통역 건수', d.totalCases + '건')}${kp('통역 시간', d.totalHours + '시간')}${kp('실인원', d.uniqueUsers + '명', '의뢰자 중복 제외')}${kp('연인원', d.totalUsers + '명', '농인+청인')}</div>
+    ${need ? `<div class="card">${cm - 1}월 실적을 아직 도협회에 보고하지 않았습니다. <button class="main" onclick="setTab('stats')">통계 · 도협회 보고</button></div>` : ''}
+    <div class="grid2"><div class="card"><h3>월별 통역 건수</h3>${bars(mon('cases'), '건')}</div>
+      <div class="card"><h3>분야(종류)별</h3>${bars(d.byField.map((x) => ({ label: x.field, value: x.cases })), '건')}</div>
+      ${d.mode === 'center' ? `<div class="card"><h3>통역사별</h3>${bars(d.byInterpreter.map((x) => ({ label: x.name, value: x.cases })), '건')}</div>` : ''}
+      <div class="card"><h3>월별 보고 상태</h3><div style="display:flex;flex-wrap:wrap;gap:6px">${d.months.map((x) => `<span>${x.month}월 ${stBadge(x.status)}</span>`).join('')}</div></div></div>
+    <div class="card" style="overflow-x:auto"><h3>최근 통역</h3><table><thead><tr><th>날짜</th><th>시간</th><th>의뢰자</th><th>종류</th><th>통역사</th></tr></thead><tbody>
+      ${d.recent.map((r) => `<tr><td>${esc(r.date)}</td><td>${esc(r.time)}</td><td>${esc(r.client)}</td><td>${esc(r.category)}</td><td>${esc(r.name)}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">기록이 없습니다.</td></tr>'}</tbody></table>
+      ${me.can_write ? '<div style="margin-top:8px"><button class="main" onclick="setTab(\'write\')">+ 통역일지 쓰기</button></div>' : ''}</div>`;
+}
 
 // ============ 통계 · 도협회 보고 (센터 → 도협회) ============
 const ST_LABEL = { DRAFT: '미보고', SUBMITTED: '보고 완료', APPROVED: '승인 완료', REJECTED: '반려됨' };

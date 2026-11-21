@@ -450,7 +450,7 @@ dialog .d-foot { padding: 12px 20px 20px; display: flex; gap: 8px; justify-conte
   <button type="button" data-tab="courses"><b>강좌</b><small>강좌 만들기·출석·수료</small></button>
   <button type="button" data-tab="apply" id="applyTab"><b>접수·강사비</b><small>접수 링크·수강료·강사비</small></button>
   <button type="button" data-tab="report"><b>보고·통계</b><small>실적 보고·통계</small></button>
-  <button type="button" data-tab="files" id="filesTab"><b>자료요청</b><small>자료 요청·공지사항</small></button>
+  <button type="button" data-tab="files" id="filesTab"><b>자료요청</b><small>자료 요청·회신</small></button>
   <button type="button" data-tab="me"><b>내 정보</b><small>비밀번호·전화번호·직인</small></button>
 </nav>
 
@@ -663,7 +663,10 @@ async function boot() {
   S.filter = { 연도: S.init.currentYear, 반기: '', 지회명: '' };
   $('#who').textContent = isAdmin() ? `도협회 ${u.name || u.id}` : `${u.chapter} ${u.name || ''}`;
   $('#tabs').classList.remove('hidden');
-  $('#topLogout').classList.remove('hidden'); $('#inqBtn').classList.remove('hidden'); $('#inqBtn').onclick = () => go('inquiry'); refreshInqBadge();
+  $('#topLogout').classList.remove('hidden'); $('#inqBtn').classList.remove('hidden'); $('#inqBtn').onclick = () => {   // 업무 시스템 안에서는 공통 문의함(모든 분류·지회 간 문의)으로
+    if (window.parent !== window) { try { window.parent.postMessage({ type: 'nav-go', kind: 'inq' }, location.origin); return; } catch (e) {} }
+    go('inquiry');
+  }; refreshInqBadge();
   $('#filesTab').classList.toggle('hidden', !webMode());
   $('#applyTab').classList.toggle('hidden', !webMode());
   if (webMode()) refreshFileBadge();
@@ -737,7 +740,7 @@ async function go(tab, keepInq) {
 async function loadNotices() {
   const box = $('#nb');
   box.innerHTML = '';
-  if (isAdmin()) return;
+  return;   // 공지는 업무 시스템 화면 위 '담당 공지' 띠로 보여 줌 (홈 공지와 하나로 합침)
   try {
     const d = await call('getNotices');
     S.notices = d.목록;
@@ -753,8 +756,10 @@ function drawNoticeBar() {
   box.querySelectorAll('.nbar').forEach(el => { const t = () => { el.classList.toggle('open'); el.querySelector('.nm').textContent = el.querySelector('.nm').textContent.replace(/눌러서 .*$/, '눌러서 ' + (el.classList.contains('open') ? '접기' : '전체 보기')); }; el.onclick = t; el.querySelector('.nt').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } }; });
   if ($('#nbTgl')) $('#nbTgl').onclick = () => { const h = $('#nbMore').classList.toggle('hidden'); $('#nbTgl').textContent = h ? `공지 ${more}건 더 보기 ▾` : '접기 ▴'; };
 }
+// 공지사항은 업무 시스템 홈 공지로 합쳤습니다 (보는 사람: 수어교육 담당). 이 화면은 안내만 보여 줍니다.
 async function renderNotices(editId) {
-  view().innerHTML = '<h2>공지사항</h2><p class="sub">불러오는 중…</p>';
+  view().innerHTML = '<h2>공지사항</h2><div class="notice">수어교육 공지는 이제 <b>업무 시스템 홈 → 공지사항</b>에서 씁니다.<br>공지를 쓸 때 <b>보는 사람: 수어교육 담당</b>을 고르면 수어교육관리 권한이 있는 직원에게만 보이고, 수어교육관리 화면 맨 위에도 뜹니다.</div>';
+  return;
   let d;
   try { d = await call('getNotices'); } catch (e) { if (e.code !== 'AUTH') toast(e.message, true); return; }
   if (S.tab !== 'notice') return;
@@ -1125,7 +1130,6 @@ function drawDispatchForm() {
 /* 묶인 메뉴 안에서 전환 (접수 안내 ↔ 강사비, 보고 ↔ 통계) */
 function drawSwitch(tab) {
   const sets = { apply: [['apply', '접수 안내'], ['fee', '강사비']], fee: [['apply', '접수 안내'], ['fee', '강사비']],
-    files: [['files', '자료요청'], ['notice', '공지사항']], notice: [['files', '자료요청'], ['notice', '공지사항']],
     report: [['report', isAdmin() ? '보고 현황' : '실적 보고'], ['stats', '통계']], stats: [['report', isAdmin() ? '보고 현황' : '실적 보고'], ['stats', '통계']] };
   const set = (tab === 'files' || tab === 'notice') && !isAdmin() ? null : sets[tab];
   $('#sw').innerHTML = set ? `<div class="seg no-print" role="tablist" style="margin-bottom:12px">${set.map(([k, t]) => `<button type="button" role="tab" data-sw="${k}" aria-selected="${k === tab}">${t}</button>`).join('')}</div>` : '';
@@ -4403,7 +4407,7 @@ const HELP = [
     '<ul>',
     '<li><b>강좌</b>: 강좌를 만들고 수강생·출석을 입력합니다. 위쪽 <b>파견 교육</b>을 누르면 도협회가 요청한 파견 교육(예: 반갑다 수어야)이 나옵니다.</li>',
     '<li><b>접수·강사비</b>: 수강 접수 안내, 강사비 확인증</li>',
-    '<li><b>자료요청</b>: 도협회의 자료 요청, 공지사항</li>',
+    '<li><b>자료요청</b>: 도협회의 자료 요청과 지회 회신 (공지는 업무 시스템 홈 공지사항)</li>',
     '<li><b>💬 문의</b>(오른쪽 위): 도협회와 지회가 서로 묻고 답합니다.</li>',
     '<li><b>실적 보고</b>: 분기별(1분기·상반기·3분기·연간) 실적을 확인해 도협회에 제출합니다.<span class="ro-a"> 도협회는 <b>보고 현황</b>에서 확인합니다.</span></li>',
     '<li><b>통계</b>: 월별·분기별·연간 건수와 인원</li>',
@@ -4611,7 +4615,8 @@ const HELP = [
     '</ul>',
     '<p class="golinks">바로가기: <a href="#" data-go="apply">접수·강사비</a></p>' ] },
   { t: '문의 · 공지사항', f: 'all', b: [
-    '<p><b>💬 문의</b> (오른쪽 위 버튼)</p>',
+    '<p><b>💬 문의</b> (오른쪽 위 버튼 → 업무 시스템 <b>문의함</b>)</p>',
+    '<p class="hint">문의는 업무 시스템 왼쪽 메뉴 <b>💬 문의함</b>으로 합쳤습니다. 수어교육 문의도 그대로 이어지고, 강좌·파견 화면의 문의 버튼도 계속 쓸 수 있습니다.</p>',
     '<ul>',
     '<li><b>지회</b>: <b>도협회에 문의하기</b>를 누르고 내용을 적어 보냅니다. 관련 강좌를 고를 수 있고, 파견 요청에서는 <b>이 요청에 대해 도협회에 문의</b> 버튼으로 바로 이어집니다.</li>',
     '<li class="ro-a"><b>도협회</b>: 지회가 문의하면 💬에 숫자가 뜹니다. 열어서 답하면 지회에 알림이 가고, 지회가 읽으면 “지회 확인함”이 보입니다.</li>',
@@ -4621,10 +4626,10 @@ const HELP = [
     '</ul>',
     '<p><b>📢 공지사항</b></p>',
     '<ul>',
-    '<li>도협회가 지회를 골라 올리면, 지회는 <b>자료요청</b> 메뉴 안 <b>공지사항</b>에서 봅니다.</li>',
-    '<li><b>시작일</b>이 오늘보다 뒤면 그 날짜부터 보입니다.</li>',
+    '<li>공지는 <b>업무 시스템 홈 → 공지사항</b>에서 씁니다. <b>보는 사람: 수어교육 담당</b>을 고르면 수어교육관리 권한이 있는 직원에게만 보이고, 이 화면 맨 위에도 뜹니다.</li>',
+    '<li>도협회는 <b>받는 곳</b>에서 전체 지회 또는 지회를 골라 보냅니다. 게시 기간을 정할 수 있습니다.</li>',
     '</ul>',
-    '<p class="golinks">바로가기: <a href="#" data-go="inquiry">문의</a> · <a href="#" data-go="notice">공지사항</a></p>' ] },
+    '<p class="golinks">바로가기: <a href="#" data-go="inquiry">문의</a></p>' ] },
   { t: '실적 보고하기', f: 'chapter', b: [
     '<p>보고는 <b>1분기·상반기·3분기·연간</b> 네 번이며 모두 누계입니다. (1분기=1~3월, 상반기=1~6월, 3분기=1~9월, 연간=1~12월에 시작한 강좌) 숫자는 출석 기록에서 자동으로 계산됩니다.</p>',
     '<ol>',

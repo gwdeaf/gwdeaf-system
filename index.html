@@ -179,7 +179,42 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .tuser{display:flex;align-items:center;gap:8px;font-weight:700;font-size:.9rem;white-space:nowrap}
 .av.sm{width:32px;height:32px;font-size:.85rem}
 #view-home{padding:26px 30px 48px;max-width:none;width:100%}
-#view-frame{flex:1;position:relative;min-height:0}
+/* 문의함 */
+#view-inq{padding:20px 24px 40px;flex:1;min-height:0}
+.inqwrap{display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:16px;align-items:start}
+.inqlist,.inqthread{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}
+.inqtools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.inqtools select{width:auto;padding:6px 8px;border:1px solid var(--line);border-radius:9px;font:inherit;font-size:.84rem;background:#fff}
+.iq{padding:10px 8px;border-top:1px solid var(--line);cursor:pointer;border-radius:8px}.iq:first-child{border-top:0}.iq:hover{background:#f6f8fc}.iq.on{background:var(--pri-soft)}
+.iq .l1{display:flex;align-items:center;gap:6px}.iq .t{flex:1;font-weight:700;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.iq .l2{color:var(--mute);font-size:.78rem;margin-top:3px;display:flex;gap:6px}.iq .dot{width:8px;height:8px;border-radius:50%;background:#e5484d;flex:none}
+.iq.done .t{color:var(--mute);font-weight:600}
+.b-cat{background:#eef4ff;color:#2f5bd6}
+.ith{display:flex;align-items:flex-start;gap:8px;margin-bottom:10px;flex-wrap:wrap}.ith h3{margin:0;font-size:1.05rem;flex:1;min-width:0}
+.posts{display:flex;flex-direction:column;gap:10px;max-height:56vh;overflow:auto;padding:4px 2px}
+.post{max-width:82%;background:#f3f5f9;border-radius:12px;padding:9px 12px}.post.me{align-self:flex-end;background:var(--pri-soft)}
+.post .w{font-size:.75rem;color:var(--mute);margin-bottom:3px}.post .b{white-space:pre-wrap;word-break:break-word;line-height:1.55}
+.ireply{margin-top:10px;display:flex;gap:8px;align-items:flex-end}.ireply textarea{flex:1;min-height:64px}
+.iform label{display:block;font-weight:700;font-size:.86rem;margin:10px 0 4px}.iform select,.iform input,.iform textarea{width:100%}
+.nav .top .nbadge,.nbadge{margin-left:auto;background:#e5484d;color:#fff;border-radius:99px;font-size:.7rem;font-weight:800;padding:1px 7px}
+@media(max-width:860px){#view-inq{padding:14px 12px 30px}.inqwrap{grid-template-columns:1fr}.inqwrap.reading .inqlist{display:none}.inqwrap:not(.reading) .inqthread{display:none}}
+#view-frame{flex:1;position:relative;min-height:0;display:flex;flex-direction:column}
+.fwrap{flex:1;position:relative;min-height:0}
+/* 각 시스템 화면 위 '담당 공지' 띠 */
+.sysnote{background:#fffbea;border-bottom:1px solid #f3e3a3;padding:8px 24px;font-size:.88rem}
+.sysnote .sn{display:flex;align-items:center;gap:8px;cursor:pointer;padding:3px 0}
+.sysnote .sn .t{font-weight:700;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sysnote .sn .d{color:#8a7a3a;font-size:.78rem;flex:none}
+.sysnote .snb{white-space:pre-wrap;color:#4b4320;padding:2px 0 8px 26px;line-height:1.6;word-break:break-word}
+.sysnote .snx{border:0;background:transparent;color:#8a7a3a;font-size:.8rem;cursor:pointer;flex:none}
+.sysnote .snmore{padding:2px 0 2px 26px}
+@media(max-width:860px){.sysnote{padding:7px 12px}}
+.b-aud{background:#fff3d6;color:#9a6b00}
+.b-sent{background:#eef0f5;color:#6b7280}
+.nform .row2{display:flex;gap:8px}.nform .row2>*{flex:1}
+.nform .chlist{max-height:160px;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:6px 10px;margin-top:6px;display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:2px 10px}
+.nform .chlist label{display:flex;align-items:center;gap:6px;font-size:.86rem;font-weight:500;margin:0}
+.nform .chlist input{width:auto}
+.nform .radios{display:flex;gap:14px;flex-wrap:wrap;margin-top:4px}.nform .radios label{display:flex;align-items:center;gap:5px;font-weight:500;margin:0}.nform .radios input{width:auto}
 #frame{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--bg)}
 .floading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--mute);font-weight:600;z-index:2}
 .pbox{background:#fff;border-radius:16px;width:100%;max-width:480px;height:min(88vh,720px);display:flex;flex-direction:column;overflow:hidden}
@@ -331,9 +366,25 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
       <div class="mgr" id="mgr"></div>
     </div>
   </main>
+  <main id="view-inq" class="hide">
+    <div class="inqwrap">
+      <div class="inqlist" id="inq-listbox">
+        <div class="inqtools">
+          <button class="btn pri" onclick="inqNewForm()">+ 새 문의</button>
+          <select id="inq-f-st" onchange="inqDraw()"><option value="진행">진행 중</option><option value="해결">해결</option><option value="">전체</option></select>
+          <select id="inq-f-cat" onchange="inqDraw()"><option value="">모든 분류</option><option>수어교육</option><option>통역</option><option>근태</option><option>회계</option><option>공문</option><option>사업실적</option><option>기타</option></select>
+        </div>
+        <div id="inq-list"><div class="empty">불러오는 중…</div></div>
+      </div>
+      <div class="inqthread" id="inq-thread"><div class="empty">왼쪽에서 문의를 고르거나 <b>+ 새 문의</b>를 누르세요.<br><span class="mute">도협회나 다른 지회에 물어볼 수 있습니다. 개인정보(수강생·이용인 이름 등)는 적지 마세요.</span></div></div>
+    </div>
+  </main>
   <div id="view-frame" class="hide">
-    <div class="floading" id="floading">불러오는 중…</div>
-    <iframe id="frame" title="내용" allow="geolocation"></iframe>
+    <div class="sysnote hide" id="sysnote"></div>
+    <div class="fwrap">
+      <div class="floading" id="floading">불러오는 중…</div>
+      <iframe id="frame" title="내용" allow="geolocation"></iframe>
+    </div>
   </div>
   </div>
   <div class="scrim" id="scrim" onclick="toggleSide()"></div>
@@ -383,7 +434,7 @@ async function start(){
     $('blk-t').textContent = t; $('blk-d').innerHTML = d; return;
   }
   ME = w; render(); show('app');
-  loadNotices(); loadAtt(); loadBoard(); loadQuick(); if (w.can_manage) loadMgr();
+  loadNotices(); loadAtt(); loadBoard(); loadQuick(); if (w.can_manage) loadMgr(); inqBadge(); setInterval(inqBadge, 120000);
   fromHash();
 }
 
@@ -406,7 +457,8 @@ function kidHtml(kind, adm, tab, label){
 function topHtml(id, ic, label, call){ return '<a class="top" data-id="' + id + '" data-lb="' + esc(label) + '" onclick="' + call + '"><span class="ic">' + ic + '</span>' + esc(label) + '</a>'; }
 function grpHtml(ic, label){ return '<div class="grp"><span class="ic">' + ic + '</span>' + esc(label) + '</div>'; }
 function renderNav(){
-  var h = grpHtml('🏖', '근태 / 휴가 관리');
+  var h = topHtml('inq:s:', '💬', '문의함', "go('inq')").replace('</a>', '<span class="nbadge hide" id="inq-badge"></span></a>');
+  h += grpHtml('🏖', '근태 / 휴가 관리');
   [['leave','내 근태현황'],['leave-apply','휴가 신청'],['overtime','시간외 신청'],['comp-apply','대체휴무 신청'],['promo','연가 사용 계획서'],['leavehist','내 신청내역']].forEach(function(k){ h += kidHtml('att', false, k[0], k[1]); });
   h += '<div class="kls">시수</div>' + kidHtml('att', false, 'write', '시수 입력') + kidHtml('att', false, 'myrecord', '내 시수 확인');
   h += '<div class="kls">대체시수</div>' + kidHtml('att', false, 'altwrite', '대체시수 발생일') + kidHtml('att', false, 'altuse', '대체시수 입력') + kidHtml('att', false, 'altrecord', '내 대체시수 확인');
@@ -435,7 +487,7 @@ function renderNav(){
   if (isAttAdmin() || isVehAdmin() || ME.can_manage) h += '<div class="sec">시스템 관리</div>';
   if (isAttAdmin()) {   // 도협회·지회·센터 전 직원 근태 운영 (직원 등록·정보는 직원·권한 관리에서)
     h += grpHtml('🛠', '근태 관리');
-    [['dashboard','대시보드'],['approval','신청 현황'],['attend','출퇴근 관리'],['annual','연차 관리'],['comp','대체휴무'],['promo','연가 촉진'],['notice','공지사항'],['settings','기관 설정']].forEach(function(k){ h += kidHtml('att', true, k[0], k[1]); });
+    [['dashboard','대시보드'],['approval','신청 현황'],['attend','출퇴근 관리'],['annual','연차 관리'],['comp','대체휴무'],['promo','연가 촉진'],['settings','기관 설정']].forEach(function(k){ h += kidHtml('att', true, k[0], k[1]); });
   }
   if (isVehAdmin()) h += topHtml('car:a:', '🔧', '차량 관리', "go('car','',true)");
   if (ME.can_manage) h += topHtml('access:s:', '🔑', '직원·권한 관리', "go('access')");
@@ -487,12 +539,18 @@ function go(kind, tab, adm){
   tab = tab || ''; adm = !!adm; closeSide();
   if (SUBAPP[kind] && !tab) tab = SUBDEF[kind];
   if (kind === 'att' && !adm && tab === 'trip') tab = 'trip-apply';
+  if (kind === 'inq') {
+    CUR = 'inq:s:'; $('view-frame').classList.add('hide'); $('view-home').classList.add('hide'); $('view-inq').classList.remove('hide'); $('sysnote').classList.add('hide');
+    markNav(); window.scrollTo(0, 0); loadInq(); return;
+  }
+  $('view-inq').classList.add('hide');
   if (kind === 'home') {
-    CUR = 'home:s:'; $('view-frame').classList.add('hide'); $('view-home').classList.remove('hide');
+    CUR = 'home:s:'; $('view-frame').classList.add('hide'); $('view-home').classList.remove('hide'); $('sysnote').classList.add('hide');
     markNav(); try { history.replaceState(null, '', location.pathname); } catch(e){} window.scrollTo(0, 0); return;
   }
   CUR = mid(kind, adm, tab);
   $('view-home').classList.add('hide'); $('view-frame').classList.remove('hide');
+  showSysNote(kind);
   var key = kind + ':' + (adm ? 'a' : 's'), fr = $('frame');
   if (kind === 'att' && FR.key === key && FR.ready) {
     FR.tab = tab; fr.contentWindow.postMessage({ type:'att-go', tab:tab }, location.origin);
@@ -644,7 +702,7 @@ function render(){
   $('tb-av').textContent = name.charAt(0); $('tb-nm').textContent = name;
   renderNav();
   try { var gk = 'guideSeen:' + (ME.email || ''); if (!localStorage.getItem(gk)) { localStorage.setItem(gk, '1'); setTimeout(function(){ openGuide(ME, 'home'); }, 600); } } catch(e){}
-  $('notice-add').classList.toggle('hide', !ME.can_manage);
+  loadNoticeMeta();
   var anyAdm = ME.can_manage || isAttAdmin() || isVehAdmin();
   $('mgr-card').classList.toggle('hide', !anyAdm);
   if (anyAdm && !ME.can_manage) $('mgr').innerHTML = mgrExtra();
@@ -719,6 +777,11 @@ async function resetQuick(){
   PREFS.quick = null; closeModal(); loadQuick(); toast('기본 메뉴로 되돌렸습니다.');
 }
 
+var NMETA = null;   // 공지 쓰기 권한·고를 수 있는 보는 사람/지회
+async function loadNoticeMeta(){
+  try { var r = await sb.rpc('notice_meta'); NMETA = r.data || null; } catch(e){ NMETA = null; }
+  $('notice-add').classList.toggle('hide', !(NMETA && NMETA.can_write));
+}
 async function loadNotices(){
   var r = await sb.rpc('list_notices', { p_limit: 30 });
   if (r.error) { $('notices').innerHTML = '<div class="empty">공지를 불러오지 못했습니다.<br>' + esc(r.error.message) + '</div>'; return; }
@@ -727,32 +790,44 @@ async function loadNotices(){
   $('notices').innerHTML = NOTICES.map(function(n, i){
     return '<div class="nt"><div class="nth" onclick="toggleNotice(' + i + ')">'
       + (n.important ? '<span class="badge b-imp">중요</span>' : '')
+      + (n.mine_sent ? '<span class="badge b-sent">보낸 공지</span>' : '')
+      + (n.audience && n.audience !== 'all' ? '<span class="badge b-aud">' + esc(n.audience_label) + '</span>' : '')
       + '<span class="badge ' + (n.all ? 'b-all' : 'b-chap') + '">' + esc(n.scope) + '</span>'
       + '<span class="t">' + esc(n.title) + '</span><span class="d">' + fmtDate(n.created_at) + '</span></div>'
       + '<div class="ntb hide" id="nb' + i + '">' + esc(n.body || '(내용 없음)')
-      + '<div class="meta"><span>작성: ' + esc(n.author) + '</span>'
+      + '<div class="meta"><span>작성: ' + esc(n.author) + (n.start_on || n.end_on ? ' · 게시 ' + esc(n.start_on || '') + ' ~ ' + esc(n.end_on || '') : '') + '</span>'
       + (n.can_edit ? '<button class="btn sm" onclick="openNotice(' + i + ')">수정</button><button class="btn sm red" onclick="delNotice(' + n.id + ')">삭제</button>' : '')
       + '</div></div></div>';
   }).join('');
 }
 function toggleNotice(i){ $('nb' + i).classList.toggle('hide'); }
 function openNotice(i){
-  var n = (i === undefined) ? null : NOTICES[i];
-  $('modal').innerHTML = '<div class="modal"><h3>' + (n ? '공지 수정' : '공지 쓰기') + '</h3>'
+  var n = (i === undefined) ? null : NOTICES[i], M = NMETA || { audiences: [{ v:'all', label:'전 직원' }], hq: false, chapters: [] };
+  var aud = n ? n.audience : (M.audiences[0] ? M.audiences[0].v : 'all');
+  var sc = n ? (n.chapter_ids ? 'pick' : (n.all ? 'all' : 'mine')) : 'mine', picked = (n && n.chapter_ids) || [];
+  $('modal').innerHTML = '<div class="modal nform"><h3>' + (n ? '공지 수정' : '공지 쓰기') + '</h3>'
     + '<label>제목</label><input type="text" id="nt-t" maxlength="100" value="' + esc(n ? n.title : '') + '">'
     + '<label>내용</label><textarea id="nt-b">' + esc(n ? n.body : '') + '</textarea>'
-    + '<label class="ck"><input type="checkbox" id="nt-i"' + (n && n.important ? ' checked' : '') + '> 중요 공지로 표시</label>'
-    + (ME.role === 'admin' && (!n || n.all) ? '<label class="ck"><input type="checkbox" id="nt-a"' + (n && n.all ? ' checked' : '') + (n ? ' disabled' : '') + '> 전체 지회에 보이는 공지</label>' : '')
+    + '<label>보는 사람</label><select id="nt-aud">' + M.audiences.map(function(a){ return '<option value="' + a.v + '"' + (a.v === aud ? ' selected' : '') + '>' + esc(a.label) + (a.v === 'all' ? '' : ' (그 업무 권한이 있는 직원만)') + '</option>'; }).join('') + '</select>'
+    + (M.hq ? '<label>받는 곳</label><div class="radios">'
+        + [['mine','우리(도협회)'],['all','전체 지회'],['pick','지회 골라서']].map(function(x){ return '<label><input type="radio" name="nt-sc" value="' + x[0] + '"' + (x[0] === sc ? ' checked' : '') + ' onchange="ntScope()"> ' + x[1] + '</label>'; }).join('') + '</div>'
+        + '<div class="chlist' + (sc === 'pick' ? '' : ' hide') + '" id="nt-chs">' + M.chapters.map(function(c){ return '<label><input type="checkbox" value="' + c.id + '"' + (picked.indexOf(c.id) >= 0 ? ' checked' : '') + '> ' + esc(c.name) + '</label>'; }).join('') + '</div>' : '')
+    + '<label>게시 기간 (비우면 계속)</label><div class="row2"><input type="date" id="nt-s" value="' + esc(n && n.start_on || '') + '"><input type="date" id="nt-e" value="' + esc(n && n.end_on || '') + '"></div>'
+    + '<label class="ck"><input type="checkbox" id="nt-i"' + (n && n.important ? ' checked' : '') + '> 중요 공지로 표시 (맨 위)</label>'
     + '<div class="mfoot"><button class="btn" onclick="closeModal()">취소</button><button class="btn pri" onclick="saveNotice(' + (n ? n.id : 'null') + ')">저장</button></div></div>';
   $('modal').classList.remove('hide');
 }
+function ntScope(){ var v = (document.querySelector('input[name=nt-sc]:checked') || {}).value; $('nt-chs').classList.toggle('hide', v !== 'pick'); }
 function closeModal(){ $('modal').classList.add('hide'); $('modal').innerHTML = ''; }
 async function saveNotice(id){
   var t = $('nt-t').value.trim(); if (!t) { toast('제목을 입력하세요.'); return; }
-  var all = $('nt-a') ? $('nt-a').checked : false;
-  var r = await sb.rpc('save_notice', { p_id: id, p_title: t, p_body: $('nt-b').value, p_important: $('nt-i').checked, p_all: all });
+  var scEl = document.querySelector('input[name=nt-sc]:checked'), sc = scEl ? scEl.value : 'mine';
+  var ids = sc === 'pick' ? [].map.call(document.querySelectorAll('#nt-chs input:checked'), function(x){ return Number(x.value); }) : [];
+  if (sc === 'pick' && !ids.length) { toast('받을 지회를 골라 주세요.'); return; }
+  var r = await sb.rpc('notice_save', { p: { id: id || '', title: t, body: $('nt-b').value, important: $('nt-i').checked, audience: $('nt-aud').value,
+    scope: sc, chapter_ids: ids, start_on: $('nt-s').value, end_on: $('nt-e').value } });
   if (r.error) { toast(r.error.message); return; }
-  closeModal(); toast('저장했습니다.'); loadNotices();
+  closeModal(); toast('저장했습니다.'); loadNotices(); SYSNOTE = {};
 }
 async function delNotice(id){
   if (!confirm('이 공지를 삭제할까요?')) return;
@@ -761,6 +836,106 @@ async function delNotice(id){
   toast('삭제했습니다.'); loadNotices();
 }
 
+/* ── 문의함: 지회 → 도협회, 지회 → 지회 (도협회는 지회 간 문의도 봄) ── */
+var INQ = [], INQ_CUR = null, INQ_T = null;
+async function inqBadge(){
+  try { var r = await sb.rpc('inq_badge'); var n = r.data || 0, b = $('inq-badge'); if (b) { b.textContent = n; b.classList.toggle('hide', !n); } } catch(e){}
+}
+async function loadInq(){
+  var r = await sb.rpc('inq_list');
+  if (r.error) { $('inq-list').innerHTML = '<div class="empty">문의를 불러오지 못했습니다.<br>' + esc(r.error.message) + '</div>'; return; }
+  INQ = r.data || []; inqDraw(); inqBadge();
+}
+function inqWhen(t){ if (!t) return ''; var d = new Date(String(t).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(t) ? '' : '+09:00')); return isNaN(d) ? String(t).slice(0, 16) : d.toLocaleString('ko-KR', { timeZone:'Asia/Seoul', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }); }
+function inqDraw(){
+  var st = $('inq-f-st').value, cat = $('inq-f-cat').value;
+  var list = INQ.filter(function(q){ return (!st || q.status === st) && (!cat || q.category === cat); });
+  $('inq-list').innerHTML = list.length ? list.map(function(q){
+    return '<div class="iq' + (q.status === '해결' ? ' done' : '') + (INQ_CUR === q.key ? ' on' : '') + '" onclick="inqOpen(\'' + esc(q.key) + '\')">'
+      + '<div class="l1">' + (q.unread ? '<span class="dot" title="새 글"></span>' : '') + '<span class="badge b-cat">' + esc(q.category) + '</span><span class="t">' + esc(q.title) + '</span></div>'
+      + '<div class="l2"><span>' + esc(q.from_name) + ' → ' + esc(q.to_name) + (q.side === 'view' ? ' (보기만)' : '') + '</span><span style="margin-left:auto">' + inqWhen(q.last_at) + ' · ' + q.count + '개</span></div></div>';
+  }).join('') : '<div class="empty">' + (st === '진행' ? '진행 중인 문의가 없습니다.' : '문의가 없습니다.') + '</div>';
+}
+async function inqOpen(key){
+  INQ_CUR = key; inqDraw();
+  $('inq-thread').innerHTML = '<div class="empty">불러오는 중…</div>'; document.querySelector('.inqwrap').classList.add('reading');
+  var r = await sb.rpc('inq_get', { p_key: key });
+  if (r.error) { $('inq-thread').innerHTML = '<div class="empty">' + esc(r.error.message) + '</div>'; return; }
+  inqThread(r.data); loadInqQuiet();
+}
+async function loadInqQuiet(){ var r = await sb.rpc('inq_list'); if (!r.error) { INQ = r.data || []; inqDraw(); inqBadge(); } }
+function inqThread(q){
+  INQ_T = q;
+  var mine = function(p){ return p.side === q.side; };
+  var last = q.posts.length ? q.posts[q.posts.length - 1] : null;
+  $('inq-thread').innerHTML = '<div class="ith"><button class="btn sm" onclick="document.querySelector(\'.inqwrap\').classList.remove(\'reading\')">←</button>'
+    + '<h3><span class="badge b-cat">' + esc(q.category) + '</span> ' + esc(q.title) + '<div class="mute" style="font-weight:600;margin-top:4px">' + esc(q.from_name) + ' → ' + esc(q.to_name) + ' · ' + (q.status === '해결' ? '해결됨' : '진행 중') + '</div></h3>'
+    + (q.side !== 'view' ? '<button class="btn sm" onclick="inqSetStatus(' + (q.status === '해결' ? 'false' : 'true') + ')">' + (q.status === '해결' ? '다시 진행' : '✔ 해결') + '</button>' : '') + '</div>'
+    + '<div class="posts" id="inq-posts">' + q.posts.map(function(p){
+        return '<div class="post' + (mine(p) ? ' me' : '') + '"><div class="w">' + esc(p.who) + ' · ' + esc(p.author || '') + ' · ' + inqWhen(p.at) + '</div><div class="b">' + esc(p.body) + '</div></div>';
+      }).join('') + '</div>'
+    + (last && mine(last) && q.other_seen ? '<div class="mute" style="text-align:right;margin-top:4px">상대 확인함 ✓</div>' : '')
+    + (q.side !== 'view' ? '<div class="ireply"><textarea id="inq-reply" maxlength="2000" placeholder="답글 쓰기"></textarea><button class="btn pri" onclick="inqReply()">보내기</button></div>'
+                         : '<div class="note" style="margin-top:10px">지회끼리 주고받는 문의입니다. 도협회는 보기만 할 수 있습니다.</div>')
+    + (q.edu ? '<div class="mute" style="margin-top:8px">수어교육관리의 문의와 같은 자료입니다. 강좌·파견 관련 문의는 수어교육관리에서도 볼 수 있습니다.</div>' : '');
+  var ps = $('inq-posts'); if (ps) ps.scrollTop = ps.scrollHeight;
+}
+async function inqReply(){
+  var t = $('inq-reply').value.trim(); if (!t) { toast('내용을 적어 주세요.'); return; }
+  var r = await sb.rpc('inq_reply', { p_key: INQ_CUR, p_body: t });
+  if (r.error) { toast(r.error.message); return; }
+  inqThread(r.data); loadInqQuiet();
+}
+async function inqSetStatus(done){
+  var r = await sb.rpc('inq_status', { p_key: INQ_CUR, p_done: done });
+  if (r.error) { toast(r.error.message); return; }
+  inqThread(r.data); loadInqQuiet();
+}
+async function inqNewForm(){
+  INQ_CUR = null; inqDraw(); document.querySelector('.inqwrap').classList.add('reading');
+  var r = await sb.rpc('inq_targets'), tg = r.data || { chapters: [] };
+  $('inq-thread').innerHTML = '<div class="iform"><div class="ith"><button class="btn sm" onclick="document.querySelector(\'.inqwrap\').classList.remove(\'reading\')">←</button><h3>새 문의</h3></div>'
+    + '<label>받는 곳</label><select id="iq-to">' + (tg.is_hq ? '' : '<option value="hq">도협회</option>') + tg.chapters.map(function(c){ return '<option value="' + c.id + '">' + esc(c.name) + '</option>'; }).join('') + '</select>'
+    + '<label>분류</label><select id="iq-cat"><option>수어교육</option><option>통역</option><option>근태</option><option>회계</option><option>공문</option><option>사업실적</option><option selected>기타</option></select>'
+    + '<label>제목</label><input id="iq-t" maxlength="100" placeholder="비우면 내용 첫 줄">'
+    + '<label>내용</label><textarea id="iq-b" maxlength="2000" style="min-height:140px" placeholder="개인정보(수강생·이용인 이름, 연락처 등)는 적지 마세요."></textarea>'
+    + '<div class="mute" style="margin-top:6px">받는 곳에서는 지회 담당자와 그 분류 업무 담당자가 봅니다. 도협회는 지회끼리 주고받은 문의도 볼 수 있습니다.</div>'
+    + '<div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="document.querySelector(\'.inqwrap\').classList.remove(\'reading\');$(\'inq-thread\').innerHTML=\'\'">취소</button><button class="btn pri" onclick="inqSend()">보내기</button></div></div>';
+}
+async function inqSend(){
+  var b = $('iq-b').value.trim(); if (!b) { toast('내용을 적어 주세요.'); return; }
+  var r = await sb.rpc('inq_new', { p: { to: $('iq-to').value, category: $('iq-cat').value, title: $('iq-t').value, body: b } });
+  if (r.error) { toast(r.error.message); return; }
+  toast('문의를 보냈습니다.'); $('inq-f-st').value = '진행'; await loadInq(); inqOpen(r.data);
+}
+/* ── 각 시스템 화면 위 '담당 공지' 띠 (보는 사람이 그 업무 담당인 공지) ── */
+var SYSNOTE = {}, SYSNOTE_AUD = { edu:'edu', interp:'interp', att:'att', acct:'acct', perf:'perf' }, SYSNOTE_HIDE = {};
+async function showSysNote(kind){
+  var aud = SYSNOTE_AUD[kind], box = $('sysnote');
+  if (!aud || SYSNOTE_HIDE[aud]) { box.classList.add('hide'); return; }
+  var list = SYSNOTE[aud];
+  if (!list) {
+    try { var r = await sb.rpc('list_notices', { p_limit: 5, p_audience: aud }); list = SYSNOTE[aud] = (r.data || []).filter(function(n){ return !n.mine_sent; }); }
+    catch(e){ list = []; }
+  }
+  if ((CUR || '').split(':')[0] !== kind) return;   // 그 사이 다른 화면으로 이동
+  if (!list.length) { box.classList.add('hide'); return; }
+  box.innerHTML = list.map(function(n, i){
+    return '<div class="sn' + (i > 0 ? ' more hide' : '') + '" data-i="' + i + '">' + (n.important ? '📌' : '📢')
+      + ' <span class="badge b-aud">' + esc(n.audience_label) + '</span><span class="t">' + esc(n.title) + '</span><span class="d">' + fmtDate(n.created_at) + '</span>'
+      + (i === 0 ? '<button class="snx" data-aud="' + aud + '" title="이번에는 숨기기">✕</button>' : '') + '</div>'
+      + '<div class="snb hide" id="snb' + i + '">' + esc(n.body || '(내용 없음)') + '</div>';
+  }).join('');
+  if (list.length > 1) box.innerHTML += '<button class="snx snmore">담당 공지 ' + (list.length - 1) + '건 더 보기 ▾</button>';
+  box.classList.remove('hide');
+}
+$('sysnote').addEventListener('click', function(e){
+  var x = e.target.closest('.snx');
+  if (x) { SYSNOTE_HIDE[x.getAttribute('data-aud')] = 1; $('sysnote').classList.add('hide'); return; }
+  var mo = e.target.closest('.snmore');
+  if (mo) { var opened = mo.classList.toggle('on'); $('sysnote').querySelectorAll('.sn.more').forEach(function(x){ x.classList.toggle('hide', !opened); }); mo.textContent = opened ? '접기 ▴' : mo.textContent; if (!opened) showSysNote((CUR || '').split(':')[0]); return; }
+  var r = e.target.closest('.sn'); if (r) $('snb' + r.getAttribute('data-i')).classList.toggle('hide');
+});
 /* ── 내 근태 (근태 서버 함수 호출) ── */
 async function attCall(fn, arg){
   var s = await sb.auth.getSession(); var tok = s.data && s.data.session && s.data.session.access_token;

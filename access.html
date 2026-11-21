@@ -179,7 +179,7 @@ function staffCard(s, mgr){
       <div>${lb("소속 구분")}<select id="e_org"><option value="">선택</option>${ORGS.map(o=>`<option ${o===org?"selected":""}>${o}</option>`).join("")}</select></div>
       <div>${lb("부서")}<input id="e_dept" value="${esc(s.dept)}" placeholder="부서"></div>
       <div>${lb("직급·직위")}<input id="e_pos" value="${esc(s.position)}" placeholder="직위"></div>
-      <div class="full">${lb("입사일 (연차 산정 기준일)")}<input id="e_hire" type="date" value="${esc(s.hire_date||"")}"></div>
+      <div class="full">${lb("입사일 (넣으면 연차 자동 계산: 입사한 해 매달 1일 → 다음 해부터 15일, 셋째 해부터 2년마다 +1일, 최대 25일)")}<input id="e_hire" type="date" value="${esc(s.hire_date||"")}"></div>
       ${attBox}
       <div class="full muted" style="font-size:12px">이름을 바꾸면 근태 직원목록의 이름도 바뀝니다. 이미 있는 휴가·시수 기록은 예전 이름으로 남으니 꼭 필요할 때만 바꾸세요.</div>
       <button class="btn" onclick="saveEdit(${s.id})">저장</button><button class="btn sub" onclick="editId=null;render()">취소</button></div></div>`;

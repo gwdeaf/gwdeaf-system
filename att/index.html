@@ -458,7 +458,6 @@
   <button class="tab" data-adm="annual" data-g="leave" onclick="switchAdminTab('annual')">📅 연차 관리</button>
   <button class="tab" data-adm="comp" data-g="leave" onclick="switchAdminTab('comp')">🔄 대체휴무</button>
   <button class="tab" data-adm="promo" data-g="leave" onclick="switchAdminTab('promo')">🗓 연가 촉진</button>
-  <button class="tab" data-adm="notice" data-g="leave" onclick="switchAdminTab('notice')">📢 공지사항</button>
   <div class="sidebar-spacer"></div>
   <hr class="sidebar-divider">
   <div class="sidebar-group">⚙️ 설정</div>
@@ -1527,7 +1526,7 @@
   <div class="page-head">
     <div>
       <h2>📅 연차 관리</h2>
-      <div class="sub">연도별 부여 연차입니다. 비워 두면 [직원 관리]의 기본 연차가 적용됩니다. 지난 연도 기록은 그대로 보존됩니다.</div>
+      <div class="sub">연도별 부여 연차입니다. 비워 두면 <b>입사일로 자동 계산</b>한 값이 적용됩니다(입사한 해: 한 달 개근마다 1일 / 다음 해부터 15일, 셋째 해부터 2년마다 1일씩 늘어 최대 25일). 입사일이 없으면 기본 연차가 적용됩니다. 값을 직접 넣으면 그 값이 우선합니다.</div>
     </div>
     <div class="page-tools no-print">
       <select id="annual-year-select" onchange="loadAnnualMgr()"></select>
@@ -4835,18 +4834,22 @@ function loadAnnualMgr() {
   var tbody = document.getElementById('annual-mgr-body');
   tbody.innerHTML = '<tr><td colspan="3" class="empty">불러오는 중...</td></tr>';
 
-  var staff = [], balMap = {}, done = 0;
+  var staff = [], balMap = {}, autoMap = {}, done = 0;
   function tryRender() {
-    if (++done < 2) return;
+    if (++done < 3) return;
     if (!staff.length) { tbody.innerHTML = '<tr><td colspan="3" class="empty">직원 목록이 없습니다.</td></tr>'; return; }
     tbody.innerHTML = staff.map(function(s) {
       var bal = balMap[s.name] || { granted: '', note: '' };
       return '<tr><td class="l"><b>'+esc(s.name)+'</b></td>'
-        + '<td><input type="number" min="0" max="99" step="0.5" value="'+esc(bal.granted===0?'':bal.granted)+'" data-name="'+esc(s.name)+'" class="annual-granted-input" placeholder="기본 '+esc(s.annualLeave||0)+'" style="text-align:center;"></td>'
+        + '<td><input type="number" min="0" max="99" step="0.5" value="'+esc(bal.granted===0?'':bal.granted)+'" data-name="'+esc(s.name)+'" class="annual-granted-input" placeholder="'+(autoMap[s.name] && autoMap[s.name].auto !== null ? '자동 '+esc(autoMap[s.name].auto) : '기본 '+esc(s.annualLeave||0))+'" title="'+(autoMap[s.name] && autoMap[s.name].hire ? '입사일 '+esc(autoMap[s.name].hire) : '입사일 없음 (직원·권한 관리에서 입력)')+'" style="text-align:center;"></td>'
         + '<td><input type="text" value="'+esc(bal.note||'')+'" data-name="'+esc(s.name)+'" class="annual-note-input" placeholder="메모"></td></tr>';
     }).join('');
   }
   gasRun('getAdminStaff', null, function(rows) { staff = Array.isArray(rows) ? rows : []; tryRender(); }, function(){ tryRender(); });
+  gasRun('getAnnualAuto', JSON.stringify({year: Number(year)}), function(list) {
+    if (Array.isArray(list)) list.forEach(function(r){ autoMap[r.name] = r; });
+    tryRender();
+  }, function(){ tryRender(); });
   gasRun('getLeaveBalance', JSON.stringify({year: Number(year)}), function(list) {
     if (Array.isArray(list)) list.forEach(function(r){ balMap[r.name] = r; });
     tryRender();
@@ -5509,13 +5512,8 @@ function loadNoticeBanner() {
   if (!box || !leaveUser) return;
   var html = '';
   var draw = function() { box.innerHTML = html; };
-  gasRun('getNotices', null, function(list) {
-    (Array.isArray(list) ? list : []).forEach(function(n) {
-      html += '<div class="notice-card'+(n.important?' notice-important':'')+'">'
-        + '<div class="notice-head">'+(n.important?'📌 ':'📢 ')+esc(n.title)+'<span class="notice-date">'+esc(n.date)+'</span></div>'
-        + (n.content ? '<div class="notice-body">'+esc(n.content).replace(/\n/g,'<br>')+'</div>' : '')
-        + '</div>';
-    });
+  // 공지는 업무 시스템 홈 공지(보는 사람: 근태 담당 → 화면 위 띠)로 합침. 여기서는 연가 사용 통지만 보여 줌
+  (function() {
     gasRun('getMyPromo', JSON.stringify({auth: myAuth(), year: new Date().getFullYear()}), function(res) {
       if (res && res.ok) {
         res.notices.filter(function(x){ return !x.submitted; }).forEach(function(x) {
@@ -5527,7 +5525,7 @@ function loadNoticeBanner() {
       }
       draw();
     }, draw);
-  }, draw);
+  })();
 }
 
 // ----- 직원: 연가 사용 계획서 (제출 내역 보관 · 복사해서 새로 작성) -----

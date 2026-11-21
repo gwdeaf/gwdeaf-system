@@ -237,7 +237,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 </style>
 <link rel="stylesheet" href="/ui.css?v=1">
 <style>.gbtn2{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 11px;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--text)}.gbtn2:hover{background:var(--pri-soft)}@media(max-width:600px){.gbtn2 .gtx{display:none}}</style>
-<script src="/guide.js?v=2"></script>
+<script src="/guide.js?v=3"></script>
 </head>
 <body>
 
@@ -419,6 +419,11 @@ function renderNav(){
   h += grpHtml('📒', '업무일지') + kidHtml('worklog', false, 'write', '업무일지 작성') + kidHtml('worklog', false, 'print', '업무일지 인쇄');
   if (hasPerm('acct.')) h += grpHtml('💰', '회계') + kidHtml('acct', false, 'prop', '품의') + kidHtml('acct', false, 'res', '결의') + kidHtml('acct', false, 'cash', '출납부') + kidHtml('acct', false, 'ledger', '원장') + kidHtml('acct', false, 'bank', '통장 내역');
   if (hasPerm('cert.')) h += grpHtml('📜', '증서·증명 발급') + kidHtml('cert', false, 'issue', '증서·증명 발급') + kidHtml('cert', false, 'list', '발급 대장');
+  if (hasPerm('perf.')) {   // 사업실적 (회원명단은 회원관리와 같은 자료)
+    h += grpHtml('📈', '사업실적');
+    [['dash','대시보드'],['projects','사업관리'],['new','사업실적 등록'],['list','사업실적 목록'],['people','참여자 관리'],['reports','분기별 보고'],['stats','통계 및 분석']].forEach(function(k){ h += kidHtml('perf', false, k[0], k[1]); });
+    if (ME.is_hq && (ME.role === 'admin' || (ME.perms || []).indexOf('perf.review') >= 0)) h += kidHtml('perf', false, 'settings', '사업 분류');
+  }
   if (hasPerm('member.')) h += topHtml('member:s:', '👥', '회원관리', "go('member')");
   if (isAttAdmin() || isVehAdmin() || ME.can_manage) h += '<div class="sec">시스템 관리</div>';
   if (isAttAdmin()) {   // 도협회·지회·센터 전 직원 근태 운영 (직원 등록·정보는 직원·권한 관리에서)
@@ -467,8 +472,8 @@ function wlMark(t){ document.querySelectorAll('#wltabs button').forEach(function
 function wlDate(v){ try { $('frame').contentWindow.postMessage({ type: 'wl-date', date: v }, location.origin); } catch(e){} }
 function toggleSide(){ $('side').classList.toggle('open'); $('scrim').classList.toggle('open'); }
 function closeSide(){ $('side').classList.remove('open'); $('scrim').classList.remove('open'); }
-var SUBAPP = { doc:'/doc/', interp:'/interp/', worklog:'/worklog/', acct:'/acct/', cert:'/cert/' };
-var SUBDEF = { doc:'internal', interp:'log', worklog:'write', acct:'prop', cert:'issue' };   // 하위 메뉴 없이 열면 첫 메뉴
+var SUBAPP = { doc:'/doc/', interp:'/interp/', worklog:'/worklog/', acct:'/acct/', cert:'/cert/', perf:'/perf/' };
+var SUBDEF = { doc:'internal', interp:'log', worklog:'write', acct:'prop', cert:'issue', perf:'dash' };   // 하위 메뉴 없이 열면 첫 메뉴
 function go(kind, tab, adm){
   tab = tab || ''; adm = !!adm; closeSide();
   if (SUBAPP[kind] && !tab) tab = SUBDEF[kind];

@@ -626,7 +626,7 @@ async function save(){
 
 
 /* ---------- 관리자 (PC) ---------- */
-let STAFF_DRV=[];
+let STAFF_DRV=[], STAFF_READY=false, cfgLoading=false;
 let adminPin="", adminTab="log", adminDraft=null, adminRecs=null, adminMaint=null, adminCar="", adminEditRow=null, adminEditMaint=null;
 function loadingCard(){ return `<div class="card empty" style="margin-top:12px">불러오는 중...</div>`; }
 function openAdmin(){ if(!CAN_MANAGE){ toast("차량 관리 권한이 없습니다"); return; } view="admin"; adminPin="google"; adminDraft=null; adminRecs=null; adminMaint=null; adminTab="log"; adminCar=""; adminEditRow=null; adminEditMaint=null; adminOn={}; adminPrefill=null; adminGo("log"); }
@@ -1085,7 +1085,15 @@ async function maintDelete(){
 }
 
 /* 차량·운전자 목록 */
+// 직원 명단을 아직 못 받았으면 먼저 받아 온 뒤 다시 그림 (관리자 화면이 목록보다 먼저 열리는 경우)
+async function adminCfgLoad(){
+  if(cfgLoading) return; cfgLoading=true;
+  try{ const j=await api("list"); if(j.ok){ ALLCFG={cars:j.allCars, drivers:j.allDrivers}; applyCfg(j.cars,j.drivers); ls.set("cfg",{cars:j.cars,drivers:j.drivers}); } }catch(e){}
+  cfgLoading=false; STAFF_READY=true; adminDraft=null;
+  if(view==="admin" && adminTab==="cfg") render();
+}
 function adminCfgView(){
+  if(!STAFF_READY){ adminCfgLoad(); return loadingCard(); }
   const cars=adminDraft.cars, drivers=adminDraft.drivers;
   return `<div class="card cfgcard">
   <div class="cfghead">
@@ -1229,7 +1237,7 @@ async function api(name){
         .map(c=>({n:txt(c.name), p:txt(c.plate), d:txt(c.bought_on), u:c.in_use!==false, g:Number(c.gauge_n)||10}));
       // 운전자 = 직원·권한 관리에 등록된 우리 지회 직원(자동) + 직원이 아닌 '추가 운전자'(drivers 표)
       let staff=[]; try{ const r=await sb.rpc("doc_staff_list"); if(!r.error) staff=(r.data||[]).map(x=>txt(x.name).trim()).filter(Boolean); }catch(e){}
-      STAFF_DRV = staff;
+      STAFF_DRV = staff; STAFF_READY = true;
       const allDrivers=(ck(await sb.from("drivers").select("*").eq("chapter_id",CH).order("id"))||[])
         .map(x=>({n:txt(x.name), u:x.in_use!==false})).filter(x=>!staff.includes(x.n.trim()));   // 직원과 이름이 같으면 직원으로 봄
       const cars=allCars.filter(c=>c.u).map(c=>({n:c.n, p:c.p, d:c.d, g:c.g}));

@@ -56,7 +56,7 @@ async function api(fn, ...args) {
   return res.data;
 }
 function statusBox() {   // 접수 결과(대기·승인·반려) 확인: 신청할 때 적은 이름과 연락처가 맞아야 보임
-  return `<form class="card noprint" id="sf" autocomplete="off"><h3 style="margin:0 0 4px">내 접수 결과 확인</h3><p class="hint" style="margin:0">신청할 때 적은 이름과 연락처를 입력하면 승인·대기 상태를 볼 수 있습니다.</p>
+  return `<form class="card noprint" id="sf" autocomplete="off" style="scroll-margin-top:12px"><h3 style="margin:0 0 4px">내 접수 결과 확인</h3><p class="hint" style="margin:0">신청할 때 적은 이름과 연락처를 입력하면 승인·대기 상태를 볼 수 있습니다.</p>
     <label class="f" for="sn">이름</label><input type="text" id="sn" maxlength="30" required>
     <label class="f" for="sp">연락처</label><input type="tel" id="sp" inputmode="tel" maxlength="20" placeholder="010-0000-0000" required>
     <div id="se"></div><button class="btn" id="sb" style="background:#fff;color:var(--pine);border:1.5px solid var(--pine)">접수 결과 확인</button></form>`;
@@ -82,6 +82,8 @@ function dead(msg) { $('#app').innerHTML = `<div class="wrap"><div class="center
   const one = c.강좌.length === 1;
   $('#app').innerHTML = `<header><div class="wrap" style="padding:0"><h1>${esc(c.제목)}</h1><p>${esc(c.지회명)} 수강 신청</p></div></header>
   <div class="wrap">
+    <p class="hint noprint" style="text-align:right;margin:10px 0 0"><a href="#sf" onclick="document.getElementById('sf').scrollIntoView({behavior:'smooth'});return false">이미 신청하셨나요? 내 접수 결과 확인 ↓</a></p>
+    ${c.포스터 ? `<img src="${esc(c.포스터)}" alt="${esc(c.제목)} 홍보 포스터" style="width:100%;display:block;border-radius:12px;margin-top:8px;border:1px solid var(--line)">` : ''}
     ${c.안내 ? `<div class="card"><p style="white-space:pre-wrap;margin:0">${esc(c.안내)}</p></div>` : ''}
     <form class="card" id="f" autocomplete="off">
       <b>신청할 강좌를 선택하세요${one ? '' : ' (여러 개 선택 가능)'}</b>
@@ -102,6 +104,7 @@ function dead(msg) { $('#app').innerHTML = `<div class="wrap"><div class="center
     ${statusBox()}
   </div>`;
   bindStatus();
+  if (location.hash === '#status' && $('#sf')) setTimeout(() => { $('#sf').scrollIntoView({ behavior: 'smooth' }); $('#sn').focus(); }, 200);
   const addrText = () => { const z = $('#z').value.trim(), a = $('#a1').value.trim(), b = $('#a2').value.trim(); return a || b ? ((z ? '(' + z + ') ' : '') + a + (b ? ' ' + b : '')).trim() : ''; };
   const closePc = () => { $('#pc').style.display = 'none'; $('#pcb').innerHTML = ''; };
   $('#pcx').onclick = closePc;

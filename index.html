@@ -206,6 +206,9 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .nav .grp .arw{margin-left:auto;font-size:.75rem;color:#8a93a5;transition:transform .15s}
 .nav .grp.open .arw{transform:rotate(90deg)}
 .nav .grp.open{background:#f7f9fe}
+/* 하위 메뉴가 없는 단일 메뉴(차량운행일지·회원관리·차량 관리·직원·권한 관리 등)도 묶음 메뉴와 같은 글씨 크기·굵기 */
+.nav a.top{font-size:clamp(.8rem,1.6vh,.92rem);font-weight:800;padding:clamp(7px,1.2vh,11px) 12px;color:#1f2937}
+.nav a.top.on{color:var(--pri)}
 .nav .gbody{display:none;padding-bottom:4px}
 .nav .grp.open+.gbody{display:block}
 /* 시수·대체시수 같은 중간 제목은 눈에 띄게 */

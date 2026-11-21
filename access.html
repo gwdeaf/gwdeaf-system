@@ -103,9 +103,9 @@ function blockedView(){
 /* ---------- 화면 ---------- */
 function render(){
   const tabs = me.can_manage ? [["staff","직원·권한"],["lines","결재라인"],["log","변경 기록"]] : [];
-  if(me.role === "admin") tabs.push(["chapters","지회 담당 지정"]);
+  if(me.role === "admin") tabs.push(["chapters","지회 관리"]);   // 도협회: 지회 담당 지정 + 드라이브·캘린더 연결
   if(me.can_manage) tabs.push(["org","기관 정보"]);
-  if(me.role === "admin" || me.role === "lead") tabs.push(["drive","드라이브 연결"]);
+  if(me.role === "lead") tabs.push(["drive","지회 설정"]);        // 지회 담당자: 우리 지회 드라이브·캘린더 연결
   tabs.push(["sign","내 서명"]);
   tabs.push(["me","내 권한"]);
   $("#app").innerHTML = `<div class="top"><div><h1>${esc(me.chapter_name)} · ${esc(me.name)}</h1>
@@ -121,7 +121,7 @@ async function go(t){
     if(t==="staff") await loadStaff();
     else if(t==="lines"){ await loadStaff(); lines = await rpc("get_approval_lines"); drafts = {}; }
     else if(t==="log") logs = await rpc("get_access_log", {p_limit:100});
-    else if(t==="chapters") chapters = await rpc("list_chapters");
+    else if(t==="chapters"){ chapters = await rpc("list_chapters"); try{ await loadDrive(); }catch(e){ drv = {ok:false, msg:e.message}; } }
     else if(t==="drive") await loadDrive();
     else if(t==="org") org = await rpc("get_org_profile");
     else if(t==="sign"){ mySign = await rpc("get_my_signature"); sigStat = me.can_manage ? await rpc("list_signature_status") : null; }
@@ -354,7 +354,12 @@ async function loadDrive(){ drv = await gd({action:"status"}); }
 let DOPEN = null;   // 펼쳐 둔 지회 (다시 그려도 유지)
 function driveOpen(id){ DOPEN = DOPEN === id ? null : id; driveView(); setTimeout(()=>{ const el = document.getElementById("dc"+id); if(el && DOPEN === id) el.scrollIntoView({block:"start", behavior:"smooth"}); }, 30); }
 function driveView(){
-  if(!drv || !drv.ok){ $("#body").innerHTML = `<div class="card"><h2>드라이브 연결</h2><div class="muted">${esc((drv&&drv.msg)||"불러오지 못했습니다.")}</div></div>`; return; }
+  const MG = tab === "chapters";   // 도협회 '지회 관리' 화면: 담당자 지정도 함께
+  if(!drv || !drv.ok){
+    if(MG) return chaptersListView(`드라이브·캘린더 연결 정보를 불러오지 못했습니다: ${esc((drv&&drv.msg)||"")}`);
+    $("#body").innerHTML = `<div class="card"><h2>지회 설정</h2><div class="muted">${esc((drv&&drv.msg)||"불러오지 못했습니다.")}</div></div>`; return;
+  }
+  const CH = id => (chapters||[]).find(x=>x.id===id) || null;
   const sa = esc(drv.sa_email||"서비스 계정 이메일"), chs = drv.chapters || [];
   if(chs.length === 1 && DOPEN === null) DOPEN = chs[0].id;
   const ok = (v, t) => `<span class="dpill ${v?"on":""}">${v?"✅":"⚪"} ${t}</span>`;
@@ -365,8 +370,8 @@ function driveView(){
     : `<div class="card"><h2>📂 드라이브·캘린더 연결</h2><div class="muted" style="color:#c0392b">서버에 구글 서비스 계정이 아직 등록되지 않았습니다. 설정 안내서(구글드라이브_설정안내.md)의 1단계를 먼저 진행해 주세요.</div></div>`;
   // 한눈에 보기 (지회가 여러 개일 때)
   const table = chs.length > 1 ? `<div class="card"><h2>🗂 지회별 연결 현황</h2><div class="muted">지회 이름을 누르면 그 지회 설정이 펼쳐집니다.</div>
-    <div style="overflow-x:auto"><table class="dtab"><tr><th>지회</th><th>드라이브</th><th>공용 캘린더</th><th>함께 볼 캘린더</th><th>통역 시트</th></tr>
-    ${chs.map(c=>`<tr class="${DOPEN===c.id?"on":""}" onclick="driveOpen(${c.id})"><td><b>${esc(c.name)}</b></td><td>${c.connected?"✅":(c.status==="error"?"⚠️":"⚪")}</td><td>${c.calendar_id?"✅":"⚪"}</td>
+    <div style="overflow-x:auto"><table class="dtab"><tr><th>지회</th>${MG?"<th>담당자</th><th>직원</th>":""}<th>드라이브</th><th>공용 캘린더</th><th>함께 볼 캘린더</th><th>통역 시트</th></tr>
+    ${chs.map(c=>`<tr class="${DOPEN===c.id?"on":""}" onclick="driveOpen(${c.id})"><td><b>${esc(c.name)}</b></td>${MG?(()=>{ const x=CH(c.id); return x&&x.is_hq?'<td class="muted">도협회</td><td>'+(x.staff_count||0)+'</td>':`<td>${x&&x.lead_name?esc(x.lead_name):'<span class="badge o">없음</span>'}</td><td>${x?x.staff_count||0:"-"}</td>`; })():""}<td>${c.connected?"✅":(c.status==="error"?"⚠️":"⚪")}</td><td>${c.calendar_id?"✅":"⚪"}</td>
       <td>${(c.extras||[]).filter(x=>!x.global).length ? (c.extras||[]).filter(x=>!x.global).length+"개" : "-"}</td><td>${c.interp_sheet_id?"✅":"⚪"}</td></tr>`).join("")}</table></div></div>` : "";
   const sec = (n, title, on, desc, body, how) => `<div class="dsec"><div class="dsec-h"><span class="dnum">${n}</span><b>${title}</b>${on===null?"":(on?'<span class="badge">연결됨</span>':'<span class="badge o">미연결</span>')}</div>
     <div class="muted">${desc}</div>${body}${how?`<details class="dhow"><summary>설정 방법</summary><div>${how}</div></details>`:""}</div>`;
@@ -377,6 +382,9 @@ function driveView(){
         <span class="dpills">${ok(c.connected,"드라이브")}${ok(c.calendar_id,"공용 캘린더")}${ok(mine.length,"함께 볼 "+mine.length)}${ok(c.interp_sheet_id,"통역 시트")}</span>
         <span class="darw">${open?"접기 ▴":"펼치기 ▾"}</span></div>
       ${open?`<div class="dch-b">
+      ${MG && CH(c.id) && !CH(c.id).is_hq ? sec("0","👤 지회 담당자", null,
+        CH(c.id).lead_email?`현재 담당: <b>${esc(CH(c.id).lead_name)}</b> <span class="muted">${esc(CH(c.id).lead_email)}</span> · 직원 ${CH(c.id).staff_count||0}명`:"아직 담당자가 없습니다. 담당자는 그 지회의 직원·권한과 연결 설정을 관리합니다.",
+        `<div class="drow"><input id="l_e${c.id}" placeholder="새 담당 이메일 (@gwdeaf.or.kr)"><input id="l_n${c.id}" placeholder="이름 (처음 등록할 때)" style="max-width:200px"><button class="btn" onclick="setLead(${c.id})">${CH(c.id).lead_email?"담당자 교체":"담당자 지정"}</button></div>`, "") : ""}
       ${sec(1,"📁 구글 드라이브 폴더", c.connected,
         c.connected?`<b>${esc(c.folder_name)}</b> · 하위 폴더 ${c.subfolders.length}개`:"출장대장·월별근태·연차현황·운행일지·교육실적 폴더가 자동으로 만들어집니다.",
         `${c.status==="error"?`<div class="muted" style="color:#c0392b">⚠️ ${esc(c.status_msg)}</div>`:""}
@@ -416,7 +424,7 @@ function driveView(){
     .dck{display:block;margin-top:8px;font-size:14px}.dck input{width:auto}
     .dx{display:flex;gap:8px;align-items:center;justify-content:space-between;margin:6px 0;font-size:14px}.dx label{flex:1}.dx input{width:auto}
     .dhow{margin-top:8px;font-size:13px;color:#64748b}.dhow summary{cursor:pointer;color:#2f5bd6;font-weight:600}.dhow div{margin-top:6px;line-height:1.7}
-  </style>${head}${table}${chs.map(panel).join("")}${global}`;
+  </style>${MG?adminAddCard():""}${head}${table}${chs.map(panel).join("")}${global}`;
 }
 async function driveConnect(id){
   const f = val("d_f"+id); if(!f) return toast("폴더 주소를 붙여 넣어 주세요.", true);
@@ -458,14 +466,20 @@ async function driveOff(id){ if(!confirm("연결을 해제할까요? (드라이�
   const r = await gd({action:"disconnect", chapterId:id}); toast(r.ok?"해제했습니다.":r.msg, !r.ok); await loadDrive(); driveView(); }
 
 /* 지회 담당 지정 (도협회 관리자) */
-function chaptersView(){
-  $("#body").innerHTML = `<div class="card"><h2>도협회 관리자 추가</h2><div class="grid"><input id="a_email" placeholder="이메일"><input id="a_name" placeholder="이름"><button class="btn full" onclick="addAdmin()">관리자로 지정</button></div></div>
+// 지회 관리 (도협회): 담당자 지정 + 드라이브·캘린더 연결을 한 화면에서
+function chaptersView(){ driveView(); }
+function adminAddCard(){ return `<div class="card"><h2>🏢 지회 관리</h2><div class="muted">지회를 누르면 <b>담당자 지정</b>과 <b>드라이브·캘린더·통역 시트 연결</b>이 함께 펼쳐집니다.</div>
+  <details style="margin-top:10px"><summary style="cursor:pointer;color:#2f5bd6;font-weight:600">도협회 관리자 추가</summary>
+  <div class="grid" style="margin-top:8px"><input id="a_email" placeholder="이메일"><input id="a_name" placeholder="이름"><button class="btn full" onclick="addAdmin()">관리자로 지정</button></div></details></div>`; }
+// 연결 정보를 못 불러올 때: 담당자 지정만 (예전 화면)
+function chaptersListView(note){
+  $("#body").innerHTML = `${adminAddCard()}${note?`<div class="card"><div class="muted" style="color:#c0392b">${note}</div></div>`:""}
     ${chapters.filter(c=>!c.is_hq).map(c=>`<div class="card"><div class="st"><div><b>${esc(c.name)}</b> <span class="muted">직원 ${c.staff_count}명</span>
       <div>${c.lead_email?`지회 담당: <b>${esc(c.lead_name)}</b> <span class="muted">${esc(c.lead_email)}</span>`:'<span class="badge o">담당자 없음</span>'}</div></div></div>
       <div class="grid" style="margin-top:6px"><input id="l_e${c.id}" placeholder="새 담당 이메일"><input id="l_n${c.id}" placeholder="이름 (처음 등록할 때)"><button class="btn full" onclick="setLead(${c.id})">${c.lead_email?"담당자 교체":"담당자 지정"}</button></div></div>`).join("")}`;
 }
 function setLead(id){ if(!confirm("지회 담당을 지정할까요? 기존 담당자는 일반 직원으로 바뀝니다.")) return;
-  act("assign_lead", {p_chapter:id, p_email:val("l_e"+id), p_name:val("l_n"+id)}, "지정했습니다.", async()=>{ chapters = await rpc("list_chapters"); chaptersView(); }); }
+  act("assign_lead", {p_chapter:id, p_email:val("l_e"+id), p_name:val("l_n"+id)}, "지정했습니다.", async()=>{ chapters = await rpc("list_chapters"); try{ await loadDrive(); }catch(e){} chaptersView(); }); }
 function addAdmin(){ act("set_admin", {p_email:val("a_email"), p_name:val("a_name"), p_on:true}, "지정했습니다.", async()=>{ await loadStaff(); toast("지정했습니다."); chaptersView(); }); }
 
 sb.auth.onAuthStateChange((ev)=>{ if(ev === "SIGNED_OUT") loginView(); });

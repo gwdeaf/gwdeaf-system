@@ -446,6 +446,7 @@ dialog .d-foot { padding: 12px 20px 20px; display: flex; gap: 8px; justify-conte
 <main id="view"></main>
 
 <nav class="tabs hidden" id="tabs" aria-label="메뉴">
+  <button type="button" data-tab="dash"><b>대시보드</b><small>올해 교육 현황</small></button>
   <button type="button" data-tab="courses"><b>강좌</b><small>강좌 만들기·출석·수료</small></button>
   <button type="button" data-tab="apply" id="applyTab"><b>접수·강사비</b><small>접수 링크·수강료·강사비</small></button>
   <button type="button" data-tab="report"><b>보고·통계</b><small>실적 보고·통계</small></button>
@@ -668,7 +669,7 @@ async function boot() {
   if (webMode()) refreshFileBadge();
   loadNotices();
   $('#topLogout').onclick = doLogout;
-  go('courses');
+  go('dash');
   try { if (window.parent !== window) window.parent.postMessage({ type: 'edu-ready', hide: webMode() ? [] : ['apply', 'files'] }, location.origin); } catch (e) {}
   try { const hk = 'helpSeen:' + (u.id || u.name || ''); if (!localStorage.getItem(hk) && (!navigator.webdriver || window.__helpTest)) { localStorage.setItem(hk, '1'); setTimeout(openHelp, 400); } } catch (e) {}   // 처음 들어오면 사용설명서를 먼저 보여 줌
 }
@@ -691,9 +692,9 @@ function navPush(st) {   // 화면을 옮길 때마다 기록해 두어, 휴대�
   S.cur = st; updateBack();
 }
 function updateBack() { const b = $('#backBtn'); if (b) b.classList.toggle('hidden', !(S.init && S.depth > 0)); }
-$('#backBtn').onclick = () => { if (S.depth > 0) history.back(); else if (S.init) go('courses'); };
-$('#homeLink').onclick = () => { if (S.init) go('courses'); };
-$('#homeLink').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (S.init) go('courses'); } };
+$('#backBtn').onclick = () => { if (S.depth > 0) history.back(); else if (S.init) go('dash'); };
+$('#homeLink').onclick = () => { if (S.init) go('dash'); };
+$('#homeLink').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (S.init) go('dash'); } };
 window.addEventListener('popstate', async e => {
   if (!S.init) return;
   const st = e.state || { t: 'courses', d: 0 };
@@ -719,6 +720,7 @@ async function go(tab, keepInq) {
   window.scrollTo(0, 0);
   if (tab === 'courses' && S.init && !isAdmin()) loadNotices();
   if (tab === 'courses') renderCourses();
+  else if (tab === 'dash') renderDash();
   else if (tab === 'report') isAdmin() ? renderAdminReport() : renderReport();
   else if (tab === 'stats') renderStats();
   else if (tab === 'search') renderSearch();
@@ -3960,6 +3962,52 @@ async function runSearch() {
 /* =========================================================
    통계 (월별 · 상반기 · 하반기 · 연간)
    ========================================================= */
+/* ---------- 대시보드: 올해 교육 현황 (통계 자료로 그림) ---------- */
+function renderDash() {
+  const f = S.dash || (S.dash = { 연도: S.init.currentYear, 지회: '' });
+  view().innerHTML = `<div class="row" style="align-items:flex-end;margin-bottom:6px"><div><h2 style="margin:0">교육 대시보드</h2>
+      <p class="sub" style="margin:4px 0 0">${isAdmin() ? '지회별 교육 현황을 한눈에 봅니다.' : '우리 지회의 올해 교육 현황입니다.'} 수업일 기준이며 보고 제출 여부와 관계없이 지금까지 입력된 값입니다.</p></div>
+      <span class="spacer"></span><select id="dy" style="width:auto">${yearOptions(f.연도, false)}</select>
+      ${isAdmin() ? `<select id="dc" style="width:auto">${chapterOptions(f.지회, '전체 지회')}</select>` : ''}</div>
+    <div id="dashBody"><p class="sub">불러오는 중…</p></div>`;
+  $('#dy').onchange = () => { f.연도 = Number($('#dy').value); loadDash(); };
+  if (isAdmin()) $('#dc').onchange = () => { f.지회 = $('#dc').value; loadDash(); };
+  loadDash();
+}
+async function loadDash() {
+  const f = S.dash;
+  let d;
+  try { d = await call('getStats', f.연도, f.지회); } catch (e) { if (e.code !== 'AUTH' && $('#dashBody')) $('#dashBody').innerHTML = `<div class="notice err">${esc(e.message)}</div>`; return; }
+  if (S.tab !== 'dash' || !$('#dashBody')) return;
+  const mon = d.월별.전체, yr = d.기간별.연간.전체;
+  const hours = Math.round(mon.reduce((a, m) => a + (Number(m.강의시간) || 0), 0) * 10) / 10;
+  const now = new Date(), cm = f.연도 === now.getFullYear() ? now.getMonth() + 1 : 12, thisMon = (d.월상세 || {})[cm] || [];
+  const bar = (items, unit) => { const max = Math.max(1, ...items.map(i => i.v)); return items.map(i => `<div style="display:grid;grid-template-columns:44px 1fr 64px;gap:8px;align-items:center;font-size:13px;margin:4px 0">
+      <span>${esc(i.l)}</span><span style="background:#edf1f7;border-radius:4px;height:14px"><i style="display:block;height:100%;width:${Math.round(i.v / max * 100)}%;background:#4a78e0;border-radius:4px"></i></span><span class="r">${n(i.v)}${unit}</span></div>`).join(''); };
+  const card = (l, v, s) => `<div class="panel" style="margin:0"><div class="sub" style="margin:0">${l}</div><div style="font-size:22px;font-weight:700;margin:2px 0">${v}</div>${s ? `<div class="sub" style="margin:0">${s}</div>` : ''}</div>`;
+  const org = d.기간별.연간;
+  $('#dashBody').innerHTML = `
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin:10px 0 14px">
+      ${card('강좌 수', n(yr.건수) + '개', `${f.연도}년 (강좌 시작일 기준)`)}${card('실인원', n(yr.실인원) + '명', '중복 제외')}${card('연인원', n(yr.연인원) + '명', '출석 합계')}
+      ${card('강의 시간', n(hours) + '시간', '수업일 기준')}${card(`${cm}월 수업 강좌`, n(thisMon.length) + '개', `연인원 ${n(thisMon.reduce((a, x) => a + (x.연인원 || 0), 0))}명`)}</div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px">
+      <div class="panel" style="margin:0"><b>월별 연인원</b>${bar(mon.map(m => ({ l: m.월 + '월', v: m.연인원 })), '명')}</div>
+      <div class="panel" style="margin:0"><b>월별 강의 시간</b>${bar(mon.map(m => ({ l: m.월 + '월', v: Math.round((Number(m.강의시간) || 0) * 10) / 10 })), '시간')}</div>
+      ${showOrg() ? `<div class="panel" style="margin:0"><b>주관별 (연간)</b>
+        <table style="margin-top:6px;width:100%"><thead><tr><th>주관</th><th class="r">강좌</th><th class="r">실인원</th><th class="r">연인원</th></tr></thead><tbody>
+        ${['지회', '센터'].map(k => `<tr><td>${k} 주관</td><td class="r">${n(org[k].건수)}</td><td class="r">${n(org[k].실인원)}</td><td class="r">${n(org[k].연인원)}</td></tr>`).join('')}</tbody></table></div>` : ''}
+      ${d.지회별 ? `<div class="panel" style="margin:0"><b>지회별 연인원 (연간)</b>${bar(d.지회별.slice().sort((a, b) => b.연인원 - a.연인원).map(x => ({ l: x.지회명.replace(/(시|군)?지회$/, ''), v: x.연인원 })), '명')}</div>` : ''}
+    </div>
+    <div class="panel" style="margin-top:14px"><div class="row"><b>${cm}월 수업한 강좌</b><span class="spacer"></span>
+      <button class="btn small" id="dGoC">강좌 목록</button><button class="btn small" id="dGoS">통계 자세히</button></div>
+      <table style="margin-top:6px;width:100%"><thead><tr>${isAdmin() ? '<th>지회</th>' : ''}<th>강좌</th><th>강사</th><th class="r">회차</th><th class="r">강의시간</th><th class="r">연인원</th></tr></thead><tbody>
+      ${thisMon.map(x => `<tr>${isAdmin() ? `<td>${esc(x.지회명)}</td>` : ''}<td>${esc(x.강좌명)}</td><td>${esc(x.강사 || '')}</td><td class="r">${n(x.회차수)}</td><td class="r">${n(x.강의시간)}</td><td class="r">${n(x.연인원)}</td></tr>`).join('')
+        || `<tr><td colspan="${isAdmin() ? 6 : 5}" class="sub">${cm}월에 출석이 입력된 강좌가 없습니다.</td></tr>`}</tbody></table></div>
+    ${d.날짜추정 ? '<p class="sub">※ 출석 날짜가 없는 회차는 강좌 일정으로 날짜를 추정했습니다.</p>' : ''}`;
+  $('#dGoC').onclick = () => go('courses');
+  $('#dGoS').onclick = () => go('stats');
+}
+
 function renderStats() {
   const f = S.stats || (S.stats = { 연도: S.init.currentYear, 지회: '' });
   view().innerHTML = `<h2>통계</h2>

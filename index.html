@@ -411,10 +411,10 @@ function renderNav(){
   if (hasPerm('vehicle.')) h += topHtml('car:s:', '🚗', '차량운행일지', "go('car')");
   if (hasPerm('edu.')) {
     h += grpHtml('📚', '수어교육관리');
-    [['courses','강좌'],['apply','접수·강사비'],['report','보고·통계'],['files','자료요청']].forEach(function(k){ if (EDU_HIDE.indexOf(k[0]) < 0) h += kidHtml('edu', false, k[0], k[1]); });
+    [['dash','대시보드'],['courses','강좌'],['apply','접수·강사비'],['report','보고·통계'],['files','자료요청']].forEach(function(k){ if (EDU_HIDE.indexOf(k[0]) < 0) h += kidHtml('edu', false, k[0], k[1]); });
   }
   h += grpHtml('📝', '공문 작성') + kidHtml('doc', false, 'internal', '내부결재') + kidHtml('doc', false, 'coop', '업무협조전') + kidHtml('doc', false, 'send', '문서 발송') + kidHtml('doc', false, 'ledger', '공문 대장');
-  if (hasPerm('interp.')) h += grpHtml('🗣', '통역일지') + kidHtml('interp', false, 'log', '통역일지')
+  if (hasPerm('interp.')) h += grpHtml('🗣', '통역실적') + kidHtml('interp', false, 'dash', '대시보드') + kidHtml('interp', false, 'log', '통역일지')
     + (['interp.view', 'interp.report', 'interp.review'].some(function(k){ return (ME.perms || []).indexOf(k) >= 0; }) ? kidHtml('interp', false, 'stats', '통계') : '');
   h += grpHtml('📒', '업무일지') + kidHtml('worklog', false, 'write', '업무일지 작성') + kidHtml('worklog', false, 'print', '업무일지 인쇄');
   if (hasPerm('acct.')) h += grpHtml('💰', '회계') + kidHtml('acct', false, 'prop', '품의') + kidHtml('acct', false, 'res', '결의') + kidHtml('acct', false, 'cash', '출납부') + kidHtml('acct', false, 'ledger', '원장') + kidHtml('acct', false, 'bank', '통장 내역');
@@ -473,7 +473,7 @@ function wlDate(v){ try { $('frame').contentWindow.postMessage({ type: 'wl-date'
 function toggleSide(){ $('side').classList.toggle('open'); $('scrim').classList.toggle('open'); }
 function closeSide(){ $('side').classList.remove('open'); $('scrim').classList.remove('open'); }
 var SUBAPP = { doc:'/doc/', interp:'/interp/', worklog:'/worklog/', acct:'/acct/', cert:'/cert/', perf:'/perf/' };
-var SUBDEF = { doc:'internal', interp:'log', worklog:'write', acct:'prop', cert:'issue', perf:'dash' };   // 하위 메뉴 없이 열면 첫 메뉴
+var SUBDEF = { doc:'internal', interp:'dash', worklog:'write', acct:'prop', cert:'issue', perf:'dash' };   // 하위 메뉴 없이 열면 첫 메뉴
 function go(kind, tab, adm){
   tab = tab || ''; adm = !!adm; closeSide();
   if (SUBAPP[kind] && !tab) tab = SUBDEF[kind];
@@ -528,7 +528,7 @@ window.addEventListener('message', function(e){
   if (d.type === 'edu-ready' && e.source === $('frame').contentWindow) {
     FR.ready = true; $('floading').classList.add('hide');
     var hide = d.hide || []; if (hide.join() !== EDU_HIDE.join()) { EDU_HIDE = hide; renderNav(); }
-    if (FR.tab && FR.tab !== 'courses') e.source.postMessage({ type:'edu-go', tab:FR.tab }, location.origin);
+    if (FR.tab && FR.tab !== 'dash') e.source.postMessage({ type:'edu-go', tab:FR.tab }, location.origin);   // 교육은 대시보드로 시작
   }
   if (d.type === 'sub-ready' && e.source === $('frame').contentWindow && SUBAPP[subKind()]) {
     FR.ready = true; $('floading').classList.add('hide');

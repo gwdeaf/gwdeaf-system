@@ -26,6 +26,12 @@ input { width:100%; padding:14px; border:1.5px solid var(--line); border-radius:
 .center { text-align:center; padding:48px 20px; }
 .ok { font-size:56px; }
 .hp { position:absolute; left:-9999px; width:1px; height:1px; overflow:hidden; }
+.nlist { display:grid; grid-template-columns:repeat(auto-fill,minmax(96px,1fr)); gap:8px; max-height:300px; overflow:auto; margin-top:8px; padding:2px; }
+.nb { border:1.5px solid var(--line); background:#fff; border-radius:10px; padding:12px 6px; font:inherit; font-size:16px; font-weight:700; cursor:pointer; color:var(--ink); }
+.nb[aria-pressed="true"] { background:var(--pine); border-color:var(--pine); color:#fff; }
+.nb:disabled { background:#f1f3f2; color:#9aa59f; cursor:default; }
+.nb small { display:block; font-size:11px; font-weight:600; }
+.pick { margin-top:10px; padding:10px 12px; border-radius:10px; background:var(--pine-soft); color:var(--pine); font-weight:700; display:none; }
 </style>
 </head>
 <body>
@@ -63,7 +69,11 @@ function dead(msg) { $('#app').innerHTML = `<div class="center"><h2>출석할 �
   $('#app').innerHTML = head + `<div class="wrap">
     <div class="card"><div class="sess">${c.회차}회차 출석<small>${esc(c.수업일)}</small></div>
     <form id="f" autocomplete="off">
-      <label class="f" for="n">이름</label><input type="text" id="n" maxlength="30" required autocomplete="off">
+      <label class="f" for="nq">내 이름을 눌러 주세요</label>
+      ${(c.명단 || []).length > 12 ? '<input type="search" id="nq" placeholder="이름 찾기 (예: 김)" autocomplete="off">' : ''}
+      <div class="nlist" id="nl">${(c.명단 || []).map((x, i) => `<button type="button" class="nb" data-i="${i}" ${x.출석 ? 'disabled' : ''}>${esc(x.이름)}${x.출석 ? '<small>출석 완료</small>' : ''}</button>`).join('') || '<p class="hint">등록된 명단이 없습니다. 강사에게 말씀해 주세요.</p>'}</div>
+      <input type="hidden" id="n"><div class="pick" id="pk"></div>
+      <p class="hint" style="margin:6px 0 0">명단에 내 이름이 없으면 강사에게 말씀해 주세요.</p>
       <label class="f" for="p">연락처 뒤 4자리</label><input type="tel" id="p" inputmode="numeric" maxlength="4" pattern="[0-9]*" placeholder="예: 5678" autocomplete="off">
       <p class="hint" style="margin:4px 0 0">명단에 연락처가 없는 분은 비워 두세요.</p>
       <label class="f">자필 서명 <span class="hint" style="margin:0">(손가락으로 이름을 써 주세요)</span></label>
@@ -74,6 +84,15 @@ function dead(msg) { $('#app').innerHTML = `<div class="center"><h2>출석할 �
       <button class="btn" id="b">출석하기</button>
     </form></div>
     <p class="hint" style="text-align:center">한 휴대폰으로는 한 사람만 출석할 수 있습니다.<br>휴대폰이 없는 분은 강사에게 말씀해 주세요.</p></div>`;
+  const L = c.명단 || [];
+  document.querySelectorAll('#nl .nb').forEach(b => b.onclick = () => {
+    document.querySelectorAll('#nl .nb').forEach(x => x.setAttribute('aria-pressed', 'false'));
+    b.setAttribute('aria-pressed', 'true');
+    const x = L[+b.dataset.i]; $('#n').value = x.이름;
+    $('#pk').style.display = 'block'; $('#pk').textContent = '✔ ' + x.이름 + ' 님' + (x.같은이름 ? ' (같은 이름이 있어요. 연락처 뒤 4자리를 꼭 넣어 주세요)' : '');
+    $('#p').focus();
+  });
+  if ($('#nq')) $('#nq').oninput = () => { const q = $('#nq').value.replace(/\s+/g, ''); document.querySelectorAll('#nl .nb').forEach(b => { b.style.display = !q || L[+b.dataset.i].이름.replace(/\s+/g, '').includes(q) ? '' : 'none'; }); };
   const cv = $('#sg'), g = cv.getContext('2d'); let ink = 0, down = false;
   g.lineWidth = 5; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#111';
   const pt = e => { const r = cv.getBoundingClientRect(); return [(e.clientX - r.left) * cv.width / r.width, (e.clientY - r.top) * cv.height / r.height]; };
@@ -84,6 +103,7 @@ function dead(msg) { $('#app').innerHTML = `<div class="center"><h2>출석할 �
   $('#f').onsubmit = async ev => {
     ev.preventDefault();
     const b = $('#b'); b.disabled = true; $('#e').innerHTML = '';
+    if (!$('#n').value) { $('#e').innerHTML = '<div class="err">위 명단에서 내 이름을 눌러 주세요.</div>'; b.disabled = false; return; }
     if (ink < 8) { $('#e').innerHTML = '<div class="err">자필 서명을 해 주세요.</div>'; b.disabled = false; return; }
     const sm = document.createElement('canvas'); sm.width = 300; sm.height = 110; sm.getContext('2d').drawImage(cv, 0, 0, 300, 110);
     try {

@@ -58,7 +58,7 @@ const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const sb = supabase.createClient(SB_URL, SB_KEY);
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const SYS = {core:"관리", vehicle:"차량운행", edu:"수어교육", att:"근태", interp:"통역일지", acct:"회계", cert:"증서·증명", member:"회원관리"};
+const SYS = {core:"관리", vehicle:"차량운행", edu:"수어교육", att:"근태", interp:"통역일지", acct:"회계", cert:"증서·증명", member:"회원관리", perf:"사업실적"};
 const ROLE = {admin:"도협회 관리자", lead:"지회 담당", staff:"직원"};
 const ACT = {add_staff:"직원 등록", update_staff:"직원 정보 수정", enable_staff:"사용 재개", disable_staff:"사용 중지", grant:"권한 부여", revoke:"권한 해제",
              save_approval:"결재라인 저장", delete_approval:"결재라인 삭제", assign_lead:"지회 담당 지정", set_admin:"도협회 관리자 변경"};
@@ -175,6 +175,7 @@ function staffCard(s, mgr){
       : (ATTI && ATTI.sheet && s.active ? '<div class="full muted" style="font-size:12px">근태 직원목록에 같은 이름의 다른 직원이 있어 연결하지 못했습니다. 이름을 구분해 주세요.</div>' : '');
     return `<div class="card"><div class="grid">
       <div>${lb("이름")}<input id="e_name" value="${esc(s.name)}" placeholder="이름"></div>
+      <div>${lb("구글 이메일 (로그인 계정)")}<input id="e_email" type="email" value="${esc(s.email)}" ${s.email===me.email?"disabled":""}></div>
       <div>${lb("소속 구분")}<select id="e_org"><option value="">선택</option>${ORGS.map(o=>`<option ${o===org?"selected":""}>${o}</option>`).join("")}</select></div>
       <div>${lb("부서")}<input id="e_dept" value="${esc(s.dept)}" placeholder="부서"></div>
       <div>${lb("직급·직위")}<input id="e_pos" value="${esc(s.position)}" placeholder="직위"></div>
@@ -201,6 +202,12 @@ const val = id => ($("#"+id) ? $("#"+id).value.trim() : "");
 function addStaff(){ act("add_staff", {p_email:val("n_email"), p_name:val("n_name"), p_dept:val("n_dept"), p_position:val("n_pos")}, "등록했습니다.", async()=>{ await loadStaff(); render(); }); }
 async function saveEdit(id){
   try{
+    const cur = staff.find(x=>x.id===id);
+    if($("#e_email") && cur && val("e_email").toLowerCase() !== String(cur.email).toLowerCase()){
+      if(!confirm("로그인 이메일을 "+val("e_email")+" (으)로 바꿀까요?\n이전 이메일로는 더 이상 들어올 수 없습니다.")) return;
+      try{ await rpc("update_staff_email", {p_id:id, p_email:val("e_email")}); }
+      catch(e){ if(/update_staff_email/.test(e.message)) throw new Error("이메일을 고치려면 25번 SQL을 먼저 실행해 주세요."); throw e; }
+    }
     await rpc("update_staff", {p_id:id, p_name:val("e_name"), p_dept:val("e_dept"), p_position:val("e_pos")});
     const p = {org_type: val("e_org"), hire_date: val("e_hire")};
     if($("#e_arole")) p.att = {role:val("e_arole"), supervisor:val("e_asup"), annualLeave:val("e_aleave"), weeklyHours:val("e_aweek"), stdIn:val("e_ain"), stdOut:val("e_aout"),

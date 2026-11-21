@@ -499,7 +499,12 @@ window.addEventListener('message', function(e){
     FR.ready = true; $('floading').classList.add('hide');
     if (FR.tab !== FR.loadedGo) { FR.loadedGo = FR.tab; e.source.postMessage({ type:'att-go', tab:FR.tab }, location.origin); }
   }
-  if (d.type === 'att-punch') setPunch(d.today);
+  if (d.type === 'att-punch') {   // 출퇴근을 찍으면 위쪽 시각·버튼과 '오늘의 현황'을 바로 갱신
+    var t0 = PUNCH || {}, t1 = d.today || {}, k = function(t){ return [(t.in||{}).time, (t.out||{}).time, (t.trip||{}).time].join('|'); };
+    var changed = k(t0) !== k(t1);
+    setPunch(d.today);
+    if (changed) { clearTimeout(window._bdT); window._bdT = setTimeout(loadBoard, 400); }
+  }
   if (d.type === 'edu-ready' && e.source === $('frame').contentWindow) {
     FR.ready = true; $('floading').classList.add('hide');
     var hide = d.hide || []; if (hide.join() !== EDU_HIDE.join()) { EDU_HIDE = hide; renderNav(); }
@@ -558,7 +563,7 @@ function openPunch(){
   $('pframe').src = '/att/?embed=1&mode=staff&go=punch&t=' + Date.now();
   $('pmodal').classList.remove('hide');
 }
-function closePunch(){ $('pmodal').classList.add('hide'); $('pframe').src = 'about:blank'; loadPunch(); }
+function closePunch(){ $('pmodal').classList.add('hide'); $('pframe').src = 'about:blank'; loadPunch(); loadBoard(); }
 async function loadPunch(){
   if (!ATT || !ATT.staffName) return;
   try {

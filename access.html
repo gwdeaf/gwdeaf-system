@@ -128,7 +128,13 @@ async function go(t){
   }catch(e){ toast(e.message, true); }
   render();
 }
-async function loadStaff(){ staff = await rpc("list_staff"); }
+let ATTI = null;   // 근태 정보 (근태 [직원목록]) — 없으면 null
+async function loadStaff(){
+  staff = await rpc("list_staff");
+  try{ ATTI = await rpc("staff_att_list"); }catch(e){ ATTI = null; }
+}
+function attOf(s){ if(!ATTI || !ATTI.rows) return null; const e = String(s.email||"").toLowerCase(); return ATTI.rows.find(r=>r.email===e) || null; }
+const ORGS = ["도협회","지회","센터"];
 function permLabel(k){ const c = catalog.find(x=>x.system+"."+x.perm===k); return c ? c.label : k; }
 
 /* 내 권한 */
@@ -142,20 +148,48 @@ function meView(){
 /* 직원·권한 */
 function staffView(){
   const mgr = me.role==="admin" || me.role==="lead";
-  $("#body").innerHTML = `<div class="card"><h2>직원 등록</h2><div class="muted" style="margin-bottom:6px">업무용 구글 이메일로 등록하면, 그 직원이 구글 로그인으로 들어올 수 있습니다.</div>
+  $("#body").innerHTML = `<div class="card"><h2>직원 등록</h2><div class="muted" style="margin-bottom:6px">업무용 구글 이메일로 등록하면, 그 직원이 구글 로그인으로 들어올 수 있습니다. 직원 정보(소속 구분·입사일·근태 정보 포함)는 이 화면 한 곳에서 관리하며, 근태 관리에는 자동으로 반영됩니다. 퇴사한 직원은 <b>사용 중지</b>하세요(근태 기록은 남습니다).</div>
+    ${ATTI && !ATTI.sheet ? '<div class="muted" style="margin-bottom:6px">※ 근태를 한 번 열면(근태 / 휴가 관리) 근태 정보(역할·담당 선임·연차 등)도 여기서 입력할 수 있습니다.</div>' : ''}
     <div class="grid"><input id="n_email" class="full" placeholder="이메일 (예: name@도메인)" autocomplete="off"><input id="n_name" placeholder="이름"><input id="n_dept" placeholder="부서"><input id="n_pos" class="full" placeholder="직위">
     <button class="btn full" onclick="addStaff()">등록</button></div></div>
     ${staff.map(s=>staffCard(s, mgr)).join("") || '<div class="muted center">등록된 직원이 없습니다.</div>'}`;
 }
 function staffCard(s, mgr){
   const self = s.email === me.email, lead = s.role !== "staff", off = !s.active;
-  if(editId === s.id) return `<div class="card"><div class="grid"><input id="e_name" value="${esc(s.name)}" placeholder="이름"><input id="e_dept" value="${esc(s.dept)}" placeholder="부서"><input id="e_pos" class="full" value="${esc(s.position)}" placeholder="직위">
+  if(editId === s.id){
+    const a = attOf(s), lb = t => `<label class="muted" style="font-size:12px;display:block;margin-top:4px">${t}</label>`;
+    const org = s.org_type || (me.is_hq ? "도협회" : "");
+    const seniors = ATTI && ATTI.rows ? ATTI.rows.filter(r=>r.role==="선임" && r.email!==String(s.email).toLowerCase()).map(r=>r.name) : [];
+    if(a && a.supervisor && !seniors.includes(a.supervisor)) seniors.push(a.supervisor);
+    const attBox = a ? `<div class="full" style="margin-top:8px;padding-top:8px;border-top:1px dashed #d8dde6"><b>근태 정보</b> <span class="muted" style="font-size:12px">(근태 관리에서 쓰는 값)</span></div>
+      <div>${lb("역할")}<select id="e_arole"><option ${a.role!=="선임"?"selected":""}>일반</option><option ${a.role==="선임"?"selected":""}>선임</option></select></div>
+      <div>${lb("담당 선임 (시간외·대체휴무 승인자)")}<select id="e_asup"><option value="">(없음)</option>${seniors.map(n=>`<option ${n===a.supervisor?"selected":""}>${esc(n)}</option>`).join("")}</select></div>
+      <div>${lb("기본 연차 (일)")}<input id="e_aleave" inputmode="decimal" value="${esc(a.annualLeave)}"></div>
+      <div>${lb("주간 근무시간 (단축근무자만)")}<input id="e_aweek" inputmode="decimal" value="${esc(a.weeklyHours)}" placeholder="40"></div>
+      <div>${lb("출근 기준 시각")}<input id="e_ain" type="time" value="${esc(a.stdIn)}"></div>
+      <div>${lb("퇴근 기준 시각")}<input id="e_aout" type="time" value="${esc(a.stdOut)}"></div>
+      <div>${lb("시급 (원)")}<input id="e_ahour" inputmode="numeric" value="${esc(a.hourly==="0"?"":a.hourly)}"></div>
+      <div>${lb("연락처")}<input id="e_acontact" value="${esc(a.contact)}"></div>
+      <div>${lb("슬랙 ID (선임만)")}<input id="e_aslack" value="${esc(a.slackId)}" placeholder="U0…"></div>
+      <div>${lb("비고")}<input id="e_anote" value="${esc(a.note)}"></div>`
+      : (ATTI && ATTI.sheet && s.active ? '<div class="full muted" style="font-size:12px">근태 직원목록에 같은 이름의 다른 직원이 있어 연결하지 못했습니다. 이름을 구분해 주세요.</div>' : '');
+    return `<div class="card"><div class="grid">
+      <div>${lb("이름")}<input id="e_name" value="${esc(s.name)}" placeholder="이름"></div>
+      <div>${lb("소속 구분")}<select id="e_org"><option value="">선택</option>${ORGS.map(o=>`<option ${o===org?"selected":""}>${o}</option>`).join("")}</select></div>
+      <div>${lb("부서")}<input id="e_dept" value="${esc(s.dept)}" placeholder="부서"></div>
+      <div>${lb("직급·직위")}<input id="e_pos" value="${esc(s.position)}" placeholder="직위"></div>
+      <div class="full">${lb("입사일 (연차 산정 기준일)")}<input id="e_hire" type="date" value="${esc(s.hire_date||"")}"></div>
+      ${attBox}
+      <div class="full muted" style="font-size:12px">이름을 바꾸면 근태 직원목록의 이름도 바뀝니다. 이미 있는 휴가·시수 기록은 예전 이름으로 남으니 꼭 필요할 때만 바꾸세요.</div>
       <button class="btn" onclick="saveEdit(${s.id})">저장</button><button class="btn sub" onclick="editId=null;render()">취소</button></div></div>`;
+  }
   const groups = {}; catalog.forEach(c=>{ (groups[c.system] = groups[c.system] || []).push(c); });
   const panel = openId === s.id && !lead ? `<div class="perm">${Object.keys(groups).map(sys=>`<b>${SYS[sys]||sys}</b>${groups[sys].map(c=>{
       const k = c.system+"."+c.perm, on = s.grants.includes(k), dis = c.system==="core" && !mgr;
       return `<label><input type="checkbox" ${on?"checked":""} ${dis?"disabled":""} onchange="grant(${s.id},'${c.system}','${c.perm}',this.checked)">${esc(c.label)}</label>`; }).join("")}`).join("")}</div>` : "";
-  return `<div class="card ${off?"off":""}"><div class="st"><div><b>${esc(s.name)}</b> <span class="muted">${esc(s.position)} ${esc(s.dept)}</span>
+  const a = attOf(s);
+  return `<div class="card ${off?"off":""}"><div class="st"><div><b>${esc(s.name)}</b> <span class="muted">${esc(s.position)} ${esc(s.dept)}</span>${s.org_type?`<span class="badge g">${esc(s.org_type)}</span>`:""}${a&&a.role==="선임"?'<span class="badge o">선임</span>':""}
+      ${s.hire_date||(a&&a.supervisor)?`<div class="muted" style="font-size:12px">${s.hire_date?"입사 "+esc(s.hire_date):""}${a&&a.supervisor?(s.hire_date?" · ":"")+"담당 선임 "+esc(a.supervisor):""}</div>`:""}
       <span class="badge ${lead?"":"g"}">${ROLE[s.role]}</span>${off?'<span class="badge x">사용 중지</span>':""}${s.grants.includes("core.manage_staff")?'<span class="badge o">공동 관리자</span>':""}
       <div class="muted">${esc(s.email)}</div>${lead?'<div class="muted">담당자는 모든 권한을 가집니다.</div>':`<div class="muted">부여된 권한 ${s.grants.length}개</div>`}</div>
       <div class="row">${lead?"":`<button class="btn sub sm" onclick="openId=(openId===${s.id}?null:${s.id});render()">권한</button>`}
@@ -165,7 +199,17 @@ function staffCard(s, mgr){
 }
 const val = id => ($("#"+id) ? $("#"+id).value.trim() : "");
 function addStaff(){ act("add_staff", {p_email:val("n_email"), p_name:val("n_name"), p_dept:val("n_dept"), p_position:val("n_pos")}, "등록했습니다.", async()=>{ await loadStaff(); render(); }); }
-function saveEdit(id){ act("update_staff", {p_id:id, p_name:val("e_name"), p_dept:val("e_dept"), p_position:val("e_pos")}, "수정했습니다.", async()=>{ editId = null; await loadStaff(); render(); }); }
+async function saveEdit(id){
+  try{
+    await rpc("update_staff", {p_id:id, p_name:val("e_name"), p_dept:val("e_dept"), p_position:val("e_pos")});
+    const p = {org_type: val("e_org"), hire_date: val("e_hire")};
+    if($("#e_arole")) p.att = {role:val("e_arole"), supervisor:val("e_asup"), annualLeave:val("e_aleave"), weeklyHours:val("e_aweek"), stdIn:val("e_ain"), stdOut:val("e_aout"),
+      hourly:val("e_ahour"), contact:val("e_acontact"), slackId:val("e_aslack"), note:val("e_anote")};
+    try{ await rpc("staff_att_save", {p_id:id, p:p}); }
+    catch(e){ if(/staff_att_save/.test(e.message)) throw new Error("이름·부서·직위는 저장했습니다. 소속 구분·입사일·근태 정보를 저장하려면 23번 SQL을 실행해 주세요."); throw e; }
+    toast("수정했습니다."); editId = null; await loadStaff(); render();
+  }catch(e){ toast(e.message, true); }
+}
 function toggleActive(id, on){ if(!on && !confirm("이 직원의 사용을 중지할까요? 다음 접속부터 바로 막힙니다.")) return; act("set_staff_active", {p_id:id, p_active:on}, on?"사용을 재개했습니다.":"사용을 중지했습니다.", async()=>{ await loadStaff(); render(); }); }
 async function grant(id, sys, perm, on){
   try{ await rpc("set_grant", {p_id:id, p_system:sys, p_perm:perm, p_on:on}); const s = staff.find(x=>x.id===id), k = sys+"."+perm;

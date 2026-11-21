@@ -66,6 +66,9 @@ input,select{width:100%;padding:13px;border:1.5px solid #dcd8d1;border-radius:14
 .gsub summary i{font-style:normal;transition:transform .25s;color:#888}
 .gsub[open] summary i{transform:rotate(180deg)}
 .gsub p{margin-top:8px}
+.gsub.faq summary{font-size:calc(15px * var(--k))}   /* 관리자 도움말 질문: 본문과 비슷한 크기 */
+.gsub.faq summary b{font-weight:700}
+.gsub.faq p{font-size:calc(14px * var(--k));line-height:1.65;color:#444}
 .big label{font-size:calc(24px * var(--k));margin:26px 0 10px}
 .big h2{font-size:calc(26.67px * var(--k))}
 .big .lbl{font-size:calc(18px * var(--k))}
@@ -176,9 +179,9 @@ body.pc .tb{font-size:15px}
 body.pc .tb th{position:sticky;top:0;background:#fff}
 body.pc .fgrid{grid-template-columns:1fr 1fr 1fr}
 @media (min-width:1200px){ body.pc .main{font-size:16px} }
-.adm{display:grid;grid-template-columns:220px minmax(0,1fr);gap:18px;align-items:start}
-.side{display:flex;flex-direction:column;gap:10px;position:sticky;top:10px}
-.side button{text-align:left;padding:18px 16px;background:#f5f7fb;border:2px solid #e5e9f2;border-radius:12px;font-weight:700;font-size:calc(16px * var(--k))}
+.adm{display:flex;flex-direction:column;gap:14px}
+.side{display:flex;flex-wrap:wrap;gap:8px}   /* 관리자 메뉴: 위쪽 가로 탭 */
+.side button{padding:10px 16px;background:#f5f7fb;border:2px solid #e5e9f2;border-radius:10px;font-weight:700;font-size:calc(15px * var(--k));white-space:nowrap}
 .side button.on{background:#eaf0ff;border-color:#2f5bd6;color:#2f5bd6;font-weight:800}
 .cont{min-width:0}
 .sgset{margin-top:12px}
@@ -1137,7 +1140,7 @@ function adminFaqView(){
   ];
   return `<div class="card cfgcard">
   <div class="cfghead"><div><b class="cfgttl">❓ 도움말</b><div class="lbl cfgnote">궁금한 내용을 누르면 답이 펼쳐집니다.</div></div></div>
-  ${Q.map(([q,a])=>`<details class="gsub"><summary><b>${q}</b> <i>▾</i></summary><p>${a}</p></details>`).join("")}
+  ${Q.map(([q,a])=>`<details class="gsub faq"><summary><b>${q}</b> <i>▾</i></summary><p>${a}</p></details>`).join("")}
   </div>`;
 }
 function adminDel(kind,i){ adminDraft[kind].splice(i,1); render(); }

@@ -1,855 +1,302 @@
-<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>강원특별자치도농아인협회 업무 시스템</title>
-<link rel="icon" href="/logo.png">
-<style>
-:root{--bg:#f5f7fb;--card:#fff;--line:#e5e9f2;--text:#1f2937;--mute:#6b7280;--pri:#2f5bd6;--pri-soft:#eaf0ff;--ok:#12805c;--ok-soft:#e5f6ee;--warn:#b45309;--warn-soft:#fff4e0;--red:#c0392b;--red-soft:#fdecea}
-*{box-sizing:border-box}
-body{margin:0;font-family:-apple-system,"Noto Sans KR","Malgun Gothic",sans-serif;background:var(--bg);color:var(--text);font-size:15px}
-button{font-family:inherit;cursor:pointer}
-a{color:inherit;text-decoration:none}
-.hide{display:none!important}
-/* 로그인 */
-.center{min-height:100vh;display:flex;align-items:center;justify-content:center;padding:20px}
-.logincard{background:#fff;border:1px solid var(--line);border-radius:18px;padding:34px 28px;width:100%;max-width:380px;text-align:center;box-shadow:0 6px 24px rgba(31,41,55,.06)}
-.logo{width:56px;height:56px;border-radius:16px;background:var(--pri);color:#fff;display:flex;align-items:center;justify-content:center;font-size:1.6rem;margin:0 auto 14px}
-.logincard h1{font-size:1.2rem;margin:0 0 6px}
-.logincard p{color:var(--mute);font-size:.88rem;margin:0 0 22px;line-height:1.5}
-.gbtn{width:100%;padding:13px;border-radius:12px;border:1px solid var(--line);background:#fff;font-size:1rem;font-weight:700}
-.gbtn:hover{background:#f8fafc}
-.msg{margin-top:14px;font-size:.85rem;line-height:1.5;color:var(--red)}
-/* 앱 껍데기 */
-.shell{display:grid;grid-template-columns:232px 1fr;min-height:100vh}
-.side{background:#fff;border-right:1px solid var(--line);padding:20px 14px;display:flex;flex-direction:column;position:sticky;top:0;height:100vh}
-.brand{display:flex;align-items:center;gap:9px;padding:2px 6px 18px;font-weight:800;font-size:.8rem;letter-spacing:-.03em;line-height:1.3}
-.brand .logo{width:38px;height:38px;border-radius:11px;font-size:1.1rem;margin:0;flex:none;overflow:hidden}
-.brand .logo:has(img){background:none}
-.logo img{width:100%;height:100%;object-fit:contain;display:block}
-.nav{display:flex;flex-direction:column;gap:3px}
-.nav a,.nav .dis{display:flex;align-items:center;gap:10px;padding:11px 12px;border-radius:10px;font-weight:600;color:#374151}
-.nav a:hover{background:#f3f5fa}
-.nav a.on{background:var(--pri-soft);color:var(--pri)}
-.nav .dis{color:#a3aab8;cursor:default}
-.nav .sec{margin:14px 12px 4px;font-size:.75rem;font-weight:700;color:#8a93a5;letter-spacing:.04em}
-.nav .tag{margin-left:auto;font-size:.75rem;background:#eef0f5;color:#8a93a5;border-radius:6px;padding:2px 6px;font-weight:700}
-.nav .ic{width:22px;text-align:center}
-.grow{flex:1}
-.me{border-top:1px solid var(--line);padding:14px 6px 0;display:flex;align-items:center;gap:10px}
-.av{width:38px;height:38px;border-radius:50%;background:var(--pri-soft);color:var(--pri);font-weight:800;display:flex;align-items:center;justify-content:center;flex:none}
-.me .nm{font-weight:700;font-size:.92rem}
-.me .sub{color:var(--mute);font-size:.78rem;white-space:nowrap}
-.me button{margin-left:auto;white-space:nowrap;flex:none;border:1px solid var(--line);background:#fff;border-radius:8px;padding:6px 9px;font-size:.78rem;color:#4b5563}
-main{padding:28px 32px 48px;max-width:1120px;width:100%}
-.head{display:flex;align-items:flex-end;justify-content:space-between;flex-wrap:wrap;gap:10px;margin-bottom:20px}
-.head h2{margin:0;font-size:1.45rem}
-.head .date{color:var(--mute);font-size:.86rem;margin-bottom:4px}
-.chips{display:flex;gap:6px;flex-wrap:wrap}
-.chip{background:#fff;border:1px solid var(--line);border-radius:99px;padding:5px 12px;font-size:.8rem;color:#4b5563;font-weight:600}
-.chip.pri{background:var(--pri-soft);border-color:#d5e0ff;color:var(--pri)}
-.grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:18px;align-items:start}
-.col{display:flex;flex-direction:column;gap:18px;min-width:0}
-.mute{color:var(--mute);font-size:.8rem;font-weight:600}
-.card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(31,41,55,.04)}
-.ctitle{display:flex;align-items:center;justify-content:space-between;margin:0 0 14px;font-size:1.02rem;font-weight:800}
-.btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 13px;font-size:.84rem;font-weight:700;color:#374151}
-.btn:hover{background:#f6f8fc}
-.btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
-.btn.pri:hover{background:#2549b4}
-.btn.red{color:var(--red);border-color:#f0c9c4}
-.btn.sm{padding:4px 9px;font-size:.76rem}
-.empty{color:var(--mute);text-align:center;padding:26px 6px;font-size:.9rem}
-/* 공지 */
-.nt{border-top:1px solid var(--line)}
-.nt:first-child{border-top:0}
-.nth{display:flex;align-items:center;gap:9px;padding:13px 2px;cursor:pointer}
-.nth .t{flex:1;font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.nth .d{color:var(--mute);font-size:.8rem;flex:none}
-.badge{flex:none;font-size:.75rem;font-weight:800;border-radius:6px;padding:3px 7px}
-.b-imp{background:var(--red-soft);color:var(--red)}
-.b-all{background:var(--pri-soft);color:var(--pri)}
-.b-chap{background:#eef0f5;color:#6b7280}
-.ntb{padding:0 2px 14px;color:#374151;line-height:1.65;white-space:pre-wrap;word-break:break-word}
-.ntb .meta{display:flex;gap:8px;align-items:center;margin-top:10px;color:var(--mute);font-size:.8rem;white-space:normal}
-/* 내 근태 */
-.ring{display:flex;align-items:center;gap:16px;margin-bottom:14px}
-.ringsvg{flex:none}
-.big{font-size:1.9rem;font-weight:800;line-height:1}
-.big small{font-size:.9rem;font-weight:700;color:var(--mute)}
-.lab{color:var(--mute);font-size:.8rem;margin-top:4px}
-.rows{border-top:1px solid var(--line);margin-top:6px}
-.rows div{display:flex;justify-content:space-between;padding:10px 2px;border-bottom:1px solid var(--line);font-size:.9rem}
-.rows div:last-child{border-bottom:0}
-.rows b{font-weight:800}
-.note{background:var(--warn-soft);color:var(--warn);border-radius:10px;padding:11px 13px;font-size:.84rem;line-height:1.5}
-/* 관리 */
-.mgr{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
-.mbox{cursor:pointer;border:1px solid var(--line);border-radius:12px;padding:14px;display:block}
-.mbox:hover{background:#f8faff;border-color:#cfdcff}
-.mbox .n{font-size:1.4rem;font-weight:800}
-.mbox .l{color:var(--mute);font-size:.82rem;margin-top:3px}
-/* 모달 */
-.ov{position:fixed;inset:0;background:rgba(17,24,39,.4);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
-.modal{background:#fff;border-radius:16px;width:100%;max-width:520px;padding:22px;max-height:92vh;overflow:auto}
-.modal h3{margin:0 0 14px}
-.modal label{display:block;font-size:.82rem;font-weight:700;margin:12px 0 5px;color:#4b5563}
-.modal input[type=text],.modal textarea{width:100%;padding:10px 12px;border:1px solid var(--line);border-radius:10px;font:inherit}
-.modal textarea{min-height:150px;resize:vertical}
-.ck{display:flex;align-items:center;gap:7px;font-weight:600;margin-top:12px;font-size:.9rem}
-.mfoot{display:flex;justify-content:flex-end;gap:8px;margin-top:18px}
-.bsum{display:flex;gap:8px;margin-bottom:12px}
-.bs{flex:1;border-radius:12px;padding:11px 12px}
-.bs .n{font-size:1.5rem;font-weight:800;line-height:1.1}
-.bs .l{font-size:.78rem;font-weight:700;margin-top:3px}
-.bs.lv{background:var(--warn-soft);color:var(--warn)}
-.bs.tp{background:var(--pri-soft);color:var(--pri)}
-.bsec{font-size:.78rem;font-weight:800;color:var(--mute);margin:12px 0 4px}
-.stsum{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px}
-.stsum button{border:1px solid var(--line);background:#fff;border-radius:20px;padding:5px 11px;font-size:.8rem;font-weight:700;cursor:pointer;display:inline-flex;align-items:center;gap:5px;color:var(--text)}
-.stsum button.on{border-color:var(--text);box-shadow:inset 0 0 0 1px var(--text)}
-.stsum i{width:9px;height:9px;border-radius:50%;display:inline-block}
-.stgrid{display:flex;flex-wrap:wrap;gap:6px}
-.stp{border:0;border-radius:10px;padding:7px 11px;font-size:.88rem;font-weight:700;cursor:default;display:inline-flex;flex-direction:column;align-items:flex-start;line-height:1.25;min-width:72px}
-.stp small{font-size:.7rem;font-weight:600;opacity:.85}
-.st-in{background:#e3f6ec;color:#0f7a4f}
-.st-before{background:#f1f3f6;color:#6b7280}
-.st-out{background:#e8eefc;color:#2f5bd6}
-.st-leave{background:#fff1dc;color:#b45309}
-.st-trip{background:#f1e9fd;color:#7c3aed}
-.stp .late{color:#c0392b}
-.bp{display:flex;align-items:center;gap:8px;padding:8px 2px;border-top:1px solid var(--line);font-size:.9rem}
-.bp:first-of-type{border-top:0}
-.bp .nm{font-weight:700}
-.bp .sub{color:var(--mute);font-size:.78rem}
-.bp .tg{margin-left:auto;font-size:.74rem;font-weight:800;border-radius:6px;padding:3px 7px;white-space:nowrap}
-.tg.lv{background:var(--warn-soft);color:var(--warn)}
-.tg.tp{background:var(--pri-soft);color:var(--pri)}
-.bp .dt{display:block;color:var(--mute);font-size:.76rem;margin-top:1px}
-.mlogout{display:none}
-.toast{position:fixed;left:50%;bottom:24px;transform:translateX(-50%);background:#1f2937;color:#fff;padding:11px 18px;border-radius:10px;font-size:.88rem;z-index:99}
-/* 상단 바 · 왼쪽 메뉴(하위 메뉴 항상 표시) · 오른쪽 내용 */
-.shell{grid-template-columns:248px minmax(0,1fr)}
-.side{padding:16px 10px 12px;z-index:40}
-.nav{flex:1;min-height:0;overflow-y:auto;padding-right:2px}
-.nav .top{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;font-weight:700;color:#1f2937;cursor:pointer}
-.nav .top:hover{background:#f3f5fa}
-.nav .top.on{background:var(--pri-soft);color:var(--pri)}
-.nav .grp{display:flex;align-items:center;gap:10px;padding:12px 12px 4px;font-weight:800;color:#1f2937;font-size:.92rem}
-.nav .kid{display:block;padding:7px 12px 7px 44px;border-radius:9px;font-size:.85rem;font-weight:600;color:#4b5563;cursor:pointer}
-.nav .kid:hover{background:#f3f5fa}
-.nav .kid.on{background:var(--pri-soft);color:var(--pri);font-weight:700}
-.nav .kls{padding:8px 12px 2px 44px;font-size:.75rem;font-weight:800;color:#a3aab8;letter-spacing:.03em}
-.nav .sec{margin:14px 12px 2px;padding-top:12px;border-top:1px solid var(--line);font-size:.75rem;font-weight:800;color:#8a93a5;letter-spacing:.04em}
-/* 화면 높이에 맞춰 간격을 줄여, 스크롤 없이 한 화면에 보이게 */
-.grow{display:none}
-.nav{gap:1px;scrollbar-width:thin}
-.nav .top{padding:clamp(5px,1.1vh,10px) 12px}
-.nav .grp{padding:clamp(5px,1vh,12px) 12px 2px;font-size:clamp(.8rem,1.6vh,.92rem)}
-.nav .kid{padding:clamp(2px,.55vh,7px) 12px clamp(2px,.55vh,7px) 44px;font-size:clamp(.74rem,1.55vh,.85rem)}
-.nav .kls{padding:clamp(3px,.6vh,8px) 12px 1px 44px}
-.nav .sec{margin:clamp(6px,1vh,14px) 12px 2px;padding-top:clamp(5px,1vh,12px)}
-.brand{padding-bottom:clamp(6px,1.5vh,18px)}
-.content{display:flex;flex-direction:column;min-width:0;min-height:100vh}
-.topbar{position:sticky;top:0;z-index:30;display:flex;align-items:center;gap:12px;height:58px;padding:0 24px;background:rgba(245,247,251,.92);backdrop-filter:blur(6px);border-bottom:1px solid var(--line)}
-.menubtn{display:none;border:1px solid var(--line);background:#fff;border-radius:9px;width:38px;height:38px;font-size:1.1rem}
-.crumb{font-weight:800;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.crumb small{font-weight:600;color:var(--mute)}
-.wldate{display:flex;align-items:center;gap:6px;margin-left:8px;flex-shrink:0}.wldate.hide{display:none}.wldate input{border:1px solid var(--line);border-radius:8px;padding:5px 8px;font:inherit;font-size:.88rem;background:#fff}.wlst{font-size:.75rem;font-weight:700;color:var(--pri);background:var(--pri-soft);border-radius:20px;padding:3px 9px;white-space:nowrap}.wlst:empty{display:none}@media(max-width:600px){.wlst{display:none}.wldate input{padding:4px 5px;font-size:.8rem;max-width:128px}}
-.wltabs{display:flex;gap:2px;background:#eef2f8;border-radius:10px;padding:3px;margin-left:10px;flex-shrink:0}.wltabs.hide{display:none}.wltabs button{border:0;background:transparent;border-radius:8px;padding:6px 12px;font-size:.88rem;font-weight:700;color:var(--mute);cursor:pointer;white-space:nowrap}.wltabs button.on{background:#fff;color:var(--pri);box-shadow:0 1px 3px rgba(0,0,0,.08)}@media(max-width:600px){.wltabs button{padding:5px 8px;font-size:.8rem}}
-.tright{margin-left:auto;display:flex;align-items:center;gap:10px}
-.pstat{font-size:.82rem;color:var(--text);font-weight:600;white-space:nowrap;background:#f3f5f9;border-radius:10px;padding:7px 11px;cursor:pointer}
-.pstat b{color:var(--pri)}.pstat .tp{color:#7c3aed}.pstat .sl{display:none}
-.qgrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px}
-.qbtn{border:1px solid var(--line);background:#fff;border-radius:12px;padding:12px 10px;text-align:left;cursor:pointer;font-size:.9rem;font-weight:700;color:var(--text);display:flex;flex-direction:column;gap:3px;min-height:58px}
-.qbtn:hover{background:var(--pri-soft);border-color:var(--pri)}
-.qbtn .ic{font-size:1.15rem}.qbtn small{font-size:.72rem;color:var(--mute);font-weight:600}
-.tuser{cursor:pointer}
-.mylist{max-height:46vh;overflow:auto;border:1px solid var(--line);border-radius:10px;padding:4px 10px;margin-top:6px}
-.mylist label{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.9rem;cursor:pointer}
-.mylist label:last-child{border-bottom:0}.mylist small{color:var(--mute)}
-.myinfo .r{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:.9rem}.myinfo .r span:first-child{color:var(--mute)}
-.pbtn{border:0;border-radius:10px;padding:9px 15px;font-weight:800;font-size:.88rem;color:#fff;background:var(--pri);white-space:nowrap}
-.pbtn.in{background:#16a34a}.pbtn.out{background:#dc2626}.pbtn.done{background:#e5e9f2;color:#4b5563}
-.tuser{display:flex;align-items:center;gap:8px;font-weight:700;font-size:.9rem;white-space:nowrap}
-.av.sm{width:32px;height:32px;font-size:.85rem}
-#view-home{padding:26px 30px 48px;max-width:none;width:100%}
-#view-frame{flex:1;position:relative;min-height:0}
-#frame{position:absolute;inset:0;width:100%;height:100%;border:0;background:var(--bg)}
-.floading{position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:var(--bg);color:var(--mute);font-weight:600;z-index:2}
-.pbox{background:#fff;border-radius:16px;width:100%;max-width:480px;height:min(88vh,720px);display:flex;flex-direction:column;overflow:hidden}
-.phead{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;border-bottom:1px solid var(--line);font-size:1rem}
-.phead button{border:0;background:none;font-size:1.2rem;color:#6b7280}
-#pframe{flex:1;width:100%;border:0}
-.sch{display:flex;align-items:center;gap:10px;padding:10px 2px;border-top:1px solid var(--line);cursor:pointer}
-.sch:first-child{border-top:0}
-.sch .dt{flex:none;width:92px;font-weight:800;font-size:.86rem}
-.sch .dt small{display:block;color:var(--mute);font-weight:600;font-size:.75rem}
-#calbox .sch .dt{width:auto;min-width:118px;white-space:nowrap}#calbox .sch .dt small{display:inline;margin-left:4px}#calbox .sch .tx small{display:inline;margin-left:6px}#calbox .sch .tx small::before{content:'📍 '}
-#calbox a.sch{color:inherit;text-decoration:none}#calbox a.sch:hover .tx{color:var(--pri);text-decoration:underline}
-.calfoot{display:flex;justify-content:space-between;align-items:center;margin-top:10px;padding-top:10px;border-top:1px solid var(--line)}
-.calopen{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 12px;font-size:.85rem;font-weight:700;color:var(--text);text-decoration:none}.calopen:hover{background:var(--pri-soft);border-color:var(--pri);color:var(--pri)}
-.sch .tx{flex:1;min-width:0;font-size:.9rem;font-weight:600;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
-.sch .tx small{display:block;color:var(--mute);font-weight:500;font-size:.76rem;overflow:hidden;text-overflow:ellipsis}
-.sch .tg{flex:none;font-size:.75rem;font-weight:800;border-radius:6px;padding:3px 7px;white-space:nowrap}
-.prow{display:flex;justify-content:space-between;align-items:baseline;padding:10px 2px;border-bottom:1px solid var(--line);font-size:.92rem}
-.prow:last-of-type{border-bottom:0}
-.prow b.t{font-size:1.15rem;color:var(--pri)}
-.prow .why{display:block;color:var(--mute);font-size:.76rem;margin-top:2px}
-.scrim{display:none}
-/* 왼쪽 메뉴: 병풍식(평소엔 접힘, 눌러서 펼침) */
-.brand{cursor:pointer}
-.brand:hover{opacity:.85}
-.nav .grp{cursor:pointer;border-radius:10px;padding:clamp(7px,1.2vh,11px) 12px;margin-top:1px}
-.nav .grp:hover{background:#f3f5fa}
-.nav .grp .arw{margin-left:auto;font-size:.75rem;color:#8a93a5;transition:transform .15s}
-.nav .grp.open .arw{transform:rotate(90deg)}
-.nav .grp.open{background:#f7f9fe}
-.nav .gbody{display:none;padding-bottom:4px}
-.nav .grp.open+.gbody{display:block}
-/* 시수·대체시수 같은 중간 제목은 눈에 띄게 */
-.nav .kls{margin:clamp(4px,.8vh,9px) 6px 2px 34px;padding:clamp(3px,.6vh,6px) 10px;font-size:.8rem;font-weight:800;color:var(--pri);background:var(--pri-soft);border-radius:7px;letter-spacing:0}
-/* 대시보드 시스템 관리: 화면 아래쪽 전체 폭 */
-#mgr-card{margin-top:18px}
-@media(max-width:860px){
-  .shell{display:block}
-  .side{position:fixed;left:0;top:0;bottom:0;width:272px;height:auto;transform:translateX(-102%);transition:transform .2s;box-shadow:none;border-right:1px solid var(--line)}
-  .side.open{transform:none;box-shadow:0 0 40px rgba(0,0,0,.18)}
-  .scrim.open{display:block;position:fixed;inset:0;background:rgba(17,24,39,.35);z-index:35}
-  .menubtn{display:inline-block}
-  .topbar{padding:0 12px;gap:8px}
-  .tuser span{display:none}
-  .pstat{padding:6px 8px;font-size:.74rem}
-  .pstat .lb{display:none}.pstat .sl{display:inline}
-  .pbtn{padding:8px 11px;font-size:.82rem}
-  #view-home{padding:18px 14px 40px}
-  .grid{display:flex;flex-direction:column;gap:18px;align-items:stretch}
-  .col{display:contents}
-  .mbox{padding:11px}
-  .sch .dt{width:76px}
-  #calbox .sch .dt{min-width:104px}
-  .mbox .n{font-size:1.05rem}
-  .mbox .l{word-break:keep-all;font-size:.76rem}
-  .mlogout{display:none!important}
-  .mgr{grid-template-columns:1fr 1fr 1fr}
-}
-</style>
-<link rel="stylesheet" href="/ui.css?v=1">
-<style>.gbtn2{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 11px;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--text)}.gbtn2:hover{background:var(--pri-soft)}@media(max-width:600px){.gbtn2 .gtx{display:none}}</style>
-<script src="/guide.js?v=3"></script>
-</head>
-<body>
+/* =========================================================
+   업무 시스템 통합 사용 안내 (홈 화면 오른쪽 위 [📖 사용 안내])
+   - 내용 고치기: 아래 SECTIONS 배열만 고치면 됩니다.
+   - show: 이 사람에게 보여 줄지 (권한이 없는 시스템 설명은 숨김)
+   - 문장 규칙(모든 설명서 공통)
+     · 말투: "~합니다 / ~하세요" (존댓말, 짧은 문장)
+     · 버튼·메뉴 이름은 굵게: <b>저장</b>, 경로는 화살표: <b>직원·권한 관리 → 기관 정보</b>
+     · 차례가 있는 일은 번호 목록(ol), 나열은 점 목록(ul), 덧붙임은 회색 글씨(p.hint)
+     · 역할 이름: 도협회 관리자 / 지회 담당자 / 직원
+     · 지우는 기능이 없는 곳은 "삭제"가 아니라 "취소"라고 씁니다. (기록은 남음)
+   ========================================================= */
+(function () {
+  var has = function (ME, p) { return (ME.perms || []).some(function (x) { return x.indexOf(p) === 0; }); };
+  var isMgr = function (ME) { return ME.role === 'admin' || ME.role === 'lead' || !!ME.can_manage; };
+  var isAttAdm = function (ME) { return ME.role === 'admin' || ME.role === 'lead' || (ME.perms || []).indexOf('att.chapter_manage') >= 0; };
+  var ALL = function () { return true; };
 
-<!-- 로그인 -->
-<div id="login" class="center hide">
-  <div class="logincard">
-    <div class="logo">🏠</div>
-    <h1>강원특별자치도농아인협회<br>업무 시스템</h1>
-    <p>업무용 구글 계정(@gwdeaf.or.kr)으로<br>로그인하세요.</p>
-    <button class="gbtn" onclick="doLogin()">🔐 구글 계정으로 로그인</button>
-    <div id="loginmsg" class="msg"></div>
-  </div>
-</div>
+  var SECTIONS = [
+  { id: 'start', ic: '👋', t: '처음 시작하기', show: ALL, b:
+    '<ol>' +
+    '<li>업무 시스템 주소로 들어가 <b>구글 계정으로 로그인</b>을 누릅니다. 반드시 <b>업무용 구글 계정(@gwdeaf.or.kr)</b>을 고르세요.</li>' +
+    '<li>로그인하면 <b>홈</b> 화면이 나옵니다. 왼쪽 메뉴에서 쓰려는 시스템을 누르면 오른쪽에 그 화면이 열립니다.</li>' +
+    '<li>왼쪽 위 기관 이름을 누르면 언제든 홈으로 돌아옵니다.</li>' +
+    '</ol>' +
+    '<p><b>메뉴는 사람마다 다르게 보입니다.</b> 지회 담당자가 준 권한에 맞는 메뉴만 보입니다. 필요한 메뉴가 없으면 지회 담당자에게 권한을 요청하세요.</p>' +
+    '<p class="hint">휴대폰에서는 왼쪽 위 <b>☰</b>를 누르면 메뉴가 열립니다.</p>' +
+    '<p class="hint">이 안내는 화면 오른쪽 위 <b>📖 사용 안내</b>에서 언제든 다시 볼 수 있고, 낱말로 검색할 수 있습니다. 지금 보고 있는 화면의 설명이 먼저 열립니다.</p>' },
 
-<!-- 접근 불가 -->
-<div id="blocked" class="center hide">
-  <div class="logincard">
-    <div class="logo" style="background:#c0392b">!</div>
-    <h1 id="blk-t">접근할 수 없습니다</h1>
-    <p id="blk-d"></p>
-    <button class="gbtn" onclick="doLogout()">다른 계정으로 로그인</button>
-  </div>
-</div>
+  { id: 'home', ic: '🏠', t: '홈 화면 보는 법', show: ALL, b:
+    '<ul>' +
+    '<li><b>맨 위 오른쪽</b>: 오늘 출근·퇴근 시각과 <b>출근하기 / 퇴근하기</b> 버튼, <b>📖 사용 안내</b>, 내 이름(누르면 <b>마이페이지</b>)이 있습니다.</li>' +
+    '<li><b>📢 공지사항</b>: 지회 공지와 도협회의 전체 공지가 나옵니다. 지회 담당자는 <b>+ 공지 쓰기</b>로 공지를 올립니다.</li>' +
+    '<li><b>👥 오늘의 현황</b>: 직원별 오늘 상태(출근·출근 전·퇴근·휴가·출장)를 색으로 보여 줍니다. 위쪽 상태 버튼을 누르면 그 상태 직원만 보입니다.</li>' +
+    '<li><b>⭐ 자주 쓰는 메뉴</b>: 자주 쓰는 화면으로 바로 가는 버튼입니다. <b>편집</b>을 눌러 넣고 뺄 수 있습니다.</li>' +
+    '<li><b>🗓 내 근태</b>: 남은 연차 같은 내 근태 요약입니다. <b>근태 / 휴가 관리 →</b>를 누르면 근태 화면으로 갑니다.</li>' +
+    '<li><b>📅 일정</b>: 지회 구글 캘린더의 앞으로 2주 일정이 나옵니다. 휴가·출장을 신청하면 <b>[휴가] 이름</b>, <b>[출장] 이름</b>으로 캘린더에 자동으로 들어갑니다.</li>' +
+    '<li><b>🛠 시스템 관리</b>: 관리 권한이 있는 사람에게만 보이는 바로가기입니다.</li>' +
+    '</ul>' },
 
-<!-- 대시보드 -->
-<div id="app" class="shell hide">
-  <aside class="side" id="side">
-    <div class="brand" onclick="go('home')" title="홈으로"><div class="logo" id="brand-logo"><img src="/logo.png" alt="" onerror="this.parentNode.textContent='농'"></div><span class="tx" id="brand-tx">강원특별자치도농아인협회<br>업무 시스템</span></div>
-    <nav class="nav" id="nav"></nav>
-    <div class="grow"></div>
-    <div class="me">
-      <div class="av" id="me-av"></div>
-      <div class="info" style="cursor:pointer" onclick="openMy()" title="마이페이지"><div class="nm" id="me-nm"></div><div class="sub" id="me-sub"></div></div>
-      <button onclick="doLogout()">로그아웃</button>
-    </div>
-  </aside>
-  <div class="content">
-  <div class="topbar">
-    <button class="menubtn" onclick="toggleSide()">☰</button>
-    <div class="crumb" id="crumb">홈</div>
-    <div class="wltabs hide" id="wltabs"><button data-t="writer" class="on" onclick="wlTab('writer')">✍️ 일지 작성</button><button data-t="calendar" onclick="wlTab('calendar')">🗓️ 캘린더</button></div>
-    <div class="wldate hide" id="wldate"><input type="date" id="wl-date" onchange="wlDate(this.value)" title="작성일자"><span class="wlst" id="wl-st"></span></div>
-    <div class="tright">
-      <span class="pstat hide" id="pstat" onclick="openPunch()" title="출퇴근 기록"></span>
-      <button class="pbtn hide" id="pbtn" onclick="openPunch()">📍 출퇴근</button>
-      <button class="gbtn2" onclick="openGuide(ME, (CUR||'home').split(':')[0])" title="사용 안내">📖<span class="gtx"> 사용 안내</span></button>
-      <div class="tuser" onclick="openMy()" title="마이페이지"><div class="av sm" id="tb-av"></div><span id="tb-nm"></span></div>
-    </div>
-  </div>
-  <main id="view-home">
-    <div class="head">
-      <div><div class="date" id="today"></div><h2 id="hello"></h2></div>
-      <div class="chips"><span id="chips" style="display:contents"></span></div>
-    </div>
-    <div class="grid">
-      <div class="col">
-        <div class="card" style="order:1">
-          <div class="ctitle"><span>📢 공지사항</span><button class="btn pri hide" id="notice-add" onclick="openNotice()">+ 공지 쓰기</button></div>
-          <div id="notices"><div class="empty">불러오는 중…</div></div>
-        </div>
-        <div class="card" style="order:2">
-          <div class="ctitle"><span>👥 오늘의 현황</span><span class="mute" id="bd-date"></span></div>
-          <div id="board"><div class="empty">불러오는 중…</div></div>
-        </div>
-        <div class="card" style="order:3">
-          <div class="ctitle"><span>⭐ 자주 쓰는 메뉴</span><button class="btn" onclick="openMy('quick')">편집</button></div>
-          <div id="quick" class="qgrid"><div class="empty">불러오는 중…</div></div>
-        </div>
-      </div>
-      <div class="col">
-        <div class="card" style="order:0">
-          <div class="ctitle"><span>🗓 내 근태</span><button class="btn" onclick="go('att','leave')">근태 / 휴가 관리 →</button></div>
-          <div id="att"><div class="empty">불러오는 중…</div></div>
-        </div>
-        <div class="card" id="calcard" style="order:1">
-          <div class="ctitle"><span>📅 일정</span><span class="mute" id="calname">구글 캘린더</span></div>
-          <div id="calbox"><div class="empty">불러오는 중…</div></div>
-        </div>
-      </div>
-    </div>
-    <div class="card hide" id="mgr-card">
-      <div class="ctitle"><span>🛠 시스템 관리</span></div>
-      <div class="mgr" id="mgr"></div>
-    </div>
-  </main>
-  <div id="view-frame" class="hide">
-    <div class="floading" id="floading">불러오는 중…</div>
-    <iframe id="frame" title="내용" allow="geolocation"></iframe>
-  </div>
-  </div>
-  <div class="scrim" id="scrim" onclick="toggleSide()"></div>
-</div>
+  { id: 'my', ic: '👤', t: '마이페이지', show: ALL, b:
+    '<p>화면 오른쪽 위(또는 왼쪽 아래) <b>내 이름</b>을 누르면 마이페이지가 열립니다.</p>' +
+    '<ul>' +
+    '<li>내 이름·소속·부서·직위·구글 계정·역할을 확인합니다. 틀린 곳은 지회 담당자에게 수정을 요청하세요.</li>' +
+    '<li><b>⭐ 자주 쓰는 메뉴</b>: 홈 화면에 보일 버튼을 체크해서 <b>저장</b>합니다. <b>기본값으로</b>를 누르면 처음 상태로 돌아갑니다.</li>' +
+    '<li>설정은 내 계정에 저장되어 휴대폰·컴퓨터에서 똑같이 보입니다.</li>' +
+    '<li><b>내 서명 · 내 권한</b>, <b>내 근태현황</b>, <b>사용 안내</b>로 바로 갈 수 있습니다.</li>' +
+    '</ul>' },
 
-<div id="modal" class="ov hide"></div>
-<div id="pmodal" class="ov hide" onclick="if(event.target===this)closePunch()">
-  <div class="pbox"><div class="phead"><b>📍 출퇴근 기록</b><button onclick="closePunch()">✕</button></div>
-  <iframe id="pframe" title="출퇴근" allow="geolocation"></iframe></div>
-</div>
+  { id: 'punch', ic: '📍', t: '출퇴근 찍기', show: ALL, b:
+    '<ol>' +
+    '<li>화면 오른쪽 위 <b>🟢 출근하기</b> / <b>🔴 퇴근하기</b>를 누릅니다. 바로 왼쪽에 오늘 출근·퇴근 시각이 표시됩니다.</li>' +
+    '<li>휴대폰이 위치 사용을 물으면 <b>허용</b>을 누릅니다.</li>' +
+    '<li>근무지 가까이에서 기준 시각에 맞게 찍으면 바로 기록됩니다.</li>' +
+    '<li>근무지에서 멀거나, 늦게 출근했거나, 일찍 퇴근하면 <b>사유</b>를 고르거나 적어야 기록됩니다.</li>' +
+    '</ol>' +
+    '<ul>' +
+    '<li><b>출장</b> 중이면 <b>출장</b> 버튼으로 찍고 출장 사유를 적습니다. 출장 신청서가 없으면 지회 담당자에게 알림이 갑니다.</li>' +
+    '<li>허용 반경·지각 허용 시간·기준 시각은 도협회 또는 지회 담당자가 정합니다.</li>' +
+    '</ul>' +
+    '<p class="hint">잘못 찍었으면 지회 담당자에게 수정을 요청하세요. 고친 내용은 <b>근태수정이력</b>에 남습니다.</p>' },
 
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
-<script>
-var SB_URL  = 'https://uamlualqqcqmpdkprjfs.supabase.co';
-var SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhbWx1YWxxcWNxbXBka3ByamZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNjE0OTMsImV4cCI6MjExMDYzNzQ5M30._f4p4pfcKaYbmjKRXOPpkMo7Ydcc26oVVI6lRFYsLkY';
-var DOMAIN  = 'gwdeaf.or.kr';
-var FN_URL  = SB_URL + '/functions/v1/att';
-var sb = window.supabase.createClient(SB_URL, SB_ANON, { auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: true } });
-var ME = null, NOTICES = [];
+  { id: 'att', ic: '🏖', t: '휴가 · 시수 · 출장', show: ALL, b:
+    '<p><b>근태 / 휴가 관리</b></p>' +
+    '<ul>' +
+    '<li><b>내 근태현황</b>: 연차 부여·사용·남은 일수와 이번 해 사용 내역</li>' +
+    '<li><b>휴가 신청</b> · <b>시간외 신청</b> · <b>대체휴무 신청</b>: 날짜와 사유를 적고 <b>신청</b>을 누릅니다.</li>' +
+    '<li><b>연가 사용 계획서</b>: 연가 촉진 통지를 받으면 사용 계획을 적습니다.</li>' +
+    '<li><b>내 신청내역</b>: 신청 상태(대기·승인·반려)를 확인합니다. 아직 대기 중인 신청은 <b>취소</b>할 수 있습니다.</li>' +
+    '</ul>' +
+    '<p><b>시수</b>: <b>시수 입력</b>에서 날짜별 활동 시간을 적고, <b>내 시수 확인</b>에서 합계를 봅니다.</p>' +
+    '<p><b>대체시수</b>: 쉬는 날 일한 날은 <b>대체시수 발생일</b>에, 그 시간을 쓴 날은 <b>대체시수 입력</b>에 적고, <b>내 대체시수 확인</b>에서 봅니다.</p>' +
+    '<p><b>출퇴근 기록</b>: <b>월별 근태현황</b>에서 한 달 출퇴근 시각과 사유를 봅니다.</p>' +
+    '<p><b>출장 관리</b>: <b>출장 신청</b>에서 신청하면 바로 확정됩니다. <b>출장 내역</b>에서 신청서를 출력해 결재를 받고, 다녀온 뒤 복명서를 씁니다. 근태 관리자는 <b>출장대장</b>에서 전 직원 출장을 보고 엑셀로 받습니다.</p>' +
+    '<p class="hint">선임으로 지정된 직원에게는 <b>결재 / 승인 관리</b> 메뉴(신청 승인/반려, 시수 신청 현황, 대체시수 신청 현황)가 보입니다.</p>' },
 
-function $(id){ return document.getElementById(id); }
-function esc(s){ return String(s == null ? '' : s).replace(/[&<>"']/g, function(c){ return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]; }); }
-function show(id){ ['login','blocked','app'].forEach(function(x){ $(x).classList.toggle('hide', x !== id); }); }
-function toast(t){ var d = document.createElement('div'); d.className = 'toast'; d.textContent = t; document.body.appendChild(d); setTimeout(function(){ d.remove(); }, 2600); }
-function fmtDate(iso){ var d = new Date(iso); return d.toLocaleDateString('ko-KR', { timeZone:'Asia/Seoul', year:'numeric', month:'2-digit', day:'2-digit' }).replace(/\.\s*/g,'.').replace(/\.$/,''); }
-function num(n){ n = Number(n) || 0; return (Math.round(n * 10) / 10).toString(); }
+  { id: 'car', ic: '🚗', t: '차량운행일지', show: function (ME) { return has(ME, 'vehicle.'); }, b:
+    '<ol>' +
+    '<li>왼쪽 메뉴 <b>차량운행일지</b>에서 차량을 고릅니다. 운전자 이름은 로그인한 사람으로 자동으로 들어갑니다.</li>' +
+    '<li>출발할 때 <b>출발 계기판</b>·목적지를 적고 저장합니다.</li>' +
+    '<li>도착하면 같은 기록을 열어 <b>도착 계기판</b>·주유를 적고 저장합니다.</li>' +
+    '</ol>' +
+    '<p class="hint">차량 관리 권한이 있으면 <b>시스템 관리 → 차량 관리</b>에서 운행일지 수정, 인쇄(결재란), 정비기록, 차량·운전자 설정을 합니다. 자주 묻는 질문은 차량 관리의 <b>❓ 도움말</b>에 있습니다.</p>' },
 
-async function doLogin(){
-  $('loginmsg').textContent = '';
-  var r = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + '/', queryParams: { hd: DOMAIN, prompt: 'select_account' } } });
-  if (r.error) $('loginmsg').textContent = '로그인을 시작하지 못했습니다: ' + r.error.message;
-}
-async function doLogout(){ try { await sb.auth.signOut(); } catch(e){} location.href = '/'; }
+  { id: 'edu', ic: '📚', t: '수어교육관리', show: function (ME) { return has(ME, 'edu.'); }, b:
+    '<ul>' +
+    '<li><b>강좌</b>: 강좌 만들기, 수강생 등록, 출석 체크, 교육일지, 수료증</li>' +
+    '<li><b>접수·강사비</b>: 수강 접수 안내·포스터, 강사비 확인증</li>' +
+    '<li><b>보고·통계</b>: 분기별 실적 보고, 통계, 검색</li>' +
+    '<li><b>자료요청</b>: 도협회와 지회가 파일을 주고받고 공지를 봅니다.</li>' +
+    '</ul>' +
+    '<p class="hint">수어교육관리는 기능이 많아 <b>따로 자세한 설명서</b>가 있습니다. 수어교육관리 화면 오른쪽 위 <b>사용설명서</b>를 누르세요.</p>' +
+    '<p class="hint">도협회는 지회 강좌의 요약만 보고, 수강생 이름·연락처는 볼 수 없습니다.</p>' },
 
-async function start(){
-  var s = await sb.auth.getSession();
-  if (!s.data || !s.data.session) { show('login'); return; }
-  var r = await sb.rpc('whoami');
-  if (r.error) { show('blocked'); $('blk-t').textContent = '확인하지 못했습니다'; $('blk-d').textContent = r.error.message; return; }
-  var w = r.data;
-  if (!w || !w.ok) {
-    show('blocked');
-    var reason = w && w.reason, em = (w && w.email) || (s.data.session.user && s.data.session.user.email) || '';
-    var t = '등록되지 않은 계정입니다', d = esc(em) + ' 계정은 아직 등록되어 있지 않습니다.<br>지회 담당자에게 등록을 요청하세요.';
-    if (reason === 'inactive') { t = '사용이 중지된 계정입니다'; d = esc(em) + ' 계정은 사용이 중지되었습니다.<br>지회 담당자에게 문의하세요.'; }
-    if (reason === 'bad_domain') { t = '허용되지 않은 계정입니다'; d = '업무용 계정(@' + DOMAIN + ')으로 로그인하세요.<br>현재 계정: ' + esc(em); }
-    $('blk-t').textContent = t; $('blk-d').innerHTML = d; return;
-  }
-  ME = w; render(); show('app');
-  loadNotices(); loadAtt(); loadBoard(); loadQuick(); if (w.can_manage) loadMgr();
-  fromHash();
-}
+  { id: 'doc', ic: '📝', t: '공문 작성', show: ALL, b:
+    '<p>왼쪽 메뉴 <b>내부결재 · 업무협조전 · 문서 발송</b>을 누르면 그 종류의 문서만 보이고, <b>+ 새 ○○ 작성</b>으로 바로 씁니다. (문서 발송 = 외부로 보내는 공문)</p>' +
+    '<ol>' +
+    '<li><b>새 문서 작성</b>을 누르고 제목·수신·본문을 적습니다. 쓰다가 멈출 때는 <b>임시 저장</b>을 누릅니다.</li>' +
+    '<li><b>결재자 추가</b>로 결재선을 정하고 <b>기안하기</b>를 누르면 문서 번호가 붙습니다.</li>' +
+    '<li>결재자는 <b>결재할 문서</b>에서 내용을 보고 <b>승인 · 확인</b> 또는 <b>반려</b>를 누릅니다.</li>' +
+    '<li>결재가 끝나면 <b>인쇄 / PDF 저장</b> 또는 <b>📁 드라이브에 PDF 저장</b>을 누릅니다.</li>' +
+    '</ol>' +
+    '<ul>' +
+    '<li><b>내가 쓴 문서</b>: 내가 기안한 문서와 진행 상태</li>' +
+    '<li><b>공문 대장</b>: 결재가 끝난 내부결재·업무협조전·문서 발송을 한곳에서 봅니다. 종류를 고르면 그 종류만 보이고, <b>엑셀(CSV) 받기</b>·<b>구글 시트로 저장</b>도 됩니다.</li>' +
+    '</ul>' +
+    '<p class="hint">수기 서명 결재는 출력해서 서명한 뒤, 기안자나 지회 담당자가 <b>수기 서명 완료</b>를 누릅니다. 전자 서명 이미지는 <b>직원·권한 관리 → 내 서명</b>에서 등록합니다.</p>' },
 
-function isAttAdmin(){ return ME.role === 'admin' || ME.role === 'lead' || (ME.perms || []).indexOf('att.chapter_manage') >= 0; }
-function isVehAdmin(){ return (ME.perms || []).indexOf('vehicle.manage') >= 0; }
-function mgrExtra(){
-  return (isAttAdmin() ? '<a class="mbox" onclick="go(\'att\',\'dashboard\',true)"><div class="n">근태</div><div class="l">연차·휴가·출장·시수 관리</div></a>' : '')
-    + (isVehAdmin() ? '<a class="mbox" onclick="go(\'car\',\'\',true)"><div class="n">차량</div><div class="l">운행일지·정비·차량 설정</div></a>' : '');
-}
-function hasPerm(prefix){ return (ME.perms || []).some(function(p){ return p.indexOf(prefix) === 0; }); }
-var ORG = '강원특별자치도농아인협회';
-function chapLabel(){ var n = (ME.chapter_name || '').trim(); if (!n || ME.is_hq) return ''; return /지회$/.test(n) ? n : n + '지회'; }
+  { id: 'interp', ic: '🗣', t: '통역실적', show: function (ME) { return has(ME, 'interp.'); }, b:
+    '<ol>' +
+    '<li><b>일지 쓰기</b>에서 날짜·시간·구분·의뢰자·장소·통역내용 등을 적습니다.</li>' +
+    '<li><b>💾 통역일지 저장</b>을 누릅니다. 구글 시트가 연결되어 있으면 시트의 <b>통역</b> 탭에도 자동으로 적힙니다.</li>' +
+    '</ol>' +
+    '<ul>' +
+    '<li>자주 쓰는 내용은 <b>1번에 저장</b>~<b>3번에 저장</b>으로 즐겨찾기에 넣고, <b>⭐</b> 버튼으로 불러옵니다.</li>' +
+    '<li><b>내 기록</b>: 내가 쓴 일지를 기간으로 찾습니다.</li>' +
+    '<li><b>센터 전체 기록</b>: 조회 권한이 있는 사람만 보입니다.</li>' +
+    '</ul>' +
+    '<p><b>통계 · 도협회 보고</b> (왼쪽 메뉴 <b>통역실적 → 통계</b>)</p>' +
+    '<ul>' +
+    '<li>연월을 고르면 우리 센터의 총 건수·시간, 분야별·통역사별 실적, 실인원(의뢰자 중복 제외)·연인원(농인+청인)이 나옵니다.</li>' +
+    '<li>센터 담당자는 <b>📤 도협회 보고</b>를 누릅니다. 보고 당시 수치가 그대로 저장되고, 그 달 통역일지는 <b>잠깁니다</b>. 도협회가 검토하기 전에는 <b>보고 취소</b>할 수 있습니다.</li>' +
+    '<li>도협회가 <b>반려</b>하면 사유가 위에 보이고 잠금이 풀립니다. 고친 뒤 <b>재보고</b>합니다. <b>승인</b>되면 도협회 전체 통계에 들어갑니다.</li>' +
+    '<li>도협회는 같은 화면에서 <b>센터별 보고 현황</b>을 보고, 줄을 눌러 승인 또는 반려(사유 필수)합니다.</li>' +
+    '</ul>' +
+    '<p class="hint">시트 연결은 지회 담당자가 <b>직원·권한 관리 → 지회 설정</b>(도협회는 <b>지회 관리</b>)에서 합니다. 시트 공유에 서비스 계정을 <b>편집자</b>로 추가해야 합니다.</p>' },
 
-/* ── 왼쪽 메뉴 (하위 메뉴 항상 표시) · 오른쪽 내용 전환 ── */
-var EDU_HIDE = [], ATT = null, PUNCH = null, CUR = 'home:s:', FR = { key:'', ready:false, tab:'', loadedGo:'' };
-function mid(kind, adm, tab){ return kind + ':' + (adm ? 'a' : 's') + ':' + (tab || ''); }
-function kidHtml(kind, adm, tab, label){
-  return '<a class="kid" data-id="' + mid(kind, adm, tab) + '" data-lb="' + esc(label) + '" onclick="go(\'' + kind + '\',\'' + tab + '\',' + (adm ? 'true' : 'false') + ')">' + esc(label) + '</a>';
-}
-function topHtml(id, ic, label, call){ return '<a class="top" data-id="' + id + '" data-lb="' + esc(label) + '" onclick="' + call + '"><span class="ic">' + ic + '</span>' + esc(label) + '</a>'; }
-function grpHtml(ic, label){ return '<div class="grp"><span class="ic">' + ic + '</span>' + esc(label) + '</div>'; }
-function renderNav(){
-  var h = topHtml('home:s:', '🏠', '홈', "go('home')");
-  h += grpHtml('🏖', '근태 / 휴가 관리');
-  [['leave','내 근태현황'],['leave-apply','휴가 신청'],['overtime','시간외 신청'],['comp-apply','대체휴무 신청'],['promo','연가 사용 계획서'],['leavehist','내 신청내역']].forEach(function(k){ h += kidHtml('att', false, k[0], k[1]); });
-  h += '<div class="kls">시수</div>' + kidHtml('att', false, 'write', '시수 입력') + kidHtml('att', false, 'myrecord', '내 시수 확인');
-  h += '<div class="kls">대체시수</div>' + kidHtml('att', false, 'altwrite', '대체시수 발생일') + kidHtml('att', false, 'altuse', '대체시수 입력') + kidHtml('att', false, 'altrecord', '내 대체시수 확인');
-  h += '<div class="kls">출퇴근 기록</div>' + kidHtml('att', false, 'attend', '월별 근태현황');
-  if (ATT && ATT.staff && ATT.staff.role === '선임')   // 선임만 보임 (기존 '선임 확인' 권한 그대로)
-    h += grpHtml('✅', '결재 / 승인 관리') + kidHtml('att', false, 'senior:leavemgr', '신청 승인/반려') + kidHtml('att', false, 'senior:dashboard', '시수 신청 현황') + kidHtml('att', false, 'senior:altdashboard', '대체시수 신청 현황');
-  h += grpHtml('🚌', '출장 관리') + kidHtml('att', false, 'trip-apply', '출장 신청') + kidHtml('att', false, 'trip-hist', '출장 내역');
-  if (isAttAdmin()) h += kidHtml('att', true, 'trip', '출장대장');
-  if (hasPerm('vehicle.')) h += topHtml('car:s:', '🚗', '차량운행일지', "go('car')");
-  if (hasPerm('edu.')) {
-    h += grpHtml('📚', '수어교육관리');
-    [['dash','대시보드'],['courses','강좌'],['apply','접수·강사비'],['report','보고·통계'],['files','자료요청']].forEach(function(k){ if (EDU_HIDE.indexOf(k[0]) < 0) h += kidHtml('edu', false, k[0], k[1]); });
-  }
-  h += grpHtml('📝', '공문 작성') + kidHtml('doc', false, 'internal', '내부결재') + kidHtml('doc', false, 'coop', '업무협조전') + kidHtml('doc', false, 'send', '문서 발송') + kidHtml('doc', false, 'ledger', '공문 대장');
-  if (hasPerm('interp.')) h += grpHtml('🗣', '통역실적') + kidHtml('interp', false, 'dash', '대시보드') + kidHtml('interp', false, 'log', '통역일지')
-    + (['interp.view', 'interp.report', 'interp.review'].some(function(k){ return (ME.perms || []).indexOf(k) >= 0; }) ? kidHtml('interp', false, 'stats', '통계') : '');
-  h += grpHtml('📒', '업무일지') + kidHtml('worklog', false, 'write', '업무일지 작성') + kidHtml('worklog', false, 'print', '업무일지 인쇄');
-  if (hasPerm('acct.')) h += grpHtml('💰', '회계') + kidHtml('acct', false, 'prop', '품의') + kidHtml('acct', false, 'res', '결의') + kidHtml('acct', false, 'cash', '출납부') + kidHtml('acct', false, 'ledger', '원장') + kidHtml('acct', false, 'bank', '통장 내역');
-  if (hasPerm('cert.')) h += grpHtml('📜', '증서·증명 발급') + kidHtml('cert', false, 'issue', '증서·증명 발급') + kidHtml('cert', false, 'list', '발급 대장');
-  if (hasPerm('perf.')) {   // 사업실적 (회원명단은 회원관리와 같은 자료)
-    h += grpHtml('📈', '사업실적');
-    [['dash','대시보드'],['projects','사업관리'],['new','사업실적 등록'],['list','사업실적 목록'],['people','참여자 관리'],['reports','분기별 보고'],['stats','통계 및 분석']].forEach(function(k){ h += kidHtml('perf', false, k[0], k[1]); });
-    if (ME.is_hq && (ME.role === 'admin' || (ME.perms || []).indexOf('perf.review') >= 0)) h += kidHtml('perf', false, 'settings', '사업 분류');
-  }
-  if (hasPerm('member.')) h += topHtml('member:s:', '👥', '회원관리', "go('member')");
-  if (isAttAdmin() || isVehAdmin() || ME.can_manage) h += '<div class="sec">시스템 관리</div>';
-  if (isAttAdmin()) {   // 도협회·지회·센터 전 직원 근태 운영 (직원 등록·정보는 직원·권한 관리에서)
-    h += grpHtml('🛠', '근태 관리');
-    [['dashboard','대시보드'],['approval','신청 현황'],['attend','출퇴근 관리'],['annual','연차 관리'],['comp','대체휴무'],['promo','연가 촉진'],['notice','공지사항'],['settings','기관 설정']].forEach(function(k){ h += kidHtml('att', true, k[0], k[1]); });
-  }
-  if (isVehAdmin()) h += topHtml('car:a:', '🔧', '차량 관리', "go('car','',true)");
-  if (ME.can_manage) h += topHtml('access:s:', '🔑', '직원·권한 관리', "go('access')");
-  $('nav').innerHTML = h;
-  foldNav();
-  if (PREFS !== undefined && $('quick')) loadQuick();
-  markNav();
-}
-function openGrp(g){
-  document.querySelectorAll('#nav .grp.open').forEach(function(x){ if (x !== g) x.classList.remove('open'); });
-  if (g) g.classList.add('open');
-}
-function foldNav(){
-  var nav = $('nav'), cur = null, sec = '';
-  Array.prototype.slice.call(nav.children).forEach(function(el){
-    if (el.classList.contains('sec')) sec = el.textContent;
-    if ((el.classList.contains('grp') || el.classList.contains('top')) && sec) el.setAttribute('data-sec', sec);
-    if (el.classList.contains('grp')) {
-      cur = document.createElement('div'); cur.className = 'gbody'; nav.insertBefore(cur, el.nextSibling);
-      el.insertAdjacentHTML('beforeend', '<span class="arw">▸</span>');
-      el.onclick = function(){ if (el.classList.contains('open')) el.classList.remove('open'); else openGrp(el); };
-    } else if (el.classList.contains('top') || el.classList.contains('sec')) cur = null;
-    else if (cur) cur.appendChild(el);
-  });
-}
-function markNav(){
-  var lb = '홈', grp = '', sec = '';
-  document.querySelectorAll('#nav [data-id]').forEach(function(a){
-    var on = a.getAttribute('data-id') === CUR; a.classList.toggle('on', on);
-    if (on) { lb = a.getAttribute('data-lb'); var gb = a.closest('.gbody'), g = gb ? gb.previousElementSibling : null; grp = g ? (g.childNodes[1] ? g.childNodes[1].textContent : g.textContent) : ''; sec = (g || a).getAttribute('data-sec') || ''; if (g) openGrp(g); }
-  });
-  if (CUR === 'home:s:') openGrp(null);
-  var path = [sec, grp].filter(Boolean);   // 예: 시스템 관리 › 근태 관리 › 대시보드
-  $('crumb').innerHTML = path.length ? '<small>' + path.map(esc).join(' › ') + ' ›</small> ' + esc(lb) : esc(lb);
-  var wlw = CUR === 'worklog:s:write';
-  $('wltabs').classList.toggle('hide', !wlw);
-  if (!wlw) $('wldate').classList.add('hide');
-}
-function wlTab(t){ try { $('frame').contentWindow.postMessage({ type: 'wl-tab', tab: t }, location.origin); } catch(e){} wlMark(t); }
-function wlMark(t){ document.querySelectorAll('#wltabs button').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-t') === t); }); $('wldate').classList.toggle('hide', t !== 'writer' || CUR !== 'worklog:s:write'); }
-function wlDate(v){ try { $('frame').contentWindow.postMessage({ type: 'wl-date', date: v }, location.origin); } catch(e){} }
-function toggleSide(){ $('side').classList.toggle('open'); $('scrim').classList.toggle('open'); }
-function closeSide(){ $('side').classList.remove('open'); $('scrim').classList.remove('open'); }
-var SUBAPP = { doc:'/doc/', interp:'/interp/', worklog:'/worklog/', acct:'/acct/', cert:'/cert/', perf:'/perf/' };
-var SUBDEF = { doc:'internal', interp:'dash', worklog:'write', acct:'prop', cert:'issue', perf:'dash' };   // 하위 메뉴 없이 열면 첫 메뉴
-function go(kind, tab, adm){
-  tab = tab || ''; adm = !!adm; closeSide();
-  if (SUBAPP[kind] && !tab) tab = SUBDEF[kind];
-  if (kind === 'att' && !adm && tab === 'trip') tab = 'trip-apply';
-  if (kind === 'home') {
-    CUR = 'home:s:'; $('view-frame').classList.add('hide'); $('view-home').classList.remove('hide');
-    markNav(); try { history.replaceState(null, '', location.pathname); } catch(e){} window.scrollTo(0, 0); return;
-  }
-  CUR = mid(kind, adm, tab);
-  $('view-home').classList.add('hide'); $('view-frame').classList.remove('hide');
-  var key = kind + ':' + (adm ? 'a' : 's'), fr = $('frame');
-  if (kind === 'att' && FR.key === key && FR.ready) {
-    FR.tab = tab; fr.contentWindow.postMessage({ type:'att-go', tab:tab }, location.origin);
-  } else if (kind === 'edu' && FR.key === key) {
-    FR.tab = tab; if (FR.ready && tab) fr.contentWindow.postMessage({ type:'edu-go', tab:tab }, location.origin);
-  } else if (SUBAPP[kind] && FR.key === key) {   // 공문·통역·업무일지·회계·증서: 같은 화면 안에서 하위 메뉴로 이동
-    FR.tab = tab; if (FR.ready) fr.contentWindow.postMessage({ type:'sub-go', tab:tab }, location.origin);
-  } else if (FR.key === key && kind !== 'att') {
-    /* 같은 화면: 그대로 보여 줌 */
-  } else {
-    var url = SUBAPP[kind] ? SUBAPP[kind] + '?embed=1&go=' + encodeURIComponent(tab)
-      : kind === 'att' ? '/att/?embed=1&mode=' + (adm ? 'admin' : 'staff') + '&go=' + encodeURIComponent(tab)
-      : kind === 'car' ? '/car/?embed=1' + (adm ? '&admin=1' : '') : kind === 'edu' ? '/edu/?embed=1' : kind === 'doc' ? '/doc/?embed=1' : kind === 'interp' ? '/interp/?embed=1' : kind === 'worklog' ? '/worklog/?embed=1' : kind === 'acct' ? '/acct/?embed=1' : kind === 'cert' ? '/cert/?embed=1' : kind === 'member' ? '/member/?embed=1' : '/access.html?embed=1';
-    FR = { key:key, ready:false, tab:tab, loadedGo:tab };
-    $('floading').classList.remove('hide'); fr.src = url;
-  }
-  markNav();
-  try { history.replaceState(null, '', '#' + kind + (adm ? '-admin' : '') + (tab ? '/' + tab : '')); } catch(e){}
-}
-function fromHash(){
-  var m = /^#(att|car|edu|doc|interp|worklog|acct|cert|member|access)(-admin)?(?:\/(.+))?$/.exec(location.hash || ''); if (!m) return false;
-  if (m[1] === 'car' && !hasPerm('vehicle.')) return false;
-  if (m[1] === 'edu' && !hasPerm('edu.')) return false;
-  go(m[1], m[3] ? decodeURIComponent(m[3]) : '', !!m[2]); return true;
-}
-$('frame').addEventListener('load', function(){ if (FR.key && FR.key.indexOf('att') !== 0) $('floading').classList.add('hide'); });
-function subKind(){ return FR.key ? FR.key.split(':')[0] : ''; }
-window.addEventListener('message', function(e){
-  if (e.origin !== location.origin) return;
-  var d = e.data || {};
-  if (d.type === 'wl-view' && e.source === $('frame').contentWindow) { wlMark(d.view); if (d.date && document.activeElement !== $('wl-date')) $('wl-date').value = d.date; $('wl-st').textContent = d.status || ''; return; }
-  if (d.type === 'att-ready' && e.source === $('frame').contentWindow) {
-    FR.ready = true; $('floading').classList.add('hide');
-    if (FR.tab !== FR.loadedGo) { FR.loadedGo = FR.tab; e.source.postMessage({ type:'att-go', tab:FR.tab }, location.origin); }
-  }
-  if (d.type === 'att-punch') {   // 출퇴근을 찍으면 위쪽 시각·버튼과 '오늘의 현황'을 바로 갱신
-    var t0 = PUNCH || {}, t1 = d.today || {}, k = function(t){ return [(t.in||{}).time, (t.out||{}).time, (t.trip||{}).time].join('|'); };
-    var changed = k(t0) !== k(t1);
-    setPunch(d.today);
-    if (changed) { clearTimeout(window._bdT); window._bdT = setTimeout(loadBoard, 400); }
-  }
-  if (d.type === 'edu-ready' && e.source === $('frame').contentWindow) {
-    FR.ready = true; $('floading').classList.add('hide');
-    var hide = d.hide || []; if (hide.join() !== EDU_HIDE.join()) { EDU_HIDE = hide; renderNav(); }
-    if (FR.tab && FR.tab !== 'dash') e.source.postMessage({ type:'edu-go', tab:FR.tab }, location.origin);   // 교육은 대시보드로 시작
-  }
-  if (d.type === 'sub-ready' && e.source === $('frame').contentWindow && SUBAPP[subKind()]) {
-    FR.ready = true; $('floading').classList.add('hide');
-    if (FR.tab && FR.tab !== d.tab) e.source.postMessage({ type:'sub-go', tab:FR.tab }, location.origin);
-  }
-  if (d.type === 'sub-tab' && e.source === $('frame').contentWindow && SUBAPP[subKind()]) {   // 화면 안에서 이동해도 왼쪽 메뉴·위치 표시를 맞춤
-    var k = subKind(); if (!document.querySelector('#nav [data-id="' + mid(k, false, d.tab) + '"]')) return;
-    FR.tab = d.tab; CUR = mid(k, false, d.tab); markNav();
-    try { history.replaceState(null, '', '#' + k + '/' + d.tab); } catch(x){}
-  }
-  if (d.type === 'nav-go' && e.source === $('frame').contentWindow && d.kind) { go(d.kind, d.tab || '', !!d.adm); return; }
-  if (d.type === 'edu-tab' && e.source === $('frame').contentWindow && FR.key === 'edu:s') {
-    if (!document.querySelector('#nav [data-id="' + mid('edu', false, d.tab) + '"]')) return;
-    FR.tab = d.tab; CUR = mid('edu', false, d.tab); markNav();
-    try { history.replaceState(null, '', '#edu/' + d.tab); } catch(x){}
-  }
-});
+  { id: 'worklog', ic: '📒', t: '업무일지', show: ALL, b:
+    '<ol>' +
+    '<li>작성일을 고르고 <b>업무 · 외근 · 통화</b> 중 하나를 고른 뒤 내용을 적고 <b>계획 추가</b>를 누릅니다.</li>' +
+    '<li>끝난 일은 체크합니다. 체크를 풀면 다시 계획으로 돌아갑니다.</li>' +
+    '<li><b>업무일지 저장</b>을 누릅니다.</li>' +
+    '</ol>' +
+    '<p><b>업무일지 인쇄</b>(왼쪽 메뉴): 월별 또는 기간(하루도 가능)을 고르면 결재란 표지와 업무일지를 출력 모양 그대로 미리 보고 <b>🖨️ 인쇄</b>합니다. 결재칸 이름·수신처도 이 화면에서 정합니다.</p>' +
+    '<p class="hint">업무일지는 <b>본인만</b> 볼 수 있습니다. 지회 담당자와 도협회도 볼 수 없습니다. 같은 구글 계정이면 휴대폰·컴퓨터에서 같은 내용이 보입니다.</p>' },
 
-/* ── 출퇴근: 상단 버튼 + 대시보드 카드 ── */
-function calFoot(more){   // 카드 아래: 구글 캘린더 열기 (일정 추가·수정은 구글 캘린더에서)
-  return '<div class="calfoot"><span class="mute">' + esc(more || '일정을 누르면 구글 캘린더에서 열립니다') + '</span>'
-    + '<a class="calopen" href="https://calendar.google.com/calendar/r" target="_blank" rel="noopener">📅 구글 캘린더 열기 ↗</a></div>';
-}
-function seoulToday(){ return new Date().toLocaleDateString('sv-SE', { timeZone:'Asia/Seoul' }); }
-function dRange(a, b){ return !b || a === b ? md(a) : md(a) + '~' + md(b); }
-async function loadCal(){
-  var card = $('calcard'); if (!card) return;
-  try {
-    var s = await sb.auth.getSession(); var tok = s.data && s.data.session && s.data.session.access_token;
-    var from = seoulToday(), t = new Date(from + 'T00:00:00'); t.setDate(t.getDate() + 14);
-    var to = t.toISOString().slice(0, 10);
-    var r = await fetch(SB_URL + '/functions/v1/gdrive', { method:'POST', headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + tok, 'apikey': SB_ANON },
-      body: JSON.stringify({ action:'calList', from: from, to: to }) });
-    var j = await r.json();
-    if (!j || !j.ok) {   // 캘린더가 연결되지 않은 지회: 안내만 표시
-      $('calname').textContent = '구글 캘린더';
-      $('calbox').innerHTML = '<div class="empty" style="padding:14px 6px">아직 우리 지회 구글 캘린더가 연결되지 않았습니다.'
-        + (ME.role === 'admin' || ME.role === 'lead' ? '<br><a href="#" onclick="go(\'access\');return false">직원·권한 관리 → 드라이브 연결</a>에서 캘린더를 연결하세요.' : '<br>지회 담당자에게 연결을 요청하세요.') + '</div>';
-      return;
-    }
-    card.classList.remove('hide'); $('calname').textContent = j.calendar_name || '구글 캘린더';
-    var PAL = ['#3b6fd4','#d9534f','#2e9d6a','#e08a1e','#8a5bd0','#1aa0b8','#c2487f','#7a8a2a'], multi = (j.cals || []).length > 1, cidx = {};
-    (j.cals || []).forEach(function(c, i){ cidx[c.ci] = PAL[i % PAL.length]; });
-    var legend = multi ? '<div class="mute" style="display:flex;flex-wrap:wrap;gap:4px 12px;padding-bottom:6px">' + j.cals.map(function(c){ return '<span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + cidx[c.ci] + ';margin-right:4px"></i>' + esc(c.name) + '</span>'; }).join('') + '</div>' : '';
-    var fail = (j.failed && j.failed.length) ? '<div class="note" style="margin-bottom:8px">⚠️ 일정을 불러오지 못한 캘린더: ' + j.failed.map(esc).join(', ') + '</div>' : '';
-    legend = fail + legend;
-    var wd = '일월화수목금토', items = (j.items || []).map(function(x){
-      var sd = String(x.start).slice(0, 10), ed = String(x.end || x.start).slice(0, 10), tm = x.allDay ? '' : String(x.start).slice(11, 16);
-      return { s: sd, e: ed, title: x.title, tm: tm, place: x.place, ci: x.ci, cal: x.cal, link: x.link };
-    }).filter(function(x){ return x.e >= from; });
-    if (!items.length) { $('calbox').innerHTML = legend + '<div class="empty">앞으로 14일간 일정이 없습니다.' + (multi ? '' : '<br><span class="mute">연결된 캘린더: ' + esc((j.cals || []).map(function(c){ return c.name; }).join(', ')) + '</span>') + '</div>' + calFoot(''); return; }
-    var shown = items.slice(0, 8);
-    $('calbox').innerHTML = legend + shown.map(function(x){
-      var d = new Date(x.s + 'T00:00:00'), ing = x.s <= from && x.e >= from;
-      var tag = x.link ? 'a href="' + esc(x.link) + '" target="_blank" rel="noopener" title="구글 캘린더에서 열기"' : 'div style="cursor:default"';
-      return '<' + tag + ' class="sch"><div class="dt">' + dRange(x.s, x.e) + '<small>' + (ing ? '진행 중' : '(' + wd.charAt(d.getDay()) + ')') + (x.tm ? ' ' + x.tm : '') + '</small></div>'
-        + '<div class="tx">' + (multi ? '<i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + cidx[x.ci] + ';margin-right:5px"></i>' : '') + esc(x.title) + (x.place ? '<small>' + esc(x.place) + '</small>' : '') + '</div></' + (x.link ? 'a' : 'div') + '>';
-    }).join('') + calFoot(items.length > shown.length ? '그 외 ' + (items.length - shown.length) + '건' : '');
-  } catch(e) { $('calbox').innerHTML = '<div class="note">캘린더를 불러오지 못했습니다. (' + esc(e.message || e) + ')</div>'; }
-}
-function openPunch(){
-  $('pframe').src = '/att/?embed=1&mode=staff&go=punch&t=' + Date.now();
-  $('pmodal').classList.remove('hide');
-}
-function closePunch(){ $('pmodal').classList.add('hide'); $('pframe').src = 'about:blank'; loadPunch(); loadBoard(); }
-async function loadPunch(){
-  if (!ATT || !ATT.staffName) return;
-  try {
-    var r = await attCall('getMyAttendToday', JSON.stringify({ auth: { name: ATT.staffName } }));
-    if (r && r.ok) { PUNCH_STD = r.std || null; setPunch(r.today); }
-  } catch(e) {}
-}
-var PUNCH_STD = null;
-function setPunch(t){
-  t = t || {}; PUNCH = t;
-  var b = $('pbtn'); b.classList.remove('hide', 'in', 'out', 'done');
-  if (!t.in) { b.textContent = '🟢 출근하기'; b.classList.add('in'); }
-  else if (!t.out) { b.textContent = '🔴 퇴근하기'; b.classList.add('out'); }
-  else { b.textContent = '✅ 출퇴근 완료'; b.classList.add('done'); }
-  var st = $('pstat'); st.classList.remove('hide');
-  st.innerHTML = '<span class="lb">출근 </span><b>' + (t.in ? esc(t.in.time) : '--:--') + '</b><span class="lb"> · 퇴근 </span><span class="sl"> / </span><b>' + (t.out ? esc(t.out.time) : '--:--') + '</b>' + (t.trip ? ' <span class="tp">· 출장</span>' : '');
-  st.title = '출퇴근 기록' + (PUNCH_STD ? ' (내 기준 시각 ' + PUNCH_STD.in + ' ~ ' + PUNCH_STD.out + ')' : '') + (t.in && t.in.reason ? '\n출근 사유: ' + t.in.reason : '') + (t.out && t.out.reason ? '\n퇴근 사유: ' + t.out.reason : '');
-  if (!$('punch')) return;
-  var row = function(label, x, color){
-    if (!x) return '<div class="prow"><span>' + label + '</span><span class="mute">아직 기록 없음</span></div>';
-    return '<div class="prow"><span>' + label + '</span><span style="text-align:right"><b class="t"' + (color ? ' style="color:' + color + '"' : '') + '>' + esc(x.time) + '</b>'
-      + (x.reason ? '<span class="why">사유: ' + esc(x.reason) + '</span>' : '') + '</span></div>';
+  { id: 'acct', ic: '💰', t: '회계', show: function (ME) { return has(ME, 'acct.'); }, b:
+    '<p><b>순서: 품의 작성·인쇄 → 결의 작성·인쇄·수기 결재 → 결재완료 표시 → 출납부·원장·통장 내역·예산 반영</b></p>' +
+    '<ol>' +
+    '<li><b>새 품의</b>에서 사업명·기간·목·재원(자금원천)·금액·거래처를 적고 저장합니다. 재원을 고르면 <b>남은 예산</b>이 보입니다.</li>' +
+    '<li>품의를 열어 <b>🖨 품의서 인쇄</b>로 출력합니다. 품의는 저장하면 바로 결의에 쓸 수 있습니다. (결재완료 표시 없음)</li>' +
+    '<li>돈을 쓸 때 <b>새 결의</b>(또는 품의 화면의 <b>이 품의로 결의 쓰기</b>)에서 품의를 고르면 내용·금액·거래처를 가져옵니다. 실제 금액이 다르면 고쳐서 저장합니다.</li>' +
+    '<li><b>🖨 결의서 인쇄</b> → 수기 결재 → <b>결재완료 표시</b>를 누르면 <b>출납부·원장·통장 내역</b>과 <b>예산 현황</b>에 반영됩니다.</li>' +
+    '</ol>' +
+    '<ul>' +
+    '<li>출납부·잔고·예산 집행에는 <b>결재완료 표시된 결의만</b> 들어갑니다. 출납부는 날짜순으로 잔액을 계산합니다.</li>' +
+    '<li>결의 날짜는 회계연도와 다른 해(예: 전년도 12월)도 입력할 수 있습니다.</li>' +
+    '<li>품의 금액·예산을 넘거나 통장 잔액이 모자라면 <b>경고</b>가 나옵니다. 확인 후 그대로 저장할 수 있습니다.</li>' +'<li>결의를 쓴 품의는 고칠 수 없습니다. 고치려면 결의를 먼저 취소하세요.</li>' +
+    '<li><b>출납부</b>: 날짜순 수입·지출·잔액 / <b>원장</b>: 목(예산 과목)별 집계와 내역 / <b>통장 내역</b>: 통장·재원별 잔고와 입출금</li>' +
+    '<li><b>예산 현황</b>: 재원별 예산·품의·집행·결재 대기·남은 예산·집행률</li>' +
+    '<li>잘못 쓴 문서는 지우지 않고 <b>취소</b>합니다. 모든 저장·결재완료 표시·취소는 기록에 남습니다.</li>' +
+    '</ul>' +
+    '<p class="hint">지회 담당자는 <b>설정</b>에서 회계연도, 목, 자금원천, 통장, <b>재원별 예산</b>, <b>인쇄 결재란</b>(예: 담당,사무국장,지회장)을 먼저 등록하세요. 연말에는 <b>통장 내역</b>의 <b>이월 초안 만들기</b>로 다음 해 시작 잔액을 만듭니다.</p>' +
+    '<p class="hint">결의의 결재완료 표시는 작성자 본인이나 <b>회계 결재</b> 권한이 있는 사람이 할 수 있습니다. 권한: <b>회계 조회</b>(보기만) / <b>회계 작성</b> / <b>회계 결재</b>.</p>' },
+
+  { id: 'cert', ic: '📜', t: '증서·증명 발급', show: function (ME) { return has(ME, 'cert.'); }, b:
+    '<ol>' +
+    '<li><b>증서·증명 발급</b>에서 증명서 종류를 고릅니다. 내 부서와 모든 부서용 증명서만 보입니다.</li>' +
+    '<li>받는 사람 이름과 칸을 채우고, 아래 <b>미리보기</b>를 확인합니다. 회원용 증명서는 회원 이름을 고르면 생년월일 등이 자동으로 채워집니다.</li>' +
+    '<li><b>발급하기</b>를 누르면 발급번호(예: 제2026-0001호)가 붙고 인쇄 화면이 열립니다. <b>🖨 인쇄 / PDF 저장</b>을 누릅니다.</li>' +
+    '</ol>' +
+    '<ul>' +
+    '<li><b>발급 대장</b>: 증명서별로 나뉘어 나옵니다. 위쪽 증명서 이름을 누르면 그 증명서 대장만 보이고, <b>🖨 대장 인쇄</b>·<b>엑셀(CSV) 받기</b>도 그 증명서만 나옵니다. 줄을 누르면 다시 인쇄할 수 있습니다.</li>' +
+    '<li>잘못 발급했으면 <b>발급 취소</b>를 누르고 사유를 적습니다. 취소해도 대장에는 남습니다.</li>' +
+    '</ul>' +
+    '<p class="hint">지회 담당자는 <b>증명서 설정</b>에서 부서별 증명서와 본문 양식을 만듭니다. 본문에 <b>{입사일}</b>처럼 중괄호로 쓴 말은 발급할 때 입력칸이 되고, <b>{이름} {발급일} {기관명} {발급번호}</b>는 자동으로 채워집니다. 직인·주소·전화는 <b>기관 정보</b>에 등록한 것이 들어갑니다.</p>' },
+
+  { id: 'perf', ic: '📈', t: '사업실적', show: function (ME) { return has(ME, 'perf.'); }, b:
+    '<ol>' +
+    '<li><b>사업관리</b>에서 사업(이름·분류·기간·계획 횟수)을 한 번 등록합니다.</li>' +
+    '<li>사업을 할 때마다 <b>사업실적 등록</b>에서 사업을 고르고 실시일·장소·내용을 적은 뒤, <b>회원명단에서 참여자를 체크</b>합니다. 회원이 아닌 사람은 아래에 직접 입력합니다.</li>' +
+    '<li><b>저장</b>하면 대시보드·통계·회원별 참여 이력에 바로 반영됩니다.</li>' +
+    '</ol>' +
+    '<ul>' +
+    '<li>회원명단은 <b>회원관리</b>와 같은 자료입니다. 새 회원은 회원관리에서 등록하세요.</li>' +
+    '<li><b>연인원</b> = 회차별 참여자 수를 모두 더한 값, <b>실인원</b> = 중복을 뺀 인원(회원은 한 사람으로, 비회원은 한 줄을 한 사람으로 셈)</li>' +
+    '<li><b>사업실적 목록</b>: 기간별 실적, 엑셀용 CSV 받기 / <b>참여자 관리</b>: 참여 기록의 비고·빼기, 회원 이름을 누르면 참여 이력</li>' +
+    '<li><b>분기별 보고</b>: 분기 실적이 자동으로 모입니다. 확인 후 <b>도협회 제출</b>을 누르면 그 분기 실적은 잠깁니다. 도협회 검토 전에는 <b>제출 취소</b>할 수 있고, 반려되면 고쳐서 다시 제출합니다.</li>' +
+    '<li>도협회는 같은 화면에서 지회별 제출 현황을 보고 <b>검토 시작 · 승인 · 반려(사유 필수)</b>합니다. 통계는 숫자만 보고 지회 참여자 명단은 보지 않습니다.</li>' +
+    '</ul>' +
+    '<p class="hint">권한: 사업실적 조회 / 실적 입력 / 사업 등록·분기 보고 제출 / 보고 검토(도협회) — 직원·권한 관리에서 줍니다.</p>' },
+  { id: 'member', ic: '👥', t: '회원관리', show: function (ME) { return has(ME, 'member.') || (ME.is_hq && isMgr(ME)); }, b:
+    '<ul>' +
+    '<li><b>회원명단</b>: 이름·연락처·회원번호로 찾고, 상태(활동·휴회·탈퇴)로 거릅니다. <b>+ 회원 등록</b>으로 새 회원을 넣습니다.</li>' +
+    '<li>회원을 누르면 상세 정보와 <b>입회비·회비 납부</b> 기록이 나옵니다. 종류·연도·금액·납부일을 적고 <b>납부 기록</b>을 누릅니다.</li>' +
+    '<li><b>회비 내역</b>: 연도별 납부 목록과 합계</li>' +
+    '<li><b>미납자</b>: 활동 회원 중 그해 회비 납부 기록이 없는 사람</li>' +
+    '<li><b>명단 가져오기</b>: 엑셀에서 제목 줄까지 복사해 붙여넣으면 한 번에 등록합니다. 이름과 연락처가 같은 회원이 이미 있으면 건너뜁니다.</li>' +
+    '</ul>' +
+    '<p class="hint">주민등록번호는 적지 마세요. 잘못 적은 납부 기록은 지우지 않고 <b>취소</b>합니다.</p>' +
+    '<p class="hint">도협회는 <b>지회별 요약</b>에서 인원과 납부 합계만 보고, 지회 회원 명단은 볼 수 없습니다.</p>' },
+
+  { id: 'manager', ic: '🔑', t: '지회 담당자가 처음 할 일', show: isMgr, b:
+    '<ol>' +
+    '<li><b>직원·권한 관리 → 직원·권한</b>: 직원의 구글 계정·이름·부서·직위를 등록하고, <b>수정</b>에서 소속 구분(도협회·지회·센터)·입사일·근태 정보(역할·담당 선임·기본 연차·근무시간·출퇴근 기준 시각)를 넣습니다. 근태 관리에는 자동으로 반영됩니다.</li>' +
+    '<li>직원마다 필요한 <b>권한</b>을 체크합니다. (차량운행, 수어교육, 통역일지, 회계, 증명서, 회원관리 등)</li>' +
+    '<li><b>결재라인</b>: 부서별 근태 결재자를 정합니다.</li>' +
+    '<li><b>기관 정보</b>: 전화번호·주소와 <b>직인</b> 이미지를 등록합니다. 수료증·증명서·공문에 들어갑니다.</li>' +
+    '<li><b>지회 설정</b>(지회 담당자) / <b>지회 관리</b>(도협회): 드라이브 폴더·공용 캘린더·통역 시트 연결. 도협회는 같은 화면에서 지회를 펼쳐 <b>담당자 지정</b>도 합니다.</li>' +
+    '<li>쓰는 시스템마다 설정을 마칩니다: 근태 <b>기관 설정</b>(근무지·기준 시각), 회계 <b>설정</b>, <b>증명서 설정</b>, 공문 <b>번호 설정</b>.</li>' +
+    '</ol>' +
+    '<p class="hint">지회 담당자는 자기 지회의 모든 권한을 자동으로 가집니다. 직원을 빼거나 사용을 멈추는 것도 <b>직원·권한 관리</b>에서 합니다. 바꾼 내용은 <b>변경 기록</b>에 남습니다.</p>' },
+
+  { id: 'attadmin', ic: '🛠', t: '근태 관리', show: isAttAdm, b:
+    '<ul>' +
+    '<li><b>대시보드</b>: 오늘 출근·휴가·출장 현황</li>' +
+    '<li><b>신청 현황</b>: 휴가·시간외·대체휴무 신청을 승인하거나 반려합니다.</li>' +
+    '<li><b>출퇴근 관리</b>: 출퇴근 기록을 확인하고 고칩니다. 고친 내용은 기록에 남습니다.</li>' +
+    '<li><b>연차 관리</b> · <b>대체휴무</b> · <b>연가 촉진</b>: 연차 부여, 연가 사용 촉진 통지</li>' +
+    '<li><b>공지사항</b> · 전 직원 출장은 <b>출장 관리 → 출장대장</b></li>' +
+    '<li>직원 등록·퇴사·기본 정보·입사일·근태 정보(선임, 기준 출퇴근 시각 등)는 <b>직원·권한 관리</b> 한 곳에서 합니다.</li>' +
+    '<li><b>기관 설정</b>: 근무지 주소와 좌표, 허용 반경, 기본 출근·퇴근 시각</li>' +
+    '</ul>' +
+    '<p class="hint">회색으로 잠긴 칸은 <b>도협회 공통 설정</b>이라 지회에서 바꿀 수 없습니다.</p>' },
+
+  { id: 'hq', ic: '🏛', t: '도협회 관리자', show: function (ME) { return ME.role === 'admin'; }, b:
+    '<ul>' +
+    '<li><b>직원·권한 관리 → 지회 관리</b>: 지회를 펼쳐 담당자를 지정하고, 드라이브·캘린더·통역 시트도 같은 화면에서 연결합니다.</li>' +
+    '<li><b>근태 공통 설정</b>(근태 기관 설정 화면): 허용 반경, 지각·조퇴 허용 시간, 기본 출퇴근 시각을 정하면 모든 지회에 똑같이 적용됩니다. 비워 두면 지회별 설정을 씁니다.</li>' +
+    '<li><b>전체 지회 공지</b>: 공지를 쓸 때 <b>전체 지회에 보이는 공지</b>를 체크합니다.</li>' +
+    '<li>수어교육·회원은 지회별 <b>요약</b>만 보입니다. 지회의 개인정보(수강생·회원 명단, 업무일지, 회계)는 볼 수 없습니다.</li>' +
+    '</ul>' },
+
+  { id: 'terms', ic: '📖', t: '용어 설명', show: ALL, b:
+    '<ul>' +
+    '<li><b>도협회 관리자</b>: 모든 지회의 담당자를 지정하고 공통 설정을 정하는 사람</li>' +
+    '<li><b>지회 담당자</b>: 자기 지회의 직원·권한·설정을 관리하는 사람 (지회마다 1명, 공동 관리자를 둘 수 있음)</li>' +
+    '<li><b>직원</b>: 받은 권한에 맞는 메뉴만 쓰는 사람</li>' +
+    '<li><b>권한</b>: 메뉴를 쓸 수 있는 자격. 지회 담당자가 <b>직원·권한 관리</b>에서 줍니다.</li>' +
+    '<li><b>결재 / 승인</b>: 공문·회계는 <b>결재</b>, 휴가·시간외 신청은 <b>승인·반려</b>라고 합니다.</li>' +
+    '<li><b>취소</b>: 기록을 지우지 않고 "취소" 표시만 합니다. 취소한 기록도 대장에 남습니다.</li>' +
+    '<li><b>삭제</b>: 기록을 완전히 지웁니다. 되돌릴 수 없습니다.</li>' +
+    '<li><b>엑셀(CSV) 받기</b>: 목록을 엑셀에서 열 수 있는 파일로 내려받습니다.</li>' +
+    '<li><b>인쇄 / PDF 저장</b>: 인쇄 창에서 프린터 대신 <b>PDF로 저장</b>을 고르면 파일로 저장됩니다.</li>' +
+    '</ul>' },
+
+  { id: 'faq', ic: '❓', t: '이럴 땐 어떻게 하나요?', show: ALL, b:
+    '<ul>' +
+    '<li><b>"등록되지 않은 계정"이라고 나와요</b>: 업무용 구글 계정(@gwdeaf.or.kr)으로 로그인했는지 확인하세요. 맞다면 지회 담당자에게 직원 등록을 요청하세요.</li>' +
+    '<li><b>메뉴가 안 보여요</b>: 그 시스템 권한이 없는 것입니다. 지회 담당자에게 권한을 요청하세요.</li>' +
+    '<li><b>"권한이 없습니다"라고 나와요</b>: 보기 권한만 있고 쓰기·결재 권한은 없는 경우입니다. 지회 담당자에게 문의하세요.</li>' +
+    '<li><b>출퇴근 위치가 이상하게 나와요</b>: 휴대폰의 위치 서비스를 켜고, 브라우저에 위치 사용을 허용했는지 확인하세요. 실내에서는 몇십 m 차이가 날 수 있습니다.</li>' +
+    '<li><b>화면이 안 바뀌어요</b>: 새로고침(컴퓨터는 F5, 휴대폰은 화면을 아래로 당기기)을 해 보세요.</li>' +
+    '<li><b>인쇄하면 빈 쪽이 나와요</b>: 인쇄 창에서 용지 <b>A4</b>, 배율 <b>100%</b>, 여백 <b>기본값</b>을 고르고 미리보기를 확인하세요.</li>' +
+    '<li><b>엑셀 파일이 안 받아져요</b>: 브라우저의 다운로드 차단을 확인하고, 안 되면 크롬으로 시도해 보세요.</li>' +
+    '</ul>' }
+  ];
+
+  var KIND = { home: 'home', att: 'att', car: 'car', edu: 'edu', doc: 'doc', interp: 'interp', worklog: 'worklog', acct: 'acct', cert: 'cert', member: 'member', access: 'manager' };
+
+  var css = '#gdBack{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px}' +
+    '#gdBox{background:#fff;border-radius:14px;width:min(920px,100%);height:min(86vh,760px);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.25)}' +
+    '#gdHead{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid #e5e9f2}' +
+    '#gdHead h2{margin:0;font-size:18px;flex:1}#gdHead input{flex:0 1 260px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px}' +
+    '#gdHead button{border:1px solid #e5e9f2;background:#fff;border-radius:8px;padding:7px 12px;font-size:14px;cursor:pointer}' +
+    '#gdMain{flex:1;display:flex;min-height:0}#gdList{width:220px;border-right:1px solid #e5e9f2;overflow:auto;padding:8px}' +
+    '#gdList a{display:block;padding:8px 10px;border-radius:8px;color:#1f2937;text-decoration:none;font-size:14px;cursor:pointer}' +
+    '#gdList a:hover{background:#f1f5f9}#gdList a.on{background:#eaf0ff;color:#2f5bd6;font-weight:700}' +
+    '#gdBody{flex:1;overflow:auto;padding:18px 22px;font-size:15px;line-height:1.75;color:#1f2937}' +
+    '#gdBody h3{margin:0 0 10px;font-size:18px}#gdBody ol,#gdBody ul{padding-left:22px;margin:8px 0}#gdBody li{margin:4px 0}' +
+    '#gdBody p{margin:8px 0}#gdBody .hint{color:#64748b;font-size:14px}#gdBody mark{background:#fff3a3}' +
+    '@media(max-width:700px){#gdMain{flex-direction:column}#gdList{width:auto;max-height:150px;border-right:0;border-bottom:1px solid #e5e9f2;display:flex;flex-wrap:wrap;gap:4px}#gdList a{padding:6px 9px;font-size:13px}#gdHead input{flex:1 1 120px}}';
+
+  var cur = 'start', list = [];
+  function el(id) { return document.getElementById(id); }
+  function strip(h) { return h.replace(/<[^>]+>/g, ' '); }
+  function drawList(q) {
+    var shown = q ? list.filter(function (s) { return (s.t + ' ' + strip(s.b)).indexOf(q) >= 0; }) : list;
+    el('gdList').innerHTML = shown.length ? shown.map(function (s) {
+      return '<a data-id="' + s.id + '" class="' + (s.id === cur ? 'on' : '') + '">' + s.ic + ' ' + s.t + '</a>';
+    }).join('') : '<div style="padding:10px;color:#64748b;font-size:14px">찾는 내용이 없습니다.</div>';
+    Array.prototype.forEach.call(el('gdList').querySelectorAll('a'), function (a) { a.onclick = function () { show(a.dataset.id, q); }; });
+    if (q && shown.length && !shown.some(function (s) { return s.id === cur; })) show(shown[0].id, q);
+  }
+  function show(id, q) {
+    var s = list.filter(function (x) { return x.id === id; })[0] || list[0]; cur = s.id;
+    var b = s.b;
+    if (q) b = b.replace(/>([^<]+)</g, function (m, t) { return '>' + t.split(q).join('<mark>' + q + '</mark>') + '<'; });
+    el('gdBody').innerHTML = '<h3>' + s.ic + ' ' + s.t + '</h3>' + b;
+    el('gdBody').scrollTop = 0;
+    Array.prototype.forEach.call(el('gdList').querySelectorAll('a'), function (a) { a.classList.toggle('on', a.dataset.id === cur); });
+  }
+  function close() { var b = el('gdBack'); if (b) b.remove(); document.removeEventListener('keydown', onKey); }
+  function onKey(e) { if (e.key === 'Escape') close(); }
+
+  window.openGuide = function (ME, kind) {
+    ME = ME || {};
+    list = SECTIONS.filter(function (s) { try { return s.show(ME); } catch (e) { return false; } });
+    if (!el('gdStyle')) { var st = document.createElement('style'); st.id = 'gdStyle'; st.textContent = css; document.head.appendChild(st); }
+    close();
+    var w = document.createElement('div'); w.id = 'gdBack';
+    w.innerHTML = '<div id="gdBox" role="dialog" aria-label="사용 안내"><div id="gdHead"><h2>📖 사용 안내</h2>' +
+      '<input id="gdQ" type="search" placeholder="낱말 검색 (예: 권한, 인쇄)" autocomplete="off"><button id="gdX">닫기</button></div>' +
+      '<div id="gdMain"><nav id="gdList"></nav><div id="gdBody"></div></div></div>';
+    document.body.appendChild(w);
+    w.onclick = function (e) { if (e.target === w) close(); };
+    el('gdX').onclick = close;
+    el('gdQ').oninput = function () { drawList(this.value.trim()); };
+    document.addEventListener('keydown', onKey);
+    cur = KIND[kind] && list.some(function (s) { return s.id === KIND[kind]; }) ? KIND[kind] : 'start';
+    drawList(''); show(cur);
   };
-  $('punch').innerHTML = row('🟢 출근', t.in) + row('🔴 퇴근', t.out) + (t.trip ? row('🚗 출장', t.trip, '#1e40af') : '')
-    + (PUNCH_STD ? '<div class="mute" style="margin-top:8px">내 기준 시각 — 출근 ' + esc(PUNCH_STD.in) + ' · 퇴근 ' + esc(PUNCH_STD.out) + '</div>' : '');
-}
-function render(){
-  var cl = chapLabel();
-  $('brand-tx').innerHTML = ORG + '<br>' + (cl ? esc(cl) + ' ' : '') + '업무 시스템';
-  document.title = ORG + ' ' + (cl ? cl + ' ' : '') + '업무 시스템';
-  var name = ME.name || (ME.email || '').split('@')[0];
-  $('hello').textContent = '안녕하세요, ' + name + ' 님';
-  $('today').textContent = new Date().toLocaleDateString('ko-KR', { timeZone:'Asia/Seoul', year:'numeric', month:'long', day:'numeric', weekday:'long' });
-  $('me-av').textContent = name.charAt(0);
-  $('me-nm').textContent = name;
-  $('me-sub').textContent = ME.chapter_name + (ME.position ? ' · ' + ME.position : '');
-  var roleTxt = ME.role === 'admin' ? '도협회 관리자' : ME.role === 'lead' ? '지회 담당자' : (ME.can_manage ? '공동 관리자' : '');
-  $('chips').innerHTML = '<span class="chip pri">' + esc(ME.chapter_name) + '</span>' + (roleTxt ? '<span class="chip">' + roleTxt + '</span>' : '') + (ME.dept ? '<span class="chip">' + esc(ME.dept) + '</span>' : '');
-  $('tb-av').textContent = name.charAt(0); $('tb-nm').textContent = name;
-  renderNav();
-  try { var gk = 'guideSeen:' + (ME.email || ''); if (!localStorage.getItem(gk)) { localStorage.setItem(gk, '1'); setTimeout(function(){ openGuide(ME, 'home'); }, 600); } } catch(e){}
-  $('notice-add').classList.toggle('hide', !ME.can_manage);
-  var anyAdm = ME.can_manage || isAttAdmin() || isVehAdmin();
-  $('mgr-card').classList.toggle('hide', !anyAdm);
-  if (anyAdm && !ME.can_manage) $('mgr').innerHTML = mgrExtra();
-}
-
-/* ── 공지사항 ── */
-/* ── 자주 쓰는 메뉴 · 마이페이지 ── */
-var PREFS = null;
-var QUICK_DEFAULT = ['att:s:leave-apply', 'att:s:leave', 'att:s:trip-apply', 'att:s:write', 'car:s:', 'edu:s:courses', 'doc:s:internal', 'interp:s:log', 'worklog:s:write', 'acct:s:prop', 'cert:s:issue', 'member:s:'];
-var QUICK_OLD = { 'att:s:trip':'att:s:trip-apply', 'doc:s:':'doc:s:internal', 'interp:s:':'interp:s:log', 'worklog:s:':'worklog:s:write', 'acct:s:':'acct:s:prop', 'cert:s:':'cert:s:issue', 'att:a:trip':'att:a:trip' };   // 메뉴 개편 전에 저장한 항목
-function quickIds(){ return (Array.isArray(PREFS.quick) ? PREFS.quick : QUICK_DEFAULT).map(function(id){ return QUICK_OLD[id] || id; }); }
-function navItems(){   // 왼쪽 메뉴에 있는 항목 (권한에 맞게 보이는 것만)
-  var out = [];
-  document.querySelectorAll('#nav [data-id]').forEach(function(a){
-    var id = a.getAttribute('data-id'); if (id === 'home:s:') return;
-    var gb = a.closest('.gbody'), g = gb ? gb.previousElementSibling : null;
-    var grp = g ? (g.childNodes[1] ? g.childNodes[1].textContent : g.textContent).replace('▸', '').trim() : '';
-    var ic = a.querySelector('.ic') ? a.querySelector('.ic').textContent : (g && g.querySelector('.ic') ? g.querySelector('.ic').textContent : '•');
-    out.push({ id: id, label: a.getAttribute('data-lb'), grp: grp, ic: ic, el: a });
-  });
-  return out;
-}
-async function loadPrefs(){
-  if (PREFS) return PREFS;
-  try { var r = await sb.rpc('my_prefs_get'); PREFS = (r && !r.error && r.data) || {}; } catch(e) { PREFS = {}; }
-  return PREFS;
-}
-async function loadQuick(){
-  var box = $('quick'); if (!box) return;
-  await loadPrefs();
-  var items = navItems(), byId = {}; items.forEach(function(x){ byId[x.id] = x; });
-  var ids = quickIds();
-  var list = ids.map(function(id){ return byId[id]; }).filter(Boolean);
-  box.innerHTML = list.length ? list.map(function(x){
-    return '<button class="qbtn" onclick="quickGo(\'' + esc(x.id) + '\')"><span class="ic">' + esc(x.ic) + '</span>' + esc(x.label) + (x.grp ? '<small>' + esc(x.grp) + '</small>' : '') + '</button>';
-  }).join('') : '<div class="empty" style="grid-column:1/-1">자주 쓰는 메뉴가 없습니다. <b>편집</b>을 눌러 추가하세요.</div>';
-}
-function quickGo(id){ var a = document.querySelector('#nav [data-id="' + id + '"]'); if (a) a.click(); }
-async function openMy(focus){
-  await loadPrefs();
-  var items = navItems(), cur = quickIds();
-  var on = function(id){ return cur.indexOf(id) >= 0; };
-  var roleTxt = ME.role === 'admin' ? '도협회 관리자' : ME.role === 'lead' ? '지회 담당자' : (ME.can_manage ? '공동 관리자' : '직원');
-  var R = function(k, v){ return '<div class="r"><span>' + k + '</span><span>' + esc(v || '-') + '</span></div>'; };
-  $('modal').innerHTML = '<div class="modal" style="max-width:560px"><h3>👤 마이페이지</h3>'
-    + '<div class="myinfo">' + R('이름', ME.name) + R('소속', ME.chapter_name) + R('부서', ME.dept) + R('직위', ME.position) + R('구글 계정', ME.email) + R('역할', roleTxt) + '</div>'
-    + '<p class="mute" style="font-size:.8rem;margin:6px 0 0">이름·부서·직위가 틀리면 지회 담당자에게 수정을 요청하세요. (직원·권한 관리)</p>'
-    + '<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:12px">'
-    + '<button class="btn" onclick="closeModal();go(\'access\')">✍️ 내 서명 · 🔐 내 권한</button>'
-    + '<button class="btn" onclick="closeModal();go(\'att\',\'leave\')">🗓 내 근태 현황</button>'
-    + '<button class="btn" onclick="closeModal();openGuide(ME,\'home\')">📖 사용 안내</button></div>'
-    + '<h3 id="my-quick" style="margin-top:18px">⭐ 자주 쓰는 메뉴 <span class="mute" style="font-size:.8rem;font-weight:600">홈 화면에 보일 버튼을 고르세요</span></h3>'
-    + '<div class="mylist" id="my-ql">' + items.map(function(x){
-        return '<label><input type="checkbox" value="' + esc(x.id) + '"' + (on(x.id) ? ' checked' : '') + ' style="width:auto"> ' + esc(x.ic) + ' ' + esc(x.label) + (x.grp ? ' <small>' + esc(x.grp) + '</small>' : '') + '</label>';
-      }).join('') + '</div>'
-    + '<div class="mfoot"><button class="btn" onclick="resetQuick()">기본값으로</button><span style="flex:1"></span><button class="btn" onclick="closeModal()">닫기</button><button class="btn pri" onclick="saveQuick()">저장</button></div></div>';
-  $('modal').classList.remove('hide');
-  if (focus === 'quick') setTimeout(function(){ var h = $('my-quick'); if (h) h.scrollIntoView({ block: 'start' }); }, 30);
-}
-async function saveQuick(){
-  var prev = quickIds(), picked = [];
-  document.querySelectorAll('#my-ql input:checked').forEach(function(c){ picked.push(c.value); });
-  // 이미 있던 순서는 유지하고, 새로 고른 것은 뒤에 붙임
-  var ids = prev.filter(function(id){ return picked.indexOf(id) >= 0; }).concat(picked.filter(function(id){ return prev.indexOf(id) < 0; }));
-  var r = await sb.rpc('my_prefs_set', { p_key: 'quick', p_val: ids });
-  if (r.error) { toast(r.error.message); return; }
-  PREFS.quick = ids; closeModal(); loadQuick(); toast('자주 쓰는 메뉴를 저장했습니다.');
-}
-async function resetQuick(){
-  var r = await sb.rpc('my_prefs_set', { p_key: 'quick', p_val: null });
-  if (r.error) { toast(r.error.message); return; }
-  PREFS.quick = null; closeModal(); loadQuick(); toast('기본 메뉴로 되돌렸습니다.');
-}
-
-async function loadNotices(){
-  var r = await sb.rpc('list_notices', { p_limit: 30 });
-  if (r.error) { $('notices').innerHTML = '<div class="empty">공지를 불러오지 못했습니다.<br>' + esc(r.error.message) + '</div>'; return; }
-  NOTICES = r.data || [];
-  if (!NOTICES.length) { $('notices').innerHTML = '<div class="empty">등록된 공지가 없습니다.</div>'; return; }
-  $('notices').innerHTML = NOTICES.map(function(n, i){
-    return '<div class="nt"><div class="nth" onclick="toggleNotice(' + i + ')">'
-      + (n.important ? '<span class="badge b-imp">중요</span>' : '')
-      + '<span class="badge ' + (n.all ? 'b-all' : 'b-chap') + '">' + esc(n.scope) + '</span>'
-      + '<span class="t">' + esc(n.title) + '</span><span class="d">' + fmtDate(n.created_at) + '</span></div>'
-      + '<div class="ntb hide" id="nb' + i + '">' + esc(n.body || '(내용 없음)')
-      + '<div class="meta"><span>작성: ' + esc(n.author) + '</span>'
-      + (n.can_edit ? '<button class="btn sm" onclick="openNotice(' + i + ')">수정</button><button class="btn sm red" onclick="delNotice(' + n.id + ')">삭제</button>' : '')
-      + '</div></div></div>';
-  }).join('');
-}
-function toggleNotice(i){ $('nb' + i).classList.toggle('hide'); }
-function openNotice(i){
-  var n = (i === undefined) ? null : NOTICES[i];
-  $('modal').innerHTML = '<div class="modal"><h3>' + (n ? '공지 수정' : '공지 쓰기') + '</h3>'
-    + '<label>제목</label><input type="text" id="nt-t" maxlength="100" value="' + esc(n ? n.title : '') + '">'
-    + '<label>내용</label><textarea id="nt-b">' + esc(n ? n.body : '') + '</textarea>'
-    + '<label class="ck"><input type="checkbox" id="nt-i"' + (n && n.important ? ' checked' : '') + '> 중요 공지로 표시</label>'
-    + (ME.role === 'admin' && (!n || n.all) ? '<label class="ck"><input type="checkbox" id="nt-a"' + (n && n.all ? ' checked' : '') + (n ? ' disabled' : '') + '> 전체 지회에 보이는 공지</label>' : '')
-    + '<div class="mfoot"><button class="btn" onclick="closeModal()">취소</button><button class="btn pri" onclick="saveNotice(' + (n ? n.id : 'null') + ')">저장</button></div></div>';
-  $('modal').classList.remove('hide');
-}
-function closeModal(){ $('modal').classList.add('hide'); $('modal').innerHTML = ''; }
-async function saveNotice(id){
-  var t = $('nt-t').value.trim(); if (!t) { toast('제목을 입력하세요.'); return; }
-  var all = $('nt-a') ? $('nt-a').checked : false;
-  var r = await sb.rpc('save_notice', { p_id: id, p_title: t, p_body: $('nt-b').value, p_important: $('nt-i').checked, p_all: all });
-  if (r.error) { toast(r.error.message); return; }
-  closeModal(); toast('저장했습니다.'); loadNotices();
-}
-async function delNotice(id){
-  if (!confirm('이 공지를 삭제할까요?')) return;
-  var r = await sb.rpc('delete_notice', { p_id: id });
-  if (r.error) { toast(r.error.message); return; }
-  toast('삭제했습니다.'); loadNotices();
-}
-
-/* ── 내 근태 (근태 서버 함수 호출) ── */
-async function attCall(fn, arg){
-  var s = await sb.auth.getSession(); var tok = s.data && s.data.session && s.data.session.access_token;
-  var r = await fetch(FN_URL, { method:'POST', headers:{ 'Content-Type':'text/plain;charset=UTF-8', 'Authorization':'Bearer ' + tok, 'apikey': SB_ANON },
-    body: JSON.stringify({ fn: fn, arg: arg === undefined ? null : arg }) });
-  var t = await r.text(); return JSON.parse(t);
-}
-function ringSvg(used, total){
-  var pct = total > 0 ? Math.min(1, used / total) : 0, R = 34, C = 2 * Math.PI * R;
-  return '<svg class="ringsvg" width="84" height="84" viewBox="0 0 84 84"><circle cx="42" cy="42" r="' + R + '" fill="none" stroke="#e9edf5" stroke-width="9"/>'
-    + '<circle cx="42" cy="42" r="' + R + '" fill="none" stroke="#2f5bd6" stroke-width="9" stroke-linecap="round" stroke-dasharray="' + (C * pct).toFixed(1) + ' ' + C.toFixed(1) + '" transform="rotate(-90 42 42)"/>'
-    + '<text x="42" y="47" text-anchor="middle" font-size="15" font-weight="800" fill="#1f2937">' + Math.round(pct * 100) + '%</text></svg>';
-}
-async function loadAtt(){
-  var el = $('att');
-  try {
-    var w = await attCall('whoami');
-    if (!w || !w.ok) { el.innerHTML = '<div class="note">근태 정보를 불러오지 못했습니다.<br>' + esc((w && w.msg) || '') + '</div>'; return; }
-    ATT = w; renderNav();
-    if (!w.staffName) { loadCal();
-       if ($('punch')) $('punch').innerHTML = '<div class="note">근태 직원목록에 구글 계정이 연결되면 출퇴근을 기록할 수 있습니다.</div>'; el.innerHTML = '<div class="note">근태 직원목록에 내 구글 계정이 아직 연결되어 있지 않습니다.<br>지회 담당자에게 확인을 요청하세요.</div>'; return; }
-    loadPunch(); loadCal();
-    var y = new Date().getFullYear();
-    var b = await attCall('getMyLeaveBalance', JSON.stringify({ name: w.staffName, year: y }));
-    var c = await attCall('getMyCompLeave', JSON.stringify({ name: w.staffName }));
-    if (!b || !b.ok) { el.innerHTML = '<div class="note">연가 정보를 불러오지 못했습니다.</div>'; return; }
-    var used = (Number(b.sisuUsedDays) || 0) + (Number(b.leavedDays) || 0), granted = Number(b.granted) || 0;
-    el.innerHTML = '<div class="ring">' + ringSvg(used, granted)
-      + '<div><div class="big">' + num(b.remaining) + '<small> 일</small></div><div class="lab">' + y + '년 남은 연가</div></div></div>'
-      + '<div class="rows"><div><span>연가 부여</span><b>' + num(granted) + '일</b></div>'
-      + '<div><span>휴가·시수로 사용</span><b>' + num(used) + '일</b></div>'
-      + '<div><span>대체휴무 잔여</span><b>' + num(c && c.remaining) + '일</b></div></div>';
-  } catch(e) {
-    el.innerHTML = '<div class="note">근태 서버에 연결하지 못했습니다.<br>(Edge Function att 배포를 확인하세요)</div>';
-  }
-}
-
-/* ── 오늘 우리 지회 현황 (휴가·출장) ── */
-function md(d){ return d ? Number(d.slice(5,7)) + '/' + Number(d.slice(8,10)) : ''; }
-function period(a, b){ return !b || a === b ? md(a) : md(a) + '~' + md(b); }
-function personRow(x, kind){
-  var sub = [x.dept, x.position].filter(Boolean).join(' · ');
-  var extra = kind === 'lv' ? (x.reason ? x.reason : '') : [x.to, x.purpose].filter(Boolean).join(' · ');
-  return '<div class="bp"><div><span class="nm">' + esc(x.name) + '</span>' + (sub ? ' <span class="sub">' + esc(sub) + '</span>' : '')
-    + '<span class="dt">' + period(x.start, x.end) + (extra ? ' · ' + esc(extra) : '') + '</span></div>'
-    + '<span class="tg ' + kind + '">' + esc(kind === 'lv' ? x.type : '출장') + '</span></div>';
-}
-var BOARD = null, BFILTER = '';
-var STK = { '출근': 'in', '출근 전': 'before', '퇴근': 'out', '휴가': 'leave', '출장': 'trip' };
-var STC = { '출근': '#18a058', '출근 전': '#b8bec8', '퇴근': '#2f5bd6', '휴가': '#f59e0b', '출장': '#8b5cf6' };
-async function loadBoard(){
-  var el = $('board');
-  try {
-    var r = await attCall('getTodayBoard');
-    if (!r || !r.ok) { el.innerHTML = '<div class="note">현황을 불러오지 못했습니다.<br>' + esc((r && r.msg) || '') + '</div>'; return; }
-    $('bd-date').textContent = md(r.date) + ' 기준';
-    BOARD = r; drawBoard();
-  } catch(e) {
-    el.innerHTML = '<div class="note">근태 서버에 연결하지 못했습니다.</div>';
-  }
-}
-function boardFilter(k){ BFILTER = BFILTER === k ? '' : k; drawBoard(); }
-function drawBoard(){
-  var r = BOARD, el = $('board'); if (!r) return;
-  var ppl = r.people || [], html = '';
-  if (ppl.length) {
-    var order = ['출근', '출근 전', '퇴근', '휴가', '출장'];
-    html += '<div class="stsum">' + order.map(function(k){
-      var n = ppl.filter(function(p){ return p.status === k; }).length;
-      return '<button class="' + (BFILTER === k ? 'on' : '') + '" onclick="boardFilter(\'' + k + '\')"><i style="background:' + STC[k] + '"></i>' + k + ' <b>' + n + '</b></button>';
-    }).join('') + '</div>';
-    var shown = BFILTER ? ppl.filter(function(p){ return p.status === BFILTER; }) : ppl;
-    html += '<div class="stgrid">' + (shown.length ? shown.map(function(p){
-      var tip = [p.dept, p.position].filter(Boolean).join(' · ');
-      var sub = p.status + (p.time ? ' ' + p.time : '') + (p.note ? ' · ' + p.note : '');
-      return '<div class="stp st-' + STK[p.status] + '" title="' + esc(tip) + '">' + esc(p.name)
-        + '<small class="' + (p.note === '지각' ? 'late' : '') + '">' + esc(sub) + '</small></div>';
-    }).join('') : '<div class="empty" style="padding:10px 4px">해당하는 직원이 없습니다.</div>') + '</div>';
-  }
-  if (r.leave.length || r.trip.length) {
-    html += '<div class="bsec" style="margin-top:14px">휴가·출장 기간</div>'
-      + r.leave.map(function(x){ return personRow(x, 'lv'); }).join('') + r.trip.map(function(x){ return personRow(x, 'tp'); }).join('');
-  } else if (!ppl.length) html += '<div class="empty" style="padding:14px 6px">오늘 휴가·출장인 직원이 없습니다.</div>';
-  el.innerHTML = html;
-}
-
-/* ── 지회 관리 요약 (담당자·공동 관리자) ── */
-async function loadMgr(){
-  var r = await sb.rpc('list_staff');
-  if (r.error) { $('mgr').innerHTML = '<div class="empty" style="grid-column:1/-1">' + esc(r.error.message) + '</div>'; return; }
-  var list = r.data || [], act = list.filter(function(s){ return s.active; }).length, off = list.length - act;
-  $('mgr').innerHTML = '<a class="mbox" onclick="go(\'access\')"><div class="n">' + act + '명</div><div class="l">사용 중인 직원' + (off ? ' (중지 ' + off + ')' : '') + '</div></a>'
-    + '<a class="mbox" onclick="go(\'access\')"><div class="n">결재라인</div><div class="l">부서별 결재칸 설정</div></a>'
-    + '<a class="mbox" onclick="go(\'access\')"><div class="n">변경 기록</div><div class="l">권한 변경 내역 보기</div></a>' + mgrExtra();
-}
-
-start();
-sb.auth.onAuthStateChange(function(ev){ if (ev === 'SIGNED_OUT') show('login'); });
-</script>
-</body>
-</html>
+})();

@@ -6,6 +6,7 @@
 <title>공문 시스템</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
+body.embed .noembed{display:none!important}   /* 업무 시스템 안: 위쪽 경로를 눌러 목록으로 */
 body.noea .ea{display:none!important}
   * { box-sizing: border-box; }
   body { margin: 0; font-family: "Malgun Gothic", "맑은 고딕", sans-serif; background: #f5f7fb; color: #222; font-size: 15px; }
@@ -138,7 +139,7 @@ body.noea .ea{display:none!important}
       <div class="btns">
         <button onclick="saveDraftClick()">임시 저장</button>
         <button class="main" onclick="submitClick()" title="문서 번호가 붙고 공문 대장에 올라갑니다. 인쇄해서 수기로 결재받으세요">기안하기 (번호 부여)</button>
-        <button onclick="openHome()">목록으로</button>
+        <button class="noembed" onclick="openHome()">목록으로</button>
       </div>
       <div id="writeMsg" class="msg"></div>
     </div>
@@ -170,7 +171,7 @@ body.noea .ea{display:none!important}
       <div class="btns" id="viewBtns"></div>
       <div id="viewMsg" class="msg"></div>
     </div>
-    <div class="btns"><button onclick="openHome()">목록으로</button></div>
+    <div class="btns noembed"><button onclick="openHome()">목록으로</button></div>
   </section>
 
   <!-- 검색 -->
@@ -241,6 +242,7 @@ const TODAY_YEAR = new Date().getFullYear();
 
 // ============ 2) 공통 준비 ============
 const EMBED = new URLSearchParams(location.search).get('embed') === '1';
+if (EMBED) document.body.classList.add('embed');
 if (EMBED) document.body.classList.add('embed');
 let staffList = [];     // 우리 지회 직원 (결재선 선택용)
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);

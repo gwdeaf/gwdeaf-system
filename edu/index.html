@@ -694,7 +694,7 @@ function navPush(st) {   // 화면을 옮길 때마다 기록해 두어, 휴대�
   } catch (e) {}
   S.cur = st; updateBack();
 }
-function updateBack() { const b = $('#backBtn'); if (b) b.classList.toggle('hidden', !(S.init && S.depth > 0)); }
+function updateBack() { const b = $('#backBtn'); if (b) b.classList.add('hidden'); }   // 뒤로 버튼 없음: 업무 시스템 위쪽 경로(수어교육관리 › 메뉴)를 누르면 처음 화면으로
 $('#backBtn').onclick = () => { if (S.depth > 0) history.back(); else if (S.init) go('dash'); };
 $('#homeLink').onclick = () => { if (S.init) go('dash'); };
 $('#homeLink').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (S.init) go('dash'); } };

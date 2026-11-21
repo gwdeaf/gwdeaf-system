@@ -423,7 +423,7 @@ function refreshRecent(){
 }
 function depart(){
   const rec=lastRec(car), last = rec ? rec.odoE : "", c=info(car); const R=(pendingRes&&pendingRes.car===car)?pendingRes:null;
-  $("#app").innerHTML = `<div class="big"><button class="back" onclick="goHome()">← 차량 선택</button>
+  $("#app").innerHTML = `<div class="big">${EMBED?"":`<button class="back" onclick="goHome()">← 차량 선택</button>`}
   <div class="card" style="border-top:5px solid ${c.c}"><h2>${car} · 출발</h2><div class="lbl">${c.p} · 운전자 ${driver}</div>${R?`<div class="info" style="margin-top:8px">📅 예약 운행: <b>${esc(R.dest)}</b> · ${esc(R.purpose)}</div>`:""}
   <label>출발 계기판 (km)</label><input type="number" id="odoS" inputmode="numeric" placeholder="예: 52340" value="${last}" data-auto="1" oninput="this.dataset.auto=''">
   <div style="color:#dc2626;font-size:calc(18px * var(--k));margin-top:8px">자동 입력된 숫자가 계기판과 다르면 직접 입력해 주세요.</div>
@@ -461,7 +461,7 @@ function resRender(){
   const list = RES.map(r=>`<div class="row" style="margin-top:10px;gap:8px"><div style="flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:calc(15px * var(--k))"><b class="bl">${esc(r.date)} ${esc(r.time||'시간 미정')} · ${esc(r.car)}</b> · ${esc(r.driver)} · ${esc(r.dest)} · ${esc(r.purpose)} · ${esc(r.people)}명</div>`+
     `<div class="hbtns" style="flex:0 0 auto"><button class="btn-save" onclick="resStart('${r.id}')">출발</button><button class="addbtn danger" onclick="resCancel('${r.id}')">취소</button></div></div>`).join("")
     || `<div class="empty">예약이 없습니다</div>`;
-  $("#app").innerHTML = `<div class="big"><button class="back" onclick="goHome()">← 차량 선택</button>
+  $("#app").innerHTML = `<div class="big">${EMBED?"":`<button class="back" onclick="goHome()">← 차량 선택</button>`}
   <div class="card"><h2>📅 예약 목록</h2><div class="lbl">예약한 운행에서 🚀 출발을 누르면 행선지와 목적이 자동으로 채워지고, 도착 화면에도 그대로 옮겨집니다.</div><div style="margin-top:10px">${list}</div></div>
   <div class="card"><h2>➕ 예약 등록</h2>
   <label>차량</label><select id="r_car">${carOpts}</select>
@@ -533,7 +533,7 @@ async function ocrRun(file,id){
 /* ---------- 도착 ---------- */
 function arrive(){
   const tr=tripOf(car), c=info(car); purpose=tr.purpose||"업무"; gauge=""; const RR=RES.find(x=>String(x.id)===String(tr.resId)); people=(RR&&Number(RR.people))||1;
-  $("#app").innerHTML = `<div class="big"><button class="back" onclick="goHome()">← 차량 선택</button>
+  $("#app").innerHTML = `<div class="big">${EMBED?"":`<button class="back" onclick="goHome()">← 차량 선택</button>`}
   <div class="card" style="border-top:5px solid ${c.c}"><h2>${car} · 도착</h2>
   <div class="info">운전자: <b>${tr.driver}</b><br><span style="white-space:nowrap">출발: <b id="sTxt">${tr.date} ${tr.time}</b> <button class="edit" onclick="editStart()">수정</button></span><br>출발 계기판: <b>${tr.odoS.toLocaleString()} km</b></div>
   <div id="sEdit" class="hide" style="margin-top:8px"><div class="lbl">출발 날짜·시간 수정</div>

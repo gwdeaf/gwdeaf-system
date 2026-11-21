@@ -156,6 +156,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .menubtn{display:none;border:1px solid var(--line);background:#fff;border-radius:9px;width:38px;height:38px;font-size:1.1rem}
 .crumb{font-weight:800;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .crumb small{font-weight:600;color:var(--mute)}
+.crumb .cb{cursor:pointer;border-radius:6px;padding:2px 4px;margin:0 -4px}.crumb .cb:hover{background:#e8edf7;color:var(--pri)}
 .thello{display:flex;align-items:center;gap:12px;min-width:0}
 .thello h2{margin:0;font-size:1.2rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .thello .chip{padding:3px 10px;font-size:.76rem}
@@ -513,6 +514,17 @@ function foldNav(){
     else if (cur) cur.appendChild(el);
   });
 }
+function crumbGo(which){
+  if (which === 'grp') {   // 대분류 → 그 묶음의 첫 메뉴
+    var on = document.querySelector('#nav .kid.on'), gb = on && on.closest('.gbody'), first = gb && gb.querySelector('.kid[data-id]');
+    if (first) { first.click(); return; }
+  }
+  var p = (CUR || '').split(':'), kind = p[0], adm = p[1] === 'a', tab = p.slice(2).join(':');
+  if (!kind || kind === 'home' || kind === 'inq') { go(kind || 'home'); return; }
+  if (!(SUBAPP[kind] || kind === 'edu' || kind === 'att')) FR.key = '';   // 하위 메뉴 연결이 없는 화면은 다시 열어 처음 화면으로
+  go(kind, tab, adm);
+}
+$('crumb').addEventListener('click', function(e){ var a = e.target.closest('.cb'); if (a) crumbGo(a.getAttribute('data-crumb')); });
 function markNav(){
   var lb = '홈', grp = '', sec = '';
   document.querySelectorAll('#nav [data-id]').forEach(function(a){
@@ -520,8 +532,9 @@ function markNav(){
     if (on) { lb = a.getAttribute('data-lb'); var gb = a.closest('.gbody'), g = gb ? gb.previousElementSibling : null; grp = g ? (g.childNodes[1] ? g.childNodes[1].textContent : g.textContent) : ''; sec = (g || a).getAttribute('data-sec') || ''; if (g) openGrp(g); }
   });
   if (CUR === 'home:s:') openGrp(null);
-  var path = [sec, grp].filter(Boolean);   // 예: 시스템 관리 › 근태 관리 › 대시보드
-  $('crumb').innerHTML = path.length ? '<small>' + path.map(esc).join(' › ') + ' ›</small> ' + esc(lb) : esc(lb);
+  // 경로: 시스템 관리 › 근태 관리 › 대시보드 — 대분류를 누르면 그 메뉴의 첫 화면, 지금 메뉴를 누르면 그 메뉴 처음 화면으로 (뒤로 가기 대신)
+  var pre = (sec ? esc(sec) + ' › ' : '') + (grp ? '<a class="cb" data-crumb="grp" title="' + esc(grp) + ' 첫 화면으로">' + esc(grp) + '</a> › ' : '');
+  $('crumb').innerHTML = (pre ? '<small>' + pre + '</small> ' : '') + '<a class="cb" data-crumb="cur" title="이 메뉴 처음 화면으로">' + esc(lb) + '</a>';
   var atHome = CUR === 'home:s:';   // 홈: 위쪽 띠에 인사말·소속 / 다른 화면: 경로
   $('crumb').classList.toggle('hide', atHome); $('thello').classList.toggle('hide', !atHome);
   var wlw = CUR === 'worklog:s:write';

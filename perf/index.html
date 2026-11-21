@@ -252,7 +252,7 @@ async function showProject(id) {
     const p = await rpc('perf_project_get', { p_id: id }), ss = p.session_list || [], t = summarize(ss);
     const rate = p.plan_count ? Math.round(t.cnt / p.plan_count * 1000) / 10 : null;
     const auto = p.source === 'edu';
-    view(head(p.name, esc(p.category || '분류 없음'), `<button onclick="go('projects')">← 사업 목록</button>` +
+    view(head(p.name, esc(p.category || '분류 없음'), (EMBED ? '' : `<button onclick="go('projects')">← 사업 목록</button>`) +
         (ME.can_manage && !auto ? `<button id="peBtn">사업 정보 수정</button>` : '') + (ME.can_write && !auto ? `<button class="main" onclick="go('new', null, ${p.id})">+ 실시 회차 등록</button>` : '')) +
       (auto ? '<div class="note warn">수어교육관리에서 자동으로 가져온 사업입니다. 출석을 입력한 회차와 출석한 수강생이 들어옵니다. 고칠 내용은 <b>수어교육관리</b>에서 고치세요.</div>' : '') +
       `<div id="pform"></div>

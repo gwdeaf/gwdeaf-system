@@ -397,6 +397,7 @@
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>html{font-size:105%}@media print{html{font-size:100%}}</style>
+<style>#view-trip[data-mode="apply"] .trip-hist-only{display:none !important}#view-trip[data-mode="hist"] #trip-form-card{display:none !important}</style>
 <link rel="stylesheet" href="/ui.css?v=1">
 </head>
 <body>
@@ -422,28 +423,28 @@
   <button class="tab" data-g="punch" onclick="switchTab('attend')">📅 월별 근태현황</button>
   <button class="tab" data-g="trip" onclick="switchTab('trip')">🚗 출장 신청·내역</button>
   <hr class="sidebar-divider">
-  <div class="sidebar-group">🏖 근태관리</div>
-  <button class="tab tab-leave" data-g="leave" onclick="switchTab('leave')">📊 내 근태 현황</button>
+  <div class="sidebar-group">🏖 근태 / 휴가 관리</div>
+  <button class="tab tab-leave" data-g="leave" onclick="switchTab('leave')">📊 내 근태현황</button>
   <button class="tab tab-leave" data-g="leave" onclick="switchTab('leave-apply')">🗓️ 휴가 신청</button>
   <button class="tab tab-leave" data-g="leave" onclick="switchTab('overtime')">⏰ 시간외 신청</button>
   <button class="tab tab-leave" data-g="leave" onclick="switchTab('comp-apply')">🔄 대체휴무 신청</button>
   <button class="tab tab-leave" data-g="leave" onclick="switchTab('promo')">🗓 연가 사용 계획서</button>
-  <button class="tab tab-leave" data-g="leave" onclick="switchTab('leavehist')">📋 내 신청 내역</button>
+  <button class="tab tab-leave" data-g="leave" onclick="switchTab('leavehist')">📋 내 신청내역</button>
   <hr class="sidebar-divider">
   <div class="sidebar-group">📋 시수</div>
   <button class="tab" data-g="punch" onclick="switchTab('write')">✏️ 시수 입력</button>
   <button class="tab" data-g="punch" onclick="switchTab('myrecord')">📑 내 시수 확인</button>
   <hr class="sidebar-divider">
   <div class="sidebar-group">🔄 대체시수</div>
-  <button class="tab tab-alt" data-g="punch" onclick="switchTab('altwrite')">📅 대체 시수 발생일</button>
-  <button class="tab tab-alt" data-g="punch" onclick="switchTab('altuse')">✍️ 대체 시수 입력</button>
-  <button class="tab tab-alt" data-g="punch" onclick="switchTab('altrecord')">📋 내 대체 시수 확인</button>
+  <button class="tab tab-alt" data-g="punch" onclick="switchTab('altwrite')">📅 대체시수 발생일</button>
+  <button class="tab tab-alt" data-g="punch" onclick="switchTab('altuse')">✍️ 대체시수 입력</button>
+  <button class="tab tab-alt" data-g="punch" onclick="switchTab('altrecord')">📋 내 대체시수 확인</button>
   <div id="nav-senior-group" style="display:none">
     <hr class="sidebar-divider">
-    <div class="sidebar-group">✅ 선임 확인</div>
-    <button class="tab tab-leave" data-g="leave" onclick="switchTabSenior('leavemgr')">📋 신청 승인/반려 (근태)<span class="nav-badge" id="senior-pending-badge" style="display:none">0</span></button>
-    <button class="tab" data-g="punch" onclick="switchTabSenior('dashboard')">👤 시수 신청 현황 확인</button>
-    <button class="tab tab-alt" data-g="punch" onclick="switchTabSenior('altdashboard')">📊 대체 시수 신청 현황</button>
+    <div class="sidebar-group">✅ 결재 / 승인 관리</div>
+    <button class="tab tab-leave" data-g="leave" onclick="switchTabSenior('leavemgr')">📋 신청 승인/반려<span class="nav-badge" id="senior-pending-badge" style="display:none">0</span></button>
+    <button class="tab" data-g="punch" onclick="switchTabSenior('dashboard')">👤 시수 신청 현황</button>
+    <button class="tab tab-alt" data-g="punch" onclick="switchTabSenior('altdashboard')">📊 대체시수 신청 현황</button>
   </div>
 </nav>
 
@@ -452,7 +453,7 @@
   <div class="sidebar-group">🛠 관리자</div>
   <button class="tab" data-adm="dashboard" data-g="all" onclick="switchAdminTab('dashboard')">📊 대시보드</button>
   <button class="tab" data-adm="attend" data-g="punch" onclick="switchAdminTab('attend')">🕘 출퇴근 관리</button>
-  <button class="tab" data-adm="trip" data-g="trip" onclick="switchAdminTab('trip')">🚗 출장 관리</button>
+  <button class="tab" data-adm="trip" data-g="trip" onclick="switchAdminTab('trip')">🚗 출장대장</button>
   <button class="tab" data-adm="approval" data-g="leave" onclick="switchAdminTab('approval')">📋 신청 현황<span class="nav-badge" id="adm-pending-badge" style="display:none">0</span></button>
   <button class="tab" data-adm="annual" data-g="leave" onclick="switchAdminTab('annual')">📅 연차 관리</button>
   <button class="tab" data-adm="comp" data-g="leave" onclick="switchAdminTab('comp')">🔄 대체휴무</button>
@@ -461,7 +462,7 @@
   <div class="sidebar-spacer"></div>
   <hr class="sidebar-divider">
   <div class="sidebar-group">⚙️ 설정</div>
-  <button class="tab" data-adm="staff" data-g="all" onclick="switchAdminTab('staff')">👥 직원 관리</button>
+  <button class="tab" data-adm="staff" data-g="all" onclick="switchAdminTab('staff')">👥 직원·권한 관리</button>
   <button class="tab" data-adm="settings" data-g="all" onclick="switchAdminTab('settings')">🏢 기관 설정</button>
 </nav>
 
@@ -1028,7 +1029,7 @@
 <div class="view view-wide" id="view-trip">
   <div class="page-head">
     <div>
-      <h2>🚗 출장 신청</h2>
+      <h2 id="trip-head">🚗 출장 신청</h2>
       <div class="sub">휴가처럼 신청하면 바로 확정되고 신청서가 출력됩니다. 출력해서 결재를 받으세요. 신청을 못 했어도 현장에서는 [출퇴근 찍기]의 출장 버튼을 누를 수 있습니다.</div>
     </div>
     <div class="page-tools no-print">
@@ -1106,7 +1107,12 @@
       <button class="btn btn-outline" onclick="closeTripReport()">닫기</button>
     </div>
   </div>
-  <div class="card" style="padding:0;overflow:hidden;">
+  <div class="card trip-apply-only no-print" style="display:none">
+    <div class="card-title">📋 신청한 출장 확인</div>
+    <div style="font-size:0.9rem;color:var(--text-muted)">신청한 출장의 신청서 출력, 고치기, 복명서 작성은 <b>출장 내역</b>에서 합니다.</div>
+    <div class="btn-group" style="margin-top:0.7rem;"><button class="btn btn-outline btn-sm" onclick="tripGoMode('hist')">📋 출장 내역 보기</button><button class="btn btn-primary btn-sm" onclick="openTripForm()">➕ 새 출장 신청</button></div>
+  </div>
+  <div class="card trip-hist-only" style="padding:0;overflow:hidden;">
     <div class="card-title" style="padding:0.9rem 1rem 0;">📋 내 출장 신청 내역</div>
     <div style="overflow-x:auto;">
       <table class="adm-table">
@@ -1121,7 +1127,7 @@
 <div class="view view-wide" id="view-adm-trip">
   <div class="page-head">
     <div>
-      <h2>🚗 출장 관리</h2>
+      <h2>🚗 출장대장</h2>
       <div class="sub">전 직원의 출장 신청 현황과, 부서별 문서번호 규칙을 관리합니다. (승인 단계는 없고, 직원이 신청하면 바로 확정됩니다. 결재는 출력해서 받습니다)</div>
     </div>
     <div class="page-tools no-print">
@@ -1674,16 +1680,13 @@
 <div class="view view-wide" id="view-adm-staff">
   <div class="page-head">
     <div>
-      <h2>👥 직원 관리</h2>
-      <div class="sub">여기서 저장하면 직원 정보가 반영됩니다. 직원은 <b>구글 계정</b>으로 로그인하므로, 각 직원의 구글 계정(이메일)을 정확히 입력해야 합니다. 계정을 지우면 그 직원은 로그인할 수 없습니다.</div>
+      <h2>👥 직원 정보는 직원·권한 관리에서</h2>
+      <div class="sub">직원 등록·퇴사(사용 중지)·이름·부서·직위·소속 구분·입사일과 근태 정보(역할·담당 선임·시급·기본 연차·근무시간·출퇴근 기준 시각)는 이제 <b>직원·권한 관리</b> 한 곳에서 관리합니다. 근태 관리에서는 출퇴근·연차·시수·대체시수만 다룹니다.</div>
     </div>
-    <div class="page-tools no-print">
-      <button onclick="addStaffRow()" class="btn btn-outline btn-sm">+ 직원 추가</button>
-      <button class="btn btn-outline btn-sm" onclick="loadStaffMgr()">🔄 다시 불러오기</button>
-      <button class="btn btn-primary btn-sm" onclick="saveStaffMgr()">💾 저장</button>
-    </div>
+    <div class="page-tools no-print"><button class="btn btn-primary btn-sm" onclick="goAccessMgr()">🔑 직원·권한 관리로 이동</button></div>
   </div>
-  <div id="staff-mgr-alert"></div>
+  <div style="display:none">
+<div id="staff-mgr-alert"></div>
   <div class="card" style="padding:0;overflow:hidden;">
     <div style="overflow-x:auto;">
       <table class="adm-table" style="min-width:1200px;">
@@ -1718,6 +1721,7 @@
     · <b>출근/퇴근 기준</b> — 모바일 출퇴근 사유 판단용. 비우면 [기관 설정]의 기본 시각이 적용됩니다. 단축근무자는 퇴근 기준을 따로 입력하세요(예: 16:00).<br>
     · <b>주간 근무시간</b> — 단축근무자만 입력(예: 30). 비워 두면 기본 40시간으로 시간외 수당을 계산합니다.
   </div>
+</div>
 </div>
 
 <!-- ========== 관리자: 기관 설정 ========== -->
@@ -2174,6 +2178,12 @@ function esc(s) {
 // ===== 직원 메뉴 =====
 function switchTab(tab) {
   if (!leaveUser) { showLeaveLoginView(); return; }
+  if (tab === 'trip-apply' || tab === 'trip-hist') {
+    syncFromForm(); showView('trip'); setActiveTab('trip');
+    tripApplyMode(tab === 'trip-apply' ? 'apply' : 'hist'); loadTripView();
+    if (tab === 'trip-apply') openTripForm();
+    return;
+  }
   syncFromForm();
   showView(tab);
   if (['write','print','myrecord','altwrite','altuse','altrecord'].indexOf(tab) >= 0 && !_sisuLoaded) init();
@@ -2193,7 +2203,7 @@ function switchTab(tab) {
   if (tab==='promo') loadPromoMy();
   if (tab==='punch') loadPunch();
   if (tab==='attend') initAttendView();
-  if (tab==='trip') loadTripView();
+  if (tab==='trip') { tripApplyMode(''); loadTripView(); }
 }
 
 // ===== 선임 확인 메뉴 (직원 모드에서 역할이 '선임'인 사람에게만 보임) =====
@@ -4501,6 +4511,10 @@ function staffMgrAlert(msg, type) {
   if (msg && type === 'success') setTimeout(function(){ el.innerHTML=''; }, 4000);
 }
 
+function goAccessMgr() {
+  if (EMBED) { embedPost({ type: 'nav-go', kind: 'access' }); return; }
+  location.href = '/access.html';
+}
 function loadStaffMgr() {
   var tbody = document.getElementById('staff-mgr-body');
   if (!tbody) return;
@@ -4993,6 +5007,19 @@ function tripLoadCfg(cb) {
   gasRun('getTripFormConfig', null, function(r) { if (r && r.ok) tripCfg = r; done(); }, function() { done(); });
   gasRun('getStaffNames', null, function(l) { tripStaffNames = Array.isArray(l) ? l : []; done(); }, function() { done(); });
 }
+// 출장 신청 / 출장 내역 화면 (왼쪽 메뉴에서 따로 들어옴)
+var TRIP_MODE = '';
+function tripApplyMode(mode) {
+  TRIP_MODE = mode || '';
+  var v = document.getElementById('view-trip'); if (!v) return;
+  v.setAttribute('data-mode', TRIP_MODE);
+  var h = document.getElementById('trip-head'); if (h) h.textContent = TRIP_MODE === 'hist' ? '📋 출장 내역' : '🚗 출장 신청';
+  v.querySelectorAll('.trip-apply-only').forEach(function(el){ el.style.display = TRIP_MODE === 'apply' ? '' : 'none'; });
+}
+function tripGoMode(mode) {
+  if (EMBED) { embedPost({ type: 'nav-go', kind: 'att', tab: mode === 'hist' ? 'trip-hist' : 'trip-apply' }); return; }
+  switchTab(mode === 'hist' ? 'trip-hist' : 'trip-apply');
+}
 function loadTripView() {
   if (!leaveUser) return;
   closeTripForm();
@@ -5030,6 +5057,7 @@ function tripOptHTML(list, sel, blank) {
   return (blank ? '<option value="">' + blank + '</option>' : '') + list.map(function(n) { return '<option' + (n === sel ? ' selected' : '') + '>' + esc(n) + '</option>'; }).join('');
 }
 function openTripForm(it) {
+  if (TRIP_MODE === 'hist') tripApplyMode('');   // 내역 화면에서 고치기·새 신청 → 신청서도 함께 보이게
   tripRepClose();
   tripLoadCfg(function() {
     tripEditRow = it ? it.row : 0;

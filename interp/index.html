@@ -30,6 +30,15 @@
   th { background: #f0f4f8; }
   .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; background: #e6eaef; }
   .badge.ok { background: #d6f0dc; } .badge.err { background: #f8d7d3; } .badge.wait { background: #fff1c2; }
+  .badge.st-DRAFT { background: #e6eaef; } .badge.st-SUBMITTED { background: #dbe8ff; color: #1f4fa8; } .badge.st-APPROVED { background: #d6f0dc; color: #17643a; } .badge.st-REJECTED { background: #f8d7d3; color: #9b2c22; }
+  .kpis { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0; } .kpi { flex: 1 1 120px; border: 1px solid #dde3ea; border-radius: 8px; padding: 10px; background: #f8fafc; }
+  .kpi b { display: block; font-size: 20px; } .kpi span { font-size: 12px; color: #667; }
+  .reject { background: #fdecea; border: 1px solid #f3b4ad; color: #8a2a20; border-radius: 8px; padding: 10px 12px; margin: 8px 0; }
+  .stbar { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+  .modal .card { max-width: 720px; width: 100%; max-height: 90vh; overflow: auto; }
+  tr.click { cursor: pointer; } tr.click:hover { background: #f3f6fb; }
+  @media print { header, nav, .noprint { display: none !important; } .screen:not(.on) { display: none !important; } }
   .msg { margin: 8px 0; font-size: 14px; } .msg .err { color: #b03a2e; } .msg .ok { color: #1e7a3c; }
   .muted { color: #777; font-size: 13px; }
   .fav { display: flex; gap: 6px; flex-wrap: wrap; } .fav button { flex: 1 1 30%; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -47,7 +56,8 @@
 <nav id="topNav" style="display:none">
   <button class="tab on" data-tab="write" onclick="setTab('write')">일지 쓰기</button>
   <button class="tab" data-tab="mine" onclick="setTab('mine')">내 기록</button>
-  <button class="tab" data-tab="all" id="allBtn" onclick="setTab('all')" style="display:none">지회 전체 기록</button>
+  <button class="tab" data-tab="all" id="allBtn" onclick="setTab('all')" style="display:none">센터 전체 기록</button>
+  <button class="tab" data-tab="stats" id="statsBtn" onclick="setTab('stats')" style="display:none">통계</button>
   <button id="logoutBtn" onclick="logout()">로그아웃</button>
 </nav>
 <main>
@@ -92,6 +102,15 @@
       <div id="favMsg" class="msg"></div></div>
   </section>
 
+  <section id="screenStats" class="screen">
+    <h2 id="stTitle">통역 실적 통계</h2>
+    <div class="card noprint"><div class="row">
+      <div><label>대상 연월</label><input type="month" id="stYm"></div>
+      <div style="flex:0 0 auto;align-self:flex-end"><button class="main" onclick="loadStats()">조회</button> <button onclick="window.print()">🖨 인쇄</button></div></div>
+      <div id="stMsg" class="msg"></div></div>
+    <div id="stBody"></div>
+  </section>
+
   <section id="screenList" class="screen list">
     <h2 id="listTitle">내 기록</h2>
     <div class="card"><div class="row">
@@ -133,29 +152,138 @@ async function boot() {
   if (error) { alert(errText(error)); return; }
   if (!data) { $('topNav').style.display = 'none'; showScreen('screenDenied'); return; }
   me = data;
-  $('whoText').textContent = `${me.chapter_name} · ${me.name} (${me.email})`;
+  $('whoText').textContent = `${me.is_hq ? me.chapter_name : (me.center_name || me.chapter_name)} · ${me.name} (${me.email})`;
   $('topNav').style.display = 'flex';
-  $('allBtn').style.display = me.can_view ? '' : 'none';
+  $('allBtn').style.display = me.can_view && !me.is_hq ? '' : 'none';
+  $('statsBtn').style.display = me.can_stats || me.can_review ? '' : 'none';
   $('date').value = today();
   try { const r = await sb.rpc('interp_presets_get'); presets = r.data || {}; } catch (e) { presets = {}; }
   drawFav();
-  setTab('write');
+  if (SUB.go) subGo(SUB.go); else setTab('write');
+  subReady();
 }
 sb.auth.onAuthStateChange((event) => { if (event === 'SIGNED_IN') boot(); });
 
+function subGo(t) { setTab(t === 'stats' ? 'stats' : (me.can_write ? 'write' : 'mine')); }
 function setTab(t) {
   tab = t;
   document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
+  subTell(t === 'stats' ? 'stats' : 'log');
+  if (t === 'stats') { showScreen('screenStats'); if (!$('stYm').value) $('stYm').value = lastMonth(); loadStats(); return; }
   if (t === 'write') {
     showScreen('screenWrite');
-    if (!me.can_write) msg('writeMsg', '통역일지 입력 권한이 없습니다. 지회 담당자에게 요청하세요. (기록 조회는 가능)');
+    if (!me.can_write) msg('writeMsg', '통역일지 입력 권한이 없습니다. 센터 담당자에게 요청하세요. (기록 조회는 가능)');
     return;
   }
   showScreen('screenList');
-  $('listTitle').textContent = t === 'all' ? '지회 전체 기록' : '내 기록';
+  $('listTitle').textContent = t === 'all' ? '센터 전체 기록' : '내 기록';
   if (!$('from').value) { const d = new Date(); d.setDate(1); $('from').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01'; $('to').value = today(); }
   loadList();
 }
+// ===== 하위 메뉴 (업무 시스템 왼쪽 메뉴에서 이동) =====
+const SUB = { go: new URLSearchParams(location.search).get('go') || '', ready: false };
+function subTell(t) { if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-tab', tab: t }, location.origin); } catch (e) {} }
+function subReady() { SUB.ready = true; if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-ready', tab: SUB.go }, location.origin); } catch (e) {} }
+window.addEventListener('message', (e) => {
+  if (e.origin !== location.origin || !e.data || e.data.type !== 'sub-go') return;
+  SUB.go = e.data.tab; if (SUB.ready) subGo(SUB.go);
+});
+
+// ============ 통계 · 도협회 보고 (센터 → 도협회) ============
+const ST_LABEL = { DRAFT: '미보고', SUBMITTED: '보고 완료', APPROVED: '승인 완료', REJECTED: '반려됨' };
+let ST = null, BOARD = null;
+function lastMonth() { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
+function ymText(ym) { const [y, m] = String(ym || '').split('-'); return y ? `${y}년 ${Number(m)}월` : ''; }
+function dText(t) { return t ? new Date(t).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }) : ''; }
+function dtText(t) { return t ? new Date(t).toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }).slice(0, 16) : ''; }
+function stBadge(st, at) { st = st || 'DRAFT'; return `<span class="badge st-${st}">${ST_LABEL[st]}${st === 'SUBMITTED' && at ? '(' + dText(at) + ')' : ''}</span>`; }
+function summaryHtml(sm) {
+  sm = sm || {};
+  const tbl = (head, rows) => `<div class="card" style="overflow-x:auto"><table><thead><tr>${head.map((h) => `<th>${h}</th>`).join('')}</tr></thead><tbody>${rows || `<tr><td colspan="${head.length}" class="muted">기록이 없습니다.</td></tr>`}</tbody></table></div>`;
+  return `<div class="kpis"><div class="kpi"><span>총 통역 건수</span><b>${sm.totalCases || 0}건</b></div><div class="kpi"><span>총 통역 시간</span><b>${sm.totalHours || 0}시간</b></div>
+      <div class="kpi"><span>실인원 (의뢰자 중복 제외)</span><b>${sm.uniqueUsersCount || 0}명</b></div><div class="kpi"><span>연인원 (농인+청인)</span><b>${sm.totalUsersCount || 0}명</b></div></div>
+    <h3>분야별 실적</h3>${tbl(['분야(종류)', '건수', '시간'], (sm.byField || []).map((x) => `<tr><td>${esc(x.field)}</td><td>${x.cases}</td><td>${x.hours}</td></tr>`).join(''))}
+    ${sm.byInterpreter ? `<h3>통역사별 실적</h3>${tbl(['통역사', '건수', '시간'], sm.byInterpreter.map((x) => `<tr><td>${esc(x.name)}</td><td>${x.cases}</td><td>${x.hours}</td></tr>`).join(''))}` : ''}
+    ${sm.byType ? `<h3>구분별 (출장·내방·전화)</h3>${tbl(['구분', '건수'], sm.byType.map((x) => `<tr><td>${esc(x.type)}</td><td>${x.cases}</td></tr>`).join(''))}` : ''}`;
+}
+async function loadStats() {
+  msg('stMsg', ''); $('stBody').innerHTML = '<p class="muted">불러오는 중…</p>';
+  const ym = $('stYm').value; if (!ym) return msg('stMsg', '연월을 고르세요.');
+  if (me.can_review) return loadBoard(ym);
+  const { data, error } = await sb.rpc('interp_stats', { p_ym: ym });
+  if (error) { $('stBody').innerHTML = ''; return msg('stMsg', errText(error)); }
+  ST = data; drawCenterStats();
+}
+function drawCenterStats() {
+  const d = ST, r = d.report || {}, st = r.status || 'DRAFT', snap = st === 'SUBMITTED' || st === 'APPROVED';
+  $('stTitle').textContent = `${d.centerName} · 통역 실적 통계`;
+  const btn = !d.canReport ? '<span class="muted">도협회 보고는 센터 담당자(보고 권한)가 합니다.</span>'
+    : st === 'DRAFT' ? `<button class="main" onclick="submitReport()">📤 도협회 보고</button>`
+    : st === 'REJECTED' ? `<button class="main" onclick="submitReport()">📤 재보고</button>`
+    : st === 'SUBMITTED' ? `<button onclick="cancelReport()">보고 취소</button> <span class="muted">보고한 달은 통역일지를 새로 입력할 수 없습니다(잠금). 고칠 내용이 있으면 보고를 취소하세요.</span>`
+    : '<span class="muted">도협회가 승인하여 도협회 전체 통계에 반영되었습니다. 이 달의 통역일지는 잠겨 있습니다.</span>';
+  $('stBody').innerHTML = `<div class="card"><div class="stbar"><b>${esc(d.centerName)}</b> · ${ymText(d.targetYearMonth)} ${stBadge(st, r.submittedAt)}</div>
+      ${st === 'REJECTED' ? `<div class="reject"><b>도협회 반려</b> (${dtText(r.reviewedAt)} · ${esc(r.reviewedBy || '')})<br>사유: ${esc(r.rejectReason)}<br><span style="font-size:12px">잠금이 풀렸습니다. 통역일지를 고친 뒤 [재보고]를 누르세요.</span></div>` : ''}
+      ${r.submittedAt && st !== 'DRAFT' ? `<div class="muted" style="margin-top:4px">보고: ${dtText(r.submittedAt)} · ${esc((r.submittedBy || {}).name || '')} ${esc((r.submittedBy || {}).position || '')}${r.reviewedAt && st === 'APPROVED' ? ' · 승인: ' + dtText(r.reviewedAt) : ''}</div>` : ''}
+      <div class="noprint" style="margin-top:10px">${btn}</div></div>
+    ${snap ? '<p class="muted">아래는 <b>보고 당시 수치</b>입니다.</p>' + summaryHtml(r.summaryData) : summaryHtml(d.live)}`;
+}
+async function submitReport() {
+  const d = ST, sm = d.live || {};
+  if (!confirm(`${ymText(d.targetYearMonth)} 통역 실적(${sm.totalCases || 0}건, ${sm.totalHours || 0}시간)을 도협회에 보고할까요?\n보고하면 이 달의 통역일지는 새로 입력할 수 없게 잠깁니다.`)) return;
+  const { data, error } = await sb.rpc('interp_report_submit', { p_ym: d.targetYearMonth });
+  if (error) return msg('stMsg', errText(error));
+  ST = data; drawCenterStats(); msg('stMsg', '도협회에 보고했습니다.', true);
+}
+async function cancelReport() {
+  if (!confirm('보고를 취소할까요? 잠금이 풀리고 미보고 상태로 돌아갑니다.')) return;
+  const { data, error } = await sb.rpc('interp_report_cancel', { p_ym: ST.targetYearMonth });
+  if (error) return msg('stMsg', errText(error));
+  ST = data; drawCenterStats(); msg('stMsg', '보고를 취소했습니다.', true);
+}
+// 도협회: 센터별 보고 현황
+async function loadBoard(ym) {
+  const { data, error } = await sb.rpc('interp_report_board', { p_ym: ym });
+  if (error) { $('stBody').innerHTML = ''; return msg('stMsg', errText(error)); }
+  BOARD = data; drawBoard();
+}
+function drawBoard() {
+  const d = BOARD, a = d.approved || {}, cnt = (k) => d.rows.filter((r) => r.status === k).length;
+  $('stTitle').textContent = '센터별 통역 실적 보고 현황 (도협회)';
+  $('stBody').innerHTML = `<div class="card"><b>${ymText(d.targetYearMonth)}</b> · 승인 ${cnt('APPROVED')} · 검토 대기 ${cnt('SUBMITTED')} · 반려 ${cnt('REJECTED')} · 미보고 ${cnt('DRAFT')} (전체 ${d.rows.length}개 센터)
+      <div class="muted" style="font-size:12px;margin-top:4px">검토 대기 줄을 눌러 상세 통계를 보고 승인 또는 반려하세요.</div></div>
+    <div class="card" style="overflow-x:auto"><table><thead><tr><th>센터명</th><th>대상 연월</th><th>총 건수</th><th>총 시간</th><th>보고 상태</th><th>보고 일시</th></tr></thead><tbody>
+      ${d.rows.map((r) => `<tr class="${r.status !== 'DRAFT' ? 'click' : ''}" ${r.status !== 'DRAFT' ? `onclick="openDetail(${r.centerId})"` : ''}><td>${esc(r.centerName)}</td><td>${ymText(r.targetYearMonth)}</td>
+        <td>${r.totalCases == null ? '-' : r.totalCases + '건'}</td><td>${r.totalHours == null ? '-' : r.totalHours + '시간'}</td><td>${stBadge(r.status, r.submittedAt)}</td><td>${dtText(r.submittedAt) || '-'}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">센터가 없습니다.</td></tr>'}
+    </tbody></table></div>
+    <h3>도협회 전체 통계 (승인된 ${a.centers || 0}개 센터 합산)</h3>${summaryHtml({ totalCases: a.totalCases, totalHours: a.totalHours, uniqueUsersCount: a.uniqueUsersCount, totalUsersCount: a.totalUsersCount, byField: a.byField })}`;
+}
+async function openDetail(centerId) {
+  const { data, error } = await sb.rpc('interp_report_detail', { p_center: centerId, p_ym: BOARD.targetYearMonth });
+  if (error) return msg('stMsg', errText(error));
+  const r = data, wait = r.status === 'SUBMITTED';
+  const ov = document.createElement('div'); ov.className = 'modal';
+  ov.innerHTML = `<div class="card"><div class="stbar"><h2 style="margin:0">${esc(r.centerName)} · ${ymText(r.targetYearMonth)}</h2>${stBadge(r.status, r.submittedAt)}</div>
+      <div class="muted">보고: ${dtText(r.submittedAt)} · ${esc((r.submittedBy || {}).name || '')} ${esc((r.submittedBy || {}).position || '')}</div>
+      ${r.status === 'REJECTED' ? `<div class="reject">반려 사유: ${esc(r.rejectReason)}</div>` : ''}
+      ${summaryHtml(r.summaryData)}
+      ${wait ? `<label>반려 사유 (반려할 때 필수)</label><textarea id="rjReason" style="min-height:60px" placeholder="예: 10월 의료 분야 건수가 일지와 다릅니다."></textarea>` : ''}
+      <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">${wait ? '<button class="main" id="apOk">✅ 승인</button><button id="apNo" style="background:#c0392b;color:#fff">반려</button>' : ''}<span style="flex:1"></span><button id="apX">닫기</button></div></div>`;
+  document.body.appendChild(ov);
+  const close = () => ov.remove();
+  ov.onclick = (e) => { if (e.target === ov) close(); };
+  ov.querySelector('#apX').onclick = close;
+  const review = async (ok) => {
+    const reason = ok ? '' : (ov.querySelector('#rjReason').value || '').trim();
+    if (!ok && !reason) { alert('반려 사유를 입력해 주세요.'); return; }
+    if (!confirm(ok ? '이 보고를 승인할까요? 도협회 전체 통계에 반영됩니다.' : '이 보고를 반려할까요? 센터의 잠금이 풀립니다.')) return;
+    const { data: b, error: e2 } = await sb.rpc('interp_report_review', { p_center: r.centerId, p_ym: r.targetYearMonth, p_ok: ok, p_reason: reason });
+    if (e2) { alert(errText(e2)); return; }
+    close(); BOARD = b; drawBoard(); msg('stMsg', ok ? '승인했습니다.' : '반려했습니다.', true);
+  };
+  if (wait) { ov.querySelector('#apOk').onclick = () => review(true); ov.querySelector('#apNo').onclick = () => review(false); }
+}
+
 async function loadList() {
   msg('listMsg', '');
   const { data, error } = await sb.rpc('interp_list', { p_from: $('from').value || null, p_to: $('to').value || null, p_all: tab === 'all' });

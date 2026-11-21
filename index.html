@@ -156,6 +156,10 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .menubtn{display:none;border:1px solid var(--line);background:#fff;border-radius:9px;width:38px;height:38px;font-size:1.1rem}
 .crumb{font-weight:800;font-size:1rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .crumb small{font-weight:600;color:var(--mute)}
+.thello{display:flex;align-items:center;gap:12px;min-width:0}
+.thello h2{margin:0;font-size:1.2rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.thello .chip{padding:3px 10px;font-size:.76rem}
+.tdate{font-size:.84rem;color:var(--mute);font-weight:600;white-space:nowrap}
 .wldate{display:flex;align-items:center;gap:6px;margin-left:8px;flex-shrink:0}.wldate.hide{display:none}.wldate input{border:1px solid var(--line);border-radius:8px;padding:5px 8px;font:inherit;font-size:.88rem;background:#fff}.wlst{font-size:.75rem;font-weight:700;color:var(--pri);background:var(--pri-soft);border-radius:20px;padding:3px 9px;white-space:nowrap}.wlst:empty{display:none}@media(max-width:600px){.wlst{display:none}.wldate input{padding:4px 5px;font-size:.8rem;max-width:128px}}
 .wltabs{display:flex;gap:2px;background:#eef2f8;border-radius:10px;padding:3px;margin-left:10px;flex-shrink:0}.wltabs.hide{display:none}.wltabs button{border:0;background:transparent;border-radius:8px;padding:6px 12px;font-size:.88rem;font-weight:700;color:var(--mute);cursor:pointer;white-space:nowrap}.wltabs button.on{background:#fff;color:var(--pri);box-shadow:0 1px 3px rgba(0,0,0,.08)}@media(max-width:600px){.wltabs button{padding:5px 8px;font-size:.8rem}}
 .tright{margin-left:auto;display:flex;align-items:center;gap:10px}
@@ -223,6 +227,9 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
   .menubtn{display:inline-block}
   .topbar{padding:0 12px;gap:8px}
   .tuser span{display:none}
+  .tdate,.thello .chips{display:none}
+  .thello h2{font-size:1rem}
+  .thello .hi{display:none}
   .pstat{padding:6px 8px;font-size:.74rem}
   .pstat .lb{display:none}.pstat .sl{display:inline}
   .pbtn{padding:8px 11px;font-size:.82rem}
@@ -280,10 +287,12 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
   <div class="content">
   <div class="topbar">
     <button class="menubtn" onclick="toggleSide()">☰</button>
-    <div class="crumb" id="crumb">홈</div>
+    <div class="crumb hide" id="crumb"></div>
+    <div class="thello" id="thello"><h2 id="hello"></h2><span class="chips" id="chips"></span></div>
     <div class="wltabs hide" id="wltabs"><button data-t="writer" class="on" onclick="wlTab('writer')">✍️ 일지 작성</button><button data-t="calendar" onclick="wlTab('calendar')">🗓️ 캘린더</button></div>
     <div class="wldate hide" id="wldate"><input type="date" id="wl-date" onchange="wlDate(this.value)" title="작성일자"><span class="wlst" id="wl-st"></span></div>
     <div class="tright">
+      <span class="tdate" id="today"></span>
       <span class="pstat hide" id="pstat" onclick="openPunch()" title="출퇴근 기록"></span>
       <button class="pbtn hide" id="pbtn" onclick="openPunch()">📍 출퇴근</button>
       <button class="gbtn2" onclick="openGuide(ME, (CUR||'home').split(':')[0])" title="사용 안내">📖<span class="gtx"> 사용 안내</span></button>
@@ -291,10 +300,6 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
     </div>
   </div>
   <main id="view-home">
-    <div class="head">
-      <div><div class="date" id="today"></div><h2 id="hello"></h2></div>
-      <div class="chips"><span id="chips" style="display:contents"></span></div>
-    </div>
     <div class="grid">
       <div class="col">
         <div class="card" style="order:1">
@@ -401,8 +406,7 @@ function kidHtml(kind, adm, tab, label){
 function topHtml(id, ic, label, call){ return '<a class="top" data-id="' + id + '" data-lb="' + esc(label) + '" onclick="' + call + '"><span class="ic">' + ic + '</span>' + esc(label) + '</a>'; }
 function grpHtml(ic, label){ return '<div class="grp"><span class="ic">' + ic + '</span>' + esc(label) + '</div>'; }
 function renderNav(){
-  var h = topHtml('home:s:', '🏠', '홈', "go('home')");
-  h += grpHtml('🏖', '근태 / 휴가 관리');
+  var h = grpHtml('🏖', '근태 / 휴가 관리');
   [['leave','내 근태현황'],['leave-apply','휴가 신청'],['overtime','시간외 신청'],['comp-apply','대체휴무 신청'],['promo','연가 사용 계획서'],['leavehist','내 신청내역']].forEach(function(k){ h += kidHtml('att', false, k[0], k[1]); });
   h += '<div class="kls">시수</div>' + kidHtml('att', false, 'write', '시수 입력') + kidHtml('att', false, 'myrecord', '내 시수 확인');
   h += '<div class="kls">대체시수</div>' + kidHtml('att', false, 'altwrite', '대체시수 발생일') + kidHtml('att', false, 'altuse', '대체시수 입력') + kidHtml('att', false, 'altrecord', '내 대체시수 확인');
@@ -466,6 +470,8 @@ function markNav(){
   if (CUR === 'home:s:') openGrp(null);
   var path = [sec, grp].filter(Boolean);   // 예: 시스템 관리 › 근태 관리 › 대시보드
   $('crumb').innerHTML = path.length ? '<small>' + path.map(esc).join(' › ') + ' ›</small> ' + esc(lb) : esc(lb);
+  var atHome = CUR === 'home:s:';   // 홈: 위쪽 띠에 인사말·소속 / 다른 화면: 경로
+  $('crumb').classList.toggle('hide', atHome); $('thello').classList.toggle('hide', !atHome);
   var wlw = CUR === 'worklog:s:write';
   $('wltabs').classList.toggle('hide', !wlw);
   if (!wlw) $('wldate').classList.add('hide');
@@ -628,7 +634,7 @@ function render(){
   $('brand-tx').innerHTML = ORG + '<br>' + (cl ? esc(cl) + ' ' : '') + '업무 시스템';
   document.title = ORG + ' ' + (cl ? cl + ' ' : '') + '업무 시스템';
   var name = ME.name || (ME.email || '').split('@')[0];
-  $('hello').textContent = '안녕하세요, ' + name + ' 님';
+  $('hello').innerHTML = '<span class="hi">안녕하세요, </span>' + esc(name) + ' 님';   // 휴대폰에서는 '김유진 님'만
   $('today').textContent = new Date().toLocaleDateString('ko-KR', { timeZone:'Asia/Seoul', year:'numeric', month:'long', day:'numeric', weekday:'long' });
   $('me-av').textContent = name.charAt(0);
   $('me-nm').textContent = name;

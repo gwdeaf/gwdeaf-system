@@ -1,0 +1,556 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>사업실적</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  * { box-sizing: border-box; }
+  body { margin: 0; font-family: "Malgun Gothic", "맑은 고딕", sans-serif; background: #f5f7fb; color: #222; font-size: 15px; }
+  header { background: #2f5bd6; color: #fff; padding: 12px 18px; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 8px; }
+  header h1 { font-size: 18px; margin: 0; } header .who { font-size: 13px; opacity: .9; }
+  nav { background: #fff; border-bottom: 1px solid #dde3ea; padding: 8px 12px; display: flex; gap: 6px; flex-wrap: wrap; }
+  main { padding: 16px; max-width: 1100px; margin: 0 auto; }
+  h2 { font-size: 19px; margin: 4px 0 4px; } h3 { font-size: 16px; margin: 0 0 10px; }
+  .desc { color: #667; font-size: 13px; margin: 0 0 12px; }
+  .head { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-bottom: 6px; }
+  .card { background: #fff; border: 1px solid #dde3ea; border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+  button { font: inherit; cursor: pointer; border: 1px solid #2f5bd6; background: #fff; color: #2f5bd6; border-radius: 6px; padding: 7px 12px; margin: 2px; }
+  button.main { background: #2f5bd6; color: #fff; } button.danger { border-color: #c0392b; color: #c0392b; }
+  button.link { border: 0; background: none; padding: 2px 4px; text-decoration: underline; }
+  button:disabled { opacity: .4; cursor: default; }
+  button.tab.on { background: #dfeaf5; font-weight: bold; }
+  input, select, textarea { font: inherit; padding: 7px 8px; border: 1px solid #bfc8d2; border-radius: 6px; width: 100%; background: #fff; }
+  textarea { min-height: 70px; }
+  label.f { display: block; font-size: 13px; color: #555; margin: 8px 0 3px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0 12px; } .wide { grid-column: 1 / -1; }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; margin-bottom: 10px; } .tools select, .tools input { width: auto; min-width: 120px; }
+  .tablewrap { overflow-x: auto; background: #fff; border: 1px solid #dde3ea; border-radius: 10px; margin-bottom: 14px; }
+  table { width: 100%; border-collapse: collapse; font-size: 14px; }
+  th, td { border-bottom: 1px solid #e6eaef; padding: 8px 7px; text-align: left; vertical-align: top; }
+  th { background: #f0f4f8; white-space: nowrap; } td.n, th.n { text-align: right; } tr.total td { font-weight: bold; background: #f8fafc; }
+  tr.click { cursor: pointer; } tr.click:hover { background: #f3f6fb; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 14px; }
+  .kpi { background: #fff; border: 1px solid #dde3ea; border-radius: 10px; padding: 12px; } .kpi span { font-size: 12px; color: #667; display: block; }
+  .kpi b { font-size: 22px; display: block; margin: 2px 0; } .kpi small { color: #889; font-size: 12px; }
+  .charts { display: grid; grid-template-columns: repeat(auto-fit, minmax(320px, 1fr)); gap: 14px; }
+  .bars .bar { display: grid; grid-template-columns: 90px 1fr 60px; gap: 8px; align-items: center; font-size: 13px; margin: 4px 0; }
+  .bars .bar .l { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; } .bars .bar .t { background: #edf1f7; border-radius: 4px; height: 14px; }
+  .bars .bar .t i { display: block; height: 100%; background: #4a78e0; border-radius: 4px; } .bars .bar .v { text-align: right; color: #445; }
+  .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; background: #e6eaef; white-space: nowrap; }
+  .st-작성전 { background: #eef0f3; color: #667; } .st-작성중 { background: #fff1c2; } .st-제출완료 { background: #dbe8ff; color: #1f4fa8; }
+  .st-검토중 { background: #efe1ff; color: #6b2fa8; } .st-반려 { background: #f8d7d3; color: #9b2c22; } .st-승인완료 { background: #d6f0dc; color: #17643a; }
+  .note { border-radius: 8px; padding: 10px 12px; margin-bottom: 12px; font-size: 14px; }
+  .note.ok { background: #e6f5ea; color: #1e6b37; } .note.err { background: #fdecea; color: #8a2a20; } .note.warn { background: #fff6dc; color: #7a5a00; }
+  .muted { color: #778; font-size: 13px; }
+  .mlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(170px, 1fr)); gap: 6px; max-height: 320px; overflow: auto; border: 1px solid #e3e8ef; border-radius: 8px; padding: 8px; }
+  .mitem { display: flex; gap: 6px; align-items: center; padding: 6px 8px; border: 1px solid #e3e8ef; border-radius: 6px; font-size: 14px; cursor: pointer; }
+  .mitem.on { background: #e8f0ff; border-color: #8fb0f0; } .mitem input { width: auto; }
+  dl.kv { display: grid; grid-template-columns: 110px 1fr; gap: 6px 10px; margin: 0; font-size: 14px; } dl.kv dt { color: #667; } dl.kv dd { margin: 0; white-space: pre-wrap; }
+  .modal { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
+  .modal .card { max-width: 760px; width: 100%; max-height: 90vh; overflow: auto; margin: 0; }
+  .screen { display: none; } .screen.on { display: block; }
+  body.embed header, body.embed #logoutBtn { display: none; }
+  @media print { header, nav, .noprint { display: none !important; } main { max-width: none; padding: 0; } .card, .tablewrap { border: 1px solid #999; } }
+  @media (max-width: 640px) { main { padding: 10px; } .card { padding: 12px; } button, select, input { min-height: 42px; } .bars .bar { grid-template-columns: 70px 1fr 50px; } dl.kv { grid-template-columns: 90px 1fr; } }
+</style>
+<link rel="stylesheet" href="/ui.css?v=1">
+</head>
+<body>
+<header><h1>사업실적 관리</h1><div class="who" id="whoText"></div></header>
+<nav id="topNav" style="display:none">
+  <button class="tab" data-tab="dash" onclick="go('dash')">대시보드</button>
+  <button class="tab" data-tab="projects" onclick="go('projects')">사업관리</button>
+  <button class="tab" data-tab="new" onclick="go('new')">실적 등록</button>
+  <button class="tab" data-tab="list" onclick="go('list')">실적 목록</button>
+  <button class="tab" data-tab="people" onclick="go('people')">참여자 관리</button>
+  <button class="tab" data-tab="reports" onclick="go('reports')">분기별 보고</button>
+  <button class="tab" data-tab="stats" onclick="go('stats')">통계 및 분석</button>
+  <button class="tab" data-tab="settings" id="setBtn" onclick="go('settings')" style="display:none">사업 분류</button>
+  <button id="logoutBtn" onclick="logout()">로그아웃</button>
+</nav>
+<main>
+  <section id="screenLogin" class="screen"><div class="card"><h2>로그인</h2>
+    <p>업무용 구글 계정(@gwdeaf.or.kr)으로 로그인하세요.</p>
+    <button class="main" onclick="loginGoogle()">구글 계정으로 로그인</button></div></section>
+  <section id="screenDenied" class="screen"><div class="card"><h2>사용 권한이 없습니다</h2>
+    <p id="deniedText">이 계정은 직원으로 등록되지 않았거나 사업실적 권한이 없습니다. 지회 담당자에게 요청하세요.</p>
+    <button onclick="logout()">다른 계정으로 로그인</button></div></section>
+  <section id="screenApp" class="screen"><div id="flash"></div><div id="view"></div></section>
+</main>
+
+<script>
+const SUPABASE_URL = 'https://uamlualqqcqmpdkprjfs.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhbWx1YWxxcWNxbXBka3ByamZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNjE0OTMsImV4cCI6MjExMDYzNzQ5M30._f4p4pfcKaYbmjKRXOPpkMo7Ydcc26oVVI6lRFYsLkY';
+const ALLOWED_DOMAIN = 'gwdeaf.or.kr';
+const EMBED = new URLSearchParams(location.search).get('embed') === '1';
+if (EMBED) document.body.classList.add('embed');
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+let ME = null, TAB = '';
+const $ = (id) => document.getElementById(id);
+const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const fmt = (n) => Number(n || 0).toLocaleString('ko-KR');
+const errText = (e) => (e && (e.message || e.error_description)) || '알 수 없는 오류가 났습니다.';
+const today = () => new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' });
+const curYear = () => Number(today().slice(0, 4));
+const curQ = () => Math.ceil(Number(today().slice(5, 7)) / 3);
+const qOf = (d) => Math.ceil(Number(String(d).slice(5, 7)) / 3);
+const Q_LABEL = { 1: '1분기 (1~3월)', 2: '2분기 (4~6월)', 3: '3분기 (7~9월)', 4: '4분기 (10~12월)' };
+const LOCKED = ['제출 완료', '검토 중', '승인 완료'];
+const yearOpts = (sel) => Array.from({ length: 5 }, (_, i) => curYear() - i).map((y) => `<option value="${y}" ${y == sel ? 'selected' : ''}>${y}년</option>`).join('');
+const qOpts = (sel, all) => (all ? `<option value="0" ${!+sel ? 'selected' : ''}>연간 전체</option>` : '') + [1, 2, 3, 4].map((q) => `<option value="${q}" ${q == sel ? 'selected' : ''}>${all ? q + '분기' : Q_LABEL[q]}</option>`).join('');
+const badge = (st) => `<span class="badge st-${String(st).replace(/\s/g, '')}">${esc(st)}</span>`;
+const dText = (t) => t ? new Date(t).toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }) : '';
+async function rpc(fn, args) { const { data, error } = await sb.rpc(fn, args || {}); if (error) throw new Error(errText(error)); return data; }
+function flash(text, tone) { $('flash').innerHTML = text ? `<div class="note ${tone || 'ok'}">${esc(text)}</div>` : ''; if (text) window.scrollTo({ top: 0, behavior: 'smooth' }); }
+function head(title, desc, btns) { return `<div class="head"><div><h2>${esc(title)}</h2>${desc ? `<p class="desc">${desc}</p>` : ''}</div><div class="noprint">${btns || ''}</div></div>`; }
+function view(html) { $('view').innerHTML = html; }
+function loading() { view('<p class="muted">불러오는 중…</p>'); }
+function csv(name, rows) {
+  if (!rows.length) { flash('내보낼 자료가 없습니다.', 'warn'); return; }
+  const h = Object.keys(rows[0]), q = (v) => { const s = v == null ? '' : String(v); return /[",\r\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s; };
+  const blob = new Blob(['﻿' + [h.join(','), ...rows.map((r) => h.map((k) => q(r[k])).join(','))].join('\r\n')], { type: 'text/csv;charset=utf-8' });
+  const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+// 집계: 실시 횟수 / 연인원(회차별 참여자 합) / 실인원(중복 제외 — 회원은 회원 번호, 비회원은 한 줄이 한 사람)
+function summarize(rows) { const set = new Set(); let tot = 0; rows.forEach((r) => { (r.keys || []).forEach((k) => set.add(k)); tot += (r.keys || []).length; }); return { cnt: rows.length, tot, uniq: set.size }; }
+function groupSum(rows, keyFn, nameFn) { const m = new Map(); rows.forEach((r) => { const k = keyFn(r); if (!m.has(k)) m.set(k, []); m.get(k).push(r); }); return [...m.entries()].map(([k, l]) => ({ key: k, name: nameFn(l[0]), list: l, ...summarize(l) })); }
+function bars(items, unit) {
+  const max = Math.max(1, ...items.map((i) => i.value));
+  return `<div class="bars">${items.map((i) => `<div class="bar"><span class="l" title="${esc(i.label)}">${esc(i.label)}</span><span class="t"><i style="width:${Math.round(i.value / max * 100)}%"></i></span><span class="v">${fmt(i.value)}${unit}</span></div>`).join('') || '<p class="muted">자료가 없습니다.</p>'}</div>`;
+}
+function kpi(label, value, sub) { return `<div class="kpi"><span>${esc(label)}</span><b>${value}</b>${sub ? `<small>${esc(sub)}</small>` : ''}</div>`; }
+
+// ===== 로그인 =====
+async function loginGoogle() {
+  const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname, queryParams: { hd: ALLOWED_DOMAIN, prompt: 'select_account' } } });
+  if (error) alert(errText(error));
+}
+async function logout() { await sb.auth.signOut(); location.href = location.origin + location.pathname; }
+function showScreen(id) { document.querySelectorAll('.screen').forEach((s) => s.classList.remove('on')); $(id).classList.add('on'); }
+let BOOTING = false;
+async function boot() {
+  if (BOOTING || ME) return; BOOTING = true;
+  try {
+    const { data: { session } } = await sb.auth.getSession();
+    if (!session) { showScreen('screenLogin'); return; }
+    let d = null;
+    try { d = await rpc('perf_me'); } catch (e) { $('deniedText').textContent = /perf_me/.test(e.message) ? '사업실적 DB 설정(24번 SQL)이 아직 안 되어 있습니다. 관리자에게 알려 주세요.' : e.message; showScreen('screenDenied'); return; }
+    if (!d) { showScreen('screenDenied'); return; }
+    if (!d.can_view && !d.can_review) { $('deniedText').textContent = '사업실적 권한이 없습니다. 지회 담당자에게 [직원·권한 관리]에서 사업실적 권한을 받으세요.'; showScreen('screenDenied'); return; }
+    ME = d;
+    $('whoText').textContent = `${ME.chapter_name} · ${ME.name}`;
+    $('topNav').style.display = 'flex';
+    $('setBtn').style.display = ME.can_review ? '' : 'none';
+    showScreen('screenApp');
+    subGo(SUB.go || 'dash');
+    subReady();
+  } finally { BOOTING = false; }
+}
+sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_IN' || ev === 'INITIAL_SESSION') boot(); });
+boot();
+
+// ===== 하위 메뉴 (업무 시스템 왼쪽 메뉴에서 이동) =====
+const SUB = { go: new URLSearchParams(location.search).get('go') || '', ready: false };
+function subTell(t) { if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-tab', tab: t }, location.origin); } catch (e) {} }
+function subReady() { SUB.ready = true; if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-ready', tab: SUB.go }, location.origin); } catch (e) {} }
+window.addEventListener('message', (e) => { if (e.origin !== location.origin || !e.data || e.data.type !== 'sub-go') return; SUB.go = e.data.tab; if (SUB.ready) subGo(SUB.go); });
+const SCREENS = { dash: showDash, projects: showProjects, new: (a, b) => showSessionForm(a, b), list: showList, people: showPeople, reports: showReports, stats: showStats, settings: showSettings };
+function subGo(t) { go(SCREENS[t] ? t : 'dash'); }
+function go(t, ...args) {
+  TAB = t; flash('');
+  document.querySelectorAll('#topNav [data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
+  subTell(t);
+  return SCREENS[t](...args);
+}
+function goMember() { if (EMBED) try { window.parent.postMessage({ type: 'nav-go', kind: 'member' }, location.origin); } catch (e) {} else location.href = '/member/'; }
+
+// ===== 대시보드 =====
+const DASH = { year: curYear(), ch: '' };
+async function showDash() {
+  loading();
+  try {
+    const all = await rpc('perf_stat_rows', { p_year: DASH.year, p_chapter: DASH.ch ? Number(DASH.ch) : null });
+    const rows = all.filter((r) => r.held_on.startsWith(String(DASH.year))), prev = all.filter((r) => r.held_on.startsWith(String(DASH.year - 1)));
+    const q = DASH.year === curYear() ? curQ() : 4;
+    const t = summarize(rows), qs = summarize(rows.filter((r) => qOf(r.held_on) === q)), ps = summarize(prev);
+    const change = ps.tot ? Math.round((t.tot - ps.tot) / ps.tot * 1000) / 10 : null;
+    let repTxt = '', repSub = '';
+    if (ME.can_review) { const b = await rpc('perf_report_board', { p_year: DASH.year, p_q: q }); repTxt = `${b.filter((x) => LOCKED.includes(x.status)).length} / ${b.length}`; repSub = `${q}분기 제출 지회 수`; }
+    else if (!ME.is_hq) { const r = await rpc('perf_report_get', { p_year: DASH.year, p_q: q }); repTxt = r.report ? r.report.status : '작성 전'; repSub = `${q}분기 보고 상태`; }
+    const chSel = ME.can_review ? `<select onchange="DASH.ch=this.value;showDash()"><option value="">전체 지회</option>${ME.chapters.map((c) => `<option value="${c.id}" ${String(c.id) === DASH.ch ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>` : '';
+    const top = groupSum(rows, (r) => r.project_id, (r) => (ME.can_review && !DASH.ch ? r.chapter_name + ' · ' : '') + r.project_name).sort((a, b) => b.tot - a.tot).slice(0, 8);
+    view(head('대시보드', '선택한 연도의 사업실적 현황입니다. 연인원 = 회차별 참여자 수 합계 · 실인원 = 중복을 뺀 인원',
+        (ME.can_write ? `<button class="main" onclick="go('new')">+ 사업실적 등록</button>` : '') + `<button onclick="go('reports')">분기 보고</button>`) +
+      `<div class="tools"><select onchange="DASH.year=+this.value;showDash()">${yearOpts(DASH.year)}</select>${chSel}</div>
+      <div class="kpis">${kpi('실시한 사업 수', fmt(new Set(rows.map((r) => r.project_id)).size), '실시 기록이 있는 사업')}${kpi('총 실시 횟수', fmt(t.cnt) + '회', '등록된 회차 기준')}
+        ${kpi('연인원', fmt(t.tot) + '명', '회차별 참여자 합계')}${kpi('실인원', fmt(t.uniq) + '명', '중복 제외')}
+        ${kpi(`${q}분기`, fmt(qs.cnt) + '회', `연인원 ${fmt(qs.tot)}명`)}${repTxt ? kpi('분기 보고', esc(repTxt), repSub) : ''}</div>
+      <div class="charts">
+        <div class="card"><h3>월별 실시 횟수</h3>${bars(Array.from({ length: 12 }, (_, i) => ({ label: (i + 1) + '월', value: rows.filter((r) => Number(r.held_on.slice(5, 7)) === i + 1).length })), '회')}</div>
+        <div class="card"><h3>분기별 연인원</h3>${bars([1, 2, 3, 4].map((x) => ({ label: x + '분기', value: summarize(rows.filter((r) => qOf(r.held_on) === x)).tot })), '명')}</div>
+        <div class="card"><h3>사업별 연인원 TOP 8</h3>${bars(top.map((p) => ({ label: p.name, value: p.tot })), '명')}</div>
+        <div class="card"><h3>전년도 대비</h3><dl class="kv"><dt>올해 연인원</dt><dd>${fmt(t.tot)}명</dd><dt>작년 연인원</dt><dd>${fmt(ps.tot)}명</dd>
+          <dt>증감률</dt><dd>${change === null ? '작년 자료가 없어 계산할 수 없습니다' : `<b style="color:${change >= 0 ? '#1e7a3c' : '#b03a2e'}">${change >= 0 ? '▲ +' : '▼ '}${change}%</b>`}</dd></dl>
+          <h3 style="margin-top:14px">사업 분류별 연인원</h3>${bars(groupSum(rows, (r) => r.category, (r) => r.category).sort((a, b) => b.tot - a.tot).map((c) => ({ label: c.name, value: c.tot })), '명')}</div>
+      </div>`);
+  } catch (e) { view(`<div class="note err">${esc(e.message)}</div>`); }
+}
+
+// ===== 사업관리 =====
+let PROJ = [];
+async function showProjects(kw) {
+  loading();
+  try {
+    PROJ = await rpc('perf_projects');
+    kw = kw || '';
+    const list = PROJ.filter((p) => !kw || p.name.includes(kw) || (p.manager_name || '').includes(kw));
+    view(head('사업관리', '사업의 기본정보를 등록합니다. 같은 사업을 여러 번 하면 실적(회차)만 추가합니다.', ME.can_manage ? `<button class="main" onclick="projectForm()">+ 새 사업 등록</button>` : '') +
+      `<div id="pform"></div>
+      <div class="tools"><input placeholder="사업명 또는 담당자 검색" value="${esc(kw)}" onchange="showProjects(this.value)"><span class="muted">총 ${fmt(list.length)}개</span></div>
+      <div class="tablewrap"><table><thead><tr><th>사업명</th><th>분류</th><th>담당자</th><th>기간</th><th class="n">계획 횟수</th><th class="n">실시 횟수</th><th></th></tr></thead><tbody>
+      ${list.map((p) => `<tr><td><button class="link" onclick="showProject(${p.id})"><b>${esc(p.name)}</b></button></td><td>${esc(p.category || '-')}</td><td>${esc(p.manager_name || '-')}</td>
+        <td class="muted">${esc(p.start_date || '?')} ~ ${esc(p.end_date || '?')}</td><td class="n">${fmt(p.plan_count)}</td><td class="n">${fmt(p.sessions)}</td>
+        <td>${ME.can_manage ? `<button class="link" style="color:#c0392b" onclick="delProject(${p.id})">삭제</button>` : ''}</td></tr>`).join('') || '<tr><td colspan="7" class="muted">등록된 사업이 없습니다.</td></tr>'}
+      </tbody></table></div>
+      ${ME.can_review ? '<p class="muted">사업 분류는 <button class="link" onclick="go(\'settings\')">사업 분류</button>에서 관리합니다.</p>' : ''}`);
+  } catch (e) { view(`<div class="note err">${esc(e.message)}</div>`); }
+}
+function projectForm(p, back) {
+  p = p || {};
+  const box = $('pform'); if (!box) return;
+  const f = (k, l, type, wide, extra) => `<div class="${wide ? 'wide' : ''}"><label class="f" for="pf_${k}">${l}</label>${type === 'ta' ? `<textarea id="pf_${k}">${esc(p[k] || '')}</textarea>` : `<input id="pf_${k}" type="${type || 'text'}" value="${esc(p[k] ?? (type === 'number' ? 0 : ''))}" ${extra || ''}>`}</div>`;
+  box.innerHTML = `<div class="card"><h3>${p.id ? '사업 정보 수정' : '새 사업 등록'}</h3><div class="grid">
+    ${f('name', '사업명', 'text', true, 'placeholder="예) 수어 기초 교육 과정"')}
+    <div><label class="f" for="pf_category_id">사업 분류</label><select id="pf_category_id"><option value="">선택 안 함</option>${ME.categories.map((c) => `<option value="${c.id}" ${c.id === p.category_id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>
+    ${f('manager_name', '담당자')}${f('target', '사업 대상', 'text', false, 'placeholder="예) 농아인 성인"')}${f('start_date', '사업 시작일', 'date')}${f('end_date', '사업 종료일', 'date')}
+    ${f('plan_count', '계획 횟수', 'number', false, 'min="0"')}${f('plan_people', '계획 인원', 'number', false, 'min="0"')}
+    ${f('purpose', '사업 목적', 'ta', true)}${f('content', '사업 내용', 'ta', true)}${f('note', '비고', 'text', true)}</div>
+    <div style="margin-top:10px"><button onclick="$('pform').innerHTML=''">취소</button><button class="main" id="pfSave">${p.id ? '수정 저장' : '사업 등록'}</button></div></div>`;
+  $('pfSave').onclick = async () => {
+    const v = (k) => $('pf_' + k).value;
+    const body = { id: p.id || '', name: v('name'), category_id: v('category_id'), manager_name: v('manager_name'), target: v('target'), start_date: v('start_date'), end_date: v('end_date'),
+      plan_count: v('plan_count'), plan_people: v('plan_people'), purpose: v('purpose'), content: v('content'), note: v('note') };
+    if (!body.name.trim()) { alert('사업명을 입력해 주세요.'); return; }
+    try { const id = await rpc('perf_project_save', { p: body }); if (back) { await showProject(id); flash('사업 정보를 수정했습니다.'); } else { await showProjects(); flash('사업을 등록했습니다.'); } }
+    catch (e) { alert(e.message); }
+  };
+  box.scrollIntoView({ behavior: 'smooth' });
+}
+async function delProject(id) {
+  const p = PROJ.find((x) => x.id === id);
+  if (p && p.sessions > 0) { flash(`'${p.name}'에는 실적이 ${p.sessions}건 있어서 지울 수 없습니다.`, 'err'); return; }
+  if (!confirm(`'${p ? p.name : ''}' 사업을 지울까요?`)) return;
+  try { await rpc('perf_project_delete', { p_id: id }); await showProjects(); flash('사업을 지웠습니다.'); } catch (e) { flash(e.message, 'err'); }
+}
+async function showProject(id) {
+  loading();
+  try {
+    const p = await rpc('perf_project_get', { p_id: id }), ss = p.session_list || [], t = summarize(ss);
+    const rate = p.plan_count ? Math.round(t.cnt / p.plan_count * 1000) / 10 : null;
+    view(head(p.name, esc(p.category || '분류 없음'), `<button onclick="go('projects')">← 사업 목록</button>` +
+        (ME.can_manage ? `<button id="peBtn">사업 정보 수정</button>` : '') + (ME.can_write ? `<button class="main" onclick="go('new', null, ${p.id})">+ 실시 회차 등록</button>` : '')) +
+      `<div id="pform"></div>
+      <div class="kpis">${kpi('실시 횟수', fmt(t.cnt) + '회', `계획 ${fmt(p.plan_count)}회`)}${kpi('연인원', fmt(t.tot) + '명')}${kpi('실인원', fmt(t.uniq) + '명', '중복 제외')}${kpi('계획 대비 달성률', rate === null ? '-' : rate + '%')}</div>
+      <div class="card"><h3>사업 기본정보</h3><dl class="kv"><dt>사업 목적</dt><dd>${esc(p.purpose || '-')}</dd><dt>사업 대상</dt><dd>${esc(p.target || '-')}</dd>
+        <dt>담당자</dt><dd>${esc(p.manager_name || '-')}</dd><dt>사업 기간</dt><dd>${esc(p.start_date || '?')} ~ ${esc(p.end_date || '?')}</dd>
+        <dt>계획 인원</dt><dd>${fmt(p.plan_people)}명</dd><dt>사업 내용</dt><dd>${esc(p.content || '-')}</dd><dt>비고</dt><dd>${esc(p.note || '-')}</dd></dl></div>
+      <h3>실시 회차</h3><div class="tablewrap"><table><thead><tr><th>회차</th><th>실시일</th><th>시간</th><th>장소</th><th class="n">참여인원</th><th>담당자</th></tr></thead><tbody>
+      ${ss.map((s) => `<tr class="click" onclick="showSession(${s.id})"><td><b>${s.round_no}회차</b></td><td>${esc(s.held_on)}</td><td class="muted">${esc(s.start_time)}${s.end_time ? ' ~ ' + esc(s.end_time) : ''}</td>
+        <td>${esc(s.place || '-')}</td><td class="n">${fmt(s.keys.length)}</td><td>${esc(s.manager_name || '-')}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">아직 등록된 회차가 없습니다.</td></tr>'}
+      </tbody></table></div>`);
+    if ($('peBtn')) $('peBtn').onclick = () => projectForm(p, true);
+  } catch (e) { view(`<div class="note err">${esc(e.message)}</div>`); }
+}
+
+// ===== 실적(회차) 등록·수정 =====
+let SF = null;   // 입력 중인 회차
+async function showSessionForm(initial, projectId) {
+  if (!ME.can_write) { view(head('사업실적 등록') + '<div class="note warn">사업실적 입력 권한이 없습니다. 지회 담당자에게 요청하세요.</div>'); return; }
+  loading();
+  try {
+    const [projects, members] = await Promise.all([rpc('perf_projects'), rpc('perf_members')]);
+    const ini = initial || {}, editing = !!ini.id;
+    SF = { id: ini.id || '', members, projects, sel: new Set((ini.participants || []).filter((x) => x.member_id).map((x) => x.member_id)),
+      ext: (ini.participants || []).filter((x) => !x.member_id).map((x) => ({ id: editing ? x.id : '', name: x.name, affiliation: x.external_affiliation || '', phone: x.external_phone || '', note: x.note || '' })) };
+    const pid = ini.project_id || projectId || (projects.length === 1 ? projects[0].id : '');   // 사업이 하나면 바로 선택
+    if (!projects.length) { view(head('사업실적 등록') + `<div class="note warn">먼저 사업을 등록해야 합니다. <button class="link" onclick="go('projects')">사업관리로 이동</button></div>`); return; }
+    const v = (k) => esc(ini[k] || '');
+    view(head(editing ? `${ini.project_name} · ${ini.round_no}회차 수정` : '사업실적 등록', editing ? '고치면 참여 이력과 통계가 함께 바뀝니다.' : '사업을 고르고 실시일·참여자를 입력합니다. 같은 사업은 회차만 늘려 가며 등록합니다.') +
+      `<div class="card"><h3>1. 사업 및 회차 정보</h3><div class="grid">
+        <div class="wide"><label class="f" for="sf_project">사업명</label><select id="sf_project" ${editing ? 'disabled' : ''}><option value="">사업을 선택하세요</option>${projects.map((p) => `<option value="${p.id}" ${p.id == pid ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
+        <div><label class="f" for="sf_round">실시 회차</label><input id="sf_round" type="number" min="1" value="${ini.round_no && editing ? ini.round_no : ''}"></div>
+        <div><label class="f" for="sf_held">사업 실시일</label><input id="sf_held" type="date" value="${editing ? v('held_on') : today()}"></div>
+        <div><label class="f" for="sf_st">시작 시간</label><input id="sf_st" type="time" value="${v('start_time')}"></div>
+        <div><label class="f" for="sf_en">종료 시간</label><input id="sf_en" type="time" value="${v('end_time')}"></div>
+        <div class="wide"><label class="f" for="sf_place">실시 장소</label><input id="sf_place" value="${v('place')}"></div>
+        <div class="wide"><label class="f" for="sf_content">사업 내용</label><textarea id="sf_content">${v('content')}</textarea></div>
+        <div><label class="f" for="sf_mgr">담당자</label><input id="sf_mgr" value="${ini.manager_name ? v('manager_name') : esc(ME.name)}"></div>
+        <div><label class="f" for="sf_note">특이사항 및 비고</label><input id="sf_note" value="${v('note')}"></div></div></div>
+      <div class="card"><div class="head"><h3>2. 참여자 선택</h3><b id="sfCount"></b></div>
+        <div class="tools"><input id="sfQ" placeholder="회원 이름 또는 회원번호 검색" oninput="drawMembers()"><button onclick="selAll(true)">검색 결과 전체 선택</button><button onclick="selAll(false)">선택 전체 해제</button>
+          <button class="link" onclick="goMember()">회원 추가는 회원관리에서 →</button></div>
+        <div class="mlist" id="sfMembers"></div>
+        <h3 style="margin-top:14px">회원명단에 없는 참여자 직접 입력</h3>
+        <div class="grid"><div><input id="ex_name" placeholder="성명 (필수)"></div><div><input id="ex_aff" placeholder="소속 (선택)"></div><div><input id="ex_phone" placeholder="연락처 (선택)"></div>
+          <div style="display:flex;gap:6px"><input id="ex_note" placeholder="비고"><button class="main" onclick="addExt()">추가</button></div></div>
+        <div id="sfExt"></div>
+        <p class="muted">※ 회원명단에 없는 참여자는 이름이 같아도 자동으로 합치지 않고 각각 따로 셉니다.</p></div>
+      <div class="noprint"><button onclick="${editing ? `showSession(${ini.id})` : "go('list')"}">취소</button><button class="main" id="sfSave">${editing ? '수정 내용 저장' : '실적 저장'}</button></div>`);
+    const setRound = async () => { const id = $('sf_project').value; if (!id || editing) return; try { $('sf_round').value = await rpc('perf_next_round', { p_project: Number(id) }); } catch (e) {} };
+    $('sf_project').onchange = setRound; setRound();
+    drawMembers(); drawExt();
+    $('sfSave').onclick = saveSession;
+  } catch (e) { view(`<div class="note err">${esc(e.message)}</div>`); }
+}
+function drawMembers() {
+  const q = ($('sfQ').value || '').trim(), list = SF.members.filter((m) => !q || m.name.includes(q) || String(m.member_no || '').includes(q));
+  $('sfMembers').innerHTML = list.map((m) => `<label class="mitem ${SF.sel.has(m.id) ? 'on' : ''}"><input type="checkbox" ${SF.sel.has(m.id) ? 'checked' : ''} onchange="togMember(${m.id}, this.checked)">
+    <span>${esc(m.name)}</span><span class="muted">${esc(m.member_no || '')}</span>${m.status !== '활동' ? `<span class="badge">${esc(m.status)}</span>` : ''}</label>`).join('')
+    || '<p class="muted">표시할 회원이 없습니다. 회원은 [회원관리]에서 등록합니다.</p>';
+  $('sfCount').textContent = `총 ${SF.sel.size + SF.ext.length}명 · 회원 ${SF.sel.size} · 비회원 ${SF.ext.length}`;
+}
+function togMember(id, on) { on ? SF.sel.add(id) : SF.sel.delete(id); drawMembers(); }
+function selAll(on) { const q = ($('sfQ').value || '').trim(); if (!on) SF.sel.clear(); else SF.members.filter((m) => !q || m.name.includes(q) || String(m.member_no || '').includes(q)).forEach((m) => SF.sel.add(m.id)); drawMembers(); }
+function addExt() {
+  const name = $('ex_name').value.trim(); if (!name) { alert('외부 참여자의 성명을 입력해 주세요.'); return; }
+  SF.ext.push({ id: '', name, affiliation: $('ex_aff').value.trim(), phone: $('ex_phone').value.trim(), note: $('ex_note').value.trim() });
+  ['ex_name', 'ex_aff', 'ex_phone', 'ex_note'].forEach((k) => { $(k).value = ''; }); drawExt();
+}
+function drawExt() {
+  $('sfExt').innerHTML = SF.ext.length ? `<div class="tablewrap" style="margin-top:8px"><table><thead><tr><th>성명</th><th>소속</th><th>연락처</th><th>비고</th><th></th></tr></thead><tbody>
+    ${SF.ext.map((x, i) => `<tr><td>${esc(x.name)}</td><td>${esc(x.affiliation)}</td><td>${esc(x.phone)}</td><td>${esc(x.note)}</td><td><button class="link" style="color:#c0392b" onclick="SF.ext.splice(${i},1);drawExt()">삭제</button></td></tr>`).join('')}</tbody></table></div>` : '';
+  drawMembers();
+}
+async function saveSession() {
+  const body = { id: SF.id, project_id: $('sf_project').value, round_no: $('sf_round').value, held_on: $('sf_held').value, start_time: $('sf_st').value, end_time: $('sf_en').value,
+    place: $('sf_place').value, content: $('sf_content').value, manager_name: $('sf_mgr').value, note: $('sf_note').value, members: [...SF.sel], externals: SF.ext };
+  if (!body.project_id) { alert('사업을 선택해 주세요.'); return; }
+  if (!body.held_on) { alert('사업 실시일을 입력해 주세요.'); return; }
+  $('sfSave').disabled = true;
+  try { const id = await rpc('perf_session_save', { p: body }); await showSession(id); flash(SF.id ? '실적을 수정했습니다.' : '실적을 저장했습니다.'); }
+  catch (e) { alert(e.message); $('sfSave').disabled = false; }
+}
+async function showSession(id) {
+  loading();
+  try {
+    const s = await rpc('perf_session_get', { p_id: id }), ps = s.participants || [];
+    view(head(`${s.project_name} · ${s.round_no}회차`, esc(s.held_on), `<button onclick="showProject(${s.project_id})">← 사업 상세</button>` +
+        (ME.can_write ? `<button onclick="copySession(${s.id})">이 회차를 복제</button><button ${s.locked ? 'disabled' : ''} onclick="editSession(${s.id})">수정</button><button class="danger" ${s.locked ? 'disabled' : ''} onclick="delSession(${s.id})">삭제</button>` : '')) +
+      (s.locked ? '<div class="note warn">이 실적이 속한 분기 보고가 제출·승인되어 수정·삭제가 잠겨 있습니다.</div>' : '') +
+      `<div class="kpis">${kpi('참여인원 (연인원)', fmt(ps.length) + '명')}${kpi('회원', fmt(ps.filter((p) => p.member_id).length) + '명')}${kpi('비회원', fmt(ps.filter((p) => !p.member_id).length) + '명', '회원명단에 없는 참여자')}</div>
+      <div class="card"><h3>실시 정보</h3><dl class="kv"><dt>실시일</dt><dd>${esc(s.held_on)}</dd><dt>시간</dt><dd>${esc(s.start_time || '-')}${s.end_time ? ' ~ ' + esc(s.end_time) : ''}</dd>
+        <dt>장소</dt><dd>${esc(s.place || '-')}</dd><dt>사업 내용</dt><dd>${esc(s.content || '-')}</dd><dt>담당자</dt><dd>${esc(s.manager_name || '-')}</dd><dt>특이사항</dt><dd>${esc(s.note || '-')}</dd></dl></div>
+      <h3>참여자 명단</h3><div class="tablewrap"><table><thead><tr><th>구분</th><th>성명</th><th>회원번호 / 소속</th><th>연락처</th><th>비고</th></tr></thead><tbody>
+      ${ps.map((p) => `<tr><td><span class="badge">${p.member_id ? '회원' : '비회원'}</span></td><td><b>${esc(p.name)}</b></td><td>${esc(p.member_id ? p.member_no || '' : p.external_affiliation || '-')}</td><td>${esc(p.external_phone || '-')}</td><td>${esc(p.note || '-')}</td></tr>`).join('') || '<tr><td colspan="5" class="muted">참여자가 없습니다.</td></tr>'}
+      </tbody></table></div>`);
+  } catch (e) { view(`<div class="note err">${esc(e.message)}</div>`); }
+}
+async function editSession(id) { try { const s = await rpc('perf_session_get', { p_id: id }); go('new', s); } catch (e) { flash(e.message, 'err'); } }
+async function copySession(id) {
+  try { const s = await rpc('perf_session_get', { p_id: id }); const c = Object.assign({}, s, { id: '', round_no: '', held_on: '' }); go('new', c, s.project_id); flash('복제했습니다. 실시일·회차를 확인하고 저장하세요.', 'warn'); }
+  catch (e) { flash(e.message, 'err'); }
+}
+async function delSession(id) {
+  const reason = prompt('삭제 사유를 입력하세요 (작업 기록에 남습니다)'); if (reason === null) return;
+  if (!confirm('이 실적 회차를 삭제할까요? 참여 기록과 통계에서 빠집니다.')) return;
+  try { await rpc('perf_session_delete', { p_id: id, p_reason: reason }); await go('list'); flash('실적을 삭제했습니다.'); } catch (e) { flash(e.message, 'err'); }
+}
+
+// ===== 실적 목록 =====
+const LST = { year: curYear(), q: 0, kw: '', rows: [], chk: new Set() };
+async function showList() {
+  loading();
+  try {
+    const from = LST.q ? `${LST.year}-${String((LST.q - 1) * 3 + 1).padStart(2, '0')}-01` : `${LST.year}-01-01`;
+    const to = LST.q ? new Date(Date.UTC(LST.year, LST.q * 3, 0)).toISOString().slice(0, 10) : `${LST.year}-12-31`;
+    LST.rows = await rpc('perf_sessions', { p_from: from, p_to: to }); LST.chk = new Set();
+    drawList();
+  } catch (e) { view(`<div class="note err">${esc(e.message)}</div>`); }
+}
+function lstFiltered() { const k = LST.kw.trim(); return LST.rows.filter((r) => !k || r.project_name.includes(k) || (r.content || '').includes(k)); }
+function drawList() {
+  const list = lstFiltered();
+  view(head('사업실적 목록', '등록된 실적을 표로 봅니다. 줄을 누르면 참여자 명단이 나옵니다.', `<button onclick="listCsv()">엑셀용 CSV 받기${LST.chk.size ? ` (${LST.chk.size}건)` : ''}</button>` + (ME.can_write ? `<button class="main" onclick="go('new')">+ 실적 등록</button>` : '')) +
+    `<div class="tools"><select onchange="LST.year=+this.value;showList()">${yearOpts(LST.year)}</select><select onchange="LST.q=+this.value;showList()">${qOpts(LST.q, true)}</select>
+      <input placeholder="사업명 또는 내용 검색" value="${esc(LST.kw)}" onchange="LST.kw=this.value;drawList()"><span class="muted">총 ${fmt(list.length)}건</span></div>
+    <div class="tablewrap"><table><thead><tr><th>선택</th><th>번호</th><th>사업명</th><th>실시일</th><th>회차</th><th class="n">참여인원</th><th>사업 내용</th><th>담당자</th><th>최종 수정일</th></tr></thead><tbody>
+    ${list.map((r, i) => `<tr class="click" onclick="if(event.target.type!=='checkbox')showSession(${r.id})"><td><input type="checkbox" style="width:auto" ${LST.chk.has(r.id) ? 'checked' : ''} onchange="this.checked?LST.chk.add(${r.id}):LST.chk.delete(${r.id})"></td>
+      <td>${list.length - i}</td><td><b>${esc(r.project_name)}</b>${r.locked ? ' 🔒' : ''}</td><td>${esc(r.held_on)}</td><td>${r.round_no}회</td><td class="n">${fmt(r.participants)}</td>
+      <td class="muted" style="max-width:260px">${esc(r.content || '-')}</td><td>${esc(r.manager_name || '-')}</td><td class="muted">${dText(r.updated_at)}</td></tr>`).join('') || '<tr><td colspan="9" class="muted">해당 기간에 등록된 실적이 없습니다.</td></tr>'}
+    </tbody></table></div><p class="muted">🔒 = 분기 보고가 제출·승인되어 잠긴 실적</p>`);
+}
+function listCsv() {
+  const list = lstFiltered(), target = LST.chk.size ? list.filter((r) => LST.chk.has(r.id)) : list;
+  csv(`사업실적_${LST.year}${LST.q ? '_' + LST.q + '분기' : ''}.csv`, target.map((r, i) => ({ 번호: i + 1, 지회명: ME.chapter_name, 사업명: r.project_name, 사업실시일: r.held_on, 실시회차: r.round_no,
+    참여인원: r.participants, 사업내용: r.content || '', 장소: r.place || '', 담당자: r.manager_name || '', 최종수정일: dText(r.updated_at) })));
+}
+
+// ===== 참여자 관리 =====
+const PPL = { year: curYear(), kw: '', rows: [] };
+async function showPeople() {
+  loading();
+  try { PPL.rows = await rpc('perf_participants', { p_year: PPL.year }); drawPeople(); } catch (e) { view(`<div class="note err">${esc(e.message)}</div>`); }
+}
+function drawPeople() {
+  const k = PPL.kw.trim(), list = PPL.rows.filter((r) => !k || (r.name || '').includes(k) || r.project_name.includes(k));
+  view(head('참여자 관리', '모든 회차의 참여 기록을 한 번에 봅니다. 여기서 바꾼 내용은 실적과 통계에 바로 반영됩니다. 회원 이름을 누르면 참여 이력이 나옵니다.', `<button onclick="goMember()">👥 회원관리</button>`) +
+    `<div class="tools"><select onchange="PPL.year=+this.value;showPeople()">${yearOpts(PPL.year)}</select><input placeholder="참여자 이름 또는 사업명 검색" value="${esc(PPL.kw)}" onchange="PPL.kw=this.value;drawPeople()"><span class="muted">참여 기록 ${fmt(list.length)}건</span></div>
+    <div class="tablewrap"><table><thead><tr><th>구분</th><th>성명</th><th>회원번호 / 소속</th><th>사업명</th><th>실시일</th><th>회차</th><th>비고</th><th></th></tr></thead><tbody>
+    ${list.map((r) => `<tr><td><span class="badge">${r.member_id ? '회원' : '비회원'}</span></td>
+      <td>${r.member_id ? `<button class="link" onclick="memberHistory(${r.member_id})"><b>${esc(r.name)}</b></button>` : `<b>${esc(r.name)}</b>`}</td>
+      <td class="muted">${esc(r.member_id ? r.member_no || '' : r.external_affiliation || '-')}</td><td><button class="link" onclick="showSession(${r.session_id})">${esc(r.project_name)}</button></td>
+      <td>${esc(r.held_on)}</td><td>${r.round_no}회</td><td class="muted">${esc(r.note || '-')}</td>
+      <td>${ME.can_write && !r.locked ? `<button class="link" onclick="pNote(${r.id})">비고</button><button class="link" style="color:#c0392b" onclick="pRemove(${r.id})">빼기</button>` : r.locked ? '🔒' : ''}</td></tr>`).join('') || '<tr><td colspan="8" class="muted">해당 기간의 참여 기록이 없습니다.</td></tr>'}
+    </tbody></table></div><p class="muted">참여자 추가는 실적 상세의 [수정]에서 합니다.</p>`);
+}
+async function pNote(id) {
+  const r = PPL.rows.find((x) => x.id === id), v = prompt(`${r.name} 님 비고`, r.note || ''); if (v === null) return;
+  try { await rpc('perf_participant_note', { p_id: id, p_note: v }); await showPeople(); flash('비고를 저장했습니다.'); } catch (e) { flash(e.message, 'err'); }
+}
+async function pRemove(id) {
+  const r = PPL.rows.find((x) => x.id === id);
+  if (!confirm(`'${r.name}' 님을 ${r.project_name} ${r.round_no}회차 참여자에서 뺄까요?`)) return;
+  try { await rpc('perf_participant_remove', { p_id: id }); await showPeople(); flash(`${r.name} 님을 참여자에서 뺐습니다.`); } catch (e) { flash(e.message, 'err'); }
+}
+async function memberHistory(mid) {
+  try {
+    const d = await rpc('perf_member_history', { p_member: mid }), h = d.history, ov = document.createElement('div');
+    const byYear = {}; h.forEach((x) => { const y = x.held_on.slice(0, 4); byYear[y] = (byYear[y] || 0) + 1; });
+    ov.className = 'modal';
+    ov.innerHTML = `<div class="card">${head(d.member.name, esc(`${d.member.member_no || ''} · ${d.member.category || ''} · ${d.member.status}`), '<button id="mhX">닫기</button>')}
+      <div class="kpis">${kpi('사업 참여 횟수', fmt(h.length) + '회')}${kpi('참여한 사업 수', fmt(new Set(h.map((x) => x.project_name)).size) + '개')}</div>
+      <p class="muted">${Object.keys(byYear).sort().reverse().map((y) => `${y}년 ${byYear[y]}회`).join(' · ') || ''}</p>
+      <div class="tablewrap"><table><thead><tr><th>실시일</th><th>사업명</th><th>회차</th></tr></thead><tbody>
+      ${h.map((x) => `<tr><td>${esc(x.held_on)}</td><td>${esc(x.project_name)}</td><td>${x.round_no}회</td></tr>`).join('') || '<tr><td colspan="3" class="muted">참여 기록이 없습니다.</td></tr>'}</tbody></table></div></div>`;
+    document.body.appendChild(ov);
+    ov.onclick = (e) => { if (e.target === ov || e.target.id === 'mhX') ov.remove(); };
+  } catch (e) { flash(e.message, 'err'); }
+}
+
+// ===== 분기별 보고 =====
+const REP = { year: curYear(), q: curQ() };
+async function showReports() {
+  loading();
+  const tools = `<div class="tools noprint"><select onchange="REP.year=+this.value;showReports()">${yearOpts(REP.year)}</select><select onchange="REP.q=+this.value;showReports()">${qOpts(REP.q)}</select></div>`;
+  try {
+    if (ME.can_review) return drawBoard(tools, await rpc('perf_report_board', { p_year: REP.year, p_q: REP.q }));
+    if (ME.is_hq) { view(head('분기별 보고') + '<div class="note warn">분기 보고는 각 지회가 도협회로 제출합니다. 검토 권한이 있으면 지회별 제출 현황이 보입니다.</div>'); return; }
+    drawChapterReport(tools, await rpc('perf_report_get', { p_year: REP.year, p_q: REP.q }));
+  } catch (e) { view(`<div class="note err">${esc(e.message)}</div>`); }
+}
+function reportTables(sh) {
+  const T = sh.totals || {};
+  return `<div class="kpis">${kpi('실시 횟수', fmt(T.sessionCount) + '회')}${kpi('연인원', fmt(T.totalParticipants) + '명')}${kpi('실인원', fmt(T.uniquePeople) + '명', '분기 전체 중복 제외')}</div>
+    <h3>사업별 실적</h3><div class="tablewrap"><table><thead><tr><th>사업명</th><th class="n">실시 횟수</th><th class="n">연인원</th><th class="n">실인원</th></tr></thead><tbody>
+    ${(sh.projects || []).map((p) => `<tr><td><b>${esc(p.name)}</b></td><td class="n">${fmt(p.sessionCount)}</td><td class="n">${fmt(p.totalParticipants)}</td><td class="n">${fmt(p.uniquePeople)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">이 분기에 실시한 사업이 없습니다.</td></tr>'}
+    ${(sh.projects || []).length ? `<tr class="total"><td>분기 전체 합계</td><td class="n">${fmt(T.sessionCount)}</td><td class="n">${fmt(T.totalParticipants)}</td><td class="n">${fmt(T.uniquePeople)}</td></tr>` : ''}</tbody></table></div>
+    <h3>사업 실시일 상세</h3><div class="tablewrap"><table><thead><tr><th>사업명</th><th>실시일</th><th>회차</th><th>장소</th><th>사업 내용</th><th class="n">참여인원</th></tr></thead><tbody>
+    ${(sh.projects || []).flatMap((p) => (p.sessions || []).map((s) => `<tr><td>${esc(p.name)}</td><td>${esc(s.held_on)}</td><td>${s.round_no}회</td><td>${esc(s.place || '-')}</td><td class="muted">${esc(s.content || '-')}</td><td class="n">${fmt(s.participants)}</td></tr>`)).join('') || '<tr><td colspan="6" class="muted">내용이 없습니다.</td></tr>'}</tbody></table></div>`;
+}
+let RPT = null;
+function drawChapterReport(tools, d) {
+  RPT = d;
+  const r = d.report, st = r ? r.status : '작성 전', locked = LOCKED.includes(st), sh = locked && r.snapshot ? r.snapshot : d.live;
+  view(head('분기별 보고', '선택한 분기의 실적을 자동으로 모아 보여 줍니다. 확인 후 도협회에 제출하세요.', '<button onclick="window.print()">🖨 인쇄</button>') + tools +
+    `<div class="card"><b>${esc(ME.chapter_name)} · ${REP.year}년 ${Q_LABEL[REP.q]}</b> ${badge(st)} ${r && r.submitted_at ? `<span class="muted">제출일 ${dText(r.submitted_at)}</span>` : ''}</div>
+    ${st === '반려' && r.reviewer_note ? `<div class="note err">반려 사유: ${esc(r.reviewer_note)} · 내용을 고친 뒤 다시 제출해 주세요.</div>` : ''}
+    ${locked ? '<div class="note warn">제출된 보고입니다. 아래 내용은 제출 당시의 집계이며, 이 분기 실적은 잠겨 있습니다.</div>' : ''}
+    ${reportTables(sh)}
+    <div class="card"><h3>보충 설명</h3><textarea id="repNote" ${locked || !d.can_manage ? 'disabled' : ''} placeholder="보고서에 덧붙일 설명이 있으면 적어 주세요.">${esc(r ? r.note : '')}</textarea></div>
+    <div class="noprint">${!d.can_manage ? '<span class="muted">보고 저장·제출은 사업·보고 관리 권한이 있는 직원이 합니다.</span>'
+      : st === '제출 완료' ? '<button onclick="repCancel()">제출 취소</button> <span class="muted">도협회가 검토를 시작하기 전에는 취소할 수 있습니다.</span>'
+      : locked ? '' : `<button onclick="repSave(false)">임시 저장</button><button class="main" onclick="repSave(true)">${st === '반려' ? '수정 후 다시 제출' : '도협회 제출'}</button>`}</div>`);
+}
+async function repSave(submit) {
+  const n = RPT.live.totals.sessionCount;
+  if (submit && !confirm(n ? `${REP.year}년 ${REP.q}분기 보고를 도협회에 제출할까요?\n제출하면 이 분기 실적은 고칠 수 없습니다. (반려되거나 제출을 취소하면 다시 고칠 수 있습니다)` : '이 분기에 등록된 실적이 없습니다. 그래도 제출할까요?')) return;
+  try { const d = await rpc('perf_report_save', { p_year: REP.year, p_q: REP.q, p_note: $('repNote').value, p_submit: submit }); await showReports(); flash(submit ? '도협회에 제출했습니다.' : '임시 저장했습니다.'); }
+  catch (e) { flash(e.message, 'err'); }
+}
+async function repCancel() {
+  if (!confirm('제출을 취소할까요? 이 분기 실적의 잠금이 풀립니다.')) return;
+  try { await rpc('perf_report_cancel', { p_year: REP.year, p_q: REP.q }); await showReports(); flash('제출을 취소했습니다.'); } catch (e) { flash(e.message, 'err'); }
+}
+let BRD = [];
+function drawBoard(tools, rows) {
+  BRD = rows;
+  const sub = rows.filter((r) => LOCKED.includes(r.status)).length, not = rows.filter((r) => r.status === '작성 전' || r.status === '작성 중').map((r) => r.chapter_name);
+  view(head('분기별 보고 (도협회)', '지회가 제출한 분기 보고를 검토하고 승인하거나 반려합니다. 숫자는 제출 당시 집계입니다.', '<button onclick="boardCsv()">전체 지회 통합 CSV</button><button onclick="window.print()">🖨 인쇄</button>') + tools +
+    `<div class="kpis">${kpi('제출 지회', `${sub} / ${rows.length}`, `${REP.q}분기 기준`)}${kpi('미제출 지회', fmt(not.length), not.join(', ') || '모두 제출')}</div>
+    <div class="tablewrap"><table><thead><tr><th>지회</th><th>상태</th><th>제출일</th><th class="n">실시 횟수</th><th class="n">연인원</th><th class="n">실인원</th><th class="noprint">관리</th></tr></thead><tbody>
+    ${rows.map((r, i) => { const t = r.snapshot && r.snapshot.totals; return `<tr><td><b>${esc(r.chapter_name)}</b></td><td>${badge(r.status)}</td><td class="muted">${dText(r.submitted_at) || '-'}</td>
+      <td class="n">${t ? fmt(t.sessionCount) : '-'}</td><td class="n">${t ? fmt(t.totalParticipants) : '-'}</td><td class="n">${t ? fmt(t.uniquePeople) : '-'}</td>
+      <td class="noprint">${r.snapshot ? `<button onclick="boardDetail(${i})">상세</button>` : ''}${r.status === '제출 완료' ? `<button onclick="review(${i},'검토 중')">검토 시작</button>` : ''}
+        ${['제출 완료', '검토 중'].includes(r.status) ? `<button class="main" onclick="review(${i},'승인 완료')">승인</button><button class="danger" onclick="review(${i},'반려')">반려</button>` : ''}</td></tr>`; }).join('') || '<tr><td colspan="7" class="muted">지회가 없습니다.</td></tr>'}
+    </tbody></table></div>`);
+}
+function boardDetail(i) {
+  const r = BRD[i], ov = document.createElement('div'); ov.className = 'modal';
+  ov.innerHTML = `<div class="card">${head(`${r.chapter_name} · ${REP.year}년 ${REP.q}분기`, `${badge(r.status)} 제출 ${dText(r.submitted_at)} ${esc(r.submitted_by || '')}`, '<button id="bdX">닫기</button>')}
+    ${r.note ? `<div class="note warn">보충 설명: ${esc(r.note)}</div>` : ''}${r.reviewer_note ? `<div class="note err">마지막 반려 사유: ${esc(r.reviewer_note)}</div>` : ''}${reportTables(r.snapshot)}</div>`;
+  document.body.appendChild(ov); ov.onclick = (e) => { if (e.target === ov || e.target.id === 'bdX') ov.remove(); };
+}
+async function review(i, action) {
+  const r = BRD[i]; let note = '';
+  if (action === '반려') { note = prompt(`${r.chapter_name} 보고를 반려합니다. 반려 사유를 입력하세요.`); if (!note || !note.trim()) return; }
+  else if (!confirm(`${r.chapter_name} 보고를 '${action}' 처리할까요?`)) return;
+  try { const rows = await rpc('perf_report_review', { p_chapter: r.chapter_id, p_year: REP.year, p_q: REP.q, p_action: action, p_note: note });
+    drawBoard(`<div class="tools noprint"><select onchange="REP.year=+this.value;showReports()">${yearOpts(REP.year)}</select><select onchange="REP.q=+this.value;showReports()">${qOpts(REP.q)}</select></div>`, rows);
+    flash(`${r.chapter_name} 보고를 '${action}' 처리했습니다.`); } catch (e) { flash(e.message, 'err'); }
+}
+function boardCsv() {
+  const out = [];
+  BRD.forEach((r) => { if (!r.snapshot) { out.push({ 지회: r.chapter_name, 보고상태: r.status, 사업명: '', 실시횟수: '', 연인원: '', 실인원: '' }); return; }
+    (r.snapshot.projects || []).forEach((p) => out.push({ 지회: r.chapter_name, 보고상태: r.status, 사업명: p.name, 실시횟수: p.sessionCount, 연인원: p.totalParticipants, 실인원: p.uniquePeople })); });
+  csv(`${REP.year}년_${REP.q}분기_지회별_통합보고.csv`, out);
+}
+
+// ===== 통계 및 분석 =====
+const STS = { year: curYear(), q: 0, ch: '', proj: '' };
+async function showStats() {
+  loading();
+  try {
+    const all = await rpc('perf_stat_rows', { p_year: STS.year, p_chapter: STS.ch ? Number(STS.ch) : null });
+    const yr = all.filter((r) => r.held_on.startsWith(String(STS.year)));
+    const rows = yr.filter((r) => (!STS.q || qOf(r.held_on) === STS.q) && (!STS.proj || String(r.project_id) === STS.proj));
+    const t = summarize(rows), multi = ME.can_review && !STS.ch;
+    const byP = groupSum(rows, (r) => r.project_id, (r) => (multi ? r.chapter_name + ' · ' : '') + r.project_name).map((p) => ({ ...p, plan: p.list[0].plan_count, rate: p.list[0].plan_count ? Math.round(p.cnt / p.list[0].plan_count * 1000) / 10 : null })).sort((a, b) => b.tot - a.tot);
+    const byC = groupSum(rows, (r) => r.chapter_id, (r) => r.chapter_name).sort((a, b) => b.tot - a.tot);
+    const byK = groupSum(rows, (r) => r.category, (r) => r.category).sort((a, b) => b.tot - a.tot);
+    const keys = rows.flatMap((r) => r.keys), mem = keys.filter((k) => k[0] === 'm'), cntBy = {}; mem.forEach((k) => { cntBy[k] = (cntBy[k] || 0) + 1; });
+    const planSum = byP.reduce((s, p) => s + (p.plan || 0), 0), rate = planSum ? Math.round(t.cnt / planSum * 1000) / 10 : null;
+    const projOpts = groupSum(yr, (r) => r.project_id, (r) => (multi ? r.chapter_name + ' · ' : '') + r.project_name);
+    const tbl = (head1, list, withPlan) => `<div class="tablewrap"><table><thead><tr><th>${head1}</th><th class="n">실시 횟수</th>${withPlan ? '<th class="n">계획</th><th class="n">달성률</th>' : ''}<th class="n">연인원</th><th class="n">실인원</th></tr></thead><tbody>
+      ${list.map((p) => `<tr><td>${esc(p.name)}</td><td class="n">${fmt(p.cnt)}</td>${withPlan ? `<td class="n">${fmt(p.plan)}</td><td class="n">${p.rate === null ? '-' : p.rate + '%'}</td>` : ''}<td class="n">${fmt(p.tot)}</td><td class="n">${fmt(p.uniq)}</td></tr>`).join('') || `<tr><td colspan="${withPlan ? 6 : 4}" class="muted">자료가 없습니다.</td></tr>`}</tbody></table></div>`;
+    STS.byP = byP;
+    view(head('통계 및 분석', '연도·분기·사업을 골라 실적을 봅니다. 연인원과 실인원을 구분합니다.', '<button onclick="statsCsv()">사업별 표 CSV</button><button onclick="window.print()">🖨 인쇄</button>') +
+      `<div class="tools noprint"><select onchange="STS.year=+this.value;STS.proj='';showStats()">${yearOpts(STS.year)}</select><select onchange="STS.q=+this.value;showStats()">${qOpts(STS.q, true)}</select>
+        ${ME.can_review ? `<select onchange="STS.ch=this.value;STS.proj='';showStats()"><option value="">전체 지회</option>${ME.chapters.map((c) => `<option value="${c.id}" ${String(c.id) === STS.ch ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select>` : ''}
+        <select onchange="STS.proj=this.value;showStats()"><option value="">전체 사업</option>${projOpts.map((p) => `<option value="${p.key}" ${String(p.key) === STS.proj ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
+      <div class="kpis">${kpi('사업 수', fmt(new Set(rows.map((r) => r.project_id)).size))}${kpi('실시 횟수', fmt(t.cnt) + '회', rate === null ? '' : `계획 대비 ${rate}%`)}${kpi('연인원', fmt(t.tot) + '명')}${kpi('실인원', fmt(t.uniq) + '명')}
+        ${kpi('회원 / 비회원 참여', `${fmt(mem.length)} / ${fmt(keys.length - mem.length)}`, '연인원 기준')}${kpi('두 번 이상 참여한 회원', fmt(Object.values(cntBy).filter((n) => n > 1).length) + '명')}</div>
+      <div class="charts"><div class="card"><h3>분기별 연인원 (${STS.year}년)</h3>${bars([1, 2, 3, 4].map((x) => ({ label: x + '분기', value: summarize(yr.filter((r) => qOf(r.held_on) === x && (!STS.proj || String(r.project_id) === STS.proj))).tot })), '명')}</div>
+        <div class="card"><h3>사업 분류별 연인원</h3>${bars(byK.map((k) => ({ label: k.name, value: k.tot })), '명')}</div></div>
+      <h3>사업별</h3>${tbl('사업명', byP, true)}
+      ${multi ? `<h3>지회별</h3>${tbl('지회', byC)}` : ''}
+      <h3>사업 분류별</h3>${tbl('분류', byK)}
+      <p class="muted">실인원은 회원은 회원별로, 회원명단에 없는 참여자는 한 줄을 한 사람으로 셉니다.${ME.can_review ? ' 도협회는 숫자만 보며, 지회의 참여자 명단은 보지 않습니다.' : ''}</p>`);
+  } catch (e) { view(`<div class="note err">${esc(e.message)}</div>`); }
+}
+function statsCsv() { csv(`${STS.year}년_사업별_통계.csv`, (STS.byP || []).map((p) => ({ 사업명: p.name, 실시횟수: p.cnt, 계획횟수: p.plan, 달성률: p.rate === null ? '' : p.rate + '%', 연인원: p.tot, 실인원: p.uniq }))); }
+
+// ===== 사업 분류 (도협회) =====
+function showSettings() {
+  if (!ME.can_review) { view(head('사업 분류') + '<div class="note warn">사업 분류는 도협회가 관리합니다.</div>'); return; }
+  view(head('사업 분류', '모든 지회가 함께 쓰는 사업 분류입니다. 쓰는 사업이 있는 분류는 지울 수 없습니다.') +
+    `<div class="card"><table><tbody>${ME.categories.map((c) => `<tr><td>${esc(c.name)}</td><td style="text-align:right"><button class="link" style="color:#c0392b" onclick="delCat(${c.id})">삭제</button></td></tr>`).join('') || '<tr><td class="muted">등록된 분류가 없습니다.</td></tr>'}</tbody></table>
+      <div class="tools" style="margin-top:10px"><input id="catName" placeholder="새 분류 이름 (예: 교육·강좌)"><button class="main" onclick="addCat()">추가</button></div></div>
+    <p class="muted">지회 목록은 통합 시스템의 지회 설정을, 직원·권한은 [직원·권한 관리]를 그대로 씁니다.</p>`);
+}
+async function addCat() { try { ME.categories = await rpc('perf_category_save', { p_name: $('catName').value }); showSettings(); flash('사업 분류를 추가했습니다.'); } catch (e) { flash(e.message, 'err'); } }
+async function delCat(id) { if (!confirm('이 분류를 지울까요?')) return; try { ME.categories = await rpc('perf_category_delete', { p_id: id }); showSettings(); flash('사업 분류를 지웠습니다.'); } catch (e) { flash(e.message, 'err'); } }
+</script>
+</body>
+</html>

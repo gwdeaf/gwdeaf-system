@@ -237,7 +237,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 </style>
 <link rel="stylesheet" href="/ui.css?v=1">
 <style>.gbtn2{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 11px;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--text)}.gbtn2:hover{background:var(--pri-soft)}@media(max-width:600px){.gbtn2 .gtx{display:none}}</style>
-<script src="/guide.js?v=3"></script>
+<script src="/guide.js?v=4"></script>
 </head>
 <body>
 
@@ -566,7 +566,7 @@ async function loadCal(){
     if (!j || !j.ok) {   // 캘린더가 연결되지 않은 지회: 안내만 표시
       $('calname').textContent = '구글 캘린더';
       $('calbox').innerHTML = '<div class="empty" style="padding:14px 6px">아직 우리 지회 구글 캘린더가 연결되지 않았습니다.'
-        + (ME.role === 'admin' || ME.role === 'lead' ? '<br><a href="#" onclick="go(\'access\');return false">직원·권한 관리 → 드라이브 연결</a>에서 캘린더를 연결하세요.' : '<br>지회 담당자에게 연결을 요청하세요.') + '</div>';
+        + (ME.role === 'admin' || ME.role === 'lead' ? '<br><a href="#" onclick="go(\'access\');return false">직원·권한 관리 → 지회 설정(도협회: 지회 관리)</a>에서 캘린더를 연결하세요.' : '<br>지회 담당자에게 연결을 요청하세요.') + '</div>';
       return;
     }
     card.classList.remove('hide'); $('calname').textContent = j.calendar_name || '구글 캘린더';

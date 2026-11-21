@@ -74,10 +74,10 @@
 </header>
 
 <nav id="topNav" style="display:none">
-  <button onclick="goHome()">홈(문서 목록)</button>
+  <button onclick="goHomeAll()">홈(문서 목록)</button>
   <button onclick="openWrite(null)">새 문서 작성</button>
   <button onclick="openSearch()">검색</button>
-  <button onclick="openLedger()">대장 보기</button>
+  <button onclick="openLedger()">공문 대장</button>
   <button id="staffBtn" onclick="openSettings()" style="display:none">번호 설정</button>
   <button id="logoutBtn" onclick="logout()">로그아웃</button>
 </nav>
@@ -104,7 +104,8 @@
 
   <!-- 홈: 문서 목록 -->
   <section id="screenHome" class="screen">
-    <h2>문서 목록</h2>
+    <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 id="homeTitle" style="margin-right:auto">문서 목록</h2>
+      <button class="main" id="homeNew" onclick="openWrite(null)">+ 새 문서 작성</button></div>
     <div class="card">
       <button class="tab on" data-tab="inbox" onclick="setTab('inbox')">결재할 문서</button>
       <button class="tab" data-tab="mine" onclick="setTab('mine')">내가 쓴 문서</button>
@@ -190,18 +191,19 @@
 
   <!-- 대장 -->
   <section id="screenLedger" class="screen">
-    <h2>대장 보기</h2>
+    <h2>공문 대장</h2>
+    <div class="hint" style="margin-bottom:8px">내부결재·업무협조전·문서 발송(공문) 중 결재가 끝난 문서를 한곳에서 봅니다. 종류를 고르면 그 종류만 봅니다.</div>
     <div class="card">
       <div class="row">
         <div class="narrow"><label>연도</label><select id="lYear"></select></div>
         <div class="narrow"><label>종류</label>
-          <select id="lKind"><option>공문</option><option>업무협조전</option><option>내부결재</option></select></div>
+          <select id="lKind"><option value="">전체 (통합)</option><option>내부결재</option><option>업무협조전</option><option value="공문">문서 발송 (공문)</option></select></div>
       </div>
       <div class="btns"><button class="main" onclick="loadLedger()">불러오기</button>
         <button onclick="downloadLedgerCsv()">엑셀(CSV) 받기</button>
         <button onclick="saveLedgerSheet()">📊 구글 시트로 저장</button></div>
       <div id="ledgerMsg" class="msg"></div>
-      <table><thead><tr><th>번호</th><th>시행일자</th><th>수신</th><th>제목</th><th>기안자</th><th>상태</th></tr></thead>
+      <table><thead><tr><th>번호</th><th>종류</th><th>시행일자</th><th>수신</th><th>제목</th><th>기안자</th><th>상태</th></tr></thead>
         <tbody id="ledgerBody"></tbody></table>
     </div>
   </section>
@@ -298,21 +300,44 @@ async function boot() {
   $('whoText').textContent = `${me.chapter_name} · ${me.name} (${me.email})${me.is_admin ? ' · 관리자' : ''}`;
   $('topNav').style.display = 'flex';
   $('staffBtn').style.display = me.is_admin ? '' : 'none';
-  goHome();
+  SUB.ready = true;
+  if (SUB.go) subGo(SUB.go); else goHome();
+  subReady();
 }
 // 구글 로그인 후 돌아올 때 상태가 바뀌면 다시 확인
 sb.auth.onAuthStateChange((event) => { if (event === 'SIGNED_IN') boot(); });
 
+// ============ 하위 메뉴 (업무 시스템 왼쪽 메뉴에서 이동) ============
+const SUB = { go: new URLSearchParams(location.search).get('go') || '', ready: false };
+function subTell(t) { if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-tab', tab: t }, location.origin); } catch (e) {} }
+function subReady() { if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-ready', tab: SUB.go }, location.origin); } catch (e) {} }
+function subGo(t) {
+  SUB.go = t;
+  if (t === 'ledger') { $('lKind').value = ''; openLedger(); return; }
+  KIND = SUB_KIND[t] || ''; goHome();
+}
+window.addEventListener('message', (e) => {
+  if (e.origin !== location.origin || !e.data || e.data.type !== 'sub-go') return;
+  SUB.go = e.data.tab; if (SUB.ready) subGo(SUB.go);
+});
+
 // ============ 4) 홈(문서 목록) ============
 function goHome() { showScreen('screenHome'); setTab(tab); }
+function goHomeAll() { KIND = ''; subTell(''); goHome(); }
 function openHome() { goHome(); }
 function setTab(t) {
   tab = t;
   document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
   loadList();
 }
+// 왼쪽 메뉴: 내부결재 · 업무협조전 · 문서 발송(공문) · 공문 대장
+let KIND = '';   // '' 전체 / 내부결재 / 업무협조전 / 공문
+const SUB_KIND = { internal: '내부결재', coop: '업무협조전', send: '공문' };
+const KIND_TITLE = { '내부결재': '내부결재', '업무협조전': '업무협조전', '공문': '문서 발송 (공문)' };
 async function loadList() {
   msg('listMsg', '');
+  $('homeTitle').textContent = KIND ? KIND_TITLE[KIND] : '문서 목록';
+  $('homeNew').textContent = KIND === '공문' ? '+ 새 공문 작성' : KIND ? '+ 새 ' + KIND + ' 작성' : '+ 새 문서 작성';
   let rows = [];
   if (tab === 'inbox') {
     // 대기 중인 결재 줄 중 각 문서의 첫 줄이 나에게 온 것만 모음
@@ -329,10 +354,12 @@ async function loadList() {
   } else {
     let q = sb.from('doc_documents').select('*').eq('deleted', false).order('updated_at', { ascending: false }).limit(200);
     if (tab === 'mine') q = q.eq('drafter_email', me.email);
+    if (KIND) q = q.eq('kind', KIND);
     const { data, error } = await q;
     if (error) return msg('listMsg', errText(error));
     rows = data;
   }
+  if (KIND && tab === 'inbox') rows = rows.filter((d) => d.kind === KIND);
   $('listBody').innerHTML = rows.length ? rows.map(rowHtml).join('')
     : '<tr><td colspan="6" class="muted">문서가 없습니다.</td></tr>';
 }
@@ -379,7 +406,7 @@ async function openWrite(id) {
   if (!id) {
     current = null;
     $('writeTitle').textContent = '새 문서 작성';
-    $('fKind').value = '공문'; $('fDate').value = new Date().toISOString().slice(0, 10); $('fSeal').value = '지회';
+    $('fKind').value = KIND || '공문'; $('fDate').value = new Date().toISOString().slice(0, 10); $('fSeal').value = '지회';
     $('fRecipient').value = ''; $('fTitle').value = ''; $('fBody').value = ''; $('fAttach').value = '';
     addStepRow({});
     return;
@@ -658,7 +685,7 @@ async function doSearch() {
 
 // ============ 8) 대장 (완료된 문서를 종류·연도별로 보기) ============
 async function openLedger() {
-  showScreen('screenLedger');
+  showScreen('screenLedger'); subTell('ledger');
   const sel = $('lYear');
   if (!sel.options.length) {
     for (let y = TODAY_YEAR + 1; y >= TODAY_YEAR - 5; y--) sel.add(new Option(y + '년', y));
@@ -667,31 +694,33 @@ async function openLedger() {
   loadLedger();
 }
 async function ledgerRows() {
-  const { data, error } = await sb.from('doc_documents').select('*')
-    .eq('kind', $('lKind').value).eq('year', Number($('lYear').value))
-    .in('status', ['완료', '발송']).eq('deleted', false).order('number');
+  let q = sb.from('doc_documents').select('*').eq('year', Number($('lYear').value))
+    .in('status', ['완료', '발송']).eq('deleted', false);
+  if ($('lKind').value) q = q.eq('kind', $('lKind').value);
+  const { data, error } = await q.order('kind').order('number');
   if (error) { msg('ledgerMsg', errText(error)); return null; }
-  return data;
+  const ord = { '내부결재': 1, '업무협조전': 2, '공문': 3 };
+  return $('lKind').value ? data : data.sort((a, b) => (ord[a.kind] || 9) - (ord[b.kind] || 9) || String(a.number).localeCompare(String(b.number), 'ko', { numeric: true }));
 }
 async function loadLedger() {
   msg('ledgerMsg', '');
   const rows = await ledgerRows();
   if (!rows) return;
   $('ledgerBody').innerHTML = rows.length ? rows.map((d) => `<tr class="click" onclick="openDoc('${d.id}')">
-      <td>${esc(d.number)}</td><td>${esc(d.form?.date || '')}</td><td>${esc(d.recipient)}</td>
+      <td>${esc(d.number)}</td><td>${esc(d.kind === '공문' ? '문서 발송' : d.kind)}</td><td>${esc(d.form?.date || '')}</td><td>${esc(d.recipient)}</td>
       <td>${esc(d.title)}</td><td>${esc(d.drafter_name)}</td><td>${esc(d.status)}</td></tr>`).join('')
-    : '<tr><td colspan="6" class="muted">완료된 문서가 없습니다.</td></tr>';
+    : '<tr><td colspan="7" class="muted">완료된 문서가 없습니다.</td></tr>';
 }
 async function downloadLedgerCsv() {
   const rows = await ledgerRows();
   if (!rows) return;
-  const lines = [['번호', '시행일자', '수신', '제목', '기안자', '상태'],
-    ...rows.map((d) => [d.number, d.form?.date || '', d.recipient, d.title, d.drafter_name, d.status])]
+  const lines = [['번호', '종류', '시행일자', '수신', '제목', '기안자', '상태'],
+    ...rows.map((d) => [d.number, d.kind, d.form?.date || '', d.recipient, d.title, d.drafter_name, d.status])]
     .map((r) => r.map((v) => '"' + String(v ?? '').replace(/"/g, '""') + '"').join(','));
   const blob = new Blob(['﻿' + lines.join('\r\n')], { type: 'text/csv;charset=utf-8' });
   const a = document.createElement('a');
   a.href = URL.createObjectURL(blob);
-  a.download = `${$('lKind').value}_${$('lYear').value}_대장.csv`;
+  a.download = `${$('lKind').value || '공문'}_${$('lYear').value}_대장.csv`;
   document.body.appendChild(a); a.click(); a.remove();
 }
 
@@ -700,9 +729,9 @@ async function saveLedgerSheet() {
   if (!rows) return;
   if (!rows.length) return msg('ledgerMsg', '저장할 완료 문서가 없습니다.');
   msg('ledgerMsg', '시트로 저장하는 중입니다...', true);
-  const kind = $('lKind').value, year = $('lYear').value;
-  const grid = [['번호', '시행일자', '수신', '제목', '기안자', '상태'], ...rows.map((d) => [d.number, d.form?.date || '', d.recipient, d.title, d.drafter_name, d.status])];
-  const r = await gd({ action: 'saveSheet', kind: '공문 대장', title: `${kind}_${year}_대장`, sheets: [{ name: kind, rows: grid, widths: [22, 12, 24, 40, 12, 8] }] });
+  const kind = $('lKind').value || '공문 통합', year = $('lYear').value;
+  const grid = [['번호', '종류', '시행일자', '수신', '제목', '기안자', '상태'], ...rows.map((d) => [d.number, d.kind, d.form?.date || '', d.recipient, d.title, d.drafter_name, d.status])];
+  const r = await gd({ action: 'saveSheet', kind: '공문 대장', title: `${kind}_${year}_대장`, sheets: [{ name: kind, rows: grid, widths: [22, 10, 12, 24, 40, 12, 8] }] });
   if (!r.ok) return msg('ledgerMsg', r.msg || '저장하지 못했습니다.');
   $('ledgerMsg').innerHTML = '<span class="ok">저장했습니다. </span><a href="' + esc(r.url) + '" target="_blank" rel="noopener">시트 열기</a>';
 }

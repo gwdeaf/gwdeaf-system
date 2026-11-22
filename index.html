@@ -193,6 +193,14 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 #view-home{padding:26px 30px 48px;max-width:none;width:100%}
 /* 문의함 */
 #view-inq{padding:20px 24px 40px;flex:1;min-height:0}
+#view-attall{padding:20px 24px 40px;flex:1;min-height:0}
+.aa-tabs{display:flex;gap:6px;margin-bottom:12px}.aa-tabs button.on{background:var(--pri);color:#fff;border-color:var(--pri)}
+.aa-t{width:100%;border-collapse:collapse;font-size:.86rem}.aa-t th,.aa-t td{padding:7px 8px;border-bottom:1px solid var(--line);text-align:center;white-space:nowrap}
+.aa-t th{background:#f5f7fb;font-weight:700;color:#555}.aa-t td.l{text-align:left}.aa-t tr.we td{color:#b0b6c2}.aa-t .warn{color:#d9534f;font-weight:700}
+.aa-wrap{overflow-x:auto;border:1px solid var(--line);border-radius:10px;background:#fff}
+.aa-ch{display:flex;flex-wrap:wrap;gap:4px 10px;padding:10px 12px;border-top:1px solid var(--line)}.aa-ch:first-child{border-top:0}
+.aa-p{font-size:.84rem}.aa-p b{font-weight:700}
+@media(max-width:860px){#view-attall{padding:14px 12px 30px}}
 .inqwrap{display:grid;grid-template-columns:minmax(260px,380px) 1fr;gap:16px;align-items:start}
 .inqlist,.inqthread{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px}
 .inqtools{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px}.inqtools select{width:auto;padding:6px 8px;border:1px solid var(--line);border-radius:9px;font:inherit;font-size:.84rem;background:#fff}
@@ -386,6 +394,13 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
       <div class="mgr" id="mgr"></div>
     </div>
   </main>
+  <main id="view-attall" class="hide">
+    <div class="card">
+      <div class="ctitle"><span>🏢 지회 근태 보기</span><span class="mute">도협회 관리자 · 보기만 · 출퇴근 시각만 (위치는 안 보임)</span></div>
+      <div class="aa-tabs"><button class="btn on" data-aa="today" onclick="aaTab('today')">오늘 전체 지회</button><button class="btn" data-aa="month" onclick="aaTab('month')">지회별 월별 근태</button></div>
+      <div id="aa-box"><div class="empty">불러오는 중…</div></div>
+    </div>
+  </main>
   <main id="view-inq" class="hide">
     <div class="inqwrap">
       <div class="inqlist" id="inq-listbox">
@@ -481,6 +496,7 @@ function renderNav(){
   h += grpHtml('🏖', '근태 / 휴가 관리');
   [['leave','내 근태현황'],['leave-apply','휴가(시수) 신청'],['overtime','시간외 신청']].forEach(function(k){ h += kidHtml('att', false, k[0], k[1]); });
   h += kidHtml('att', false, 'attend', '월별 근태현황');
+  if (ME && ME.role === 'admin') h += '<a class="kid" data-id="attall:s:" data-lb="지회 근태 보기" onclick="go(\'attall\')">지회 근태 보기</a>';
   if (ATT && ATT.staff && ATT.staff.role === '선임')   // 선임만 보임 (기존 '선임 확인' 권한 그대로)
     h += grpHtml('✅', '선임 확인') + kidHtml('att', false, 'senior:leavemgr', '후임 신청 현황') + kidHtml('att', false, 'senior:dashboard', '시수 신청 현황') + kidHtml('att', false, 'senior:altdashboard', '대체시수 신청 현황');
   h += grpHtml('🚌', '출장 관리') + kidHtml('att', false, 'trip-apply', '출장 신청') + kidHtml('att', false, 'trip-hist', '출장 내역');
@@ -537,7 +553,7 @@ function crumbGo(which){
     if (first) { first.click(); return; }
   }
   var p = (CUR || '').split(':'), kind = p[0], adm = p[1] === 'a', tab = p.slice(2).join(':');
-  if (!kind || kind === 'home' || kind === 'inq') { go(kind || 'home'); return; }
+  if (!kind || kind === 'home' || kind === 'inq' || kind === 'attall') { go(kind || 'home'); return; }
   if (!(SUBAPP[kind] || kind === 'edu' || kind === 'att')) FR.key = '';   // 하위 메뉴 연결이 없는 화면은 다시 열어 처음 화면으로
   go(kind, tab, adm);
 }
@@ -570,10 +586,14 @@ function go(kind, tab, adm){
   if (SUBAPP[kind] && !tab) tab = SUBDEF[kind];
   if (kind === 'att' && !adm && tab === 'trip') tab = 'trip-apply';
   if (kind === 'inq') {
-    CUR = 'inq:s:'; $('view-frame').classList.add('hide'); $('view-home').classList.add('hide'); $('view-inq').classList.remove('hide'); $('sysnote').classList.add('hide');
+    CUR = 'inq:s:'; $('view-frame').classList.add('hide'); $('view-home').classList.add('hide'); $('view-attall').classList.add('hide'); $('view-inq').classList.remove('hide'); $('sysnote').classList.add('hide');
     markNav(); window.scrollTo(0, 0); loadInq(); return;
   }
-  $('view-inq').classList.add('hide');
+  $('view-inq').classList.add('hide'); $('view-attall').classList.add('hide');
+  if (kind === 'attall') {
+    CUR = 'attall:s:'; $('view-frame').classList.add('hide'); $('view-home').classList.add('hide'); $('view-attall').classList.remove('hide'); $('sysnote').classList.add('hide');
+    markNav(); window.scrollTo(0, 0); aaTab(AA.tab || 'today'); return;
+  }
   if (kind === 'home') {
     CUR = 'home:s:'; $('view-frame').classList.add('hide'); $('view-home').classList.remove('hide'); $('sysnote').classList.add('hide');
     markNav(); try { history.replaceState(null, '', location.pathname); } catch(e){} window.scrollTo(0, 0); return;
@@ -1012,6 +1032,66 @@ $('sysnote').addEventListener('click', function(e){
   if (mo) { var opened = mo.classList.toggle('on'); $('sysnote').querySelectorAll('.sn.more').forEach(function(x){ x.classList.toggle('hide', !opened); }); mo.textContent = opened ? '접기 ▴' : mo.textContent; if (!opened) showSysNote((CUR || '').split(':')[0]); return; }
   var r = e.target.closest('.sn'); if (r) $('snb' + r.getAttribute('data-i')).classList.toggle('hide');
 });
+/* ── 🏢 지회 근태 보기 (도협회 관리자, 보기만 · 시각만) ── */
+var AA = { tab: 'today', ch: '', ym: '', open: {} };
+function aaTab(t){
+  AA.tab = t; document.querySelectorAll('[data-aa]').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-aa') === t); });
+  if (t === 'today') aaToday(); else aaMonthForm();
+}
+var AA_C = { '출근': '#18a058', '출근 전': '#9aa3b2', '퇴근': '#2f5bd6', '휴가': '#e08a1e', '출장': '#8b5cf6' };
+async function aaToday(){
+  var box = $('aa-box'); box.innerHTML = '<div class="empty">전체 지회를 불러오는 중… (조금 걸릴 수 있어요)</div>';
+  var r; try { r = await attCall('provinceTodayAll', JSON.stringify({})); } catch(e) { r = { ok: false, msg: e.message }; }
+  if (!r || !r.ok) { box.innerHTML = '<div class="note">' + esc((r && r.msg) || '불러오지 못했습니다.') + '</div>'; return; }
+  var K = ['출근', '퇴근', '출근 전', '휴가', '출장'];
+  var head = '<tr><th class="l">지회</th><th>인원</th>' + K.map(function(k){ return '<th>' + k + '</th>'; }).join('') + '</tr>';
+  var rows = r.list.map(function(c, i){
+    var n = {}; (c.people || []).forEach(function(p){ n[p.status] = (n[p.status] || 0) + 1; });
+    return '<tr style="cursor:pointer" onclick="var d=document.getElementById(\'aa-d' + i + '\');d.classList.toggle(\'hide\')"><td class="l"><b>' + esc(c.chapter) + '</b> <span class="mute">▾</span></td><td>' + (c.ok ? c.total : '-') + '</td>'
+      + K.map(function(k){ return '<td style="color:' + (n[k] ? AA_C[k] : '#c4c9d2') + ';font-weight:' + (n[k] ? 800 : 400) + '">' + (n[k] || 0) + '</td>'; }).join('') + '</tr>'
+      + '<tr id="aa-d' + i + '" class="hide"><td colspan="7" class="l" style="background:#fafbfd">' + ((c.people || []).length ? '<div style="display:flex;flex-wrap:wrap;gap:4px 14px">' + c.people.map(function(p){
+          return '<span class="aa-p"><b>' + esc(p.name) + '</b> <span style="color:' + (AA_C[p.status] || '#888') + ';font-weight:700">' + esc(p.status) + '</span>' + (p.time ? ' ' + esc(p.time) : '') + (p.note ? ' <span class="mute">' + esc(p.note) + '</span>' : '') + '</span>';
+        }).join('') + '</div>' : '<span class="mute">근태 직원목록이 비어 있어요.</span>') + '</td></tr>';
+  }).join('');
+  box.innerHTML = '<p class="mute" style="margin:0 0 8px">' + esc(seoulToday()) + ' 기준 · 지회 줄을 누르면 직원별 상태가 펼쳐집니다.</p><div class="aa-wrap"><table class="aa-t">' + head + rows + '</table></div>';
+}
+async function aaMonthForm(){
+  var box = $('aa-box');
+  if (!AA.ym) AA.ym = seoulToday().slice(0, 7);
+  var cs = AA.chs;
+  if (!cs) { try { var r = await attCall('provinceChapters', JSON.stringify({})); cs = AA.chs = (r && r.ok && r.list) || []; } catch(e) { cs = []; } }
+  box.innerHTML = '<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:10px">'
+    + '<select id="aa-ch" style="max-width:220px"><option value="">— 지회 선택 —</option>' + cs.map(function(c){ return '<option value="' + esc(c.id) + '"' + (String(c.id) === AA.ch ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</select>'
+    + '<input type="month" id="aa-ym" value="' + esc(AA.ym) + '" style="max-width:170px"><button class="btn pri" onclick="aaMonth()">보기</button></div><div id="aa-mbox"><div class="empty">지회를 고르고 [보기]를 누르세요.</div></div>';
+  if (AA.ch) aaMonth();
+}
+async function aaMonth(){
+  AA.ch = $('aa-ch').value; AA.ym = $('aa-ym').value; var mb = $('aa-mbox');
+  if (!AA.ch || !AA.ym) { mb.innerHTML = '<div class="empty">지회와 달을 골라 주세요.</div>'; return; }
+  mb.innerHTML = '<div class="empty">불러오는 중…</div>';
+  var r; try { r = await attCall('provinceAttMonth', JSON.stringify({ chapterId: AA.ch, ym: AA.ym })); } catch(e) { r = { ok: false, msg: e.message }; }
+  if (!r || !r.ok) { mb.innerHTML = '<div class="note">' + esc((r && r.msg) || '불러오지 못했습니다.') + '</div>'; return; }
+  var ms = r.months || []; AA.months = ms;
+  if (!ms.length) { mb.innerHTML = '<div class="empty">근태 직원목록이 비어 있어요.</div>'; return; }
+  var head = '<tr><th class="l">직원</th><th>출근일</th><th>지각</th><th>조퇴</th><th>미기록</th><th>휴가</th><th>출장</th><th>대체휴무</th><th>시간외</th></tr>';
+  mb.innerHTML = '<p class="mute" style="margin:0 0 8px">' + esc(r.chapter) + ' · ' + esc(AA.ym) + ' · 직원 줄을 누르면 날짜별 출퇴근 시각이 펼쳐집니다.</p><div class="aa-wrap"><table class="aa-t">' + head + ms.map(function(m, i){
+    var s = m.summary || {}, w = function(v){ return '<td' + (v ? ' class="warn"' : '') + '>' + (v || 0) + '</td>'; };
+    return '<tr style="cursor:pointer" onclick="aaDays(' + i + ')"><td class="l"><b>' + esc(m.name) + '</b> <span class="mute">' + esc(m.position || '') + ' ▾</span></td><td>' + (s.attDays || 0) + '/' + (s.weekdays || 0) + '</td>'
+      + w(s.late) + w(s.early) + w(s.missing) + '<td>' + (s.leave || 0) + '</td><td>' + (s.trip || 0) + '</td><td>' + (s.comp || 0) + '</td><td>' + (s.otCount ? s.otCount + '회 ' + s.otHours + 'h' : '0') + '</td></tr>'
+      + '<tr id="aa-m' + i + '" class="hide"><td colspan="9" style="padding:0"></td></tr>';
+  }).join('') + '</table></div>';
+}
+function aaDays(i){
+  var tr = $('aa-m' + i), m = AA.months[i]; if (!tr || !m) return;
+  if (!tr.classList.contains('hide')) { tr.classList.add('hide'); return; }
+  tr.firstChild.innerHTML = '<table class="aa-t" style="background:#fafbfd"><tr><th>날짜</th><th>출근</th><th>퇴근</th><th>상태</th><th class="l">휴가·출장·시간외</th></tr>' + (m.rows || []).map(function(x){
+    var etc = [x.leave, x.comp, x.trip ? '출장' + (x.trip.time ? ' ' + x.trip.time : '') : '', x.ot ? '시간외 ' + x.ot : ''].filter(Boolean).join(' · ');
+    var bad = /미기록/.test(x.status);
+    return '<tr' + (x.weekend ? ' class="we"' : '') + '><td>' + x.day + ' (' + esc(x.dow) + ')</td><td>' + esc(x.inTime || '') + (x.inFlag ? ' <span class="warn">' + esc(x.inFlag) + '</span>' : '') + '</td><td>' + esc(x.outTime || '') + (x.outFlag ? ' <span class="warn">' + esc(x.outFlag) + '</span>' : '') + '</td>'
+      + '<td' + (bad ? ' class="warn"' : '') + '>' + esc(x.status || '') + (x.edited ? ' <span class="mute">(수정)</span>' : '') + '</td><td class="l">' + esc(etc) + '</td></tr>';
+  }).join('') + '</table>';
+  tr.classList.remove('hide');
+}
 /* ── 📺 뉴스 통역 배정 (도협회 홈만) ── */
 async function loadNews(){
   var card = $('newscard'); if (!card) return;

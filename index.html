@@ -369,7 +369,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
       <div class="col">
         <div class="card" id="todaycard" style="order:-1">
           <div class="ctitle"><span>📌 오늘 내 일정</span><button class="btn" id="dg-btn" onclick="toggleDigest()" title="매일 아침(평일 9:00) Slack으로 오늘 일정 받기">🔔 알림 켜짐</button></div>
-          <div id="today"><div class="empty">불러오는 중…</div></div>
+          <div id="todaybox"><div class="empty">불러오는 중…</div></div>
         </div>
         <div class="card" style="order:0">
           <div class="ctitle"><span>🗓 내 근태</span><button class="btn" onclick="go('att','leave')">근태 / 휴가 관리 →</button></div>
@@ -1036,7 +1036,7 @@ async function loadToday(){
   renderToday();
 }
 function renderToday(){
-  var el = $('today'); if (!el) return;
+  var el = $('todaybox'); if (!el) return;
   var nm = (ATT && ATT.staffName) || (ME && ME.name) || '';
   var cal = (CAL_TODAY || []).filter(function(x){ var t = String(x.title || ''); return nm && t.indexOf(nm) >= 0 && !/^\s*\[(휴가|출장)\]/.test(t); })
     .map(function(x){ return { ic: '📅', at: x.allDay ? '' : String(x.start).slice(11, 16), t: x.title + (x.place ? ' (' + x.place + ')' : ''), link: x.link }; });

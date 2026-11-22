@@ -4,7 +4,8 @@
   ],
   "functions": {
     "api/*.js": {
-      "maxDuration": 30
+      "maxDuration": 30,
+      "includeFiles": "{edu/*.html,og/*.otf,og/emblem.png}"
     }
   },
   "crons": [
@@ -20,39 +21,39 @@
   "rewrites": [
     {
       "source": "/t/:token",
-      "destination": "/edu/teacher.html"
+      "destination": "/api/share?k=t&token=:token"
     },
     {
       "source": "/a/:token",
-      "destination": "/edu/apply.html"
+      "destination": "/api/share?k=a&token=:token"
     },
     {
       "source": "/s/:token",
-      "destination": "/edu/survey.html"
+      "destination": "/api/share?k=s&token=:token"
     },
     {
       "source": "/r/:token",
-      "destination": "/edu/result.html"
+      "destination": "/api/share?k=r&token=:token"
     },
     {
       "source": "/g/:token",
-      "destination": "/edu/group.html"
+      "destination": "/api/share?k=g&token=:token"
     },
     {
       "source": "/q/:token",
-      "destination": "/edu/attend.html"
+      "destination": "/api/share?k=q&token=:token"
     },
     {
       "source": "/p/:token",
-      "destination": "/edu/receipt.html"
+      "destination": "/api/share?k=p&token=:token"
     },
     {
       "source": "/x/:token",
-      "destination": "/edu/refund.html"
+      "destination": "/api/share?k=x&token=:token"
     },
     {
       "source": "/f/:token",
-      "destination": "/edu/fee.html"
+      "destination": "/api/share?k=f&token=:token"
     },
     {
       "source": "/lib/:path*",

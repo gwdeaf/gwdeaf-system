@@ -30,6 +30,9 @@ textarea { width:100%; min-height:90px; padding:12px; border:1.5px solid var(--l
 <body>
 <div id="app"><div class="center hint">불러오는 중…</div></div>
 <script>
+// 기관 전체 이름: 지회는 '강원특별자치도농아인협회○○지회'(띄어쓰기 없이), 도협회는 협회 이름, 센터 등은 그 이름 그대로
+function fullOrg(n) { n = String(n || '').trim(); if (!n || n === '도협회') return '강원특별자치도농아인협회'; return /지회$/.test(n) && n.indexOf('농아인협회') < 0 ? '강원특별자치도농아인협회' + n : n; }
+
 const TOKEN = location.pathname.split('/').filter(Boolean).pop() || '';
 const $ = s => document.querySelector(s);
 const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -56,7 +59,7 @@ function surveyChartHtml(R) {
   let d;
   try { d = await api('resultInfo'); } catch (e) { return dead(e.message); }
   const period = d.시작일 && d.종료일 ? `${d.시작일} ~ ${d.종료일}` : '';
-  $('#app').innerHTML = `<header><div class="wrap" style="padding:0"><h1>${esc(d.강좌명)}</h1><p>${esc(d.지회명)} · 만족도 조사 결과${period ? ' · ' + esc(period) : ''}${d.강사 ? ' · ' + esc(d.강사) + ' 강사님' : ''}</p></div></header>
+  $('#app').innerHTML = `<header><div class="wrap" style="padding:0"><h1>${esc(d.강좌명)}</h1><p>${esc(fullOrg(d.지회명))} · 만족도 조사 결과${period ? ' · ' + esc(period) : ''}${d.강사 ? ' · ' + esc(d.강사) + ' 강사님' : ''}</p></div></header>
   <div class="wrap"><div class="card">${surveyChartHtml(d.결과)}</div>
   <button class="btn2 noprint" id="pr" style="margin-top:14px">인쇄 / PDF 저장</button>
   <p class="hint noprint">읽기 전용 화면입니다. 응답자 정보는 없습니다.</p></div>`;

@@ -1,0 +1,12 @@
+{
+  "name": "강원특별자치도농아인협회 업무 시스템",
+  "short_name": "업무 시스템",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ],
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#4a5bd4"
+}

@@ -68,6 +68,9 @@
   <div id="view"></div>
 </main>
 <script>
+// 기관 전체 이름: 지회는 '강원특별자치도농아인협회○○지회'(띄어쓰기 없이), 도협회는 협회 이름, 센터 등은 그 이름 그대로
+function fullOrg(n) { n = String(n || '').trim(); if (!n || n === '도협회') return '강원특별자치도농아인협회'; return /지회$/.test(n) && n.indexOf('농아인협회') < 0 ? '강원특별자치도농아인협회' + n : n; }
+
 const SUPABASE_URL = 'https://uamlualqqcqmpdkprjfs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhbWx1YWxxcWNxbXBka3ByamZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNjE0OTMsImV4cCI6MjExMDYzNzQ5M30._f4p4pfcKaYbmjKRXOPpkMo7Ydcc26oVVI6lRFYsLkY';
 const EMBED = new URLSearchParams(location.search).get('embed') === '1';
@@ -174,7 +177,7 @@ function pickMember() {
 function vars() { const v = {}; document.querySelectorAll('#iFields input[data-k]').forEach(el => v[el.dataset.k] = el.value.trim()); return v; }
 function preview() {
   const t = curType(); if (!t) return;
-  const v = vars(); v['이름'] = $('f_이름').value.trim(); v['기관명'] = ME.chapter_name; v['발급번호'] = '제0000-0000호';
+  const v = vars(); v['이름'] = $('f_이름').value.trim(); v['기관명'] = fullOrg(ME.chapter_name); v['발급번호'] = '제0000-0000호';
   const d = new Date(); v['발급일'] = `${d.getFullYear()}년 ${d.getMonth() + 1}월 ${d.getDate()}일`;
   $('iPrev').textContent = t.body.replace(/\{([^{}]+)\}/g, (s, k) => v[k] ? v[k] : s);
 }
@@ -242,7 +245,7 @@ async function showPrint(no) {
         <div class="pno">${esc(c.no)}</div>
         <h1 class="ptitle">${esc(c.type_name.split('').join(' '))}</h1>
         <div class="pbody">${esc(c.body)}</div>
-        <div class="porg"><span class="sealwrap">${esc(c.chapter_name)}${c.chapter_name.indexOf('협회') < 0 ? '' : ''}${c.seal ? `<img src="${esc(c.seal)}" class="seal" alt="직인">` : ' (직인)'}</span></div>
+        <div class="porg"><span class="sealwrap">${esc(fullOrg(c.chapter_name))}${c.seal ? `<img src="${esc(c.seal)}" class="seal" alt="직인">` : ' (직인)'}</span></div>
         <div class="pfoot">${esc(c.address)}${c.phone ? ' · ☎ ' + esc(c.phone) : ''}</div>
       </div>`;
   } catch (e) { msg(e.message, 'err'); }

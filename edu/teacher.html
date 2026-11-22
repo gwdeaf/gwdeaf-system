@@ -58,6 +58,9 @@ table.cf textarea { min-height:56px; border-width:1px; padding:6px 8px; }
 <body>
 <div id="app"><div class="center hint">불러오는 중…</div></div>
 <script>
+// 기관 전체 이름: 지회는 '강원특별자치도농아인협회○○지회'(띄어쓰기 없이), 도협회는 협회 이름, 센터 등은 그 이름 그대로
+function fullOrg(n) { n = String(n || '').trim(); if (!n || n === '도협회') return '강원특별자치도농아인협회'; return /지회$/.test(n) && n.indexOf('농아인협회') < 0 ? '강원특별자치도농아인협회' + n : n; }
+
 const TOKEN = location.pathname.split('/').filter(Boolean).pop() || '';
 const $ = s => document.querySelector(s);
 const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -90,7 +93,7 @@ function confirmLeave() { return !S.dirty || confirm('저장하지 않은 내용
 function shell() {
   const c = S.info.course;
   $('#app').innerHTML = `<header><div class="wrap" style="padding:0"><h1>${esc(c.강좌명)}</h1>
-    <p>${esc(c.지회명)} · ${esc(c.시작일)} ~ ${esc(c.종료일)} · 총 ${c.총회차}회${c.강사 ? ' · ' + esc(c.강사) + ' 강사님' : ''}${c.보조강사 ? ' · 보조 ' + esc(c.보조강사) : ''}</p></div></header>
+    <p>${esc(fullOrg(c.지회명))} · ${esc(c.시작일)} ~ ${esc(c.종료일)} · 총 ${c.총회차}회${c.강사 ? ' · ' + esc(c.강사) + ' 강사님' : ''}${c.보조강사 ? ' · 보조 ' + esc(c.보조강사) : ''}</p></div></header>
     <div class="wrap">
       <div class="tabs" role="tablist">
         <button role="tab" data-t="att" aria-selected="${S.tab === 'att'}">${c.인원만입력 ? '인원' : '출석'}</button>

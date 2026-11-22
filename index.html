@@ -4,7 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>강원특별자치도농아인협회 업무 시스템</title>
-<link rel="icon" href="/logo.png">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
+<link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<link rel="manifest" href="/site.webmanifest">
+<meta name="theme-color" content="#4a5bd4">
+<!-- 링크 미리보기(카카오톡 등). 주소(도메인)를 바꾸면 og:image 주소도 같이 바꾸세요 -->
+<meta property="og:type" content="website">
+<meta property="og:title" content="강원특별자치도농아인협회 업무 시스템">
+<meta property="og:description" content="직원 전용 업무 시스템입니다. 협회 구글 계정으로 로그인하세요.">
+<meta property="og:image" content="https://gwdeaf-system.vercel.app/og/og-home.png">
+<meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
 <style>
 :root{--bg:#f5f7fb;--card:#fff;--line:#e5e9f2;--text:#1f2937;--mute:#6b7280;--pri:#2f5bd6;--pri-soft:#eaf0ff;--ok:#12805c;--ok-soft:#e5f6ee;--warn:#b45309;--warn-soft:#fff4e0;--red:#c0392b;--red-soft:#fdecea}
 *{box-sizing:border-box}
@@ -352,6 +363,14 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
         </div>
       </div>
       <div class="col">
+        <div class="card" id="todaycard" style="order:-1">
+          <div class="ctitle"><span>📌 오늘 내 일정</span><button class="btn" id="dg-btn" onclick="toggleDigest()" title="매일 아침(평일 8:30) Slack으로 오늘 일정 받기">🔔 알림 켜짐</button></div>
+          <div id="today"><div class="empty">불러오는 중…</div></div>
+        </div>
+        <div class="card hide" id="newscard" style="order:-1">
+          <div class="ctitle"><span>📺 뉴스 통역 (7일)</span><a class="btn" href="/news/" target="_blank" rel="noopener">배정표 열기 ↗</a></div>
+          <div id="newsbox"><div class="empty">불러오는 중…</div></div>
+        </div>
         <div class="card" style="order:0">
           <div class="ctitle"><span>🗓 내 근태</span><button class="btn" onclick="go('att','leave')">근태 / 휴가 관리 →</button></div>
           <div id="att"><div class="empty">불러오는 중…</div></div>
@@ -435,7 +454,7 @@ async function start(){
     $('blk-t').textContent = t; $('blk-d').innerHTML = d; return;
   }
   ME = w; render(); show('app');
-  loadNotices(); loadAtt(); loadBoard(); loadQuick(); if (w.can_manage) loadMgr(); inqBadge(); setInterval(inqBadge, 120000);
+  loadNotices(); loadAtt(); loadBoard(); loadQuick(); if (w.is_hq || w.role === 'admin') loadNews(); if (w.can_manage) loadMgr(); inqBadge(); setInterval(inqBadge, 120000);
   fromHash();
 }
 
@@ -460,9 +479,7 @@ function grpHtml(ic, label){ return '<div class="grp"><span class="ic">' + ic + 
 function renderNav(){
   var h = topHtml('inq:s:', '💬', '문의함', "go('inq')").replace('</a>', '<span class="nbadge hide" id="inq-badge"></span></a>');
   h += grpHtml('🏖', '근태 / 휴가 관리');
-  [['leave','내 근태현황'],['leave-apply','휴가 신청'],['overtime','시간외 신청'],['comp-apply','대체휴무 신청'],['promo','연가 사용 계획서'],['leavehist','내 신청내역']].forEach(function(k){ h += kidHtml('att', false, k[0], k[1]); });
-  h += '<div class="kls">시수</div>' + kidHtml('att', false, 'write', '시수 입력') + kidHtml('att', false, 'myrecord', '내 시수 확인');
-  h += '<div class="kls">대체시수</div>' + kidHtml('att', false, 'altwrite', '대체시수 발생일') + kidHtml('att', false, 'altuse', '대체시수 입력') + kidHtml('att', false, 'altrecord', '내 대체시수 확인');
+  [['leave','내 근태현황'],['leave-apply','휴가(시수) 신청'],['overtime','시간외 신청']].forEach(function(k){ h += kidHtml('att', false, k[0], k[1]); });
   h += '<div class="kls">출퇴근 기록</div>' + kidHtml('att', false, 'attend', '월별 근태현황');
   if (ATT && ATT.staff && ATT.staff.role === '선임')   // 선임만 보임 (기존 '선임 확인' 권한 그대로)
     h += grpHtml('✅', '선임 확인') + kidHtml('att', false, 'senior:leavemgr', '후임 신청 현황') + kidHtml('att', false, 'senior:dashboard', '시수 신청 현황') + kidHtml('att', false, 'senior:altdashboard', '대체시수 신청 현황');
@@ -473,11 +490,11 @@ function renderNav(){
     h += grpHtml('📚', '수어교육관리');
     [['dash','대시보드'],['courses','강좌'],['apply','접수·강사비'],['report','보고·통계'],['files','자료요청']].forEach(function(k){ if (EDU_HIDE.indexOf(k[0]) < 0) h += kidHtml('edu', false, k[0], k[1]); });
   }
-  h += grpHtml('📝', '공문 작성') + kidHtml('doc', false, 'internal', '내부결재') + kidHtml('doc', false, 'coop', '업무협조전') + kidHtml('doc', false, 'send', '문서 발송') + kidHtml('doc', false, 'ledger', '공문 대장');
+  h += grpHtml('📝', '공문 작성') + kidHtml('doc', false, 'internal', '내부결재') + kidHtml('doc', false, 'coop', '업무협조전') + kidHtml('doc', false, 'send', '문서 발송') + kidHtml('doc', false, 'recv', '받은 문서').replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', '<span class="nbadge hide" id="docr-badge"></span></a>') + kidHtml('doc', false, 'sent', '보낸 문서') + kidHtml('doc', false, 'ledger', '공문 대장');
   if (hasPerm('interp.')) h += grpHtml('🗣', '통역실적') + kidHtml('interp', false, 'dash', '대시보드') + kidHtml('interp', false, 'log', '통역일지')
     + (['interp.view', 'interp.report', 'interp.review'].some(function(k){ return (ME.perms || []).indexOf(k) >= 0; }) ? kidHtml('interp', false, 'stats', '통계') : '');
   h += grpHtml('📒', '업무일지') + kidHtml('worklog', false, 'write', '업무일지 작성') + kidHtml('worklog', false, 'print', '업무일지 인쇄');
-  if (hasPerm('acct.')) h += grpHtml('💰', '회계') + kidHtml('acct', false, 'prop', '품의') + kidHtml('acct', false, 'res', '결의') + kidHtml('acct', false, 'cash', '출납부') + kidHtml('acct', false, 'ledger', '원장') + kidHtml('acct', false, 'bank', '통장 내역');
+  if (hasPerm('acct.')) h += grpHtml('💰', '회계') + kidHtml('acct', false, 'budget', '예산 편성') + kidHtml('acct', false, 'prop', '품의') + kidHtml('acct', false, 'res', '결의') + kidHtml('acct', false, 'cash', '출납부') + kidHtml('acct', false, 'ledger', '원장') + kidHtml('acct', false, 'bank', '통장 내역') + kidHtml('acct', false, 'status', '집행 현황');
   if (hasPerm('cert.')) h += grpHtml('📜', '증서·증명 발급') + kidHtml('cert', false, 'issue', '증서·증명 발급') + kidHtml('cert', false, 'list', '발급 대장');
   if (hasPerm('perf.')) {   // 사업실적 (회원명단은 회원관리와 같은 자료)
     h += grpHtml('📈', '사업실적');
@@ -619,6 +636,7 @@ window.addEventListener('message', function(e){
     FR.tab = d.tab; CUR = mid(k, false, d.tab); markNav();
     try { history.replaceState(null, '', '#' + k + '/' + d.tab); } catch(x){}
   }
+  if (d.type === 'doc-badge' && e.source === $('frame').contentWindow) { docBadge(); return; }
   if (d.type === 'nav-go' && e.source === $('frame').contentWindow && d.kind) { go(d.kind, d.tab || '', !!d.adm); return; }
   if (d.type === 'edu-tab' && e.source === $('frame').contentWindow && FR.key === 'edu:s') {
     if (!document.querySelector('#nav [data-id="' + mid('edu', false, d.tab) + '"]')) return;
@@ -650,6 +668,7 @@ async function loadCal(){
       return;
     }
     card.classList.remove('hide'); $('calname').textContent = j.calendar_name || '구글 캘린더';
+    CAL_TODAY = (j.items || []).filter(function(x){ var sd = String(x.start).slice(0, 10), ed = String(x.end || x.start).slice(0, 10); return sd <= from && ed >= from; }); renderToday();
     var PAL = ['#3b6fd4','#d9534f','#2e9d6a','#e08a1e','#8a5bd0','#1aa0b8','#c2487f','#7a8a2a'], multi = (j.cals || []).length > 1, cidx = {};
     (j.cals || []).forEach(function(c, i){ cidx[c.ci] = PAL[i % PAL.length]; });
     var legend = multi ? '<div class="mute" style="display:flex;flex-wrap:wrap;gap:4px 12px;padding-bottom:6px">' + j.cals.map(function(c){ return '<span><i style="display:inline-block;width:9px;height:9px;border-radius:50%;background:' + cidx[c.ci] + ';margin-right:4px"></i>' + esc(c.name) + '</span>'; }).join('') + '</div>' : '';
@@ -703,7 +722,7 @@ function setPunch(t){
 function render(){
   var cl = chapLabel();
   $('brand-tx').innerHTML = ORG + '<br>' + (cl ? esc(cl) + ' ' : '') + '업무 시스템';
-  document.title = ORG + ' ' + (cl ? cl + ' ' : '') + '업무 시스템';
+  document.title = ORG + (cl ? cl : '') + ' 업무 시스템';   // 기관명과 지회명은 띄어 쓰지 않음 (강원특별자치도농아인협회춘천시지회)
   var name = ME.name || (ME.email || '').split('@')[0];
   $('hello').innerHTML = '<span class="hi">안녕하세요, </span>' + esc(name) + ' 님';   // 휴대폰에서는 '김유진 님'만
   $('today').textContent = new Date().toLocaleDateString('ko-KR', { timeZone:'Asia/Seoul', year:'numeric', month:'long', day:'numeric', weekday:'long' });
@@ -767,13 +786,51 @@ async function openMy(focus){
     + '<button class="btn" onclick="closeModal();go(\'access\')">✍️ 내 서명 · 🔐 내 권한</button>'
     + '<button class="btn" onclick="closeModal();go(\'att\',\'leave\')">🗓 내 근태 현황</button>'
     + '<button class="btn" onclick="closeModal();openGuide(ME,\'home\')">📖 사용 안내</button></div>'
+    + '<h3 id="my-slack" style="margin-top:18px">🔔 Slack 알림 <span class="mute" style="font-size:.8rem;font-weight:600">누르면 바로 저장돼요</span></h3>'
+    + '<div id="my-sl">' + slackHtml() + '</div>'
     + '<h3 id="my-quick" style="margin-top:18px">⭐ 자주 쓰는 메뉴 <span class="mute" style="font-size:.8rem;font-weight:600">홈 화면에 보일 버튼을 고르세요</span></h3>'
     + '<div class="mylist" id="my-ql">' + items.map(function(x){
         return '<label><input type="checkbox" value="' + esc(x.id) + '"' + (on(x.id) ? ' checked' : '') + ' style="width:auto"> ' + esc(x.ic) + ' ' + esc(x.label) + (x.grp ? ' <small>' + esc(x.grp) + '</small>' : '') + '</label>';
       }).join('') + '</div>'
     + '<div class="mfoot"><button class="btn" onclick="resetQuick()">기본값으로</button><span style="flex:1"></span><button class="btn" onclick="closeModal()">닫기</button><button class="btn pri" onclick="saveQuick()">저장</button></div></div>';
   $('modal').classList.remove('hide');
-  if (focus === 'quick') setTimeout(function(){ var h = $('my-quick'); if (h) h.scrollIntoView({ block: 'start' }); }, 30);
+  if (focus === 'quick' || focus === 'slack') setTimeout(function(){ var h = $('my-' + focus); if (h) h.scrollIntoView({ block: 'start' }); }, 30);
+}
+/* ── 🔔 Slack 알림 설정 (user_prefs.slack = {all, off:[]}, 처음엔 모두 켜짐) ── */
+var SLK_CATS = [
+  ['digest', '📌 아침 오늘 내 일정', '평일 아침 8:30'],
+  ['notice', '📢 새 공지', '나에게 보이는 공지'],
+  ['doc', '📨 받은 문서', '우리 지회로 들어온 공문'],
+  ['inq', '💬 문의함', '새 문의 · 새 답글'],
+  ['report', '📊 지회 보고', '도협회: 지회 보고 도착 · 지회: 승인 / 보완 요청'],
+  ['sup_ok', '✅ 선임 확인 요청', '후임의 시간외 · 시수 · 병가 · 대체시수 (선임만)'],
+  ['sup_ref', '👀 선임 참고', '후임의 휴가 · 출장 · 대체휴무 (선임만)']];
+function slk(){ var v = PREFS && PREFS.slack; return { all: !(v && v.all === false), off: (v && Array.isArray(v.off)) ? v.off.slice() : [] }; }
+function slkOn(cat){ var v = slk(); return v.all && v.off.indexOf(cat) < 0; }
+function slackHtml(){
+  var v = slk(), sw = function(on){ return '<span style="flex:none;font-weight:800;font-size:.8rem;padding:3px 10px;border-radius:99px;' + (on ? 'background:#e6f6ec;color:#18794e' : 'background:#eef0f4;color:#8a93a3') + '">' + (on ? '켜짐' : '꺼짐') + '</span>'; };
+  var noId = TD_SLACK && !TD_SLACK.slackId ? '<div class="note" style="margin-bottom:8px">근태 직원목록에 내 슬랙ID가 없어 지금은 알림이 가지 않아요. 지회 담당자에게 등록을 요청하세요.</div>' : '';
+  return noId + '<div style="display:flex;gap:6px;margin-bottom:8px"><button class="btn' + (v.all ? ' pri' : '') + '" onclick="slkAll(true)">전체 켜기</button><button class="btn' + (v.all ? '' : ' pri') + '" onclick="slkAll(false)">전체 끄기</button></div>'
+    + '<div class="mylist" style="display:block;max-height:none;overflow:visible">' + SLK_CATS.map(function(c){
+      var on = v.all && v.off.indexOf(c[0]) < 0;
+      return '<div onclick="slkToggle(\'' + c[0] + '\')" style="display:flex;align-items:center;gap:8px;padding:9px 4px;border-top:1px solid var(--line);cursor:pointer;' + (v.all ? '' : 'opacity:.5') + '">'
+        + '<div style="flex:1;min-width:0"><b>' + esc(c[1]) + '</b><div class="mute" style="font-size:.78rem">' + esc(c[2]) + '</div></div>' + sw(on) + '</div>';
+    }).join('') + '</div><p class="mute" style="font-size:.78rem;margin:6px 0 0">연가 사용 통지는 꼭 알려야 하는 안내라 끌 수 없어요.</p>';
+}
+async function slkSave(v){
+  var r = await sb.rpc('my_prefs_set', { p_key: 'slack', p_val: v });
+  if (r.error) { toast('저장하지 못했습니다: ' + r.error.message); return false; }
+  PREFS.slack = v; if (TD_DB) TD_DB.slack_digest = slkOn('digest');
+  if ($('my-sl')) $('my-sl').innerHTML = slackHtml();
+  renderToday(); return true;
+}
+function slkAll(on){ var v = slk(); v.all = on; if (on) v.off = []; slkSave(v); }
+function slkToggle(cat){
+  var v = slk();
+  if (!v.all) { v.all = true; v.off = SLK_CATS.map(function(c){ return c[0]; }).filter(function(k){ return k !== cat; }); }   // 전체 꺼진 상태에서 하나 켜면 그것만 켜짐
+  else if (v.off.indexOf(cat) >= 0) v.off = v.off.filter(function(k){ return k !== cat; });
+  else v.off.push(cat);
+  slkSave(v);
 }
 async function saveQuick(){
   var prev = quickIds(), picked = [];
@@ -853,6 +910,12 @@ async function delNotice(id){
 var INQ = [], INQ_CUR = null, INQ_T = null;
 async function inqBadge(){
   try { var r = await sb.rpc('inq_badge'); var n = r.data || 0, b = $('inq-badge'); if (b) { b.textContent = n; b.classList.toggle('hide', !n); } } catch(e){}
+  docBadge();
+}
+// 받은 공문 중 아직 접수 안 된 수 (우리 지회 누군가 접수하면 사라짐)
+async function docBadge(){
+  var b = $('docr-badge'); if (!b) return;
+  try { var r = await sb.rpc('doc_recv_badge'); var n = r.data || 0; b.textContent = n; b.classList.toggle('hide', !n); } catch(e){}
 }
 async function loadInq(){
   var r = await sb.rpc('inq_list');
@@ -949,6 +1012,53 @@ $('sysnote').addEventListener('click', function(e){
   if (mo) { var opened = mo.classList.toggle('on'); $('sysnote').querySelectorAll('.sn.more').forEach(function(x){ x.classList.toggle('hide', !opened); }); mo.textContent = opened ? '접기 ▴' : mo.textContent; if (!opened) showSysNote((CUR || '').split(':')[0]); return; }
   var r = e.target.closest('.sn'); if (r) $('snb' + r.getAttribute('data-i')).classList.toggle('hide');
 });
+/* ── 📺 뉴스 통역 배정 (도협회 홈만) ── */
+async function loadNews(){
+  var card = $('newscard'); if (!card) return;
+  var r; try { r = await sb.rpc('news_week'); } catch(e) { return; }
+  if (!r || r.error || !Array.isArray(r.data) || !r.data.length) return;
+  card.classList.remove('hide');
+  var wd = '일월화수목금토', SHORT = { 'KBS 뉴스광장': '광장', 'KBS 930뉴스': '930', 'KBS 뉴스9': '뉴스9', 'G1뉴스': 'G1' }, me = (ME && ME.name) || '';
+  $('newsbox').innerHTML = r.data.map(function(d, i){
+    var dt = new Date(d.date + 'T00:00:00'), items = d.items || [];
+    var body = !d.saved ? '<span class="mute">이 달 배정표가 아직 저장되지 않았어요</span>'
+      : !items.length ? '<span class="mute">배정 없음</span>'
+      : items.map(function(x){ var mine = x.name === me; return '<span style="display:inline-block;margin:2px 6px 2px 0;' + (mine ? 'font-weight:800;color:#2f5bd6' : '') + '"><span class="mute">' + esc(SHORT[x.prog] || x.prog) + '</span> ' + esc(x.name) + '</span>'; }).join('');
+    return '<div class="sch" style="cursor:default"><div class="dt" style="width:72px">' + md(d.date) + '<small>' + (i === 0 ? '오늘' : '(' + wd.charAt(dt.getDay()) + ')') + '</small></div><div class="tx">' + body + '</div></div>';
+  }).join('');
+}
+/* ── 📌 오늘 내 일정: 휴가·시수·출장·시간외(근태) + 수어교육·통역(DB) + 캘린더(제목에 내 이름) ── */
+var TD_ATT = null, TD_DB = null, CAL_TODAY = [], TD_SLACK = null;
+async function loadToday(){
+  try { var r = await sb.rpc('my_today'); TD_DB = (r && !r.error && r.data) || { items: [] }; } catch(e) { TD_DB = { items: [] }; }
+  renderToday();
+  try { var a = await attCall('getMyTodayAtt', JSON.stringify({})); TD_ATT = (a && a.ok) ? a : { items: [] }; TD_SLACK = a && a.ok ? a : null; } catch(e) { TD_ATT = { items: [] }; }
+  renderToday();
+}
+function renderToday(){
+  var el = $('today'); if (!el) return;
+  var nm = (ATT && ATT.staffName) || (ME && ME.name) || '';
+  var cal = (CAL_TODAY || []).filter(function(x){ var t = String(x.title || ''); return nm && t.indexOf(nm) >= 0 && !/^\s*\[(휴가|출장)\]/.test(t); })
+    .map(function(x){ return { ic: '📅', at: x.allDay ? '' : String(x.start).slice(11, 16), t: x.title + (x.place ? ' (' + x.place + ')' : ''), link: x.link }; });
+  var items = [].concat((TD_ATT && TD_ATT.items) || [], (TD_DB && TD_DB.items) || [], cal);
+  items.sort(function(a, b){ return String(a.at || '00').localeCompare(String(b.at || '00')); });
+  var on = !TD_DB || TD_DB.slack_digest !== false, btn = $('dg-btn');
+  if (btn) { btn.textContent = on ? '🔔 알림 켜짐' : '🔕 알림 꺼짐'; btn.style.opacity = on ? '' : '.6'; }
+  var warn = (on && TD_SLACK && !TD_SLACK.slackId) ? '<div class="mute" style="padding-top:6px">※ 근태 직원목록에 내 슬랙ID가 없어 아침 알림이 가지 않아요. 지회 담당자에게 등록을 요청하세요.</div>' : '';
+  if (TD_ATT === null && !items.length) { el.innerHTML = '<div class="empty">불러오는 중…</div>'; return; }
+  if (!items.length) { el.innerHTML = '<div class="empty" style="padding:12px 6px">오늘 등록된 내 일정이 없어요.</div>' + warn; return; }
+  el.innerHTML = items.map(function(x){
+    var tag = x.link ? 'a href="' + esc(x.link) + '" target="_blank" rel="noopener"' : 'div style="cursor:default"';
+    return '<' + tag + ' class="sch"><div class="dt" style="width:64px">' + esc(x.at || '종일') + '</div><div class="tx">' + esc(x.ic || '') + ' ' + esc(x.t || '') + '</div></' + (x.link ? 'a' : 'div') + '>';
+  }).join('') + warn;
+}
+async function toggleDigest(){   // 홈 카드 🔔: 아침 알림만 켜고 끄기 (나머지는 마이페이지)
+  await loadPrefs();
+  var on = slkOn('digest');
+  if (on && !confirm('매일 아침 Slack \'오늘 내 일정\' 알림을 끌까요?\n(다른 Slack 알림은 마이페이지 › 🔔 Slack 알림에서 고를 수 있어요)')) return;
+  if (!on) { slkToggle('digest'); return; }
+  var v = slk(); v.off.push('digest'); slkSave(v);
+}
 /* ── 내 근태 (근태 서버 함수 호출) ── */
 async function attCall(fn, arg){
   var s = await sb.auth.getSession(); var tok = s.data && s.data.session && s.data.session.access_token;
@@ -968,9 +1078,9 @@ async function loadAtt(){
     var w = await attCall('whoami');
     if (!w || !w.ok) { el.innerHTML = '<div class="note">근태 정보를 불러오지 못했습니다.<br>' + esc((w && w.msg) || '') + '</div>'; return; }
     ATT = w; renderNav();
-    if (!w.staffName) { loadCal();
+    if (!w.staffName) { loadCal(); loadToday();
        if ($('punch')) $('punch').innerHTML = '<div class="note">근태 직원목록에 구글 계정이 연결되면 출퇴근을 기록할 수 있습니다.</div>'; el.innerHTML = '<div class="note">근태 직원목록에 내 구글 계정이 아직 연결되어 있지 않습니다.<br>지회 담당자에게 확인을 요청하세요.</div>'; return; }
-    loadPunch(); loadCal();
+    loadPunch(); loadCal(); loadToday();
     var y = new Date().getFullYear();
     var b = await attCall('getMyLeaveBalance', JSON.stringify({ name: w.staffName, year: y }));
     var c = await attCall('getMyCompLeave', JSON.stringify({ name: w.staffName }));
@@ -982,7 +1092,7 @@ async function loadAtt(){
       + '<div><span>휴가·시수로 사용</span><b>' + num(used) + '일</b></div>'
       + '<div><span>대체휴무 잔여</span><b>' + num(c && c.remaining) + '일</b></div></div>';
   } catch(e) {
-    el.innerHTML = '<div class="note">근태 서버에 연결하지 못했습니다.<br>(Edge Function att 배포를 확인하세요)</div>';
+    el.innerHTML = '<div class="note">근태 서버에 연결하지 못했습니다.<br>(Edge Function att 배포를 확인하세요)</div>'; loadToday();
   }
 }
 

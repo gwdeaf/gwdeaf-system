@@ -45,6 +45,9 @@ input[type=text], input[type=tel] { width:100%; padding:12px; border:1.5px solid
 <div id="pc"><div class="box"><div class="top">우편번호 찾기<button type="button" id="pcx" aria-label="닫기">✕</button></div><div id="pcb"></div></div></div>
 <div id="app"><div class="center hint">불러오는 중…</div></div>
 <script>
+// 기관 전체 이름: 지회는 '강원특별자치도농아인협회○○지회'(띄어쓰기 없이), 도협회는 협회 이름, 센터 등은 그 이름 그대로
+function fullOrg(n) { n = String(n || '').trim(); if (!n || n === '도협회') return '강원특별자치도농아인협회'; return /지회$/.test(n) && n.indexOf('농아인협회') < 0 ? '강원특별자치도농아인협회' + n : n; }
+
 const TOKEN = location.pathname.split('/').filter(Boolean).pop() || '';
 const $ = s => document.querySelector(s);
 const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -80,7 +83,7 @@ function dead(msg) { $('#app').innerHTML = `<div class="wrap"><div class="center
   try { c = await api('groupInfo'); } catch (e) { return dead(e.message); }
   const per = x => x.시작일 && x.종료일 ? `${x.시작일} ~ ${x.종료일}` : '';
   const one = c.강좌.length === 1;
-  $('#app').innerHTML = `<header><div class="wrap" style="padding:0"><h1>${esc(c.제목)}</h1><p>${esc(c.지회명)} 수강 신청</p></div></header>
+  $('#app').innerHTML = `<header><div class="wrap" style="padding:0"><h1>${esc(c.제목)}</h1><p>${esc(fullOrg(c.지회명))} 수강 신청</p></div></header>
   <div class="wrap">
     <p class="hint noprint" style="text-align:right;margin:10px 0 0"><a href="#sf" onclick="document.getElementById('sf').scrollIntoView({behavior:'smooth'});return false">이미 신청하셨나요? 내 접수 결과 확인 ↓</a></p>
     ${c.포스터 ? `<img src="${esc(c.포스터)}" alt="${esc(c.제목)} 홍보 포스터" style="width:100%;display:block;border-radius:12px;margin-top:8px;border:1px solid var(--line)">` : ''}
@@ -128,7 +131,7 @@ function dead(msg) { $('#app').innerHTML = `<div class="wrap"><div class="center
       const dup = r.결과.length && r.결과.every(x => x.이미접수);
       $('#app').innerHTML = `<div class="wrap"><div class="center noprint" style="padding:32px 0 8px"><div class="ok">✅</div><h2 style="margin:6px 0">${dup ? '이미 접수되어 있습니다' : '신청이 접수되었습니다'}</h2><p style="margin:0">담당자가 확인한 뒤 연락드립니다.</p></div>
         <div class="card" id="rcpt"><h3 style="margin:0 0 10px;text-align:center">수강 신청 접수증</h3><dl>
-          <dt>기관</dt><dd>${esc(c.지회명)}</dd>
+          <dt>기관</dt><dd>${esc(fullOrg(c.지회명))}</dd>
           <dt>신청 강좌</dt><dd>${r.결과.map(x => esc(x.강좌명) + (x.이미접수 ? ' <span class="hint">(이미 접수됨)</span>' : '')).join('<br>')}</dd>
           <dt>이름</dt><dd>${esc(nm)}</dd><dt>연락처</dt><dd>${esc(ph)}</dd>${ad ? `<dt>주소</dt><dd>${esc(ad)}</dd>` : ''}${mm ? `<dt>전달할 말</dt><dd>${esc(mm)}</dd>` : ''}
           <dt>접수 일시</dt><dd>${at}</dd></dl>

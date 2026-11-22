@@ -2612,7 +2612,7 @@ async function printConfirm(d) {
   let doc = null;
   if (webMode()) { try { doc = await call('getConfirm', c.강좌ID); } catch (e) { if (e.code === 'AUTH') return; } }
   const rows = confirmRows(d, doc);
-  const org = (c.지회명 === '도협회' || c.파견ID) ? '강원특별자치도농아인협회' : (c.주관 === '센터' ? c.지회명.replace(/지회$/, '센터') : c.지회명);
+  const org = (c.지회명 === '도협회' || c.파견ID) ? '강원특별자치도농아인협회' : (c.주관 === '센터' ? c.지회명.replace(/지회$/, '센터') : '강원특별자치도농아인협회' + c.지회명);   // 띄어쓰기 없이
   const line = (k, v) => `<tr><th>${k}</th><td>${esc(v)}</td></tr>`;
   const day = x => String(x || '').slice(0, 10).replace(/^(\d{4})-(\d{2})-(\d{2})$/, '$1년 $2월 $3일');
   const sigBox = (title, who, img) => `<td class="cf-sg"><div class="cf-sgt">${title}</div><div class="cf-sgn">${esc(who)}</div><div class="cf-sgi">${img ? `<img src="${esc(img)}" alt="">` : '<span>(서명)</span>'}</div></td>`;

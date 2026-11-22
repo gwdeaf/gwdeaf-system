@@ -27,6 +27,9 @@ dl { margin:0; display:grid; grid-template-columns:84px 1fr; gap:6px 10px; font-
 <body>
 <div id="app"><div class="center hint">불러오는 중…</div></div>
 <script>
+// 기관 전체 이름: 지회는 '강원특별자치도농아인협회○○지회'(띄어쓰기 없이), 도협회는 협회 이름, 센터 등은 그 이름 그대로
+function fullOrg(n) { n = String(n || '').trim(); if (!n || n === '도협회') return '강원특별자치도농아인협회'; return /지회$/.test(n) && n.indexOf('농아인협회') < 0 ? '강원특별자치도농아인협회' + n : n; }
+
 const TOKEN = location.pathname.split('/').filter(Boolean).pop() || '';
 const $ = s => document.querySelector(s);
 const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -61,7 +64,7 @@ function savePic(c) {
   const wrap = (g, t, w) => { const out = []; String(t == null ? '' : t).split('\n').forEach(par => { let ln = ''; for (const ch of par) { if (g.measureText(ln + ch).width > w) { out.push(ln); ln = ch; } else ln += ch; } out.push(ln); }); return out; };
   const rows = [];   // [글자크기, 굵게, 색, 글, 오른쪽글]
   const add = (sz, bold, col, t, r) => rows.push([sz, bold, col, t, r || '']);
-  add(26, 1, '#111', '강사료 지급 확인서'); add(15, 0, '#555', `${c.지회명} · ${c.강사명} 강사님`); add(0);
+  add(26, 1, '#111', '강사료 지급 확인서'); add(15, 0, '#555', `${fullOrg(c.지회명)} · ${c.강사명} 강사님`); add(0);
   add(15, 0, '#111', `기간  ${c.기간시작} ~ ${c.기간종료}`);
   add(15, 0, '#111', `입금 계좌  ${[c.은행, c.계좌끝 ? '계좌 끝 4자리 ' + c.계좌끝 : '', c.예금주 ? '(예금주 ' + c.예금주 + ')' : ''].filter(x => x).join(' ')}`); add(0);
   c.항목.forEach(l => { add(16, 1, '#111', `${l.강좌명} (${l.구분})`, n(l.금액) + '원'); add(14, 0, '#555', `${l.일시}${l.시간 ? ' · ' + l.시간 + '시간' : ''}`); if (l.강의내용) add(14, 0, '#111', l.강의내용); add(6); });
@@ -83,7 +86,7 @@ function savePic(c) {
 }
 function draw(c) {
   const signed = c.상태 === '서명완료';
-  $('#app').innerHTML = `<header><div class="wrap" style="padding:0"><h1>강사료 지급 확인서</h1><p>${esc(c.지회명)} · ${esc(c.강사명)} 강사님</p></div></header>
+  $('#app').innerHTML = `<header><div class="wrap" style="padding:0"><h1>강사료 지급 확인서</h1><p>${esc(fullOrg(c.지회명))} · ${esc(c.강사명)} 강사님</p></div></header>
   <div class="wrap"><div class="card"><dl><dt>기간</dt><dd>${esc(c.기간시작)} ~ ${esc(c.기간종료)}</dd><dt>입금 계좌</dt><dd>${esc([c.은행, c.계좌끝 ? '계좌 끝 4자리 ' + c.계좌끝 : '', c.예금주 ? '(예금주 ' + c.예금주 + ')' : ''].filter(x => x).join(' '))}</dd></dl></div>
     <div class="card"><b>강의 내역</b><div style="margin-top:6px">${c.항목.map(l => `<div class="line"><div class="row"><b>${esc(l.강좌명)}</b><span class="hint">${esc(l.구분)}</span><span class="sp"></span><b class="num">${n(l.금액)}원</b></div>
       <div class="hint">${esc(l.일시)}${l.시간 ? ' · ' + esc(l.시간) + '시간' : ''}</div>${l.강의내용 ? `<div style="font-size:14px">${esc(l.강의내용)}</div>` : ''}</div>`).join('')}</div>

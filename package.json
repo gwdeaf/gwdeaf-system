@@ -1,1 +1,12 @@
-{ "name": "gwdeaf-system", "version": "1.0.0", "private": true, "scripts": { "sync": "node tools/sync_code.js", "test": "ALLOW_PASSWORD_LOGIN=1 node test/run.js" } }
+{
+ "name": "gwdeaf-system",
+ "version": "1.0.0",
+ "private": true,
+ "scripts": {
+  "sync": "node tools/sync_code.js",
+  "test": "ALLOW_PASSWORD_LOGIN=1 node test/run.js"
+ },
+ "dependencies": {
+  "@vercel/og": "^0.6.8"
+ }
+}

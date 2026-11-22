@@ -61,7 +61,8 @@
   <button onclick="showLedger()">출납부</button>
   <button onclick="showGL()">원장</button>
   <button onclick="showBank()">통장 내역</button>
-  <button onclick="showBudget()">예산 현황</button>
+  <button onclick="showBudgetEdit()">예산 편성</button>
+  <button onclick="showStatus()">집행 현황</button>
   <button onclick="showSearch()">검색</button>
   <button id="btnSet" class="sub" onclick="showSettings()" style="display:none">설정</button>
   <button id="logoutBtn" class="sub" onclick="logout()">로그아웃</button>
@@ -72,6 +73,9 @@
 </main>
 <div id="printArea"></div>
 <script>
+// 기관 전체 이름: 지회는 '강원특별자치도농아인협회○○지회'(띄어쓰기 없이), 도협회는 협회 이름, 센터 등은 그 이름 그대로
+function fullOrg(n) { n = String(n || '').trim(); if (!n || n === '도협회') return '강원특별자치도농아인협회'; return /지회$/.test(n) && n.indexOf('농아인협회') < 0 ? '강원특별자치도농아인협회' + n : n; }
+
 const SUPABASE_URL = 'https://uamlualqqcqmpdkprjfs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhbWx1YWxxcWNxbXBka3ByamZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNjE0OTMsImV4cCI6MjExMDYzNzQ5M30._f4p4pfcKaYbmjKRXOPpkMo7Ydcc26oVVI6lRFYsLkY';
 const EMBED = new URLSearchParams(location.search).get('embed') === '1';
@@ -108,7 +112,22 @@ const FN = {
   saveBudget: (y, c, a) => ['acct_budget_save', { p_year: Number(y), p_src: c, p_amt: Number(a) }],
   check: (p) => ['acct_check', { p: p }],
   printCfg: () => ['acct_print_cfg', {}],
-  saveSignline: (t) => ['acct_signline_save', { p_text: t }]
+  saveSignline: (t) => ['acct_signline_save', { p_text: t }],
+  bizList: (y) => ['acct_biz_list', { p_year: y ? Number(y) : null }],
+  bizSave: (d) => ['acct_biz_save', { p: d }],
+  bizCopy: (id, y) => ['acct_biz_copy', { p_biz: id, p_year: Number(y) }],
+  itemsGet: (id) => ['acct_bitems_get', { p_biz: id }],
+  itemSave: (d) => ['acct_bitem_save', { p: d }],
+  itemDel: (id) => ['acct_bitem_delete', { p_id: id }],
+  itemsBulk: (id, rows) => ['acct_bitems_bulk', { p_biz: id, p_rows: rows }],
+  changes: (id) => ['acct_bchanges_get', { p_biz: id }],
+  pickList: (y) => ['acct_bpick_list', { p_year: y ? Number(y) : null }],
+  itemDocs: (id) => ['acct_bitem_docs', { p_id: id }],
+  bcheck: (i, a, d, n) => ['acct_bcheck', { p_item: Number(i), p_amt: Number(String(a).replace(/[^0-9]/g, '')) || 0, p_doc: d, p_no: n || '' }],
+  filesList: (d, n) => ['acct_files_list', { p_doc: d, p_no: n }],
+  fileAdd: (d, n, k, path, name, size) => ['acct_file_add', { p_doc: d, p_no: n, p_kind: k, p_path: path, p_name: name, p_size: size }],
+  fileDel: (id) => ['acct_file_del', { p_id: id }],
+  filesCount: (d) => ['acct_files_count', { p_doc: d }]
 };
 async function api(fn, ...args) {
   const [name, a] = FN[fn](...args);
@@ -133,6 +152,7 @@ function msg(text, type) {
 
 // 목·자금원천 코드를 '이름 (코드)'로 보여 줌
 function nameOf(kind, code) {
+  if (kind === '목' && String(code || '').startsWith('B#')) { const b = (OPTS['예산목'] || []).find(x => x['코드'] === code); return b ? b['이름'] : '예산 과목'; }
   const c = (OPTS[kind] || []).find(x => x['코드'] === code);
   return c ? `${c['이름']} (${code})` : (code || '');
 }
@@ -189,7 +209,7 @@ window.addEventListener('message', (e) => {
   if (e.origin !== location.origin || !e.data || e.data.type !== 'sub-go') return;
   SUB.go = e.data.tab; if (SUB.ready) subGo(SUB.go);
 });
-const SUB_FN = { prop: () => showList(), res: () => showResList(), cash: () => showLedger(), ledger: () => showGL(), bank: () => showBank() };
+const SUB_FN = { prop: () => showList(), res: () => showResList(), cash: () => showLedger(), ledger: () => showGL(), bank: () => showBank(), budget: () => showBudgetEdit(), status: () => showStatus() };
 function subGo(t) { (SUB_FN[t] || SUB_FN.prop)(); }
 
 
@@ -200,9 +220,10 @@ async function showList() {
   try {
     const list = await api('listProposals', OPTS.year);
     if (!list.length) { $('view').innerHTML = '<p>등록된 품의가 없습니다.</p>'; return; }
+    let FC = {}; if (EVIDENCE) try { FC = await api('filesCount', '품의'); } catch (e) {}
     $('view').innerHTML = list.map(p => `
       <div class="card" onclick="showDetail('${esc(p['품의번호'])}')">
-        <div><b>${esc(p['품의번호'])}</b> ${badge(p['상태'])}</div>
+        <div><b>${esc(p['품의번호'])}</b> ${badge(p['상태'])}${FC[p['품의번호']] ? ` <span class="badge">📎 ${FC[p['품의번호']]}</span>` : ''}</div>
         <div style="margin:4px 0">${esc(p['사업명'])}</div>
         <div style="color:#555;font-size:14px">${won(p['금액'])} · ${esc(p['거래처'])}</div>
       </div>`).join('');
@@ -228,7 +249,7 @@ async function showDetail(no) {
       ['작성자', p['작성자']],
       ['사업명', p['사업명']],
       ['사업기간', `${p['사업시작일']} ~ ${p['사업종료일']}`],
-      ['목(계정)', nameOf('목', p['목코드'])],
+      [p['예산항목'] ? '예산 과목' : '목(계정)', nameOf('목', p['목코드'])],
       ['자금원천', nameOf('자금원천', p['자금원천코드'])],
       ['금액', won(p['금액'])],
       ['거래처', p['거래처']],
@@ -241,7 +262,8 @@ async function showDetail(no) {
 
     $('view').innerHTML = `<h2>${esc(no)} ${badge(p['상태'])}</h2>` +
       rows.map(([k, v]) => `<div class="row"><span>${esc(k)}</span><span style="text-align:right">${esc(v)}</span></div>`).join('') +
-      `<div class="actions">${btns}</div>`;
+      `<div class="actions">${btns}</div><div id="evid"></div>`;
+    loadEvid('품의', no);
   } catch (e) {
     msg(e.message, 'err');
   }
@@ -276,6 +298,7 @@ async function showForm(no) {
   }
   const back = no ? `showDetail('${esc(no)}')` : 'showList()';
 
+  await loadPick();
   $('view').innerHTML = `
     <h2>${no ? '품의 수정 ' + esc(no) : '새 품의 작성'}</h2>
     <input type="hidden" id="f_no" value="${esc(no || '')}">
@@ -285,10 +308,13 @@ async function showForm(no) {
     <input type="date" id="f_start" value="${esc(p['사업시작일'] || '')}">
     <label>사업 종료일</label>
     <input type="date" id="f_end" value="${esc(p['사업종료일'] || '')}">
+    ${itemPicker('f_item', '세출', p['예산항목'], 'pickItem()')}
+    <div id="f_oldbox">
     <label>목(계정과목)</label>
     <select id="f_mok"><option value="">선택하세요</option>${optHtml(OPTS['목'], p['목코드'])}</select>
     <label>자금원천</label>
     <select id="f_src" onchange="propBudgetInfo()"><option value="">선택하세요</option>${optHtml(OPTS['자금원천'], p['자금원천코드'])}</select>
+    </div>
     <div id="f_binfo"></div>
     <label>금액 (원)</label>
     <input type="number" id="f_amt" min="1" value="${esc(p['금액'] || '')}">
@@ -302,7 +328,7 @@ async function showForm(no) {
       <button onclick="save()">저장</button>
       <button class="sub" onclick="${back}">돌아가기</button>
     </div>`;
-  propBudgetInfo();
+  pickItem(true);
 }
 let BUD = null;
 async function loadBudget() { BUD = await api('budgetStatus', OPTS.year); return BUD; }
@@ -328,6 +354,7 @@ async function save() {
     사업명: $('f_name').value.trim(),
     사업시작일: $('f_start').value,
     사업종료일: $('f_end').value,
+    예산항목: ($('f_item') && $('f_item').value) || '',
     목코드: $('f_mok').value,
     자금원천코드: $('f_src').value,
     금액: $('f_amt').value,
@@ -336,7 +363,8 @@ async function save() {
     산출근거: $('f_basis').value.trim()
   };
   if (!data.품의번호) delete data.품의번호;
-  if (!(await warnOk({ 문서: '품의', 문서번호: data.품의번호 || '', 자금원천코드: data.자금원천코드, 금액: data.금액 }))) return;
+  if (data.예산항목) { if (!(await itemWarnOk(data.예산항목, data.금액, '품의', data.품의번호))) return; }
+  else if (!(await warnOk({ 문서: '품의', 문서번호: data.품의번호 || '', 자금원천코드: data.자금원천코드, 금액: data.금액 }))) return;
   try {
     const no = await api('saveProposal', data);
     await showDetail(no);
@@ -361,9 +389,10 @@ async function showResList() {
   try {
     const list = await api('listResolutions', OPTS.year);
     if (!list.length) { $('view').innerHTML = '<p>등록된 결의가 없습니다.</p>'; return; }
+    let FC = {}; if (EVIDENCE) try { FC = await api('filesCount', '결의'); } catch (e) {}
     $('view').innerHTML = list.map(r => `
       <div class="card" onclick="showResDetail('${esc(r['결의번호'])}')">
-        <div><b>${esc(r['결의번호'])}</b> ${badge(r['상태'])}</div>
+        <div><b>${esc(r['결의번호'])}</b> ${badge(r['상태'])}${FC[r['결의번호']] ? ` <span class="badge">📎 ${FC[r['결의번호']]}</span>` : ''}</div>
         <div style="margin:4px 0">${esc(r['적요'])}</div>
         <div style="color:#555;font-size:14px">${esc(r['결의구분'])} · ${won(r['금액'])} · ${esc(r['날짜'])}</div>
       </div>`).join('');
@@ -388,7 +417,7 @@ async function showResDetail(no) {
       ['회계연도', r['회계연도']],
       ['날짜', r['날짜']],
       ['연결 품의', r['품의번호'] || '없음'],
-      ['목(계정)', nameOf('목', r['목코드'])],
+      [r['예산항목'] ? '예산 과목' : '목(계정)', nameOf('목', r['목코드'])],
       ['자금원천', nameOf('자금원천', r['자금원천코드'])],
       ['통장', accName(r['통장id'])],
       ['적요', r['적요']],
@@ -400,7 +429,8 @@ async function showResDetail(no) {
 
     $('view').innerHTML = `<h2>${esc(no)} ${badge(r['상태'])}</h2>` +
       rows.map(([k, v]) => `<div class="row"><span>${esc(k)}</span><span style="text-align:right">${esc(v)}</span></div>`).join('') +
-      `<div class="actions">${btns}</div>`;
+      `<div class="actions">${btns}</div><div id="evid"></div>`;
+    loadEvid('결의', no);
   } catch (e) {
     msg(e.message, 'err');
   }
@@ -431,7 +461,7 @@ async function showResForm(no, presetKind, presetProp) {
   msg('');
   let r = {};
   try {
-    await loadRes();
+    await loadRes(); await loadPick();
     if (no) r = await api('getResolution', no);
   } catch (e) {
     msg(e.message, 'err');
@@ -460,10 +490,13 @@ async function showResForm(no, presetKind, presetProp) {
       <select id="r_proposal" onchange="pickProp()"><option value="">선택하세요</option>${품의Opts}</select>
     </div>
     <div id="r_incBox">
+      ${itemPicker('r_item', '세입', r['예산항목'], 'pickIncItem()')}
+      <div id="r_oldbox">
       <label>목(계정과목)</label>
       <select id="r_mok"><option value="">선택하세요</option>${optHtml(RES.목, r['목코드'])}</select>
       <label>자금원천</label>
       <select id="r_src" onchange="resBudgetInfo()"><option value="">선택하세요</option>${optHtml(RES.자금원천, r['자금원천코드'])}</select>
+      </div>
     </div>
     <div id="r_binfo"></div>
     <label>날짜</label>
@@ -481,7 +514,7 @@ async function showResForm(no, presetKind, presetProp) {
       <button onclick="saveRes()">저장</button>
       <button class="sub" onclick="${back}">돌아가기</button>
     </div>`;
-  toggleKind();
+  toggleKind(); pickIncItem(true);
   if (!isEdit && presetProp) pickProp();
 }
 // 품의를 고르면 적요·금액·거래처를 가져옴 (금액이 다르면 고쳐서 저장)
@@ -510,7 +543,9 @@ async function resBudgetInfo() {
   const box = $('r_binfo'); if (!box) return;
   const c = resSrc(); if (!c) { box.innerHTML = ''; return; }
   const p = $('r_kind').value === '지출' ? (RES.품의 || []).find(x => x['품의번호'] === $('r_proposal').value) : null;
-  const pl = p ? `<div class="binfo">품의 ${esc(p['품의번호'])} · 품의 금액 ${won(p['금액'])} · 남은 금액 <b>${won(p['남은금액'])}</b> — 실제 금액이 다르면 아래 금액을 고치세요.</div>` : '';
+  const pl = (p ? `<div class="binfo">품의 ${esc(p['품의번호'])} · 품의 금액 ${won(p['금액'])} · 남은 금액 <b>${won(p['남은금액'])}</b> — 실제 금액이 다르면 아래 금액을 고치세요.</div>` : '')
+    + (p && p['예산항목'] ? itemLine(p['예산항목']) : '');
+  if (p && p['예산항목']) { box.innerHTML = pl; return; }
   try { await loadBudget(); box.innerHTML = pl + budLine(BUD.find(x => x['코드'] === c)); } catch (e) { box.innerHTML = pl; }
 }
 
@@ -525,11 +560,14 @@ async function saveRes() {
     금액: $('r_amt').value,
     거래처: $('r_vendor').value.trim(),
     품의번호: kind === '지출' ? $('r_proposal').value : '',
+    예산항목: kind === '수입' && $('r_item') ? $('r_item').value : '',
     목코드: kind === '수입' ? $('r_mok').value : '',
     자금원천코드: kind === '수입' ? $('r_src').value : ''
   };
   if (!data.결의번호) delete data.결의번호;
-  if (!(await warnOk({ 문서: '결의', 문서번호: data.결의번호 || '', 결의구분: kind, 품의번호: data.품의번호, 자금원천코드: data.자금원천코드, 통장id: data.통장id, 금액: data.금액 }))) return;
+  const pItem = kind === '지출' ? ((RES.품의 || []).find(x => x['품의번호'] === data.품의번호) || {})['예산항목'] : null;
+  if (pItem && !(await itemWarnOk(pItem, data.금액, '결의', data.결의번호))) return;
+  if (!data.예산항목 && !(await warnOk({ 문서: '결의', 문서번호: data.결의번호 || '', 결의구분: kind, 품의번호: data.품의번호, 자금원천코드: data.자금원천코드, 통장id: data.통장id, 금액: data.금액 }))) return;
   try {
     const src = resSrc();
     const no = await api('saveResolution', data);
@@ -745,6 +783,267 @@ async function runSearch() {
 }
 
 
+// ===== 사업별 예산: 고르기 · 경고 =====
+let BP = [];   // 사용 중인 사업의 맨 아래 과목 (+ 예산·품의·집행)
+async function loadPick() { try { BP = await api('pickList', OPTS.year); } catch (e) { BP = []; } }
+function itemPicker(id, gb, cur, on) {
+  const list = BP.filter(x => x['구분'] === gb);
+  if (!list.length && !cur) return `<div class="binfo">사업별 예산 과목이 아직 없습니다. <b>예산 편성</b>에서 사업과 과목을 만들면 여기서 고를 수 있어요. (지금은 아래 목·자금원천으로 작성)</div>`;
+  const by = {}; list.forEach(x => (by[x['사업']] = by[x['사업']] || []).push(x));
+  return `<label>예산 과목 (사업 › 과목)</label><select id="${id}" onchange="${on}"><option value="">— 고르지 않음 (목·자금원천 직접 선택) —</option>
+    ${Object.keys(by).map(b => `<optgroup label="${esc(b)}">${by[b].map(x => `<option value="${x.id}" ${String(x.id) === String(cur || '') ? 'selected' : ''}>${esc(x['경로'])} (남은 ${won(x['예산액'] - (gb === '세출' ? x['집행액'] : 0))})</option>`).join('')}</optgroup>`).join('')}</select>`;
+}
+function itemLine(id) {
+  const x = BP.find(y => String(y.id) === String(id)); if (!x) return '';
+  if (x['구분'] === '세입') return `<div class="binfo">[${esc(x['사업'])} › ${esc(x['경로'])}] 예산 ${won(x['예산액'])} · 수입 ${won(x['집행액'])}</div>`;
+  const left = x['예산액'] - x['집행액'];
+  return `<div class="binfo ${left < 0 ? 'warn' : ''}">[${esc(x['사업'])} › ${esc(x['경로'])}] 예산 ${won(x['예산액'])} · 품의 ${won(x['품의액'])} · 집행 ${won(x['집행액'])} · <b>남은 예산 ${won(left)}</b></div>`;
+}
+function pickItem(first) {
+  const sel = $('f_item'), id = sel ? sel.value : '';
+  $('f_oldbox').style.display = id ? 'none' : '';
+  if (!id) { propBudgetInfo(); return; }
+  const x = BP.find(y => String(y.id) === id);
+  if (!first && x && !$('f_name').value.trim()) $('f_name').value = x['사업'];
+  $('f_binfo').innerHTML = itemLine(id);
+}
+function pickIncItem() {
+  const sel = $('r_item'); if (!sel) return;
+  $('r_oldbox').style.display = sel.value ? 'none' : '';
+  if (sel.value) $('r_binfo').innerHTML = itemLine(sel.value); else resBudgetInfo();
+}
+async function itemWarnOk(item, amt, doc, no) {
+  try { const w = await api('bcheck', item, amt, doc, no); return !w.length || confirm('⚠️ 확인해 주세요\n\n' + w.join('\n') + '\n\n그래도 저장할까요?'); }
+  catch (e) { return true; }
+}
+
+// ===== 예산 편성 (사업 → 관·항·목·세목) =====
+const LV = ['', '관', '항', '목', '세목'];
+let BZ = null, BITEMS = [];
+function bizForm(b) {
+  b = b || {};
+  return `<div class="card" style="cursor:default" id="bizForm">
+    <b>${b.id ? '사업 정보 고치기' : '새 사업 만들기'}</b>
+    <label>사업 이름</label><input id="bz_name" value="${esc(b['이름'] || '')}" placeholder="예: 2026 수어교실 운영 지원사업">
+    <label>재원 (자금원천)</label><select id="bz_src"><option value="">선택하세요</option>${optHtml(OPTS['자금원천'], b['자금원천코드'])}</select>
+    <div style="color:#777;font-size:13px;margin-top:4px">재원 목록은 설정 → 자금원천에서 추가합니다. 출납부·통장 잔고는 재원 기준으로 쌓여요.</div>
+    <div style="display:flex;gap:8px"><div style="flex:1"><label>시작일</label><input type="date" id="bz_d1" value="${esc(b['시작일'] || '')}"></div><div style="flex:1"><label>종료일</label><input type="date" id="bz_d2" value="${esc(b['종료일'] || '')}"></div></div>
+    <label>메모</label><input id="bz_memo" value="${esc(b['메모'] || '')}">
+    ${b.id ? `<label style="font-weight:normal"><input type="checkbox" id="bz_use" style="width:auto" ${b['사용'] ? 'checked' : ''}> 사용 중 (끄면 품의·결의에서 안 보임)</label>` : ''}
+    <div class="actions"><button onclick="saveBiz(${b.id || ''})">저장</button><button class="sub" onclick="${b.id ? `openBiz(${b.id})` : 'showBudgetEdit()'}">닫기</button></div></div>`;
+}
+async function showBudgetEdit() {
+  msg(''); subTell('budget');
+  $('view').innerHTML = '<p>불러오는 중…</p>';
+  try {
+    const list = await api('bizList', OPTS.year);
+    const T = 'padding:7px 5px;border-bottom:1px solid #ddd;font-size:14px';
+    $('view').innerHTML = `<h2>예산 편성 (${esc(OPTS.year)}회계연도)</h2>
+      <p style="color:#555;font-size:14px">보조금 사업마다 예산을 따로 관리합니다. 사업을 만들고, 그 안에 <b>관 › 항 › 목 › 세목</b> 과목과 금액을 넣으세요. 과목 이름은 우리 지회에 맞게 자유롭게 정합니다.</p>
+      ${ME.can_write ? '<div class="actions" style="margin-top:0"><button onclick="newBiz()">+ 새 사업</button></div>' : ''}
+      <div id="bizFormBox"></div>
+      ${list.length ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;background:#fff;margin-top:10px"><tr><th style="${T};text-align:left">사업</th><th style="${T}">재원</th><th style="${T};text-align:right">세출 예산</th><th style="${T};text-align:right">세입 예산</th></tr>
+        ${list.map(b => `<tr style="cursor:pointer" onclick="openBiz(${b.id})"><td style="${T}"><b>${esc(b['이름'])}</b>${b['사용'] ? '' : ' <span class="badge cancel">사용 안 함</span>'}</td>
+          <td style="${T};text-align:center">${esc(nameOf('자금원천', b['자금원천코드']))}</td><td style="${T};text-align:right">${won(b['세출예산'])}</td><td style="${T};text-align:right">${won(b['세입예산'])}</td></tr>`).join('')}</table></div>`
+        : '<p style="color:#777">아직 사업이 없습니다.</p>'}`;
+  } catch (e) { msg(e.message, 'err'); }
+}
+function newBiz() { $('bizFormBox').innerHTML = bizForm({}); }
+async function saveBiz(id) {
+  const d = { 이름: $('bz_name').value.trim(), 자금원천코드: $('bz_src').value, 시작일: $('bz_d1').value, 종료일: $('bz_d2').value, 메모: $('bz_memo').value.trim(), 회계연도: OPTS.year };
+  if (id) { d.id = id; d.사용 = $('bz_use').checked; }
+  try { const nid = await api('bizSave', d); await refreshOpts(); await openBiz(nid); msg('사업을 저장했습니다.', 'ok'); } catch (e) { msg(e.message, 'err'); }
+}
+async function refreshOpts() { try { OPTS = await api('getFormOptions'); ME = OPTS.user; } catch (e) {} }
+// 하위 합계 계산
+function rollup(items) {
+  const by = {}; items.forEach(i => { i.kids = []; by[i.id] = i; });
+  const roots = []; items.forEach(i => (i.parent_id && by[i.parent_id] ? by[i.parent_id].kids : roots).push(i));
+  const sum = (i) => { if (!i.kids.length) { i.t예산 = +i['예산액']; i.t품의 = +i['품의액']; i.t집행 = +i['집행액']; return; }
+    i.t예산 = i.t품의 = i.t집행 = 0; i.kids.forEach(k => { sum(k); i.t예산 += k.t예산; i.t품의 += k.t품의; i.t집행 += k.t집행; }); };
+  roots.forEach(sum);
+  return roots;
+}
+function flat(nodes, out) { nodes.forEach(n => { out.push(n); flat(n.kids, out); }); return out; }
+async function openBiz(id) {
+  msg('');
+  try {
+    const d = await api('itemsGet', id); BZ = d.biz; BITEMS = d.items;
+    const roots = rollup(BITEMS), W = ME.can_write;
+    const T = 'padding:6px 5px;border-bottom:1px solid #e3e3e3;font-size:14px;vertical-align:middle';
+    const sec = (gb) => {
+      const rs = roots.filter(r => r['구분'] === gb), tot = rs.reduce((a, r) => a + r.t예산, 0);
+      const rows = flat(rs, []).map(i => `<tr><td style="${T};padding-left:${(i['단계'] - 1) * 18 + 6}px"><span class="badge">${LV[i['단계']]}</span> ${esc(i['이름'])}${i['변경'] ? ' <span style="color:#999;font-size:12px">(변경 ' + i['변경'] + ')</span>' : ''}</td>
+        <td style="${T};text-align:right;white-space:nowrap">${i.leaf && W ? `<input type="number" min="0" id="am_${i.id}" value="${i['예산액']}" style="width:140px;margin:0;padding:6px;text-align:right" onchange="saveAmt(${i.id},${i['예산액']})">` : `<b>${won(i.t예산)}</b>`}</td>
+        <td style="${T};white-space:nowrap">${W ? `${i['단계'] < 4 ? `<button class="sub" style="padding:5px 8px;font-size:13px" onclick="addItem('${gb}',${i.id})">+ 아래</button>` : ''}
+          <button class="sub" style="padding:5px 8px;font-size:13px" onclick="renameItem(${i.id})">이름</button>
+          <button class="sub" style="padding:5px 8px;font-size:13px" onclick="delItem(${i.id})">삭제</button>` : ''}</td></tr>`).join('');
+      return `<div class="card" style="cursor:default"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px"><b>${gb} · 합계 ${won(tot)}</b>${W ? `<button class="sub" onclick="addItem('${gb}',null)">+ ${gb} 관 추가</button>` : ''}</div>
+        ${rows ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;margin-top:6px">${rows}</table></div>` : '<p style="color:#777">과목이 없습니다.</p>'}</div>`;
+    };
+    $('view').innerHTML = `<h2>${esc(BZ['이름'])}</h2>
+      <div style="color:#555;font-size:14px">재원 ${esc(nameOf('자금원천', BZ['자금원천코드']))}${BZ['시작일'] ? ' · ' + esc(BZ['시작일']) + ' ~ ' + esc(BZ['종료일'] || '') : ''}${BZ['사용'] ? '' : ' · <span class="badge cancel">사용 안 함</span>'}</div>
+      <p style="color:#666;font-size:13px">금액은 맨 아래 과목에 넣고(칸을 고치면 바로 저장), 위 과목은 합계로 보여요. 이미 넣은 금액을 바꾸면 사유를 물어보고 <b>변경 이력</b>에 남겨요.</p>
+      <div id="bizFormBox"></div>
+      ${sec('세입')}${sec('세출')}
+      ${W ? `<div class="card" style="cursor:default"><b>📋 한꺼번에 넣기</b>
+        <div style="color:#666;font-size:13px;margin:4px 0">엑셀에서 <b>구분 · 관 · 항 · 목 · 세목 · 금액</b> 6칸을 복사해 붙여넣으세요. (구분은 세입/세출, 빈 칸은 건너뜀, 같은 이름은 합쳐짐)</div>
+        <textarea id="bulkTxt" rows="5" placeholder="세출	사업비	운영비	교재비		3000000&#10;세출	인건비	급여			12000000&#10;세입	보조금	도비			20000000"></textarea>
+        <div class="actions"><button onclick="bulkAdd()">넣기</button></div></div>` : ''}
+      <div class="actions">
+        ${W ? `<button class="sub" onclick="$('bizFormBox').innerHTML=bizForm(BZ);window.scrollTo(0,0)">사업 정보 고치기</button><button class="sub" onclick="copyBiz()">다른 해로 복사</button>` : ''}
+        <button class="sub" onclick="showChanges()">변경 이력</button>
+        <button class="sub" onclick="showStatus(${BZ.id})">집행 현황 보기</button>
+        <button class="sub" onclick="showBudgetEdit()">사업 목록</button></div>
+      <div id="chgBox"></div>`;
+  } catch (e) { msg(e.message, 'err'); }
+}
+async function addItem(gb, parent) {
+  const par = parent ? BITEMS.find(i => i.id === parent) : null;
+  const lv = par ? par['단계'] + 1 : 1;
+  const nm = prompt(`${par ? '[' + par['이름'] + '] 아래에 ' : gb + ' '}${LV[lv]} 이름을 입력하세요.`); if (!nm || !nm.trim()) return;
+  if (par && par.leaf && (+par['예산액'] > 0)) alert(`[${par['이름']}]의 금액 ${won(par['예산액'])}은 새 하위 과목으로 옮겨집니다.`);
+  try { await api('itemSave', { biz_id: BZ.id, parent_id: parent || '', 구분: gb, 이름: nm.trim() }); await refreshOpts(); await openBiz(BZ.id); } catch (e) { msg(e.message, 'err'); }
+}
+async function renameItem(id) {
+  const it = BITEMS.find(i => i.id === id); const nm = prompt('새 이름', it['이름']); if (!nm || !nm.trim() || nm.trim() === it['이름']) return;
+  try { await api('itemSave', { id, 이름: nm.trim() }); await refreshOpts(); await openBiz(BZ.id); } catch (e) { msg(e.message, 'err'); }
+}
+async function delItem(id) {
+  const it = BITEMS.find(i => i.id === id); if (!confirm(`[${it['이름']}]${it.leaf ? '' : '과 그 아래 과목'}을 지울까요?`)) return;
+  try { await api('itemDel', id); await refreshOpts(); await openBiz(BZ.id); } catch (e) { msg(e.message, 'err'); }
+}
+async function saveAmt(id, old) {
+  const it = BITEMS.find(i => i.id === id), v = $('am_' + id).value || '0';
+  let why = '';
+  if (+old > 0 && +v !== +old) { why = prompt(`[${it['이름']}] ${won(old)} → ${won(v)}\n바꾸는 사유를 적어 주세요. (예: 1차 추경, 과목 간 전용)`, ''); if (why === null) { $('am_' + id).value = old; return; } }
+  try { await api('itemSave', { id, 이름: it['이름'], 예산액: v, 사유: why || (+old ? '' : '편성') }); await openBiz(BZ.id); msg('저장했습니다.', 'ok'); } catch (e) { msg(e.message, 'err'); }
+}
+async function bulkAdd() {
+  const rows = $('bulkTxt').value.split('\n').map(l => l.replace(/\r/g, '')).filter(l => l.trim()).map(l => {
+    const c = l.includes('\t') ? l.split('\t') : l.split(','); while (c.length < 6) c.push('');
+    if (c.length > 6) { const amt = c[c.length - 1]; c.length = 5; c.push(amt); }
+    return c.map(x => x.trim());
+  });
+  if (!rows.length) return msg('붙여넣은 내용이 없습니다.', 'err');
+  try { const n = await api('itemsBulk', BZ.id, rows); await refreshOpts(); await openBiz(BZ.id); msg(n + '줄을 넣었습니다.', 'ok'); } catch (e) { msg(e.message, 'err'); }
+}
+async function copyBiz() {
+  const y = prompt('몇 년도로 복사할까요? (과목과 금액을 그대로 복사)', String(Number(OPTS.year) + 1)); if (!y) return;
+  try { await api('bizCopy', BZ.id, y); msg(y + '년도로 복사했습니다. (회계연도를 ' + y + '로 바꾸면 보여요)', 'ok'); } catch (e) { msg(e.message, 'err'); }
+}
+async function showChanges() {
+  try {
+    const list = await api('changes', BZ.id);
+    $('chgBox').innerHTML = `<div class="card" style="cursor:default"><b>변경 이력</b>${list.length ? list.map(c => `<div class="row"><span>${new Date(c.at).toLocaleString('ko-KR', { dateStyle: 'short', timeStyle: 'short' })} · ${esc(c.who)}<br>${esc(c['과목'])}${c['사유'] ? ' — ' + esc(c['사유']) : ''}</span><span style="text-align:right;white-space:nowrap">${won(c['이전'])} → <b>${won(c['이후'])}</b></span></div>`).join('') : '<p style="color:#777">없음</p>'}</div>`;
+  } catch (e) { msg(e.message, 'err'); }
+}
+
+// ===== 집행 현황 =====
+function rateBar(r) {
+  if (r == null) return '-';
+  const c = r > 100 ? '#c0392b' : r >= 80 ? '#e67e22' : '#2f5bd6';
+  return `<div style="display:flex;align-items:center;gap:6px;justify-content:flex-end"><div style="width:60px;height:8px;background:#e6e9ef;border-radius:4px;overflow:hidden"><div style="width:${Math.min(100, r)}%;height:100%;background:${c}"></div></div>${r}%</div>`;
+}
+const rate = (a, b) => b ? Math.round(a / b * 1000) / 10 : null;
+async function showStatus(bizId) {
+  msg(''); subTell('status');
+  $('view').innerHTML = '<p>불러오는 중…</p>';
+  try {
+    const T = 'padding:7px 5px;border-bottom:1px solid #ddd;font-size:13px;text-align:right;white-space:nowrap';
+    const H = (hs) => `<tr>${hs.map((h, i) => `<th style="${T};${i ? '' : 'text-align:left;'}border-bottom:2px solid #999">${h}</th>`).join('')}</tr>`;
+    if (!bizId) {
+      const list = await api('bizList', OPTS.year); await loadPick();
+      const agg = {}; BP.forEach(x => { const a = agg[x.biz_id] || (agg[x.biz_id] = { 세출: 0, 품의: 0, 집행: 0, 세입: 0, 수입: 0 });
+        if (x['구분'] === '세출') { a.세출 += +x['예산액']; a.품의 += +x['품의액']; a.집행 += +x['집행액']; } else { a.세입 += +x['예산액']; a.수입 += +x['집행액']; } });
+      const rows = list.filter(b => b['사용']).map(b => { const a = agg[b.id] || { 세출: 0, 품의: 0, 집행: 0, 세입: 0, 수입: 0 };
+        return `<tr style="cursor:pointer" onclick="showStatus(${b.id})"><td style="${T};text-align:left"><b>${esc(b['이름'])}</b></td><td style="${T}">${won(a.세출)}</td><td style="${T}">${won(a.품의)}</td><td style="${T}">${won(a.집행)}</td>
+          <td style="${T};${a.세출 - a.집행 < 0 ? 'color:#c0392b' : ''}">${won(a.세출 - a.집행)}</td><td style="${T}">${rateBar(rate(a.집행, a.세출))}</td><td style="${T}">${won(a.수입)} / ${won(a.세입)}</td></tr>`; }).join('');
+      $('view').innerHTML = `<h2>집행 현황 (${esc(OPTS.year)}회계연도)</h2>
+        <p style="color:#666;font-size:13px">사업을 누르면 과목별로 볼 수 있어요. 집행 = 작성(확정)된 지출결의 · 잔액 = 예산 − 집행</p>
+        ${rows ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;background:#fff">${H(['사업', '세출 예산', '품의', '집행', '잔액', '집행률', '수입 / 세입 예산'])}${rows}</table></div>`
+          : `<p style="color:#777">사업별 예산이 아직 없습니다.${ME.can_write ? ' <a href="#" onclick="showBudgetEdit();return false">예산 편성</a>에서 만들어 주세요.' : ''}</p>`}
+        <div class="actions"><button class="sub" onclick="showBudget()">재원별 예산 현황 (전체)</button></div>`;
+      return;
+    }
+    const d = await api('itemsGet', bizId); BZ = d.biz; BITEMS = d.items;
+    const roots = rollup(BITEMS);
+    const sec = (gb) => {
+      const rs = roots.filter(r => r['구분'] === gb); if (!rs.length) return '';
+      const tot = rs.reduce((a, r) => ({ 예: a.예 + r.t예산, 품: a.품 + r.t품의, 집: a.집 + r.t집행 }), { 예: 0, 품: 0, 집: 0 });
+      const line = (i, bold) => gb === '세출'
+        ? `<td style="${T}">${won(i.예)}</td><td style="${T}">${won(i.품)}</td><td style="${T}">${won(i.집)}</td><td style="${T};${i.예 - i.집 < 0 ? 'color:#c0392b' : ''}">${won(i.예 - i.집)}</td><td style="${T}">${rateBar(rate(i.집, i.예))}</td>`
+        : `<td style="${T}">${won(i.예)}</td><td style="${T}">${won(i.집)}</td><td style="${T}">${won(i.예 - i.집)}</td><td style="${T}">${rateBar(rate(i.집, i.예))}</td>`;
+      const rows = flat(rs, []).map(i => `<tr style="cursor:pointer;${i['단계'] === 1 ? 'background:#f6f8fc;font-weight:bold' : ''}" onclick="itemDocs(${i.id})"><td style="${T};text-align:left;padding-left:${(i['단계'] - 1) * 16 + 5}px">${esc(i['이름'])}</td>${line({ 예: i.t예산, 품: i.t품의, 집: i.t집행 })}</tr>`).join('');
+      return `<h3>${gb}</h3><div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;background:#fff">
+        ${H(gb === '세출' ? ['과목', '예산', '품의', '집행', '잔액', '집행률'] : ['과목', '예산', '수입', '차액', '수입률'])}${rows}
+        <tr style="font-weight:bold;background:#eef2fa"><td style="${T};text-align:left">합계</td>${line(tot)}</tr></table></div>`;
+    };
+    $('view').innerHTML = `<h2>집행 현황 · ${esc(BZ['이름'])}</h2>
+      <p style="color:#666;font-size:13px">과목을 누르면 그 과목의 결의 목록이 아래에 나와요.</p>
+      ${sec('세출')}${sec('세입')}
+      <div id="docBox"></div>
+      <div class="actions"><button class="sub" onclick="openBiz(${BZ.id})">예산 편성 보기</button><button class="sub" onclick="showStatus()">전체 사업</button></div>`;
+  } catch (e) { msg(e.message, 'err'); }
+}
+async function itemDocs(id) {
+  const it = BITEMS.find(i => i.id === id);
+  try {
+    const list = await api('itemDocs', id);
+    $('docBox').innerHTML = `<div class="card" style="cursor:default;margin-top:10px"><b>${esc(it['이름'])} · 결의 ${list.length}건</b>
+      ${list.length ? list.map(r => `<div class="row" style="cursor:pointer" onclick="showResDetail('${esc(r['결의번호'])}')"><span>${esc(r['날짜'])} · ${esc(r['결의번호'])}<br>${esc(r['적요'])}${r['거래처'] ? ' · ' + esc(r['거래처']) : ''}</span>
+        <span style="text-align:right;white-space:nowrap">${won(r['금액'])}<br>${EVIDENCE && r['증빙'] ? '<span class="badge">📎 ' + r['증빙'] + '</span>' : ''}</span></div>`).join('') : '<p style="color:#777">결의가 없습니다.</p>'}</div>`;
+    $('docBox').scrollIntoView({ behavior: 'smooth' });
+  } catch (e) { msg(e.message, 'err'); }
+}
+
+// ===== 증빙 첨부 (영수증 · 세금계산서 · 카드전표 …) =====
+// 증빙 첨부: 지금은 끔 (종이로 출력해 붙임). 용량 줄이기 넣은 뒤 true로 켜면 됨
+const EVIDENCE = false;
+const EV_KINDS = ['영수증', '세금계산서', '카드전표', '계산서', '견적서', '계약서', '사진', '기타'];
+let EV = { doc: '', no: '', list: [] };
+async function loadEvid(doc, no) {
+  if (!EVIDENCE) return;
+  EV.doc = doc; EV.no = no;
+  const box = $('evid'); if (!box) return;
+  try { EV.list = await api('filesList', doc, no); } catch (e) { box.innerHTML = ''; return; }
+  box.innerHTML = `<div class="card" style="cursor:default;margin-top:14px"><b>📎 증빙 ${EV.list.length}건</b>
+    ${EV.list.map((f, i) => `<div class="row"><span><span class="badge">${esc(f['종류'])}</span> ${esc(f.name)} <span style="color:#999;font-size:12px">${Math.ceil((f.size || 0) / 1024)}KB · ${esc(f.who)}</span></span>
+      <span style="white-space:nowrap"><button class="sub" style="padding:5px 9px;font-size:13px" onclick="openEvid(${i})">열기</button>${ME.can_write ? `<button class="sub" style="padding:5px 9px;font-size:13px" onclick="delEvid(${i})">삭제</button>` : ''}</span></div>`).join('') || '<p style="color:#777;margin:6px 0">첨부한 증빙이 없습니다.</p>'}
+    ${ME.can_write ? `<div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-top:8px">
+      <div style="flex:0 0 130px"><label style="margin-top:0">종류</label><select id="ev_kind">${EV_KINDS.map(k => `<option>${k}</option>`).join('')}</select></div>
+      <div style="flex:1;min-width:200px"><label style="margin-top:0">파일 (사진·PDF, 여러 개 가능)</label><input type="file" id="ev_files" multiple accept="image/*,application/pdf,.pdf,.hwp,.xlsx,.xls"></div>
+      <button id="ev_btn" onclick="upEvid()">올리기</button></div>
+      <div style="color:#777;font-size:13px;margin-top:4px">휴대폰에서는 파일 고르기에서 바로 사진을 찍어 올릴 수 있어요. 파일 하나 20MB까지.</div>` : ''}</div>`;
+}
+async function upEvid() {
+  const files = [...$('ev_files').files]; if (!files.length) return msg('올릴 파일을 고르세요.', 'err');
+  const big = files.find(f => f.size > 20 * 1024 * 1024); if (big) return msg(big.name + ' 파일이 20MB보다 커요.', 'err');
+  $('ev_btn').disabled = true; msg('올리는 중입니다…', 'ok');
+  try {
+    for (const f of files) {
+      const ext = (f.name.match(/\.([A-Za-z0-9]{1,8})$/) || [, 'bin'])[1].toLowerCase();
+      const path = `${ME.chapter_id}/${OPTS.year}/${crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2)}.${ext}`;
+      const { error } = await sb.storage.from('acct-files').upload(path, f, { contentType: f.type || 'application/octet-stream' });
+      if (error) throw new Error(f.name + ' 올리기 실패: ' + (error.message || ''));
+      try { await api('fileAdd', EV.doc, EV.no, $('ev_kind').value, path, f.name, f.size); }
+      catch (e) { sb.storage.from('acct-files').remove([path]).catch(() => {}); throw e; }
+    }
+    msg(files.length + '개를 올렸습니다.', 'ok');
+  } catch (e) { msg(e.message, 'err'); }
+  await loadEvid(EV.doc, EV.no);
+}
+async function openEvid(i) {
+  const f = EV.list[i]; const w = window.open('', '_blank');
+  const { data, error } = await sb.storage.from('acct-files').createSignedUrl(f.path, 600);
+  if (error) { if (w) w.close(); return msg('파일을 열 수 없습니다: ' + (error.message || ''), 'err'); }
+  if (w) w.location = data.signedUrl; else location.href = data.signedUrl;
+}
+async function delEvid(i) {
+  const f = EV.list[i]; if (!confirm(f.name + ' 을(를) 지울까요?')) return;
+  try { const path = await api('fileDel', f.id); sb.storage.from('acct-files').remove([path]).catch(() => {}); await loadEvid(EV.doc, EV.no); } catch (e) { msg(e.message, 'err'); }
+}
+
 // ===== 설정 (지회 담당자) =====
 async function showSettings() {
   msg('');
@@ -837,7 +1136,7 @@ async function printProp(no) {
       ${R('첨부목록', `<div style="white-space:pre-wrap">${esc(p['첨부목록'] || '')}</div>`)}
       ${R('작 성 자', esc(p['작성자']))}</table>
       <p style="margin-top:8mm;text-align:center">위와 같이 품의하오니 결재하여 주시기 바랍니다.</p>
-      <div class="foot">${esc(cfg.chapter_name)}</div></div>`);
+      <div class="foot">${esc(fullOrg(cfg.chapter_name))}</div></div>`);
   } catch (e) { msg(e.message, 'err'); }
 }
 async function printRes(no) {
@@ -854,7 +1153,7 @@ async function printRes(no) {
       ${R('금 액', `<b>${won(r['금액'])}</b> (${hangulWon(r['금액'])})`)}${R(r['결의구분'] === '수입' ? '납 부 자' : '거 래 처', esc(r['거래처']))}
       ${R('작 성 자', esc(r['작성자']))}</table>
       <p style="margin-top:8mm;text-align:center">위와 같이 ${r['결의구분'] === '수입' ? '수입' : '지출'}을 결의합니다.</p>
-      <div class="foot">${esc(cfg.chapter_name)}</div></div>`);
+      <div class="foot">${esc(fullOrg(cfg.chapter_name))}</div></div>`);
   } catch (e) { msg(e.message, 'err'); }
 }
 

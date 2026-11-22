@@ -1,0 +1,2153 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="뉴스스케줄">
+<meta name="application-name" content="뉴스스케줄">
+<meta name="theme-color" content="#1a2a4a">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Ctext y='.9em' font-size='90'%3E%F0%9F%93%BA%3C/text%3E%3C/svg%3E">
+<title>📺 뉴스스케줄</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;800&display=swap');
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+body { font-family: 'Noto Sans KR', sans-serif; background: #e8eaf0; padding: 10px 6px; font-size: 16px; }
+.wrap { width: 100%; margin: 0 auto; }
+.page-header { text-align: center; margin-bottom: 10px; }
+.page-header h1 { font-size: 22px; font-weight: 800; color: #1a2a4a; }
+.page-header p { font-size: 13px; color: #888; margin-top: 2px; }
+.admin-badge { display:inline-block; background:#c0392b; color:white; font-size:11px; font-weight:700; padding:2px 8px; border-radius:10px; margin-left:8px; vertical-align:middle; }
+
+.top-bar { display: flex; align-items: center; justify-content: center; gap: 8px; margin-bottom: 10px; flex-wrap: wrap; }
+.date-input-wrap { display: flex; align-items: center; gap: 6px; background: white; border: 1.5px solid #c0c8dc; border-radius: 8px; padding: 6px 12px; }
+.date-input-wrap label { font-size: 13px; color: #666; font-weight: 600; }
+.date-input-wrap input[type="month"] { border: none; outline: none; font-family: 'Noto Sans KR', sans-serif; font-size: 15px; font-weight: 700; color: #1a2a4a; cursor: pointer; background: transparent; }
+
+.font-size-wrap {
+  display: flex; align-items: center; gap: 4px;
+  background: white; border: 1.5px solid #c0c8dc; border-radius: 8px; padding: 4px 8px;
+}
+.font-size-wrap span { font-size: 12px; color: #666; font-weight: 600; margin-right: 2px; }
+.fs-btn {
+  width: 32px; height: 32px; border-radius: 6px; border: 1.5px solid #c0c8dc;
+  background: #f5f7fa; font-family: 'Noto Sans KR', sans-serif;
+  font-weight: 800; cursor: pointer; display: flex; align-items: center; justify-content: center;
+  color: #1a2a4a; transition: all 0.15s; user-select: none;
+}
+.fs-btn:hover { background: #1a4fa3; color: white; border-color: #1a4fa3; }
+.fs-btn:active { transform: scale(0.92); }
+.fs-btn.fs-minus { font-size: 18px; }
+.fs-btn.fs-plus  { font-size: 18px; }
+.fs-label {
+  min-width: 36px; text-align: center; font-size: 13px; font-weight: 700;
+  color: #1a2a4a; background: #f0f3fa; border-radius: 5px; padding: 3px 4px;
+}
+.fs-btn-reset {
+  font-size: 11px; padding: 0 6px; height: 32px; border-radius: 6px;
+  border: 1.5px solid #c0c8dc; background: #f5f7fa; cursor: pointer;
+  color: #888; font-family: 'Noto Sans KR', sans-serif; font-weight: 600; transition: all 0.15s;
+}
+.fs-btn-reset:hover { background: #e8eaf0; color: #1a2a4a; }
+
+.tab-bar { display: flex; }
+.tab-btn { padding: 8px 16px; border: 2px solid #1a4fa3; background: white; font-family: 'Noto Sans KR', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; color: #1a4fa3; transition: all 0.15s; white-space: nowrap; }
+.tab-btn:first-child { border-radius: 7px 0 0 7px; }
+.tab-btn:last-child { border-radius: 0 7px 7px 0; border-left: none; }
+.tab-btn:not(:first-child):not(:last-child) { border-left: none; }
+.tab-btn.active { background: #1a4fa3; color: white; }
+
+.controls { display: flex; gap: 8px; justify-content: center; margin-bottom: 10px; flex-wrap: wrap; }
+.btn { padding: 8px 16px; border-radius: 6px; border: 1.5px solid #ccc; background: white; font-family: 'Noto Sans KR', sans-serif; font-size: 14px; font-weight: 600; cursor: pointer; }
+.btn:hover { background: #1a4fa3; color: white; border-color: #1a4fa3; }
+.btn-print { background: #1a4fa3; color: white; border-color: #1a4fa3; }
+.btn-save { background: #27ae60; color: white; border-color: #27ae60; }
+.btn-save.saving { background: #f39c12; border-color: #f39c12; }
+.btn-admin { background: #8e44ad; color: white; border-color: #8e44ad; }
+.btn-admin:hover { background: #6c3483; border-color: #6c3483; color:white; }
+.btn-admin-active { background: #c0392b; color: white; border-color: #c0392b; }
+.btn-admin-active:hover { background: #922b21; border-color: #922b21; color:white; }
+
+.legend { display: flex; flex-wrap: wrap; gap: 5px; justify-content: center; margin-bottom: 10px; }
+.legend-chip { padding: 3px 10px; border-radius: 10px; font-size: 13px; font-weight: 700; }
+
+.section { background: white; border-radius: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.07); margin-bottom: 12px; overflow: hidden; }
+.section-title { background: #1a2a4a; color: white; text-align: center; font-size: 15px; font-weight: 700; padding: 8px; }
+.table-scroll { overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; display: block; }
+table.sched-table { border-collapse: collapse; table-layout: fixed; width: 100%; }
+table.sched-table col.col-label { width: 110px; }
+@media (max-width: 767px) {
+  body { padding: 0 !important; margin: 0 !important; -webkit-text-size-adjust: 100%; text-size-adjust: 100%; }
+  .wrap { max-width: 100% !important; padding: 0 !important; margin: 0 !important; width: 100vw !important; overflow-x: hidden; }
+  .section { border-radius: 0 !important; margin: 0 0 2px 0 !important; overflow: hidden; }
+  .week-block { margin: 0 !important; }
+  .table-scroll { padding: 0 !important; overflow-x: auto; -webkit-overflow-scrolling: touch; width: 100%; }
+  table.sched-table { width: 100% !important; table-layout: fixed !important; min-width: 0 !important; }
+  table.sched-table col.col-label { width: 21vw !important; }
+  table.sched-table col.col-date  { width: auto !important; }
+  th { font-size: 2.5vw !important; padding: 1.2vw 0.5vw !important; white-space: nowrap; line-height: 1.3; }
+  td { font-size: 3.5vw !important; padding: 1.5vw 0.3vw !important; white-space: nowrap; line-height: 1.3; }
+  td.row-label { font-size: 3vw !important; padding: 1.5vw 1vw !important; white-space: nowrap; }
+  .name-chip { font-size: 3vw !important; padding: 0.4vw 1vw !important; border-radius: 3vw; white-space: nowrap; }
+  .page-header h1 { font-size: 4.5vw; }
+  .top-bar { padding: 0 1vw; gap: 1vw; flex-wrap: wrap; }
+  .controls { padding: 0 1vw; }
+  .date-input-wrap { padding: 1vw 2vw; }
+  .date-input-wrap label { font-size: 3vw; }
+  .date-input-wrap input[type="month"] { font-size: 3.5vw; }
+  .tab-btn { font-size: 3vw; padding: 1.5vw 2.5vw; }
+  .btn { font-size: 2.8vw; padding: 1.5vw 2vw; }
+  .legend-chip { font-size: 2.8vw; padding: 0.5vw 2vw; }
+  .modal-backdrop { align-items: flex-end !important; }
+  .modal { width: 100% !important; max-width: 100% !important; border-radius: 4vw 4vw 0 0 !important; padding: 4vw 3.5vw 7vw !important; max-height: 85vh; overflow-y: auto; }
+  .modal h3 { font-size: 4.5vw; }
+  .modal-sub { font-size: 3.5vw; }
+  .modal-name-btn { font-size: 4vw !important; padding: 3.5vw 1vw !important; border-radius: 2.5vw; }
+  .modal-btn { font-size: 3.5vw; padding: 2.5vw 4vw; }
+  #adminBtn { font-size: 2.8vw !important; padding: 1.2vw 2vw !important; }
+  .fs-btn, .fs-btn-reset, .font-size-wrap span:first-child, #fsLabel { display: none !important; }
+  .font-size-wrap { gap: 0 !important; padding: 0 !important; }
+}
+table { border-collapse: collapse; table-layout: fixed; }
+th { background: #2d4a7a; color: white; font-size: 14px; font-weight: 700; padding: 7px 4px; text-align: center; border: 1px solid #3d5a8a; white-space: nowrap; }
+th.row-label { background: #1a3a6a; }
+th.date-hol, th.date-sun { background: #b03020; }
+th.week-sep { background: #b0bcd4; width: 5px; min-width: 5px; padding: 0; border: none; }
+td { border: 1px solid #d8dde5; text-align: center; padding: 6px 4px; vertical-align: middle; white-space: nowrap; font-size: 14px; }
+td.row-label { background: #f0f3f8; font-weight: 700; font-size: 14px; color: #1a3a6a; text-align: center; padding: 6px 6px; white-space: nowrap; }
+td.week-sep { background: #b0bcd4; width: 5px; min-width: 5px; padding: 0; border: none; }
+td.empty-dash { color: #ccc; background: #fafafa; cursor: pointer; }
+td.td-empty { background: #f8f8f8; min-width: 60px; }
+td.empty-dash:hover { background: #e8f0ff; }
+td[data-date] { cursor: pointer; }
+td[data-date]:not(.empty-dash):hover { background: #f5f8ff; }
+tr.week-sep-row td.week-sep-cell { height: 5px; padding: 0; background: #b0bcd4; border: none; font-size: 0; }
+
+.name-chip { display: inline-block; padding: 3px 8px; border-radius: 8px; font-size: 13px; font-weight: 700; cursor: pointer; user-select: none; white-space: nowrap; transition: transform 0.1s; }
+.name-chip:hover { transform: scale(1.07); box-shadow: 0 1px 5px rgba(0,0,0,0.18); }
+.name-chip.dragging { opacity: 0.3; }
+td.drag-over { outline: 2px dashed #1a4fa3; background: #e8f0ff !important; }
+td.selected { outline: 3px solid #1a4fa3 !important; background: #ddeeff !important; }
+.select-mode-bar { display: none; position: fixed; bottom: 0; left: 0; right: 0; background: #1a2a4a; color: white; padding: 12px 16px; z-index: 500; align-items: center; gap: 10px; flex-wrap: wrap; justify-content: center; }
+.select-mode-bar.active { display: flex; }
+.select-mode-bar span { font-size: 13px; font-weight: 600; }
+.select-name-btn { padding: 6px 12px; border-radius: 8px; border: none; font-family: "Noto Sans KR", sans-serif; font-size: 12px; font-weight: 700; cursor: pointer; }
+.select-cancel-btn { padding: 6px 14px; border-radius: 8px; border: 2px solid #aaa; background: transparent; color: white; font-family: "Noto Sans KR", sans-serif; font-size: 12px; font-weight: 600; cursor: pointer; margin-left: 8px; }
+
+.admin-panel { background: #fdf0ff; border: 2px solid #8e44ad; border-radius: 10px; padding: 16px; margin-bottom: 14px; }
+.admin-panel-title { font-size: 15px; font-weight: 800; color: #6c3483; margin-bottom: 12px; display:flex; align-items:center; gap:8px; }
+.admin-tabs { display:flex; gap:6px; flex-wrap:wrap; margin-bottom:14px; }
+.admin-tab-btn { padding:7px 14px; border-radius:6px; border:1.5px solid #8e44ad; background:white; color:#8e44ad; font-family:'Noto Sans KR',sans-serif; font-weight:700; cursor:pointer; }
+.admin-tab-btn.active { background:#8e44ad; color:white; }
+
+.stat-table { border-collapse:collapse; width:100%; }
+.stat-table th { background:#6c3483; color:white; padding:7px 10px; text-align:center; border:1px solid #9b59b6; }
+.stat-table td { border:1px solid #ddd; padding:6px 10px; text-align:center; }
+.stat-table tr:nth-child(even) td { background:#f9f0ff; }
+.stat-table td.name-cell { font-weight:700; color:#4a1a7a; text-align:left; }
+.stat-table td.total-cell { font-weight:800; color:#c0392b; background:#fff0f0 !important; }
+.stat-table td.fee-cell { font-weight:700; color:#1a5c1a; }
+.stat-table td.formula-cell { font-size:11px; color:#666; text-align:left; }
+
+.interp-manage-list { display:flex; flex-direction:column; gap:8px; margin-bottom:12px; }
+.interp-row { display:flex; align-items:center; gap:8px; background:white; border-radius:8px; padding:8px 12px; border:1px solid #ddd; flex-wrap:wrap; }
+.interp-color-preview { width:36px; height:28px; border-radius:6px; border:1px solid #ccc; display:inline-flex; align-items:center; justify-content:center; font-size:11px; font-weight:700; }
+.interp-name-label { font-size:14px; font-weight:700; flex:1; min-width:60px; }
+.interp-edit-btn { padding:4px 10px; border-radius:5px; border:1.5px solid #2980b9; background:white; color:#2980b9; font-family:'Noto Sans KR',sans-serif; font-weight:600; cursor:pointer; }
+.interp-edit-btn:hover { background:#2980b9; color:white; }
+.interp-del-btn { padding:4px 10px; border-radius:5px; border:1.5px solid #e74c3c; background:white; color:#e74c3c; font-family:'Noto Sans KR',sans-serif; font-weight:600; cursor:pointer; }
+.interp-del-btn:hover { background:#e74c3c; color:white; }
+.interp-add-form { background:white; border-radius:8px; padding:12px; border:1.5px dashed #8e44ad; margin-top:8px; }
+.interp-add-form h4 { font-size:14px; font-weight:700; color:#6c3483; margin-bottom:10px; }
+.form-row { display:flex; gap:8px; align-items:center; flex-wrap:wrap; margin-bottom:8px; }
+.form-row label { font-weight:600; color:#555; min-width:50px; }
+.form-input { padding:6px 10px; border-radius:5px; border:1.5px solid #ccc; font-family:'Noto Sans KR',sans-serif; outline:none; }
+.form-input:focus { border-color:#8e44ad; }
+.form-btn { padding:8px 16px; border-radius:6px; border:none; font-family:'Noto Sans KR',sans-serif; font-weight:700; cursor:pointer; }
+.form-btn-primary { background:#8e44ad; color:white; }
+.form-btn-cancel { background:#eee; color:#555; }
+
+@media (min-width: 768px) {
+  body { padding: 20px; font-size: 12px; }
+  .wrap { max-width: 72%; }
+  .page-header h1 { font-size: 17px; }
+  .page-header p { font-size: 10px; }
+  .tab-btn { font-size: 12px; padding: 7px 20px; }
+  .date-input-wrap input[type="month"] { font-size: 13px; }
+  .date-input-wrap label { font-size: 11px; }
+  .btn { font-size: 11px; padding: 6px 14px; }
+  .legend-chip { font-size: 10px; padding: 2px 8px; }
+  .section-title { font-size: 12px; padding: 7px; }
+  th { font-size: 12px; padding: 4px 6px; }
+  td { font-size: 12px; padding: 3px 6px; }
+  .name-chip { font-size: 12px; padding: 1px 3px; border-radius: 4px; }
+}
+
+.modal-backdrop { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.4); z-index: 1000; justify-content: center; align-items: center; }
+.modal-backdrop.open { display: flex; }
+.modal { background: white; border-radius: 10px; padding: 18px; width: 92vw; max-width: 320px; box-shadow: 0 6px 28px rgba(0,0,0,0.22); }
+.modal h3 { font-size: 16px; font-weight: 700; color: #1a2a4a; margin-bottom: 2px; }
+.modal-sub { font-size: 13px; color: #888; margin-bottom: 12px; }
+.modal-grid { display: grid; grid-template-columns: repeat(3,1fr); gap: 8px; margin-bottom: 12px; }
+.modal-name-btn { padding: 10px 3px; border-radius: 7px; border: none; font-family: 'Noto Sans KR', sans-serif; font-size: 14px; font-weight: 700; cursor: pointer; transition: transform 0.1s; }
+.modal-name-btn:hover { transform: scale(1.06); }
+.modal-actions { display: flex; gap: 6px; justify-content: flex-end; }
+.modal-btn { padding: 8px 14px; border-radius: 5px; border: 1.5px solid #ccc; background: white; font-family: 'Noto Sans KR', sans-serif; font-size: 13px; font-weight: 600; cursor: pointer; }
+.modal-btn-clear { background: #fff0f0; border-color: #e74c3c; color: #c0392b; }
+
+#pwModal .modal { max-width: 280px; text-align:center; }
+#pwModal input { width:100%; padding:10px; font-size:18px; text-align:center; letter-spacing:4px; border:2px solid #8e44ad; border-radius:8px; font-family:'Noto Sans KR',sans-serif; margin:12px 0; outline:none; }
+#pwModal .pw-error { color:#e74c3c; min-height:18px; margin-bottom:8px; }
+
+#interpEditModal .modal { max-width:360px; }
+
+@keyframes shimmer {
+  0%   { background-position: -600px 0; }
+  100% { background-position:  600px 0; }
+}
+.sk {
+  background: linear-gradient(90deg, #e8eaf0 25%, #f4f5f9 50%, #e8eaf0 75%);
+  background-size: 600px 100%;
+  animation: shimmer 1.4s infinite linear;
+  border-radius: 4px;
+  display: inline-block;
+}
+.sk-cell  { width: 54px;  height: 22px; }
+.sk-label { width: 80px;  height: 22px; }
+.sk-head  { width: 62px;  height: 22px; border-radius: 3px; }
+.skeleton-wrap { padding: 6px 0; }
+td.sk-td, th.sk-th { border-color: #dde3ee !important; background: white !important; }
+th.sk-th { background: #2d4a7a !important; }
+th.sk-th-label { background: #4a6fa0 !important; }
+tr.sk-prog-row td { background: #f8f9fc; }
+tr.sk-prog-row:nth-child(odd) td { background: #ffffff; }
+
+@media print {
+  @page { size: A4 portrait; margin: 20mm 8mm; }
+  body { background: white !important; padding: 0 !important; margin: 0 !important; font-size: 14px; }
+  .wrap { max-width: none !important; width: 100% !important; margin: 0 !important; padding: 0 !important; }
+  .controls, .tab-bar, .date-input-wrap, .top-bar, .select-mode-bar, .admin-panel,
+  .legend, .page-header, #saveToast, #adminBadge, #adminBtn, .font-size-wrap { display: none !important; }
+  #printTitle { display: block !important; text-align:center; font-size:27px; font-weight:800; color:#1a2a4a; margin-bottom:15px; }
+  .section { box-shadow: none; border: none; margin-bottom: 0; border-radius: 0; width: 100% !important; }
+  .week-block { page-break-inside: avoid; margin-bottom: 0 !important; width: 100% !important; }
+  .table-scroll { overflow: visible !important; width: 100% !important; display: block !important; }
+  table { width: 100% !important; table-layout: fixed !important; margin: 0 !important; }
+  th { font-size: 18px !important; padding: 6px 3px !important; }
+  td { font-size: 18px !important; padding: 6px 3px !important; }
+  td.row-label { font-size: 18px !important; padding: 6px 6px !important; }
+  .name-chip { font-size: 16.5px !important; padding: 3px 8px !important; border-radius: 6px !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  .modal-backdrop, #editModal { display: none !important; }
+  * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+  body.print-kbs tr[data-prog-row="G1"] { display: none !important; }
+  body.print-g1 tr[data-prog-row="광장"],
+  body.print-g1 tr[data-prog-row="930"],
+  body.print-g1 tr[data-prog-row="9시"] { display: none !important; }
+}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="adminBadge" class="admin-badge" style="display:none;position:fixed;top:10px;right:12px;z-index:999;">🔑 관리자</div>
+  <button class="btn btn-admin" id="adminBtn" onclick="toggleAdmin()" style="position:fixed;top:8px;right:12px;z-index:1000;">🔒 관리자</button>
+  <div class="page-header">
+    <h1>🗓️ 뉴스통역 배정표</h1>
+  </div>
+  <div id="myBar" style="display:none;margin-bottom:8px;padding:8px 12px;background:#eef6ff;border:1px solid #b9d8f5;border-radius:8px;font-size:14px;align-items:center;gap:8px;flex-wrap:wrap;"></div>
+  <div class="top-bar">
+    <div class="date-input-wrap">
+      <label>📅 월 선택</label>
+      <input type="month" id="monthPicker">
+    </div>
+    <div class="tab-bar" id="tabBar"></div>
+    <div class="font-size-wrap">
+      <span>글씨</span>
+      <button class="fs-btn fs-minus" onclick="changeFontSize(-1)" title="글씨 작게">－</button>
+      <span class="fs-label" id="fsLabel">100%</span>
+      <button class="fs-btn fs-plus" onclick="changeFontSize(1)" title="글씨 크게">＋</button>
+      <button class="fs-btn-reset" onclick="resetFontSize()" title="기본값으로">초기화</button>
+    </div>
+  </div>
+  <div class="controls">
+    <button class="btn btn-print admin-only" style="display:none" id="btnKBS" onclick="printKBS()">🖨️ KBS 프린트</button>
+    <button class="btn admin-only" style="display:none;background:#7b3fa0;color:white;border-color:#7b3fa0;" id="btnG1" onclick="printG1()">🖨️ G1 프린트</button>
+    <button class="btn btn-save admin-only" id="saveBtn" style="display:none" onclick="manualSave()">💾 저장</button>
+    <button class="btn admin-only" style="display:none" onclick="resetCurrent()">↺ 초기화</button>
+  </div>
+  <div id="printTitle" style="display:none;text-align:center;font-size:20px;font-weight:800;color:#1a2a4a;margin-bottom:10px;"></div>
+  <div id="adminPanel" style="display:none"></div>
+  <div class="legend" id="legend" style="display:none"></div>
+  <div id="mainView"></div>
+</div>
+
+<!-- 다중 선택 모드 바 -->
+<div class="select-mode-bar" id="selectModeBar">
+  <span id="selectCount">0칸 선택됨 →</span>
+  <div id="selectNameBtns" style="display:flex;flex-wrap:wrap;gap:6px;"></div>
+  <button class="select-cancel-btn" onclick="cancelSelectMode()">✕ 취소</button>
+</div>
+
+<!-- 통역사 변경 모달 -->
+<div class="modal-backdrop" id="editModal">
+  <div class="modal">
+    <h3>통역사 변경</h3>
+    <div class="modal-sub" id="modalSub"></div>
+    <div class="modal-grid" id="modalGrid"></div>
+    <div class="modal-actions">
+      <button class="modal-btn modal-btn-clear" onclick="clearCell()">비우기</button>
+      <button class="modal-btn" onclick="closeModal()">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- 개인 입장 모달 -->
+<div class="modal-backdrop" id="myLoginModal">
+  <div class="modal">
+    <h3>👤 내 이름을 선택하세요</h3>
+    <div class="modal-sub">한 번만 선택하면 이 기기에서 계속 유지됩니다.</div>
+    <div class="modal-grid" id="myLoginGrid"></div>
+    <div class="modal-actions">
+      <button class="modal-btn" onclick="skipMyLogin()">로그인 없이 전체 보기</button>
+    </div>
+  </div>
+</div>
+
+<!-- 내 색상 변경 모달 -->
+<div class="modal-backdrop" id="myColorModal">
+  <div class="modal" style="max-width:340px;">
+    <h3>🎨 내 버튼 색상</h3>
+    <div style="margin-top:12px;display:flex;flex-direction:column;gap:10px;">
+      <div class="form-row">
+        <input type="color" id="myBg" style="width:50px;height:34px;border-radius:5px;border:1px solid #ccc;cursor:pointer;">
+        <span style="color:#888;">배경</span>
+        <input type="color" id="myText" style="width:50px;height:34px;border-radius:5px;border:1px solid #ccc;cursor:pointer;">
+        <span style="color:#888;">글자</span>
+      </div>
+      <div style="background:#f0f0f0;padding:8px;border-radius:6px;text-align:center;">
+        미리보기: <span id="myPreview" style="display:inline-block;padding:3px 10px;border-radius:8px;font-weight:700;font-size:14px;">이름</span>
+      </div>
+      <div style="font-size:12px;color:#888;">※ 이 기기에만 적용됩니다.</div>
+    </div>
+    <div class="modal-actions" style="margin-top:12px;">
+      <button class="form-btn form-btn-primary" onclick="saveMyColor()">저장</button>
+      <button class="form-btn form-btn-cancel" onclick="closeMyColor()">취소</button>
+    </div>
+  </div>
+</div>
+
+<!-- 관리자 안내 (편집은 업무 시스템 로그인 + 권한) -->
+<div class="modal-backdrop" id="pwModal">
+  <div class="modal" style="max-width:320px;text-align:center">
+    <h3>🔒 관리자 모드</h3>
+    <div class="modal-sub" style="line-height:1.6;margin:10px 0 14px">배정표 편집은 <b>업무 시스템에 로그인한</b><br>도협회 담당자만 할 수 있어요.<br><span style="color:#888;font-size:12px">(도협회 관리자 또는 '뉴스 통역 배정표 편집' 권한)</span></div>
+    <div style="display:flex;gap:8px;justify-content:center;">
+      <a class="form-btn form-btn-primary" href="/" target="_blank" rel="noopener" style="text-decoration:none">업무 시스템 로그인 ↗</a>
+      <button class="form-btn form-btn-cancel" onclick="closePwModal()">닫기</button>
+    </div>
+    <div style="color:#888;font-size:12px;margin-top:10px">로그인한 뒤 이 화면에서 다시 🔒 관리자를 누르세요.</div>
+  </div>
+</div>
+
+<!-- 통역사 추가/편집 모달 -->
+<div class="modal-backdrop" id="interpEditModal">
+  <div class="modal" style="max-width:360px;">
+    <h3 id="interpEditTitle">통역사 추가</h3>
+    <div style="margin-top:14px; display:flex; flex-direction:column; gap:10px;">
+      <div class="form-row">
+        <label>이름</label>
+        <input class="form-input" id="editName" placeholder="이름 입력" style="flex:1">
+      </div>
+      <div class="form-row">
+        <label>배경색</label>
+        <input type="color" id="editBg" value="#ffe0b0" style="width:50px;height:34px;border-radius:5px;border:1px solid #ccc;cursor:pointer;">
+        <span style="color:#888;">배경</span>
+        <input type="color" id="editText" value="#6a3800" style="width:50px;height:34px;border-radius:5px;border:1px solid #ccc;cursor:pointer;">
+        <span style="color:#888;">글자</span>
+      </div>
+      <div style="font-size:12px;color:#888;">※ 색상은 이 기기에만 적용됩니다. (다른 기기에는 영향 없음)</div>
+      <div style="background:#f0f0f0;padding:8px;border-radius:6px;text-align:center;">
+        미리보기: <span id="interpPreview" style="display:inline-block;padding:3px 10px;border-radius:8px;font-weight:700;font-size:14px;">이름</span>
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;justify-content:flex-end;margin-top:16px;">
+      <button class="form-btn form-btn-primary" onclick="saveInterpEdit()">저장</button>
+      <button class="form-btn form-btn-cancel" onclick="closeInterpEdit()">취소</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<script>
+// ★★★ Supabase 설정 ★★★
+// ★ 업무 시스템 Supabase (보기는 누구나, 편집은 업무 시스템에 로그인한 도협회 담당자)
+const SB_URL  = 'https://uamlualqqcqmpdkprjfs.supabase.co';
+const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhbWx1YWxxcWNxbXBka3ByamZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNjE0OTMsImV4cCI6MjExMDYzNzQ5M30._f4p4pfcKaYbmjKRXOPpkMo7Ydcc26oVVI6lRFYsLkY';
+const sb = window.supabase.createClient(SB_URL, SB_ANON, { auth: { persistSession: true, autoRefreshToken: true } });
+async function rpc(fn, args){ const r = await sb.rpc(fn, args || {}); if (r.error) throw new Error(r.error.message); return r.data; }
+
+
+// Supabase 클라이언트 초기화
+const supabaseClient = {
+  async getPatterns(){
+    try{ return await rpc('news_get_patterns'); }
+    catch(e){ console.log('패턴 불러오기 실패:', e); return null; }
+  },
+  async savePatterns(patterns){
+    try{
+      await rpc('news_save_patterns',{p:patterns});
+      return true;
+    }catch(e){
+      console.log('Supabase 저장 실패:', e);
+      return false;
+    }
+  }
+};
+
+// ═══════════════════════════════════════════════════════
+// ★ 글씨 크기 조절
+// ═══════════════════════════════════════════════════════
+const FS_STEPS = [10,11,12,13,14,15,16,17,18,19,20,22,24];
+const FS_DEFAULT_IDX = 4;
+let fsIdx = FS_DEFAULT_IDX;
+(function(){
+  const saved = localStorage.getItem('fs_idx');
+  if(saved !== null){ const v=parseInt(saved); if(!isNaN(v)&&v>=0&&v<FS_STEPS.length) fsIdx=v; }
+})();
+
+function applyFontSize(){
+  const px = FS_STEPS[fsIdx];
+  const pct = Math.round(px/FS_STEPS[FS_DEFAULT_IDX]*100);
+  if(fsIdx===FS_DEFAULT_IDX){
+    document.querySelectorAll('th,td,.name-chip').forEach(el=>{ el.style.fontSize=''; });
+  } else {
+    document.querySelectorAll('th,td').forEach(el=>{ el.style.fontSize=px+'px'; });
+    document.querySelectorAll('.name-chip').forEach(el=>{ el.style.fontSize=Math.max(px-1,9)+'px'; });
+  }
+  const label=document.getElementById('fsLabel');
+  if(label) label.textContent=pct+'%';
+  localStorage.setItem('fs_idx',fsIdx);
+}
+function changeFontSize(delta){ const next=fsIdx+delta; if(next<0||next>=FS_STEPS.length)return; fsIdx=next; applyFontSize(); }
+function resetFontSize(){ fsIdx=FS_DEFAULT_IDX; applyFontSize(); }
+
+// ═══════════════════════════════════════════════════════
+// ★ 통역사 목록 — localStorage 영구 저장 버전
+// ═══════════════════════════════════════════════════════
+const PENDING_DELETE = '대기중삭제';
+const PENDING_DELETE_STYLE = 'background:#2c2c2c;color:#ff4444;border:1.5px dashed #ff4444;';
+
+const DEFAULT_INTERPRETERS = [
+  {name:'손경애',bg:'#ffd6d6',text:'#7a1a1a'},
+  {name:'김정희',bg:'#ffeacc',text:'#7a4000'},
+  {name:'김윤선',bg:'#fff5b0',text:'#5a4800'},
+  {name:'홍영진',bg:'#d4eaff',text:'#0a3d7a'},
+  {name:'민경주',bg:'#d6eaff',text:'#0a3d7a'},
+  {name:'김주영',bg:'#e8d6ff',text:'#4a1a7a'},
+  {name:'이현정',bg:'#ffd6f0',text:'#7a1a5a'},
+  {name:'원태연',bg:'#d6fff5',text:'#0a5a44'},
+  {name:'김유진',bg:'#ffe0b0',text:'#6a3800'},
+  {name:'이성혜',bg:'#e0e0ff',text:'#2a2a7a'},
+  {name:'한수현',bg:'#d4eaf5',text:'#0a3a5a'},
+];
+
+// ═══════════════════════════════════════════════════════
+// ★ 순환패턴 관리 (새로 추가)
+// ═══════════════════════════════════════════════════════
+let cyclePatterns = {}; // {name: {startMonth: '2026-10', dayPrograms: {0:'', 1:['광장','930'], 2:['광장','930'], ...}, g1Rotation: ['김유진','이성혜','원태연']}}
+
+function loadCyclePatterns(){
+  try {
+    const saved = localStorage.getItem('cyclePatterns_v1');
+    if(saved) cyclePatterns = JSON.parse(saved);
+  } catch(e) { console.error('순환패턴 로드 실패:', e); }
+}
+
+function saveCyclePatterns(){
+  try {
+    localStorage.setItem('cyclePatterns_v1', JSON.stringify(cyclePatterns));
+  } catch(e) { console.error('순환패턴 저장 실패:', e); }
+}
+
+// 순환패턴으로 G1 담당자 결정
+function getG1InterpFromCycle(name, y, m, d){
+  if(!cyclePatterns[name]) return null;
+  const cp = cyclePatterns[name];
+  if(!cp.g1Rotation || cp.g1Rotation.length === 0) return null;
+  const startDate = new Date(cp.startMonth + '-01');
+  const currentDate = new Date(y, m-1, d);
+  const weeksDiff = Math.floor((currentDate - startDate) / (7*24*60*60*1000));
+  const idx = weeksDiff % cp.g1Rotation.length;
+  return cp.g1Rotation[Math.max(0, idx)];
+}
+
+// ★ 핵심 수정: localStorage에서 불러오기
+function loadInterpreters(){
+  try {
+    const saved = localStorage.getItem('interpreters_v2');
+    if(saved){
+      const parsed = JSON.parse(saved);
+      if(Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch(e){}
+  return JSON.parse(JSON.stringify(DEFAULT_INTERPRETERS));
+}
+
+// ★ 핵심 수정: localStorage에 저장하기
+// ★ 색상은 기기별(localStorage), 이름 목록만 공용(서버)
+const BASE_COLORS = {}; // 서버 공용 기본색 {이름:{bg,text}}
+function getLocalColors(){
+  try{ return JSON.parse(localStorage.getItem('interp_colors_device')||'{}')||{}; }catch(e){ return {}; }
+}
+function setLocalColor(name,bg,text){
+  const c=getLocalColors(); c[name]={bg,text};
+  localStorage.setItem('interp_colors_device',JSON.stringify(c));
+}
+function removeLocalColor(name){
+  const c=getLocalColors(); delete c[name];
+  localStorage.setItem('interp_colors_device',JSON.stringify(c));
+}
+// 제외할 통역사 / 12색 기본 팔레트 (모두 서로 다른 색)
+const EXCLUDED_NAMES=['강민혁'];
+const COLOR_PALETTE=[
+  {bg:'#ff9e9e',text:'#6b0f0f'}, // 빨강
+  {bg:'#ffc078',text:'#6b3200'}, // 주황
+  {bg:'#fff176',text:'#5a4800'}, // 노랑
+  {bg:'#8bd17c',text:'#0f4a06'}, // 초록
+  {bg:'#7fdbe8',text:'#00434d'}, // 하늘
+  {bg:'#8fb2ff',text:'#0a2a7a'}, // 파랑
+  {bg:'#cda4ff',text:'#3f1470'}, // 보라
+  {bg:'#ff9ecb',text:'#7a1a4a'}, // 분홍
+  {bg:'#c9a27a',text:'#4a2a0a'}, // 갈색
+  {bg:'#b8f0d8',text:'#065f46'}, // 민트
+  {bg:'#d9e86a',text:'#3a4a00'}, // 연두
+  {bg:'#455a64',text:'#ffffff'}  // 진회색
+];
+const PALETTE_ORDER=['손경애','김정희','김윤선','홍영진','민경주','김주영','이현정','원태연','김유진','한수현','이성혜'];
+function applyLocalColors(list){
+  const c=getLocalColors();
+  list=list.filter(i=>!EXCLUDED_NAMES.includes(i.name));
+  let extra=PALETTE_ORDER.length; // 명단 밖 통역사는 남는 색부터 배정
+  return list.map(i=>{
+    if(c[i.name]) return {name:i.name,bg:c[i.name].bg,text:c[i.name].text};
+    let k=PALETTE_ORDER.indexOf(i.name);
+    if(k<0) k=(extra++)%COLOR_PALETTE.length;
+    return {name:i.name,bg:COLOR_PALETTE[k].bg,text:COLOR_PALETTE[k].text};
+  });
+}
+
+async function saveInterpreters(){
+  const rows=INTERPRETERS.map(i=>{
+    const b=BASE_COLORS[i.name]||{bg:i.bg,text:i.text};
+    return {name:i.name,bg:b.bg,text:b.text};
+  });
+  await rpc('news_save_interpreters',{p:rows});
+  localStorage.setItem('interpreters_v2', JSON.stringify(INTERPRETERS));
+}
+
+async function initializeInterpreters(){
+  try{
+    const rows=await rpc('news_interpreters_list');
+    if(Array.isArray(rows)&&rows.length){
+      rows.forEach(row=>{BASE_COLORS[row.name]={bg:row.bg,text:row.text_color};});
+      INTERPRETERS=applyLocalColors(rows.map(row=>({name:row.name,bg:row.bg,text:row.text_color})));
+      localStorage.setItem('interpreters_v2',JSON.stringify(INTERPRETERS));
+      rebuildColorMap();
+      return;
+    }
+  }catch(error){console.warn('공유 통역사 목록 로드 실패:',error.message);}
+  INTERPRETERS=applyLocalColors(loadInterpreters());
+  rebuildColorMap();
+}
+
+function exportInterpretersJson(){
+  const rows=INTERPRETERS.map((i,index)=>({name:i.name,bg:i.bg,text:i.text,sort_order:index+1,active:true}));
+  const blob=new Blob([JSON.stringify(rows,null,2)],{type:'application/json;charset=utf-8'});
+  const url=URL.createObjectURL(blob);
+  const a=document.createElement('a');
+  a.href=url;
+  a.download='통역사목록_백업.json';
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1000);
+}
+
+let INTERPRETERS = applyLocalColors(loadInterpreters());
+
+const colorMap = {};
+function rebuildColorMap(){
+  Object.keys(colorMap).forEach(k=>delete colorMap[k]);
+  INTERPRETERS.forEach(i=>colorMap[i.name]={bg:i.bg,text:i.text});
+}
+rebuildColorMap();
+
+function cs(n){
+  if(n===PENDING_DELETE) return PENDING_DELETE_STYLE;
+  const c=colorMap[n];
+  return c?`background:${c.bg};color:${c.text}`:'background:#eee;color:#555';
+}
+
+// ═══════════════════════════════════════════════════════
+// 관리자 상태
+// ═══════════════════════════════════════════════════════
+// ═══════════════════════════════════════════════════════
+// ★ 개인 입장 (이름만 선택, 이 기기에 유지)
+// ═══════════════════════════════════════════════════════
+let MY_NAME = localStorage.getItem('my_interp_name') || '';
+
+function myBarRender(){
+  const bar=document.getElementById('myBar');
+  if(!bar) return;
+  bar.style.display='flex';
+  if(MY_NAME){
+    bar.innerHTML=`<span>👤 <b>${MY_NAME}</b>님의 일정 강조 중</span>
+      <button class="btn" onclick="openMyColor()">🎨 내 색상</button>
+      <button class="btn" onclick="myLogout()">로그아웃</button>`;
+  } else {
+    bar.innerHTML=`<span>전체 일정 보기 중</span>
+      <button class="btn btn-print" onclick="openMyLogin()">👤 내 이름으로 입장</button>`;
+  }
+}
+function openMyLogin(){
+  document.getElementById('myLoginGrid').innerHTML=INTERPRETERS.map(i=>
+    `<button class="modal-name-btn" style="background:${i.bg};color:${i.text}" onclick="pickMyName(this.textContent)">${i.name}</button>`).join('');
+  document.getElementById('myLoginModal').classList.add('open');
+}
+function pickMyName(name){
+  MY_NAME=name;
+  localStorage.setItem('my_interp_name',name);
+  localStorage.removeItem('my_interp_skip');
+  document.getElementById('myLoginModal').classList.remove('open');
+  myBarRender(); renderAll();
+}
+function skipMyLogin(){
+  localStorage.setItem('my_interp_skip','1');
+  document.getElementById('myLoginModal').classList.remove('open');
+  myBarRender();
+}
+function myLogout(){
+  if(!confirm('로그아웃하고 다른 이름으로 입장하시겠습니까?')) return;
+  MY_NAME='';
+  localStorage.removeItem('my_interp_name');
+  localStorage.removeItem('my_interp_skip');
+  myBarRender(); renderAll(); openMyLogin();
+}
+function initMyLogin(){
+  // 저장된 이름이 목록에서 사라졌으면 로그아웃 처리
+  if(MY_NAME && !INTERPRETERS.some(i=>i.name===MY_NAME)){
+    MY_NAME=''; localStorage.removeItem('my_interp_name');
+  }
+  myBarRender();
+  if(!MY_NAME && !localStorage.getItem('my_interp_skip')) openMyLogin();
+}
+function openMyColor(){
+  const me=INTERPRETERS.find(i=>i.name===MY_NAME); if(!me) return;
+  document.getElementById('myBg').value=normalizeHex(me.bg);
+  document.getElementById('myText').value=normalizeHex(me.text);
+  updateMyPreview();
+  document.getElementById('myColorModal').classList.add('open');
+}
+function closeMyColor(){ document.getElementById('myColorModal').classList.remove('open'); }
+function updateMyPreview(){
+  const p=document.getElementById('myPreview');
+  p.textContent=MY_NAME; p.style.background=document.getElementById('myBg').value; p.style.color=document.getElementById('myText').value;
+}
+function saveMyColor(){
+  const bg=document.getElementById('myBg').value, text=document.getElementById('myText').value;
+  setLocalColor(MY_NAME,bg,text);
+  const me=INTERPRETERS.find(i=>i.name===MY_NAME);
+  if(me){ me.bg=bg; me.text=text; }
+  rebuildColorMap(); closeMyColor(); renderLegend(); renderAll();
+  showSaveToast('✅ 내 색상이 저장되었습니다.');
+}
+document.getElementById('myBg').addEventListener('input',updateMyPreview);
+document.getElementById('myText').addEventListener('input',updateMyPreview);
+
+let isAdmin = false;
+let adminTab = 'count';
+let interpEditTarget = null;
+
+async function toggleAdmin(){
+  if(isAdmin){ logoutAdmin(); return; }
+  let ok=false;
+  try{ const ss=await sb.auth.getSession(); if(ss.data&&ss.data.session) ok=await rpc('news_can_edit'); }catch(e){ ok=false; }
+  if(ok){ loginAdmin(); return; }
+  document.getElementById('pwModal').classList.add('open');
+}
+function closePwModal(){ document.getElementById('pwModal').classList.remove('open'); }
+function loginAdmin(){
+  isAdmin=true;
+  // 로그인 전에는 일정 칸에 관리자 편집 속성이 없으므로 표를 다시 그린다.
+  renderAll();
+  document.getElementById('adminBtn').textContent='🔓 관리자 OFF';
+  document.getElementById('adminBtn').className='btn btn-admin-active';
+  document.getElementById('adminBtn').style.cssText='position:fixed;top:8px;right:12px;z-index:1000;';
+  document.getElementById('adminPanel').style.display='block';
+  document.getElementById('legend').style.display='flex';
+  document.querySelectorAll('.admin-only').forEach(el=>el.style.display='');
+  renderAdminPanel();
+  renderLegend();
+  setTimeout(updatePrintBtnLabels,50);
+}
+function logoutAdmin(){
+  if(!confirm('관리자 모드를 종료하시겠습니까?'))return;
+  isAdmin=false;
+  document.getElementById('adminBtn').textContent='🔒 관리자';
+  document.getElementById('adminBtn').className='btn btn-admin';
+  document.getElementById('adminBtn').style.cssText='position:fixed;top:8px;right:12px;z-index:1000;';
+  document.getElementById('adminPanel').style.display='none';
+  document.getElementById('legend').style.display='none';
+  document.querySelectorAll('.admin-only').forEach(el=>el.style.display='none');
+  renderLegend();
+  renderAll();
+}
+
+// ═══════════════════════════════════════════════════════
+// 통역 횟수 집계
+// ═══════════════════════════════════════════════════════
+function countInterps(y,m){
+  const data=getData(y,m);
+  const total=daysInMonth(y,m);
+  const counts={};
+  INTERPRETERS.forEach(i=>{counts[i.name]={};});
+  counts[PENDING_DELETE]={};
+  for(let d=1;d<=total;d++){
+    ['광장','930','9시'].forEach(prog=>{
+      const name=data.kbs[d]&&data.kbs[d][prog];
+      if(name){
+        if(!counts[name]) counts[name]={};
+        const add=(name===PENDING_DELETE)?0.6:1;
+        counts[name][prog]=(counts[name][prog]||0)+add;
+      }
+    });
+    const g1name=data.g1[d]&&data.g1[d]['G1'];
+    if(g1name){
+      if(!counts[g1name]) counts[g1name]={};
+      const add=(g1name===PENDING_DELETE)?0.5:1;
+      counts[g1name]['G1']=(counts[g1name]['G1']||0)+add;
+    }
+  }
+  (data.specials||[]).forEach(sp=>{
+    if(!counts[sp.name]) counts[sp.name]={};
+    const key=sp.broadcaster==='KBS'?'특보KBS':'특보G1';
+    counts[sp.name][key]=(counts[sp.name][key]||0)+1;
+  });
+  return counts;
+}
+
+// ═══════════════════════════════════════════════════════
+// 관리자 패널 렌더
+// ═══════════════════════════════════════════════════════
+function renderAdminPanel(){
+  const panel=document.getElementById('adminPanel');
+  panel.innerHTML=`
+    <div class="admin-panel">
+      <div class="admin-panel-title">⚙️ 관리자 패널 <span style="font-weight:400;color:#999">${curY}년 ${curM}월</span></div>
+      <div class="admin-tabs">
+        <button class="admin-tab-btn${adminTab==='count'?' active':''}" onclick="setAdminTab('count')">📊 통역 횟수</button>
+        <button class="admin-tab-btn${adminTab==='fee'?' active':''}" onclick="setAdminTab('fee')">💰 방송사별 통역비</button>
+        <button class="admin-tab-btn${adminTab==='manage'?' active':''}" onclick="setAdminTab('manage')">👤 통역사 관리</button>
+        <button class="admin-tab-btn${adminTab==='special'?' active':''}" onclick="setAdminTab('special')">📢 특보 관리</button>
+        <button class="admin-tab-btn${adminTab==='pattern'?' active':''}" onclick="setAdminTab('pattern')">🔄 순환 패턴</button>
+        <button class="admin-tab-btn${adminTab==='interp-cycle'?' active':''}" onclick="setAdminTab('interp-cycle')">🎯 통역사별 순환</button>
+      </div>
+      <div id="adminContent">${renderAdminContent()}</div>
+    </div>`;
+}
+function setAdminTab(tab){ adminTab=tab; renderAdminPanel(); }
+function renderAdminContent(){
+  if(adminTab==='count') return renderCountTab();
+  if(adminTab==='fee') return renderFeeTab();
+  if(adminTab==='manage') return renderManageTab();
+  if(adminTab==='special') return renderSpecialTab();
+  if(adminTab==='pattern') return renderPatternTab();
+  if(adminTab==='interp-cycle') return renderInterpCycleTab();
+  return '';
+}
+
+function renderInterpCycleTab(){
+  // 통역사별 순환패턴 저장 구조: 
+  // interpCycleSettings = {
+  //   "손경애": { startMonth: "2026-10", programs: { "광장": [1,2], "930": [1], "9시": [], "G1": [] } },
+  //   "김유진": { startMonth: "2026-10", programs: { ... } }
+  // }
+  
+  if(!window.interpCycleSettings) window.interpCycleSettings={};
+  const PROGS=['광장','930','9시','G1'];
+  const DOW_NAMES=['월','화','수','목','금'];
+  
+  let html=`<div style="margin-bottom:16px;">
+    <div style="font-weight:800;color:#1a3a7a;margin-bottom:12px;font-size:14px;">🎯 통역사별 순환패턴 설정</div>
+    <div style="background:#f0f8ff;border:1px solid #b3d9ff;border-radius:8px;padding:12px;margin-bottom:12px;font-size:13px;color:#2c5c8a;">
+      <div style="font-weight:600;margin-bottom:6px;">💡 설정 방법</div>
+      <div>• 통역사를 선택하고 시작월을 입력합니다.</div>
+      <div>• 각 프로그램별로 담당할 요일을 체크합니다.</div>
+      <div>• 예: 손경애는 뉴스광장의 월, 화만 담당</div>
+    </div>
+    <div style="margin-bottom:12px;">
+      <label style="font-weight:700;color:#333;display:block;margin-bottom:6px;">📌 통역사 선택</label>
+      <select id="interpCycleSel" class="form-input" onchange="updateInterpCycleForm()">
+        <option value="">-- 통역사 선택 --</option>
+        ${INTERPRETERS.map(i=>`<option value="${i.name}">${i.name}</option>`).join('')}
+      </select>
+    </div>
+    <div id="interpCycleForm" style="display:none;">
+      <div style="margin-bottom:12px;">
+        <label style="font-weight:700;color:#333;display:block;margin-bottom:6px;">📅 시작월 (예: 2026-10)</label>
+        <input type="month" id="interpCycleStartMonth" class="form-input" style="padding:8px 10px;">
+      </div>
+      <div style="margin-bottom:12px;">
+        <div style="font-weight:700;color:#333;margin-bottom:8px;">📺 프로그램별 담당 요일</div>
+        ${PROGS.map(prog=>`
+          <div style="background:white;border:1px solid #e0e0e0;border-radius:6px;padding:10px;margin-bottom:8px;">
+            <div style="font-weight:700;color:#1a3a7a;margin-bottom:6px;font-size:13px;">${prog}</div>
+            <div style="display:flex;flex-wrap:wrap;gap:8px;">
+              ${DOW_NAMES.map((dow,i)=>`
+                <label style="display:flex;align-items:center;gap:4px;cursor:pointer;font-size:13px;">
+                  <input type="checkbox" id="dow_${prog}_${i}" value="${i+1}">
+                  ${dow}
+                </label>
+              `).join('')}
+            </div>
+          </div>
+        `).join('')}
+      </div>
+      <div style="display:flex;gap:8px;">
+        <button onclick="saveInterpCycle()" style="padding:10px 20px;border-radius:6px;border:none;background:#27ae60;color:white;font-family:'Noto Sans KR',sans-serif;font-weight:700;cursor:pointer;">💾 저장</button>
+        <button onclick="clearInterpCycle()" style="padding:10px 20px;border-radius:6px;border:1.5px solid #e74c3c;background:white;color:#e74c3c;font-family:'Noto Sans KR',sans-serif;font-weight:700;cursor:pointer;">🗑 삭제</button>
+      </div>
+      <div id="interpCycleMsg" style="margin-top:8px;min-height:18px;font-size:13px;"></div>
+    </div>
+  </div>`;
+  
+  // 저장된 설정 표시
+  if(Object.keys(window.interpCycleSettings).length > 0){
+    html+=`<div style="background:#f9f9f9;border-radius:8px;padding:12px;">
+      <div style="font-weight:700;color:#333;margin-bottom:10px;">✅ 저장된 순환패턴</div>
+      <div style="display:grid;gap:8px;">`;
+    Object.entries(window.interpCycleSettings).forEach(([name, settings])=>{
+      const progs = Object.entries(settings.programs||{})
+        .filter(([p,dows])=>dows.length>0)
+        .map(([p,dows])=>`${p} (${dows.map(d=>DOW_NAMES[d-1]).join(',')})`)
+        .join(', ');
+      html+=`<div style="background:white;border-radius:6px;padding:10px;border:1px solid #e8e8e8;">
+        <div style="font-weight:700;color:#1a3a7a;font-size:13px;">${name}</div>
+        <div style="font-size:12px;color:#666;">시작: ${settings.startMonth || '미설정'} | ${progs || '프로그램 없음'}</div>
+      </div>`;
+    });
+    html+=`</div></div>`;
+  }
+  
+  return html;
+}
+
+function updateInterpCycleForm(){
+  const sel=document.getElementById('interpCycleSel');
+  const form=document.getElementById('interpCycleForm');
+  const name=sel.value;
+  if(!name){form.style.display='none';return;}
+  form.style.display='block';
+  
+  // 기존 설정 로드
+  const settings=window.interpCycleSettings[name]||{};
+  document.getElementById('interpCycleStartMonth').value=settings.startMonth||'';
+  
+  const PROGS=['광장','930','9시','G1'];
+  PROGS.forEach(prog=>{
+    const dows=settings.programs?.[prog]||[];
+    for(let i=1;i<=5;i++){
+      const cb=document.getElementById(`dow_${prog}_${i-1}`);
+      if(cb) cb.checked=dows.includes(i);
+    }
+  });
+}
+
+function saveInterpCycle(){
+  const sel=document.getElementById('interpCycleSel');
+  const name=sel.value;
+  if(!name){showSaveToast('통역사를 선택하세요.',true);return;}
+  
+  const startMonth=document.getElementById('interpCycleStartMonth').value;
+  if(!startMonth){showSaveToast('시작월을 입력하세요.',true);return;}
+  
+  const[startY, startM]=startMonth.split('-').map(Number);
+  const curDate=new Date(curY, curM-1);
+  const startDate=new Date(startY, startM-1);
+  
+  // 시작월이 현재보다 미래인지 과거인지 확인
+  if(startDate>curDate){
+    showSaveToast('⚠️ 시작월이 현재 월('+curM+'월)보다 미래입니다. '+startM+'월부터 적용될 예정입니다.',false);
+  } else if(startDate<curDate){
+    showSaveToast('⚠️ 시작월이 현재 월('+curM+'월)보다 과거입니다. 지금부터 바로 적용됩니다.',false);
+  }
+  
+  const PROGS=['광장','930','9시','G1'];
+  const programs={};
+  PROGS.forEach(prog=>{
+    programs[prog]=[];
+    for(let i=1;i<=5;i++){
+      const cb=document.getElementById(`dow_${prog}_${i-1}`);
+      if(cb&&cb.checked) programs[prog].push(i);
+    }
+  });
+  
+  window.interpCycleSettings[name]={startMonth, programs};
+  try{ 
+    localStorage.setItem('interpCycleSettings',JSON.stringify(window.interpCycleSettings));
+    localStorage.setItem('interpCycleSettings_updated_at', new Date().toISOString());
+  }
+  catch(e){console.error('저장 실패:',e);}
+  
+  // 현재 월 데이터를 초기화하여 새로운 설정 적용
+  const k=storeKey(curY,curM);
+  if(editStore[k]&&editStore[k].specials){
+    const specials=editStore[k].specials;
+    editStore[k]=buildData(curY,curM);
+    editStore[k].specials=specials;
+  } else {
+    editStore[k]=buildData(curY,curM);
+  }
+  
+  const msg=document.getElementById('interpCycleMsg');
+  msg.style.color='#27ae60';msg.textContent='✅ 저장되었습니다! ('+curM+'월부터 적용됩니다)';
+  setTimeout(()=>{msg.textContent='';},2000);
+  renderAdminPanel();
+  renderAll();
+}
+
+function clearInterpCycle(){
+  const sel=document.getElementById('interpCycleSel');
+  const name=sel.value;
+  if(!name||!confirm('이 통역사의 순환패턴을 삭제하시겠습니까?'))return;
+  
+  delete window.interpCycleSettings[name];
+  try{ localStorage.setItem('interpCycleSettings',JSON.stringify(window.interpCycleSettings)); }
+  catch(e){console.error('저장 실패:',e);}
+  
+  sel.value='';
+  document.getElementById('interpCycleForm').style.display='none';
+  renderAdminPanel();
+}
+
+function renderPatternTab(){
+  const DOW_LABELS=['일','월','화','수','목','금'];
+  const names=['(비움)',...INTERPRETERS.map(i=>i.name)];
+  function nameSelect(id,val){
+    return `<select id="${id}" class="form-input" style="padding:4px 6px;">
+      ${names.map(n=>`<option value="${n==='(비움)'?'':n}" ${(val||'')===(n==='(비움)'?'':n)?'selected':''}>${n}</option>`).join('')}
+    </select>`;
+  }
+  function splitSelect(id,val){
+    return `<select id="${id}" class="form-input" style="padding:4px 6px;">
+      ${DOW_LABELS.map((l,i)=>`<option value="${i}" ${val===i?'selected':''}>${l}까지 앞반</option>`).join('')}
+    </select>`;
+  }
+  let kbs9Html=`<div style="margin-bottom:16px;">
+    <div style="font-weight:800;color:#1a3a7a;margin-bottom:8px;font-size:14px;">📺 KBS 뉴스9 순환 패턴 (${PATTERNS.kbs9.length}주 순환)</div>
+    <div style="margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+      <span style="font-weight:600;">앞반 기준:</span>
+      ${splitSelect('kbs9_split_sel',PATTERNS.kbs9_split)}
+      <span style="font-size:11px;color:#888;">이 요일까지가 앞반 통역사</span>
+    </div>
+    <div style="display:grid;gap:6px;">`;
+  PATTERNS.kbs9.forEach((p,i)=>{
+    kbs9Html+=`<div style="display:flex;align-items:center;gap:8px;background:#f0f3f8;padding:8px;border-radius:6px;flex-wrap:wrap;">
+      <span style="font-weight:700;color:#2d4a7a;min-width:40px;">${i+1}주차</span>
+      <span style="color:#555;">앞반:</span>${nameSelect(`kbs9_f_${i}`,p.front)}
+      <span style="color:#555;">뒷반:</span>${nameSelect(`kbs9_b_${i}`,p.back)}
+      <button onclick="removeKbs9Week(${i})" style="padding:3px 8px;border-radius:4px;border:1px solid #e74c3c;background:white;color:#e74c3c;font-size:11px;cursor:pointer;">삭제</button>
+    </div>`;
+  });
+  kbs9Html+=`</div>
+    <button onclick="addKbs9Week()" style="margin-top:8px;padding:6px 14px;border-radius:5px;border:1.5px dashed #2d4a7a;background:white;color:#2d4a7a;font-weight:700;cursor:pointer;">+ 주차 추가</button>
+  </div>`;
+  let gwangHtml=`<div style="margin-bottom:16px;">
+    <div style="font-weight:800;color:#1a3a7a;margin-bottom:8px;font-size:14px;">📺 KBS 뉴스광장 순환 패턴 (${PATTERNS.gwang.length}주 순환)</div>
+    <div style="display:grid;gap:6px;">`;
+  PATTERNS.gwang.forEach((p,i)=>{
+    gwangHtml+=`<div style="display:flex;align-items:center;gap:8px;background:#f0f3f8;padding:8px;border-radius:6px;flex-wrap:wrap;">
+      <span style="font-weight:700;color:#2d4a7a;min-width:40px;">${i+1}주차</span>
+      <span style="color:#555;">앞반:</span>${nameSelect(`gwang_f_${i}`,p.front)}
+      <span style="color:#555;">뒷반:</span>${nameSelect(`gwang_b_${i}`,p.back)}
+      ${splitSelect(`gwang_split_${i}`,p.split??3)}
+      <button onclick="removeGwangWeek(${i})" style="padding:3px 8px;border-radius:4px;border:1px solid #e74c3c;background:white;color:#e74c3c;font-size:11px;cursor:pointer;">삭제</button>
+    </div>`;
+  });
+  gwangHtml+=`</div>
+    <button onclick="addGwangWeek()" style="margin-top:8px;padding:6px 14px;border-radius:5px;border:1.5px dashed #2d4a7a;background:white;color:#2d4a7a;font-weight:700;cursor:pointer;">+ 주차 추가</button>
+  </div>`;
+  let s930Html=`<div style="margin-bottom:16px;">
+    <div style="font-weight:800;color:#0a5a7a;margin-bottom:8px;font-size:14px;">📺 KBS 930뉴스 순환 패턴 (${PATTERNS.s930.length}주 순환)</div>
+    <div style="display:grid;gap:6px;">`;
+  PATTERNS.s930.forEach((p,i)=>{
+    s930Html+=`<div style="display:flex;align-items:center;gap:8px;background:#f0f8f8;padding:8px;border-radius:6px;flex-wrap:wrap;">
+      <span style="font-weight:700;color:#0a5a7a;min-width:40px;">${i+1}주차</span>
+      <span style="color:#555;">앞반:</span>${nameSelect(`s930_f_${i}`,p.front)}
+      <span style="color:#555;">뒷반:</span>${nameSelect(`s930_b_${i}`,p.back)}
+      ${splitSelect(`s930_split_${i}`,p.split??2)}
+      <button onclick="remove930Week(${i})" style="padding:3px 8px;border-radius:4px;border:1px solid #e74c3c;background:white;color:#e74c3c;font-size:11px;cursor:pointer;">삭제</button>
+    </div>`;
+  });
+  s930Html+=`</div>
+    <button onclick="add930Week()" style="margin-top:8px;padding:6px 14px;border-radius:5px;border:1.5px dashed #0a5a7a;background:white;color:#0a5a7a;font-weight:700;cursor:pointer;">+ 주차 추가</button>
+  </div>`;
+  let g1Html=`<div style="margin-bottom:16px;">
+    <div style="font-weight:800;color:#5a1a8a;margin-bottom:8px;font-size:14px;">📺 G1뉴스 순환 패턴 (${PATTERNS.g1.length}주 순환)</div>
+    <div style="display:grid;gap:6px;">`;
+  PATTERNS.g1.forEach((p,i)=>{
+    g1Html+=`<div style="display:flex;align-items:center;gap:8px;background:#f5f0ff;padding:8px;border-radius:6px;flex-wrap:wrap;">
+      <span style="font-weight:700;color:#5a1a8a;min-width:40px;">${i+1}주차</span>
+      <span style="color:#555;white-space:nowrap;">월~수:</span>${nameSelect(`g1_f_${i}`,p.front)}
+      <span style="color:#555;white-space:nowrap;">목~금:</span>${nameSelect(`g1_b_${i}`,p.back)}
+      <button onclick="removeG1Week(${i})" style="padding:3px 8px;border-radius:4px;border:1px solid #e74c3c;background:white;color:#e74c3c;font-size:11px;cursor:pointer;">삭제</button>
+    </div>`;
+  });
+  g1Html+=`</div>
+    <button onclick="addG1Week()" style="margin-top:8px;padding:6px 14px;border-radius:5px;border:1.5px dashed #5a1a8a;background:white;color:#5a1a8a;font-weight:700;cursor:pointer;">+ 주차 추가</button>
+  </div>`;
+  return `<div>${kbs9Html}${gwangHtml}${s930Html}${g1Html}
+    <div style="display:flex;gap:8px;flex-wrap:wrap;">
+      <button onclick="applyPatterns()" style="padding:10px 24px;border-radius:6px;border:none;background:#1a4fa3;color:white;font-family:'Noto Sans KR',sans-serif;font-weight:700;cursor:pointer;">✅ 패턴 적용 & 저장</button>
+      <button onclick="resetPatterns()" style="padding:10px 16px;border-radius:6px;border:1.5px solid #e74c3c;background:white;color:#e74c3c;font-family:'Noto Sans KR',sans-serif;font-weight:700;cursor:pointer;">↺ 기본값 초기화</button>
+    </div>
+    <div id="patternMsg" style="margin-top:8px;min-height:18px;"></div>
+  </div>`;
+}
+
+function collectPatterns(){
+  const kbs9=PATTERNS.kbs9.map((_,i)=>({
+    front:document.getElementById(`kbs9_f_${i}`)?.value||'',
+    back: document.getElementById(`kbs9_b_${i}`)?.value||''
+  }));
+  const kbs9_split=parseInt(document.getElementById('kbs9_split_sel')?.value??2);
+  const gwang=PATTERNS.gwang.map((_,i)=>({
+    front:document.getElementById(`gwang_f_${i}`)?.value||'',
+    back:document.getElementById(`gwang_b_${i}`)?.value||'',
+    split:parseInt(document.getElementById(`gwang_split_${i}`)?.value??3)
+  }));
+  const s930=PATTERNS.s930.map((_,i)=>({
+    front:document.getElementById(`s930_f_${i}`)?.value||'',
+    back:document.getElementById(`s930_b_${i}`)?.value||'',
+    split:parseInt(document.getElementById(`s930_split_${i}`)?.value??2)
+  }));
+  const g1=PATTERNS.g1.map((_,i)=>({
+    front:document.getElementById(`g1_f_${i}`)?.value||'',
+    back: document.getElementById(`g1_b_${i}`)?.value||''
+  }));
+  return{kbs9,kbs9_split,gwang,s930,g1};
+}
+function preserveSpecialsThroughReset(){
+  // 현재 월 이후의 데이터만 초기화
+  // 이전 달의 일정은 그대로 유지
+  const preserved={};
+  
+  // 현재 월 이후의 데이터에서 특보만 보존
+  Object.keys(editStore).forEach(k=>{
+    const[py,pm]=k.split('-').map(Number);
+    // 현재 월(curY-curM) 이후의 데이터만 처리
+    const isAfterCurrent = (py > curY) || (py === curY && pm >= curM);
+    if(isAfterCurrent && editStore[k]&&editStore[k].specials&&editStore[k].specials.length){
+      preserved[k]=editStore[k].specials;
+    }
+  });
+  
+  // 현재 월 이후의 데이터만 삭제
+  Object.keys(editStore).forEach(k=>{
+    const[py,pm]=k.split('-').map(Number);
+    const isAfterCurrent = (py > curY) || (py === curY && pm >= curM);
+    if(isAfterCurrent) delete editStore[k];
+  });
+  
+  // 현재 월 이후의 데이터만 재생성
+  Object.keys(preserved).forEach(k=>{
+    const[py,pm]=k.split('-').map(Number);
+    editStore[k]=buildData(py,pm);
+    editStore[k].specials=preserved[k];
+  });
+}
+function applyPatterns(){
+  PATTERNS=collectPatterns(); savePatterns();
+  
+  // 현재 월(curY-curM)의 데이터만 초기화 (이전 달은 유지)
+  const k=storeKey(curY,curM);
+  if(editStore[k]&&editStore[k].specials){
+    const specials=editStore[k].specials; // 특보는 보존
+    editStore[k]=buildData(curY,curM);
+    editStore[k].specials=specials;
+  } else {
+    editStore[k]=buildData(curY,curM);
+  }
+  
+  renderAdminPanel(); renderAll();
+  const msg=document.getElementById('patternMsg');
+  if(msg){msg.style.color='#27ae60';msg.textContent='✅ '+curM+'월부터 패턴이 적용되었습니다. (이전 달은 유지됩니다. 등록된 특보 기록은 유지됩니다)';}
+}
+function resetPatterns(){
+  if(!confirm('기본값으로 초기화하시겠습니까? ('+curM+'월부터 적용됩니다)'))return;
+  localStorage.removeItem('rotation_patterns_v2');
+  PATTERNS=getDefaultPatterns();
+  
+  // 현재 월(curY-curM)의 데이터만 초기화 (이전 달은 유지)
+  const k=storeKey(curY,curM);
+  if(editStore[k]&&editStore[k].specials){
+    const specials=editStore[k].specials;
+    editStore[k]=buildData(curY,curM);
+    editStore[k].specials=specials;
+  } else {
+    editStore[k]=buildData(curY,curM);
+  }
+  
+  renderAdminPanel(); renderAll();
+}
+function addKbs9Week(){PATTERNS=collectPatterns();PATTERNS.kbs9.push({front:'',back:''});renderAdminPanel();}
+function removeKbs9Week(i){PATTERNS=collectPatterns();if(PATTERNS.kbs9.length<=1){alert('최소 1주차 이상 필요합니다.');return;}PATTERNS.kbs9.splice(i,1);renderAdminPanel();}
+function addGwangWeek(){PATTERNS=collectPatterns();PATTERNS.gwang.push({front:'',back:'',split:3});renderAdminPanel();}
+function removeGwangWeek(i){PATTERNS=collectPatterns();if(PATTERNS.gwang.length<=1){alert('최소 1주차 이상 필요합니다.');return;}PATTERNS.gwang.splice(i,1);renderAdminPanel();}
+function add930Week(){PATTERNS=collectPatterns();PATTERNS.s930.push({front:'',back:'',split:2});renderAdminPanel();}
+function remove930Week(i){PATTERNS=collectPatterns();if(PATTERNS.s930.length<=1){alert('최소 1주차 이상 필요합니다.');return;}PATTERNS.s930.splice(i,1);renderAdminPanel();}
+function addG1Week(){PATTERNS=collectPatterns();PATTERNS.g1.push({front:'',back:''});renderAdminPanel();}
+function removeG1Week(i){PATTERNS=collectPatterns();if(PATTERNS.g1.length<=1){alert('최소 1주차 이상 필요합니다.');return;}PATTERNS.g1.splice(i,1);renderAdminPanel();}
+
+
+function renderCountTab(){
+  const counts=countInterps(curY,curM);
+  function fmt(v){ if(!v)return '-'; return v%1===0?v:v.toFixed(1); }
+  let html=`<div class="table-scroll"><table class="stat-table">
+    <tr><th>이름</th><th>뉴스광장</th><th>930뉴스</th><th>뉴스9시</th><th style="background:#c0632b;">특보(KBS)</th><th style="background:#5a3080;">KBS합계</th><th>G1뉴스</th><th style="background:#c0632b;">특보(G1)</th><th style="background:#333;">전체합계</th></tr>`;
+  let totals={광장:0,'930':0,'9시':0,spKbs:0,kbs:0,G1:0,spG1:0,sum:0};
+  INTERPRETERS.forEach(i=>{
+    const c=counts[i.name]||{};
+    const gwang=c['광장']||0,s930=c['930']||0,news9=c['9시']||0,spKbs=c['특보KBS']||0;
+    const kbsSum=gwang+s930+news9+spKbs;
+    const g1=c['G1']||0,spG1=c['특보G1']||0;
+    const total=kbsSum+g1+spG1;
+    totals['광장']+=gwang;totals['930']+=s930;totals['9시']+=news9;totals.spKbs+=spKbs;totals.kbs+=kbsSum;totals['G1']+=g1;totals.spG1+=spG1;totals.sum+=total;
+    html+=`<tr><td class="name-cell"><span style="${cs(i.name)};padding:2px 8px;border-radius:6px;">${i.name}</span></td>
+      <td>${fmt(gwang)}</td><td>${fmt(s930)}</td><td>${fmt(news9)}</td>
+      <td style="${spKbs?'color:#c0632b;font-weight:700;':''}">${fmt(spKbs)}</td>
+      <td style="font-weight:700;color:#5a3080;">${fmt(kbsSum)}</td>
+      <td>${fmt(g1)}</td>
+      <td style="${spG1?'color:#c0632b;font-weight:700;':''}">${fmt(spG1)}</td>
+      <td class="total-cell">${fmt(total)}</td></tr>`;
+  });
+  const pc=counts[PENDING_DELETE]||{};
+  const pgwang=pc['광장']||0,ps930=pc['930']||0,pnews9=pc['9시']||0,pkbs=pgwang+ps930+pnews9,pg1=pc['G1']||0,ptotal=pkbs+pg1;
+  if(ptotal>0){
+    html+=`<tr><td class="name-cell"><span style="${PENDING_DELETE_STYLE}padding:2px 8px;border-radius:6px;font-weight:700;">${PENDING_DELETE}</span><span style="font-size:10px;color:#888;margin-left:4px;">(×0.5)</span></td>
+      <td>${fmt(pgwang)}</td><td>${fmt(ps930)}</td><td>${fmt(pnews9)}</td><td>-</td>
+      <td style="font-weight:700;color:#5a3080;">${fmt(pkbs)}</td><td>${fmt(pg1)}</td><td>-</td><td class="total-cell">${fmt(ptotal)}</td></tr>`;
+    totals['광장']+=pgwang;totals['930']+=ps930;totals['9시']+=pnews9;totals.kbs+=pkbs;totals['G1']+=pg1;totals.sum+=ptotal;
+  }
+  html+=`<tr style="background:#f0e8ff;"><td class="name-cell" style="font-weight:800;">합계</td>
+    <td class="total-cell">${fmt(totals['광장'])}</td><td class="total-cell">${fmt(totals['930'])}</td><td class="total-cell">${fmt(totals['9시'])}</td>
+    <td class="total-cell" style="color:#c0632b;">${fmt(totals.spKbs)}</td>
+    <td class="total-cell" style="background:#e0d0ff !important;color:#5a3080;">${fmt(totals.kbs)}</td>
+    <td class="total-cell">${fmt(totals['G1'])}</td>
+    <td class="total-cell" style="color:#c0632b;">${fmt(totals.spG1)}</td>
+    <td class="total-cell">${fmt(totals.sum)}</td></tr>`;
+  html+=`</table></div><div style="margin-top:8px;font-size:11px;color:#888;">※ <span style="${PENDING_DELETE_STYLE}padding:1px 5px;border-radius:4px;font-size:10px;">대기중삭제</span> 배너: KBS는 0.6회, G1은 0.5회로 집계됩니다. · <span style="color:#c0632b;font-weight:700;">특보</span>는 "📢 특보 관리" 탭에서 등록합니다.</div>`;
+  return html;
+}
+
+function renderFeeTab(){
+  const counts=countInterps(curY,curM);
+  const data=getData(curY,curM);
+  function fmt(v){ if(!v)return '-'; return v%1===0?v:v.toFixed(1); }
+  let gwangTotal=0,s930Total=0,news9Total=0,g1Total=0;
+  INTERPRETERS.forEach(i=>{ const c=counts[i.name]||{}; gwangTotal+=(c['광장']||0);s930Total+=(c['930']||0);news9Total+=(c['9시']||0);g1Total+=(c['G1']||0); });
+  const pc=counts[PENDING_DELETE]||{};
+  gwangTotal+=(pc['광장']||0);s930Total+=(pc['930']||0);news9Total+=(pc['9시']||0);g1Total+=(pc['G1']||0);
+  const regularKbsTotal=gwangTotal+s930Total+news9Total,regularKbsFee=regularKbsTotal*56100,regularG1Fee=g1Total*100000;
+
+  const specials=data.specials||[];
+  const spKbs=specials.filter(sp=>sp.broadcaster==='KBS'),spG1=specials.filter(sp=>sp.broadcaster==='G1');
+  const spKbsCount=spKbs.length,spKbsFee=spKbs.reduce((s,sp)=>s+(sp.fee||0),0);
+  const spG1Count=spG1.length,spG1Fee=spG1.reduce((s,sp)=>s+(sp.fee||0),0);
+
+  const kbsTotal=regularKbsTotal+spKbsCount,kbsFee=regularKbsFee+spKbsFee;
+  const g1TotalAll=g1Total+spG1Count,g1FeeAll=regularG1Fee+spG1Fee;
+  const totalFee=kbsFee+g1FeeAll;
+
+  return `<div class="table-scroll"><table class="stat-table">
+    <tr><th>방송사 / 프로그램</th><th>횟수</th><th>단가</th><th>금액</th></tr>
+    <tr style="background:#eef3ff;"><td class="name-cell" style="font-weight:800;color:#1a3a7a;">🟦 KBS 전체</td><td style="font-weight:800;color:#1a3a7a;">${fmt(kbsTotal)}회</td><td class="formula-cell">–</td><td class="fee-cell" style="font-weight:800;">${kbsFee.toLocaleString()}원</td></tr>
+    <tr><td class="name-cell" style="padding-left:20px;color:#555;">└ 뉴스광장</td><td style="color:#555;">${fmt(gwangTotal)}회</td><td class="formula-cell">56,100원</td><td style="color:#aaa;">–</td></tr>
+    <tr><td class="name-cell" style="padding-left:20px;color:#555;">└ 930뉴스</td><td style="color:#555;">${fmt(s930Total)}회</td><td class="formula-cell">56,100원</td><td style="color:#aaa;">–</td></tr>
+    <tr><td class="name-cell" style="padding-left:20px;color:#555;">└ 뉴스9</td><td style="color:#555;">${fmt(news9Total)}회</td><td class="formula-cell">56,100원</td><td style="color:#aaa;">–</td></tr>
+    ${spKbsCount>0?`<tr style="background:#fff8f0;"><td class="name-cell" style="padding-left:20px;color:#c0632b;font-weight:700;">└ 📢 특보</td><td style="color:#c0632b;font-weight:700;">${spKbsCount}회</td><td class="formula-cell">건별 입력</td><td class="fee-cell">${spKbsFee.toLocaleString()}원</td></tr>`:''}
+    <tr><td class="name-cell" style="font-weight:800;">🟪 G1 전체</td><td style="font-weight:700;">${fmt(g1TotalAll)}회</td><td class="formula-cell">–</td><td class="fee-cell">${g1FeeAll.toLocaleString()}원</td></tr>
+    <tr><td class="name-cell" style="padding-left:20px;color:#555;">└ 정규</td><td style="color:#555;">${fmt(g1Total)}회</td><td class="formula-cell">100,000원</td><td style="color:#aaa;">–</td></tr>
+    ${spG1Count>0?`<tr style="background:#fff8f0;"><td class="name-cell" style="padding-left:20px;color:#c0632b;font-weight:700;">└ 📢 특보</td><td style="color:#c0632b;font-weight:700;">${spG1Count}회</td><td class="formula-cell">건별 입력</td><td class="fee-cell">${spG1Fee.toLocaleString()}원</td></tr>`:''}
+    <tr style="background:#f0e8ff;"><td class="name-cell" style="font-weight:800;">합계</td><td class="total-cell">${fmt(kbsTotal+g1TotalAll)}회</td><td class="total-cell">–</td><td class="total-cell">${totalFee.toLocaleString()}원</td></tr>
+  </table></div>
+  <div style="margin-top:10px;background:#f8f8f8;border-radius:8px;padding:12px;color:#333;">
+    <div style="font-weight:700;margin-bottom:6px;">📋 계산식</div>
+    <div>KBS 정규: ${fmt(regularKbsTotal)}회 × 56,100원 = <b>${regularKbsFee.toLocaleString()}원</b></div>
+    ${spKbsCount>0?`<div>KBS 특보: ${spKbsCount}건 (건별 입력 금액 합산) = <b>${spKbsFee.toLocaleString()}원</b></div>`:''}
+    <div style="margin-top:4px;">G1 정규: ${fmt(g1Total)}회 × 100,000원 = <b>${regularG1Fee.toLocaleString()}원</b></div>
+    ${spG1Count>0?`<div>G1 특보: ${spG1Count}건 (건별 입력 금액 합산) = <b>${spG1Fee.toLocaleString()}원</b></div>`:''}
+    <div style="margin-top:8px;padding-top:8px;border-top:1px solid #ddd;font-weight:800;font-size:14px;">총 합계: ${totalFee.toLocaleString()}원</div>
+  </div>`;
+}
+
+function renderManageTab(){
+  let html=`<div style="margin-bottom:10px;padding:10px;background:#eef6ff;border:1px solid #b9d8f5;border-radius:8px;">
+    <div style="font-weight:700;margin-bottom:6px;">📥 이 기기의 통역사 목록 백업</div>
+    <div style="font-size:12px;color:#555;margin-bottom:8px;">이 목록을 공용 Supabase로 옮길 때 사용할 백업 파일을 다운로드합니다.</div>
+    <button class="form-btn form-btn-primary" onclick="exportInterpretersJson()">통역사 목록 백업 다운로드</button>
+  </div><div class="interp-manage-list">`;
+  INTERPRETERS.forEach((i,idx)=>{
+    html+=`<div class="interp-row">
+      <div class="interp-color-preview" style="background:${i.bg};color:${i.text}">${i.name.slice(0,1)}</div>
+      <span class="interp-name-label">${i.name}</span>
+      <button class="interp-edit-btn" onclick="openInterpEdit(${idx})">✏ 수정</button>
+      <button class="interp-del-btn" onclick="deleteInterp(${idx})">🗑 삭제</button>
+    </div>`;
+  });
+  html+=`</div>
+  <button class="form-btn form-btn-primary" onclick="openInterpEdit(null)" style="width:100%;padding:10px;">＋ 통역사 추가</button>
+  <div style="margin-top:10px;padding:10px;background:#1a1a1a;border-radius:8px;border:1.5px dashed #ff4444;">
+    <div style="font-weight:700;color:#ff4444;margin-bottom:4px;">⚠ ${PENDING_DELETE} 배너 안내</div>
+    <div style="color:#aaa;">배정표에서 통역사 이름을 클릭하면 <span style="${PENDING_DELETE_STYLE}padding:1px 6px;border-radius:4px;font-size:11px;">대기중삭제</span> 배너로 교체할 수 있습니다.<br>대기중삭제로 배정된 칸은 <b style="color:#ff4444;">KBS는 0.6회, G1은 0.5회</b>로 집계됩니다.</div>
+  </div>
+  <div style="margin-top:10px;padding:10px;background:#e8f4e8;border-radius:8px;border:1px solid #27ae60;">
+    <div style="font-weight:700;color:#1a5c1a;margin-bottom:4px;">💾 저장 안내</div>
+    <div style="color:#2c5c2c;font-size:13px;">통역사 목록(이름·색상)은 공용 저장소에 저장되어 모든 기기에 함께 반영됩니다.</div>
+  </div>`;
+  return html;
+}
+
+// ═══════════════════════════════════════════════════════
+// ★ 특보(속보) 관리 — 관리자 전용, 통역 횟수·통역비 집계에 반영
+// ═══════════════════════════════════════════════════════
+function renderSpecialTab(){
+  const data=getData(curY,curM);
+  if(!data.specials)data.specials=[];
+  const total=daysInMonth(curY,curM);
+  let dateOptions='';
+  for(let d=1;d<=total;d++){ dateOptions+=`<option value="${d}">${curM}.${d}(${DAYKO[getDow(curY,curM,d)]})</option>`; }
+  const nameOptions=INTERPRETERS.map(i=>`<option value="${i.name}">${i.name}</option>`).join('');
+  let listHtml='';
+  if(data.specials.length===0){
+    listHtml=`<div style="color:#888;padding:10px 4px;">등록된 특보가 없습니다.</div>`;
+  } else {
+    listHtml=data.specials.slice().sort((a,b)=>a.date-b.date).map(sp=>{
+      const c=colorMap[sp.name];
+      return `<div class="interp-row">
+        <span style="min-width:64px;font-weight:700;color:#1a3a6a;">${curM}.${sp.date}(${DAYKO[getDow(curY,curM,sp.date)]})</span>
+        <span style="min-width:44px;font-weight:800;color:${sp.broadcaster==='KBS'?'#1a3a7a':'#5a1a8a'};">${sp.broadcaster}</span>
+        <span class="interp-name-label" style="${c?`background:${c.bg};color:${c.text};padding:2px 8px;border-radius:6px;`:''}flex:none;">${sp.name}</span>
+        <span style="color:#888;flex:1;min-width:80px;">${sp.note||''}</span>
+        <span style="font-weight:700;color:#1a5c1a;">${(sp.fee||0).toLocaleString()}원</span>
+        <button class="interp-del-btn" onclick="deleteSpecial('${sp.id}')">🗑 삭제</button>
+      </div>`;
+    }).join('');
+  }
+  return `<div>
+    <div style="margin-bottom:10px;color:#666;">뉴스특보(속보)가 발생했을 때 여기서 등록하면 <b>통역 횟수</b>와 <b>통역비</b> 집계에 자동으로 더해집니다. 배정표에는 표시되지 않고 관리자에게만 보입니다.</div>
+    <div class="interp-manage-list">${listHtml}</div>
+    <div class="interp-add-form">
+      <h4>＋ ${curY}년 ${curM}월 특보 추가</h4>
+      <div class="form-row">
+        <label>날짜</label>
+        <select class="form-input" id="spDate">${dateOptions}</select>
+        <label>방송사</label>
+        <select class="form-input" id="spBroadcaster" onchange="onSpBroadcasterChange()">
+          <option value="KBS">KBS</option>
+          <option value="G1">G1</option>
+        </select>
+      </div>
+      <div class="form-row">
+        <label>통역사</label>
+        <select class="form-input" id="spName">${nameOptions}</select>
+        <label>통역비</label>
+        <input type="number" class="form-input" id="spFee" value="56100" style="width:110px;">
+        <span style="color:#888;font-size:12px;">원</span>
+      </div>
+      <div class="form-row">
+        <label>메모</label>
+        <input type="text" class="form-input" id="spNote" placeholder="예: 오전 지진 특보" style="flex:1;min-width:120px;">
+      </div>
+      <button class="form-btn form-btn-primary" onclick="addSpecial()">추가</button>
+    </div>
+  </div>`;
+}
+function onSpBroadcasterChange(){
+  const b=document.getElementById('spBroadcaster').value;
+  document.getElementById('spFee').value=b==='KBS'?56100:100000;
+}
+function addSpecial(){
+  const dateEl=document.getElementById('spDate'),nameEl=document.getElementById('spName');
+  if(!dateEl||!nameEl||!nameEl.value){alert('통역사를 선택하세요.');return;}
+  const date=parseInt(dateEl.value);
+  const broadcaster=document.getElementById('spBroadcaster').value;
+  const name=nameEl.value;
+  const fee=parseInt(document.getElementById('spFee').value)||0;
+  const note=document.getElementById('spNote').value.trim();
+  const data=getData(curY,curM);
+  if(!data.specials)data.specials=[];
+  data.specials.push({id:'sp'+Date.now()+Math.random().toString(36).slice(2,7),date,broadcaster,name,fee,note});
+  renderAdminPanel();
+  renderAll();
+  markUnsaved();
+  showSaveToast('✅ 특보가 추가되었습니다.');
+}
+function deleteSpecial(id){
+  if(!confirm('이 특보 기록을 삭제하시겠습니까?'))return;
+  const data=getData(curY,curM);
+  data.specials=(data.specials||[]).filter(sp=>sp.id!==id);
+  renderAdminPanel();
+  renderAll();
+  markUnsaved();
+}
+
+// ★ 핵심 수정: openInterpEdit — color input 값을 확실히 세팅
+function openInterpEdit(idx){
+  interpEditTarget=idx;
+  document.getElementById('interpEditTitle').textContent=idx===null?'통역사 추가':'통역사 수정';
+  if(idx!==null){
+    const i=INTERPRETERS[idx];
+    document.getElementById('editName').value=i.name;
+    // color input은 #rrggbb 소문자 6자리만 허용 — 정규화 후 세팅
+    document.getElementById('editBg').value=normalizeHex(i.bg);
+    document.getElementById('editText').value=normalizeHex(i.text);
+  } else {
+    document.getElementById('editName').value='';
+    document.getElementById('editBg').value='#ffe0b0';
+    document.getElementById('editText').value='#6a3800';
+  }
+  updateInterpPreview();
+  document.getElementById('interpEditModal').classList.add('open');
+}
+
+// ★ 핵심 수정: hex 색상 정규화 함수
+function normalizeHex(hex){
+  if(!hex) return '#000000';
+  hex=hex.trim().toLowerCase();
+  if(!hex.startsWith('#')) hex='#'+hex;
+  // 3자리 → 6자리 변환
+  if(/^#[0-9a-f]{3}$/.test(hex)){
+    hex='#'+hex[1]+hex[1]+hex[2]+hex[2]+hex[3]+hex[3];
+  }
+  if(/^#[0-9a-f]{6}$/.test(hex)) return hex;
+  return '#000000';
+}
+
+function closeInterpEdit(){ document.getElementById('interpEditModal').classList.remove('open'); }
+function updateInterpPreview(){
+  const name=document.getElementById('editName').value||'이름';
+  const bg=document.getElementById('editBg').value;
+  const text=document.getElementById('editText').value;
+  const p=document.getElementById('interpPreview');
+  p.textContent=name; p.style.background=bg; p.style.color=text;
+}
+document.getElementById('editName').addEventListener('input',updateInterpPreview);
+document.getElementById('editBg').addEventListener('input',updateInterpPreview);
+document.getElementById('editText').addEventListener('input',updateInterpPreview);
+
+// ★ 핵심 수정: saveInterpEdit — color input 값 직접 읽기 + localStorage 저장
+async function saveInterpEdit(){
+  const name=document.getElementById('editName').value.trim();
+  if(!name){alert('이름을 입력하세요.');return;}
+  const bgEl=document.getElementById('editBg');
+  const textEl=document.getElementById('editText');
+  // color input의 실제 현재값을 읽음
+  const bg=bgEl.value||'#ffe0b0';
+  const text=textEl.value||'#6a3800';
+
+  const previous=INTERPRETERS.map(i=>({...i}));
+  const oldName=interpEditTarget===null?null:INTERPRETERS[interpEditTarget].name;
+  if(interpEditTarget===null){
+    INTERPRETERS.push({name,bg,text});
+    BASE_COLORS[name]={bg,text};
+  } else {
+    INTERPRETERS[interpEditTarget]={name,bg,text};
+    if(oldName!==name){
+      BASE_COLORS[name]=BASE_COLORS[oldName]||{bg,text};
+      delete BASE_COLORS[oldName];
+      removeLocalColor(oldName);
+    }
+  }
+  setLocalColor(name,bg,text); // 이 기기에만 색상 적용
+
+  rebuildColorMap();
+  try{await saveInterpreters();}
+  catch(e){INTERPRETERS=previous;rebuildColorMap();alert('저장에 실패했습니다: '+e.message);return;}
+
+  closeInterpEdit();
+  renderAdminPanel();
+  renderLegend();
+  renderAll();
+  showSaveToast('✅ 통역사 정보가 저장되었습니다.');
+}
+
+async function deleteInterp(idx){
+  if(!confirm(`"${INTERPRETERS[idx].name}"을(를) 삭제하시겠습니까?`))return;
+  const previous=INTERPRETERS.map(i=>({...i}));
+  const delName=INTERPRETERS[idx].name;
+  INTERPRETERS.splice(idx,1);
+  removeLocalColor(delName);
+  delete BASE_COLORS[delName];
+  rebuildColorMap();
+  try{await saveInterpreters();}
+  catch(e){INTERPRETERS=previous;rebuildColorMap();alert('저장에 실패했습니다: '+e.message);return;}
+  renderAdminPanel();
+  renderLegend();
+  renderAll();
+}
+
+// ═══════════════════════════════════════════════════════
+// 기존 로직
+// ═══════════════════════════════════════════════════════
+const DAYKO=['일','월','화','수','목','금','토'];
+const HOLIDAY_DB={
+  // 2026년
+  '2026-1':{1:'신정'},
+  '2026-2':{16:'설날',17:'설날',18:'설날'},
+  '2026-3':{1:'삼일절',2:'삼일절(대체)'},
+  '2026-4':{},
+  '2026-5':{5:'어린이날',24:'부처님오신날',25:'부처님오신날(대체)'},
+  '2026-6':{6:'현충일'},
+  '2026-7':{17:'제헌절'},
+  '2026-8':{15:'광복절',17:'광복절(대체)'},
+  '2026-9':{24:'추석',25:'추석',26:'추석'},
+  '2026-10':{3:'개천절',5:'개천절(대체)',9:'한글날'},
+  '2026-11':{},
+  '2026-12':{25:'크리스마스'},
+  // 2027년
+  '2027-1':{1:'신정'},
+  '2027-2':{6:'설날',7:'설날',8:'설날',9:'설날'},
+  '2027-3':{1:'삼일절'},
+  '2027-4':{},
+  '2027-5':{5:'어린이날',13:'부처님오신날'},
+  '2027-6':{6:'현충일',7:'현충일(대체)'},
+  '2027-7':{17:'제헌절'},
+  '2027-8':{15:'광복절',16:'광복절(대체)'},
+  '2027-9':{14:'추석',15:'추석',16:'추석'},
+  '2027-10':{3:'개천절',4:'개천절(대체)',9:'한글날',11:'한글날(대체)'},
+  '2027-11':{},
+  '2027-12':{25:'크리스마스',27:'크리스마스(대체)'},
+  // 2028년
+  '2028-1':{1:'신정'},
+  '2028-2':{24:'설날',25:'설날',26:'설날',27:'설날'},
+  '2028-3':{1:'삼일절'},
+  '2028-4':{},
+  '2028-5':{5:'어린이날',24:'부처님오신날'},
+  '2028-6':{6:'현충일'},
+  '2028-7':{17:'제헌절'},
+  '2028-8':{15:'광복절'},
+  '2028-9':{18:'추석',19:'추석',20:'추석'},
+  '2028-10':{3:'개천절',9:'한글날'},
+  '2028-11':{},
+  '2028-12':{25:'크리스마스'},
+  // 2029년
+  '2029-1':{1:'신정'},
+  '2029-2':{12:'설날',13:'설날',14:'설날',15:'설날'},
+  '2029-3':{1:'삼일절'},
+  '2029-4':{},
+  '2029-5':{5:'어린이날'},
+  '2029-6':{6:'현충일'},
+  '2029-7':{17:'제헌절'},
+  '2029-8':{15:'광복절'},
+  '2029-9':{7:'추석',8:'추석',9:'추석'},
+  '2029-10':{3:'개천절',9:'한글날'},
+  '2029-11':{},
+  '2029-12':{25:'크리스마스'},
+  // 2030년
+  '2030-1':{1:'신정'},
+  '2030-2':{1:'설날',2:'설날',3:'설날'},
+  '2030-3':{1:'삼일절'},
+  '2030-4':{},
+  '2030-5':{5:'어린이날',15:'부처님오신날'},
+  '2030-6':{6:'현충일'},
+  '2030-7':{17:'제헌절'},
+  '2030-8':{15:'광복절'},
+  '2030-9':{25:'추석',26:'추석',27:'추석',28:'추석'},
+  '2030-10':{3:'개천절',9:'한글날'},
+  '2030-11':{},
+  '2030-12':{25:'크리스마스'},
+};
+function getHols(y,m){ return HOLIDAY_DB[`${y}-${m}`]||{}; }
+function getDow(y,m,d){ return new Date(y,m-1,d).getDay(); }
+function daysInMonth(y,m){ return new Date(y,m,0).getDate(); }
+function getUserWeek(y,m,d){ let fs=1; while(getDow(y,m,fs)!==0)fs++; if(d<fs)return 0; return Math.ceil((d-fs+1)/7); }
+
+const BASE_Y=2026,BASE_M=3;
+const APP_VERSION="2.1"; // 2026-2030 공휴일 확장 버전
+const guwCache={};
+function getMaxUW(y,m){ const total=daysInMonth(y,m);let fs=1;while(getDow(y,m,fs)!==0)fs++;if(total<fs)return 0;return Math.ceil((total-fs+1)/7); }
+function getMonthStartGUW(y,m){
+  const key=`${y}-${m}`;if(guwCache[key]!==undefined)return guwCache[key];
+  if(y===BASE_Y&&m===BASE_M){guwCache[key]=1;return 1;}
+  let py=y,pm=m-1;if(pm===0){pm=12;py--;}
+  const v=getMonthStartGUW(py,pm)+getMaxUW(py,pm);guwCache[key]=v;return v;
+}
+function getGUW(y,m,localUW){
+  if(localUW===0){let py=y,pm=m-1;if(pm===0){pm=12;py--;}return getMonthStartGUW(py,pm)+getMaxUW(py,pm)-1;}
+  return getMonthStartGUW(y,m)+localUW-1;
+}
+
+function loadPatterns(){
+  try{
+    const saved=localStorage.getItem('rotation_patterns_v2');
+    if(saved){
+      const p=JSON.parse(saved);
+      // 기본 구조 검증
+      if(!Array.isArray(p.kbs9)||!Array.isArray(p.gwang)||!Array.isArray(p.g1)||!Array.isArray(p.s930)){
+        // 구조가 이상하면 리셋
+        localStorage.removeItem('rotation_patterns_v2');
+        return getDefaultPatterns();
+      }
+      if(p.kbs9.length===0||p.gwang.length===0||p.g1.length===0||p.s930.length===0){
+        // 빈 배열이면 리셋
+        localStorage.removeItem('rotation_patterns_v2');
+        return getDefaultPatterns();
+      }
+      
+      // 데이터 유효성 검증 (통역사 이름이 있는지)
+      const hasValidGwang = p.gwang.some(g => g.front && g.front.trim() !== '');
+      const hasValidS930 = p.s930.some(s => s.front && s.front.trim() !== '');
+      const hasValidG1 = p.g1.some(g => g.front && g.front.trim() !== '');
+      
+      if(!hasValidGwang || !hasValidS930 || !hasValidG1){
+        // 유효한 데이터가 없으면 리셋
+        localStorage.removeItem('rotation_patterns_v2');
+        return getDefaultPatterns();
+      }
+      
+      // 호환성: s930이 없으면 기본값 추가
+      if(!Array.isArray(p.s930)||p.s930.length===0){
+        p.s930=getDefaultPatterns().s930;
+      }
+      // 호환성: gwang에 split이 없으면 추가
+      if(p.gwang&&p.gwang.length>0&&p.gwang[0].split===undefined){
+        const defaults=getDefaultPatterns().gwang;
+        p.gwang=p.gwang.map((g,i)=>({front:g.front||'',back:g.back||'',split:defaults[i]?.split??3}));
+      }
+      // 호환성: s930에 split이 없으면 추가
+      if(p.s930&&p.s930.length>0&&p.s930[0].split===undefined){
+        const defaults=getDefaultPatterns().s930;
+        p.s930=p.s930.map((s,i)=>({front:s.front||'',back:s.back||'',split:defaults[i]?.split??2}));
+      }
+      // 호환성: g1에 center가 있으면 제거
+      if(p.g1&&p.g1.length>0&&p.g1[0].center!==undefined){
+        p.g1=p.g1.map(g=>({front:g.front||'',back:g.back||''}));
+      }
+      return p;
+    }
+  }catch(e){
+    // 파싱 오류면 localStorage 삭제하고 초기화
+    localStorage.removeItem('rotation_patterns_v2');
+  }
+  return getDefaultPatterns();
+}
+function getDefaultPatterns(){
+  return{
+    kbs9:[{front:'민경주',back:'김주영'},{front:'이현정',back:'원태연'},{front:'김주영',back:'민경주'},{front:'원태연',back:'이현정'}],
+    kbs9_split:2,
+    gwang:[{front:'손경애',back:'김정희',split:3},{front:'김정희',back:'김윤선',split:3},{front:'김윤선',back:'강민혁',split:3},{front:'강민혁',back:'손경애',split:3}],
+    s930:[{front:'김정희',back:'김윤선',split:2},{front:'김윤선',back:'강민혁',split:2},{front:'강민혁',back:'손경애',split:2},{front:'손경애',back:'김정희',split:2}],
+    g1:[{front:'김유진',back:'이성혜'},{front:'이성혜',back:'원태연'},{front:'원태연',back:'김유진'}]
+  };
+}
+async function savePatterns(){ 
+  localStorage.setItem('rotation_patterns_v2',JSON.stringify(PATTERNS));
+  const ok=await supabaseClient.savePatterns(PATTERNS);
+  if(!ok) showSaveToast('순환패턴 저장에 실패했습니다.',true);
+}
+
+// 앱 시작 시 호출 (Supabase에서 최신 패턴 확인)
+async function initializePatterns(){
+  const supabaseData = await supabaseClient.getPatterns();
+  if(supabaseData){
+    // Supabase에서 가져온 데이터를 localStorage에 저장
+    localStorage.setItem('rotation_patterns_v2', JSON.stringify(supabaseData));
+    PATTERNS = supabaseData;
+  }else{
+    // Supabase에 없으면 localStorage 사용
+    PATTERNS = loadPatterns();
+  }
+}
+
+let PATTERNS;
+
+// 2026년 10월부터 적용하는 새 순환표. 순환 주는 일요일에 시작하며 첫 주 기준일은 2026-09-27.
+const NEW_ROTATION_START = new Date(2026, 8, 27);
+function getNewRotationWeek(y,m,d){
+  const date = new Date(y, m-1, d);
+  return Math.floor((date - NEW_ROTATION_START) / (7*24*60*60*1000));
+}
+function calcKBS9(guw,dow,y,m,d){
+  if(y>2026 || (y===2026 && m>=10)){
+    const week=((getNewRotationWeek(y,m,d)%4)+4)%4;
+    const front=['김주영','이현정','민경주','이현정'][week];
+    return dow<=2?front:'한수현';
+  }
+  const cy=((guw-1)%PATTERNS.kbs9.length+PATTERNS.kbs9.length)%PATTERNS.kbs9.length;const p=PATTERNS.kbs9[cy];return dow<=PATTERNS.kbs9_split?p.front:p.back;
+}
+function calcGwang(guw,dow,y,m,d){
+  if(y>2026 || (y===2026 && m>=10)) return dow<=2?'손경애':'한수현';
+  const cy=((guw-1)%PATTERNS.gwang.length+PATTERNS.gwang.length)%PATTERNS.gwang.length;
+  const p=PATTERNS.gwang[cy];
+  return dow<=p.split?p.front:p.back;
+}
+function calc930(guw,dow,y,m,d){
+  if(y>2026 || (y===2026 && m>=10)){
+    const week=((getNewRotationWeek(y,m,d)%2)+2)%2;
+    return dow<=2?(week===0?'김정희':'김윤선'):'한수현';
+  }
+  const cy=((guw-1)%PATTERNS.s930.length+PATTERNS.s930.length)%PATTERNS.s930.length;
+  const p=PATTERNS.s930[cy];
+  return dow<=p.split?p.front:p.back;
+}
+function calcG1(guw,dow,y,m,d){
+  if(y>2026 || (y===2026 && m>=10)){
+    const week=((getNewRotationWeek(y,m,d)%3)+3)%3;
+    const p=[{front:'김유진',back:'이성혜'},{front:'원태연',back:'김유진'},{front:'이성혜',back:'원태연'}][week];
+    return dow<=3?p.front:p.back;
+  }
+  const cy=((guw-1)%PATTERNS.g1.length+PATTERNS.g1.length)%PATTERNS.g1.length;
+  const p=PATTERNS.g1[cy];
+  // 2명 순환: 월~수(dow 1~3)와 목~금(dow 4~5)이 다른 사람 담당
+  return dow<=3?p.front:p.back;
+}
+
+// 서버에 저장된 월별 일정도 2026년 10월 이후에는 새 KBS 9시 순환을 반영한다.
+function applyKBS9Rotation(y,m,kbs){
+  if(!(y>2026 || (y===2026 && m>=10)) || !kbs) return kbs;
+  for(let d=1;d<=daysInMonth(y,m);d++){
+    if(!kbs[d]) kbs[d]={광장:null,'930':null,'9시':null};
+    const dow=getDow(y,m,d);
+    kbs[d]['9시']=dow===6?null:calcKBS9(0,dow,y,m,d);
+  }
+  return kbs;
+}
+
+const editStore={};
+const serverLoaded={};
+
+function storeKey(y,m){ return `${y}-${m}`; }
+function buildData(y,m){
+  const hols=getHols(y,m),total=daysInMonth(y,m),kbs={},g1={};
+  for(let d=1;d<=total;d++){
+    const w=getDow(y,m,d),uw=getUserWeek(y,m,d),guw=getGUW(y,m,uw);
+    kbs[d]={광장:null,'930':null,'9시':null};g1[d]={G1:null};
+    if(w>=1&&w<=5){
+      kbs[d]['광장']=calcGwang(guw,w,y,m,d);
+      kbs[d]['930']=calc930(guw,w,y,m,d);
+    }
+    if(w!==6)kbs[d]['9시']=calcKBS9(guw,w,y,m,d);
+    if(w>=1&&w<=5&&!hols[d])g1[d]['G1']=calcG1(guw,w,y,m,d);
+  }
+  return{kbs,g1,specials:[]};
+}
+function getData(y,m){ const k=storeKey(y,m);if(!editStore[k])editStore[k]=buildData(y,m);if(!editStore[k].specials)editStore[k].specials=[];return editStore[k]; }
+
+function loadFromServer(y,m){
+  return new Promise((resolve)=>{
+    const k=storeKey(y,m);
+    rpc('news_get_schedule',{p_year:y,p_month:m}).then(r=>r?[r]:[])
+    .then(rows=>{
+      if(rows&&rows.length>0&&rows[0].kbs){
+        // 서버에 저장된 일정은 관리자가 수정한 값을 그대로 사용한다.
+        const kbs=rows[0].kbs;
+        editStore[k]={kbs,g1:rows[0].g1||{},specials:rows[0].specials||[]};
+      }
+      resolve();
+    })
+    .catch(()=>resolve());
+  });
+}
+function manualSave(){ saveToServer(curY,curM); }
+function saveToServer(y,m){
+  const d=getData(y,m);
+  const btn=document.getElementById('saveBtn');
+  if(btn){btn.textContent='저장 중...';btn.classList.add('saving');btn.disabled=true;}
+  rpc('news_save_schedule',{p_year:y,p_month:m,p_kbs:d.kbs,p_g1:d.g1,p_specials:d.specials||[]})
+  .then(()=>{
+    showSaveToast('✓ 저장되었습니다');
+    if(btn){btn.textContent='✓ 저장됨';btn.classList.remove('saving');setTimeout(()=>{btn.textContent='💾 저장';btn.style.background='';btn.style.borderColor='';btn.disabled=false;},2000);}
+  })
+  .catch(err=>{
+    showSaveToast('저장 실패: '+err.message,true);
+    if(btn){btn.textContent='💾 저장';btn.classList.remove('saving');btn.disabled=false;}
+  });
+}
+
+function showSaveToast(msg,isError){
+  let toast=document.getElementById('saveToast');
+  if(!toast){toast=document.createElement('div');toast.id='saveToast';toast.style.cssText='position:fixed;bottom:20px;right:20px;padding:8px 16px;border-radius:8px;font-weight:700;z-index:9999;transition:opacity 0.5s;';document.body.appendChild(toast);}
+  toast.textContent=msg;toast.style.background=isError?'#e74c3c':'#27ae60';toast.style.color='white';toast.style.opacity='1';
+  clearTimeout(toast._timer);toast._timer=setTimeout(()=>{toast.style.opacity='0';},3000);
+}
+
+setInterval(async()=>{
+  const k=storeKey(curY,curM);const before=JSON.stringify(editStore[k]);
+  await loadFromServer(curY,curM);
+  if(JSON.stringify(editStore[k])!==before)renderAll();
+},30000);
+
+const _now=new Date();
+let curY=_now.getFullYear(),curM=_now.getMonth()+1;
+
+function renderTabs(){
+  const bar=document.getElementById('tabBar');bar.innerHTML='';
+  const months=[];
+  for(let delta=-1;delta<=1;delta++){
+    let my=curY,mm=curM+delta;
+    if(mm<=0){mm+=12;my--;}if(mm>12){mm-=12;my++;}
+    if(my<2026||(my===2026&&mm<3))continue;
+    months.push({y:my,m:mm});
+  }
+  months.forEach(({y,m},i)=>{
+    const btn=document.createElement('button');
+    const active=(y===curY&&m===curM);
+    btn.className='tab-btn'+(active?' active':'');
+    btn.textContent=`${y}년 ${m}월`;
+    if(i===0)btn.style.cssText='border-radius:7px 0 0 7px;';
+    else if(months.length===1)btn.style.cssText='border-radius:7px;';
+    else if(i===months.length-1)btn.style.cssText='border-radius:0 7px 7px 0;border-left:none;';
+    else btn.style.borderLeft='none';
+    btn.onclick=async()=>{curY=y;curM=m;syncPicker();if(!serverLoaded[storeKey(y,m)]){renderSkeleton(y,m);await loadFromServer(y,m);}renderAll();if(isAdmin)renderAdminPanel();};
+    bar.appendChild(btn);
+  });
+}
+
+function syncPicker(){ document.getElementById('monthPicker').value=`${curY}-${String(curM).padStart(2,'0')}`; }
+
+document.getElementById('monthPicker').addEventListener('change',async function(){
+  const[y,m]=this.value.split('-').map(Number);
+  if(y<2026||(y===2026&&m<3)){this.value=`${curY}-${String(curM).padStart(2,'0')}`;showSaveToast('⚠ 2026년 3월 이후만 조회 가능합니다.',true);return;}
+  curY=y;curM=m;renderSkeleton(y,m);await loadFromServer(y,m);renderAll();if(isAdmin)renderAdminPanel();
+});
+
+function renderLegend(){
+  let legendHtml=INTERPRETERS.map(i=>
+    `<span class="legend-chip" ${isAdmin?'draggable="true"':''} data-legend-name="${i.name}"
+      style="background:${i.bg};color:${i.text};cursor:${isAdmin?'grab':'default'}"
+      title="${isAdmin?'드래그해서 칸에 놓으면 변경됩니다':'관리자만 변경 가능'}">${i.name}</span>`
+  ).join('');
+  if(isAdmin){
+    legendHtml+=`<span class="legend-chip" draggable="true" data-legend-name="${PENDING_DELETE}"
+      style="${PENDING_DELETE_STYLE}cursor:grab;"
+      title="드래그해서 칸에 놓으면 대기중삭제 배너로 변경됩니다">⚠ ${PENDING_DELETE}</span>`;
+  }
+  document.getElementById('legend').innerHTML=legendHtml;
+  if(isAdmin){
+    document.querySelectorAll('.legend-chip[data-legend-name]').forEach(chip=>{
+      chip.addEventListener('dragstart',e=>{legendDragName=chip.dataset.legendName;chip.style.opacity='0.5';e.dataTransfer.effectAllowed='copy';});
+      chip.addEventListener('dragend',()=>{chip.style.opacity='1';legendDragName=null;});
+    });
+  }
+}
+
+function buildDateGroups(y,m){
+  const total=daysInMonth(y,m),hols=getHols(y,m),groups=[];
+  let curGroup=null,lastUW=null;
+  for(let d=1;d<=total;d++){
+    const w=getDow(y,m,d);if(w===6)continue;
+    const uw=getUserWeek(y,m,d),uwKey=uw===0?'pre':uw;
+    if(uwKey!==lastUW){curGroup={uw:uwKey,days:[]};groups.push(curGroup);lastUW=uwKey;}
+    curGroup.days.push({d,dow:w,isHoliday:!!hols[d],holidayName:hols[d]||''});
+  }
+  return groups;
+}
+function buildWeekSlots(y,m,group){
+  const days=group.days;if(!days.length)return days;
+  const DOW_ORDER=[0,1,2,3,4,5];const dayMap={};days.forEach(day=>{dayMap[day.dow]=day;});
+  return DOW_ORDER.map(dow=>dayMap[dow]||null);
+}
+
+function renderKBSTable(y,m){
+  const{kbs}=getData(y,m),{g1}=getData(y,m),hols=getHols(y,m),groups=buildDateGroups(y,m);
+  // 개인 입장 시: 내 일정은 강조, 다른 사람 일정은 흐리게 (관리자는 그대로)
+  const onlyMine=(!isAdmin&&MY_NAME)?MY_NAME:'';
+  const chipStyle=n=>{
+    if(!onlyMine) return cs(n);
+    return n===onlyMine
+      ? cs(n)+';border:3px solid #000;box-shadow:0 0 0 2px #fff,0 2px 8px rgba(0,0,0,.45);font-weight:900;'
+      : cs(n)+';opacity:0.45;';
+  };
+  const kbsTag=`kbs${y}-${m}`,g1Tag=`g1${y}-${m}`;
+  const KBS_PROGS=[['광장','KBS 뉴스광장'],['930','KBS 930뉴스'],['9시','KBS 뉴스9']];
+  const ALL_PROGS=[...KBS_PROGS,['G1','G1뉴스']];
+  let html='';
+  groups.forEach(g=>{
+    const slots=buildWeekSlots(y,m,g);
+    html+=`<div class="week-block"><div class="table-scroll"><table class="sched-table">`;
+    html+=`<colgroup><col class="col-label">`;slots.forEach(()=>{html+=`<col class="col-date">`;});html+=`</colgroup>`;
+    html+=`<tr>`;
+    html+=`<th class="row-label" style="background:#4a6fa0;color:white;font-weight:700;min-width:90px;">프로그램</th>`;
+    slots.forEach(slot=>{
+      if(!slot){html+=`<th style="background:#dde3ee;color:#aaa;min-width:52px;white-space:nowrap;font-weight:400;">–</th>`;}
+      else{
+        const{d,dow,isHoliday,holidayName}=slot;
+        const isSun=(dow===0),isRed=isHoliday||isSun;
+        const holMark=isHoliday?`<span style="font-size:9px;"> (${holidayName})</span>`:'';
+        html+=`<th style="background:${isRed?'#f5dede':'#dde3ee'};color:${isRed?'#c0392b':'#2d4a7a'};min-width:52px;white-space:nowrap;font-weight:700;">${m}.${d}(${DAYKO[dow]})${holMark}</th>`;
+      }
+    });
+    html+=`</tr>`;
+    ALL_PROGS.forEach(([prog,label])=>{
+      const isG1=(prog==='G1');
+      html+=`<tr data-prog-row="${prog}">`;
+      const labelBg=isG1?'#eee8f8':'#f0f3f8',labelColor=isG1?'#4a1a7a':'#1a3a6a';
+      html+=`<td class="row-label" style="background:${labelBg};color:${labelColor};white-space:nowrap;font-weight:700;">${label}</td>`;
+      slots.forEach(slot=>{
+        if(!slot){html+=`<td class="td-empty"></td>`;return;}
+        const{d,dow,isHoliday}=slot;
+        if(isG1){
+          if(dow>=1&&dow<=5&&!isHoliday){
+            const name=g1[d]&&g1[d]['G1'],g1Attrs=`data-dtype="${g1Tag}" data-date="${d}" data-prog="G1"`;
+            if(!name)html+=`<td class="empty-dash" ${isAdmin?g1Attrs:''}>–</td>`;
+            else html+=`<td ${isAdmin?g1Attrs:''}><span class="name-chip" style="${chipStyle(name)}" ${isAdmin?`${g1Attrs} draggable="true"`:''}>${name}</span></td>`;
+          } else html+=`<td class="td-empty"></td>`;
+        } else {
+          const adminAttrs=`data-dtype="${kbsTag}" data-date="${d}" data-prog="${prog}"`;
+          if((prog==='광장'||prog==='930')&&dow===0)html+=`<td class="td-empty"></td>`;
+          else{
+            const name=kbs[d]&&kbs[d][prog];
+            if(!name)html+=`<td class="empty-dash" ${isAdmin?adminAttrs:''}>–</td>`;
+            else html+=`<td ${isAdmin?adminAttrs:''}><span class="name-chip" style="${chipStyle(name)}" ${isAdmin?`${adminAttrs} draggable="true"`:''}>${name}</span></td>`;
+          }
+        }
+      });
+      html+=`</tr>`;
+    });
+    html+=`</table></div></div>`;
+  });
+  return html;
+}
+
+function isMobileDevice(){ return window.innerWidth<768||/Android|webOS|iPhone|iPad|iPod|BlackBerry|IEMobile|Opera Mini/i.test(navigator.userAgent); }
+
+function getFilteredTableHTML(type){
+  const section=document.querySelector('.section');let html=section?section.innerHTML:'';
+  if(type==='kbs')html=html.replace(/<tr[^>]*data-prog-row="G1"[^>]*>[\s\S]*?<\/tr>/g,'');
+  else{html=html.replace(/<tr[^>]*data-prog-row="광장"[^>]*>[\s\S]*?<\/tr>/g,'');html=html.replace(/<tr[^>]*data-prog-row="930"[^>]*>[\s\S]*?<\/tr>/g,'');html=html.replace(/<tr[^>]*data-prog-row="9시"[^>]*>[\s\S]*?<\/tr>/g,'');}
+  return html;
+}
+
+function doPrintPC(type){
+  const y=curY,m=curM;
+  const title=type==='kbs'?`KBS 뉴스 ${y}년 ${m}월 통역 배정`:`G1뉴스 ${y}년 ${m}월 통역 배정`;
+  const tableHTML=getFilteredTableHTML(type);
+  const printWin=window.open('','_blank','width=1000,height=700');
+  printWin.document.write(`<!DOCTYPE html><html><head><meta charset="UTF-8"><title>${title}</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;600;700;800&display=swap">
+<style>@page{size:A4 portrait;margin:0;}*{box-sizing:border-box;margin:0;padding:0;-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important;}body{font-family:'Noto Sans KR',sans-serif;background:white;width:100%;padding:0 8mm;}table.pg{width:100%;}table.pg>thead>tr>td,table.pg>tfoot>tr>td,table.pg>tbody>tr>td{border:none;padding:0;text-align:left;white-space:normal;font-size:inherit;background:none;}div.pg-space{height:20mm;}h1.print-title{text-align:center;font-size:27px;font-weight:800;color:#1a2a4a;margin-bottom:18px;}.section{width:100%;}.week-block{page-break-inside:avoid;margin-bottom:0;width:100%;}.table-scroll{width:100%;overflow:visible;display:block;}table{border-collapse:collapse;table-layout:fixed;width:100%;}th{font-size:18px;font-weight:700;padding:6px 3px;text-align:center;border:1px solid #3d5a8a;white-space:nowrap;background:#2d4a7a;color:white;}th.row-label{background:#1a3a6a;}td{font-size:18px;padding:6px 3px;text-align:center;border:1px solid #d8dde5;vertical-align:middle;white-space:nowrap;}td.row-label{background:#f0f3f8;font-weight:700;color:#1a3a6a;}td.empty-dash{color:#ccc;background:#fafafa;}td.td-empty{background:#f8f8f8;}.name-chip{display:inline-block;padding:3px 9px;border-radius:8px;font-size:16.5px;font-weight:700;white-space:nowrap;}</style>
+</head><body><table class="pg"><thead><tr><td><div class="pg-space"></div></td></tr></thead><tbody><tr><td><h1 class="print-title">${title}</h1><div class="section">${tableHTML}</div></td></tr></tbody><tfoot><tr><td><div class="pg-space"></div></td></tr></tfoot></table>
+<script>window.onload=function(){window.print();window.close();};<\/script></body></html>`);
+  printWin.document.close();
+}
+
+async function doPrintMobile(type){
+  const y=curY,m=curM;
+  const filename=type==='kbs'?`KBS뉴스통역배정_${y}년${m}월.pdf`:`G1뉴스통역배정_${y}년${m}월.pdf`;
+  const title=type==='kbs'?`KBS 뉴스 ${y}년 ${m}월 통역 배정`:`G1뉴스 ${y}년 ${m}월 통역 배정`;
+  showSaveToast('📄 PDF 생성 중…');
+  await loadScript('https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js');
+  try{
+    const rows=buildPdfRows(type,y,m);
+    const SCALE=2,COL_LABEL_W=100,COL_W=74,ROW_H=28,HEAD_H=32,TITLE_H=36,PAD=12;
+    const FONT='맑은 고딕, Apple SD Gothic Neo, Noto Sans KR, sans-serif';
+    if(!rows.length){showSaveToast('⚠ 데이터 없음',true);return;}
+    const colCount=rows[0].cells.length;
+    const totalW=PAD*2+COL_LABEL_W+COL_W*colCount;
+    const totalH=PAD*2+TITLE_H+rows.reduce((s,r)=>s+(r.isSep?6:r.isHead?HEAD_H:ROW_H),0);
+    const cv=document.createElement('canvas');cv.width=totalW*SCALE;cv.height=totalH*SCALE;
+    const ctx=cv.getContext('2d');ctx.scale(SCALE,SCALE);
+    ctx.fillStyle='#ffffff';ctx.fillRect(0,0,totalW,totalH);
+    ctx.fillStyle='#1a2a4a';ctx.font=`800 15px ${FONT}`;ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillText(title,totalW/2,PAD+TITLE_H/2);
+    let cx=PAD,cy2=PAD+TITLE_H;
+    rows.forEach(row=>{
+      if(row.isSep){ctx.fillStyle='#b0bcd4';ctx.fillRect(cx,cy2,totalW-PAD*2,5);cy2+=6;return;}
+      const rh=row.isHead?HEAD_H:ROW_H;
+      ctx.fillStyle=row.labelBg||(row.isHead?'#4a6fa0':'#f0f3f8');ctx.fillRect(cx,cy2,COL_LABEL_W,rh);
+      ctx.strokeStyle='#b0bcd4';ctx.lineWidth=0.5;ctx.strokeRect(cx,cy2,COL_LABEL_W,rh);
+      ctx.fillStyle=row.labelColor||(row.isHead?'#ffffff':'#1a3a6a');ctx.font=`700 ${row.isHead?11:10}px ${FONT}`;ctx.textAlign='center';ctx.textBaseline='middle';
+      ctx.fillText(row.label,cx+COL_LABEL_W/2,cy2+rh/2);
+      row.cells.forEach((cell,i)=>{
+        const x=cx+COL_LABEL_W+i*COL_W;ctx.fillStyle=cell.bg||'#ffffff';ctx.fillRect(x,cy2,COL_W,rh);
+        ctx.strokeStyle='#b0bcd4';ctx.lineWidth=0.5;ctx.strokeRect(x,cy2,COL_W,rh);
+        if(!cell.text||cell.text==='-'){ctx.fillStyle='#cccccc';ctx.font=`400 10px ${FONT}`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('–',x+COL_W/2,cy2+rh/2);return;}
+        if(cell.isChip){
+          const chipPadX=5,tw=Math.min(ctx.measureText(cell.text).width+chipPadX*2,COL_W-4),th2=16;
+          const rx=x+(COL_W-tw)/2,ry=cy2+(rh-th2)/2;
+          roundRect(ctx,rx,ry,tw,th2,4,cell.chipBg||'#eee',cell.chipBorder);
+          ctx.fillStyle=cell.color||'#333';ctx.font=`700 10px ${FONT}`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(cell.text,x+COL_W/2,cy2+rh/2);
+        } else {
+          ctx.fillStyle=cell.color||'#2d4a7a';ctx.font=`${cell.bold?'700':'400'} 10px ${FONT}`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(cell.text,x+COL_W/2,cy2+rh/2);
+        }
+      });
+      cy2+=rh;
+    });
+    const{jsPDF}=window.jspdf;const pdf=new jsPDF({orientation:'portrait',unit:'mm',format:'a4'});
+    const pdfW=pdf.internal.pageSize.getWidth(),pdfH=pdf.internal.pageSize.getHeight();
+    const imgW=cv.width,imgH=cv.height,pageImgH=Math.round(imgW*(pdfH/pdfW));
+    let yOff=0,pg=0;
+    while(yOff<imgH){
+      if(pg>0)pdf.addPage();
+      const sh=Math.min(pageImgH,imgH-yOff);
+      const sc=document.createElement('canvas');sc.width=imgW;sc.height=sh;
+      sc.getContext('2d').drawImage(cv,0,yOff,imgW,sh,0,0,imgW,sh);
+      pdf.addImage(sc.toDataURL('image/jpeg',0.93),'JPEG',0,0,pdfW,sh*(pdfW/imgW));
+      yOff+=sh;pg++;
+    }
+    pdf.save(filename);showSaveToast('✅ PDF 저장 완료!');
+  }catch(e){showSaveToast('⚠ PDF 생성 실패: '+e.message,true);}
+}
+
+function roundRect(ctx,x,y,w,h,r,fill,stroke){
+  ctx.beginPath();ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);ctx.quadraticCurveTo(x+w,y,x+w,y+r);ctx.lineTo(x+w,y+h-r);ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);ctx.lineTo(x+r,y+h);ctx.quadraticCurveTo(x,y+h,x,y+h-r);ctx.lineTo(x,y+r);ctx.quadraticCurveTo(x,y,x+r,y);ctx.closePath();
+  if(fill){ctx.fillStyle=fill;ctx.fill();}if(stroke){ctx.strokeStyle=stroke;ctx.lineWidth=0.5;ctx.stroke();}
+}
+
+function buildPdfRows(type,y,m){
+  const{kbs,g1}=getData(y,m),hols=getHols(y,m),groups=buildDateGroups(y,m);
+  const PROGS=type==='kbs'?[['광장','KBS 뉴스광장'],['930','KBS 930뉴스'],['9시','KBS 뉴스9']]:[['G1','G1뉴스']];
+  const rows=[];let isFirst=true;
+  groups.forEach(g=>{
+    const slots=buildWeekSlots(y,m,g);if(!slots.length)return;
+    if(!isFirst)rows.push({isSep:true,cells:[]});isFirst=false;
+    const headCells=slots.map(slot=>{
+      if(!slot)return{text:'',bg:'#dde3ee',color:'#aaa'};
+      const{d,dow,isHoliday}=slot,isRed=isHoliday||(dow===0);
+      return{text:`${m}.${d}(${DAYKO[dow]})`,bg:isRed?'#f5dede':'#dde3ee',color:isRed?'#c0392b':'#2d4a7a',bold:true};
+    });
+    rows.push({isHead:true,label:'프로그램',labelBg:'#4a6fa0',labelColor:'#ffffff',cells:headCells});
+    PROGS.forEach(([prog,label])=>{
+      const isG1=(prog==='G1'),labelBg=isG1?'#eee8f8':'#f0f3f8',labelColor=isG1?'#4a1a7a':'#1a3a6a';
+      const cells=slots.map(slot=>{
+        if(!slot)return{text:'',bg:'#f8f8f8'};
+        const{d,dow,isHoliday}=slot;
+        if(isG1){
+          if(!(dow>=1&&dow<=5&&!isHoliday))return{text:'',bg:'#f8f8f8'};
+          const name=g1[d]&&g1[d]['G1'];if(!name)return{text:'-',bg:'#fafafa'};
+          const c=colorMap[name];return{text:name,isChip:true,chipBg:c?c.bg:'#eee',chipBorder:c?c.text:'#999',color:c?c.text:'#333',bg:'#ffffff'};
+        } else {
+          if((prog==='광장'||prog==='930')&&dow===0)return{text:'',bg:'#f8f8f8'};
+          const name=kbs[d]&&kbs[d][prog];if(!name)return{text:'-',bg:'#fafafa'};
+          const c=colorMap[name];return{text:name,isChip:true,chipBg:c?c.bg:'#eee',chipBorder:c?c.text:'#999',color:c?c.text:'#333',bg:'#ffffff'};
+        }
+      });
+      rows.push({label,labelBg,labelColor,cells});
+    });
+  });
+  return rows;
+}
+
+function loadScript(src){
+  return new Promise((resolve,reject)=>{
+    if(document.querySelector(`script[src="${src}"]`)){resolve();return;}
+    const s=document.createElement('script');s.src=src;s.onload=resolve;s.onerror=()=>reject(new Error('스크립트 로드 실패: '+src));document.head.appendChild(s);
+  });
+}
+
+function doPrint(type){ if(isMobileDevice())doPrintMobile(type);else doPrintPC(type); }
+function printKBS(){
+  const btn=document.getElementById('btnKBS');if(btn){btn.textContent='⏳ 처리 중…';btn.disabled=true;}
+  Promise.resolve(doPrint('kbs')).finally(()=>{if(btn){setTimeout(()=>{btn.textContent=isMobileDevice()?'📄 KBS PDF저장':'🖨️ KBS 프린트';btn.disabled=false;},2000);}});
+}
+function printG1(){
+  const btn=document.getElementById('btnG1');if(btn){btn.textContent='⏳ 처리 중…';btn.disabled=true;}
+  Promise.resolve(doPrint('g1')).finally(()=>{if(btn){setTimeout(()=>{btn.textContent=isMobileDevice()?'📄 G1 PDF저장':'🖨️ G1 프린트';btn.disabled=false;},2000);}});
+}
+function updatePrintBtnLabels(){
+  const mobile=isMobileDevice();
+  const kbsBtn=document.getElementById('btnKBS'),g1Btn=document.getElementById('btnG1');
+  if(kbsBtn)kbsBtn.textContent=mobile?'📄 KBS PDF저장':'🖨️ KBS 프린트';
+  if(g1Btn)g1Btn.textContent=mobile?'📄 G1 PDF저장':'🖨️ G1 프린트';
+}
+window.addEventListener('resize',updatePrintBtnLabels);
+
+function applyMobileStyle(){ applyFontSize(); }
+
+function renderSkeleton(y,m){
+  const hols=getHols(y,m),total=daysInMonth(y,m);
+  const PROGS=['KBS 뉴스광장','KBS 930뉴스','KBS 뉴스9','G1뉴스'];
+  const groups=buildDateGroups(y,m);
+  let html='<div class="section">';
+  groups.forEach(g=>{
+    const slots=buildWeekSlots(y,m,g);
+    html+='<div class="week-block"><div class="table-scroll"><table class="sched-table">';
+    html+='<colgroup><col class="col-label">';slots.forEach(()=>html+='<col class="col-date">');html+='</colgroup>';
+    html+='<tr>';
+    html+='<th class="sk-th-label row-label" style="background:#4a6fa0;min-width:90px;">프로그램</th>';
+    slots.forEach(slot=>{
+      if(!slot){html+='<th style="background:#dde3ee;color:#aaa;">–</th>';}
+      else{const isRed=slot.isHoliday||slot.dow===0;html+=`<th style="background:${isRed?'#f5dede':'#dde3ee'};color:${isRed?'#c0392b':'#2d4a7a'};">${m}.${slot.d}(${DAYKO[slot.dow]})</th>`;}
+    });
+    html+='</tr>';
+    PROGS.forEach(label=>{
+      const isG1=label.includes('G1'),labelBg=isG1?'#eee8f8':'#f0f3f8',labelColor=isG1?'#4a1a7a':'#1a3a6a';
+      html+=`<tr class="sk-prog-row"><td class="row-label" style="background:${labelBg};color:${labelColor};font-weight:700;">${label}</td>`;
+      slots.forEach(slot=>{
+        if(!slot){html+='<td class="td-empty"></td>';return;}
+        const{dow,isHoliday}=slot;
+        const inactive=(isG1&&(dow===0||isHoliday))||((label.includes('광장')||label.includes('930'))&&dow===0);
+        if(inactive)html+='<td class="td-empty"></td>';
+        else html+='<td style="text-align:center;vertical-align:middle;"><span class="sk sk-cell"></span></td>';
+      });
+      html+='</tr>';
+    });
+    html+='</table></div></div>';
+  });
+  html+='</div>';
+  document.getElementById('mainView').innerHTML=html;
+}
+
+function renderAll(){
+  renderTabs(); syncPicker();
+  const y=curY,m=curM;
+  document.getElementById('mainView').innerHTML=`<div class="section">${renderKBSTable(y,m)}</div>`;
+  attachEvents(); applyMobileStyle();
+}
+
+let dragSrc=null,legendDragName=null,selectedCells=[],isSelectMode=false,isSelecting=false;
+
+function enterSelectMode(dtype,date,prog,el){
+  if(!isAdmin){showSaveToast('🔒 관리자만 변경할 수 있습니다.',true);return;}
+  isSelectMode=true;selectedCells=[];addSelectedCell(dtype,date,prog,el);updateSelectBar();
+  document.getElementById('selectModeBar').classList.add('active');
+}
+function addSelectedCell(dtype,date,prog,el){
+  const already=selectedCells.find(c=>c.dtype===dtype&&c.date===date&&c.prog===prog);
+  if(!already){selectedCells.push({dtype,date,prog,el});el.classList.add('selected');}
+}
+function applyToSelected(name){ selectedCells.forEach(({dtype,date,prog})=>{getStore(dtype)[date][prog]=name;}); cancelSelectMode();renderAll();markUnsaved(); }
+function cancelSelectMode(){
+  selectedCells.forEach(({el})=>el.classList.remove('selected'));
+  selectedCells=[];isSelectMode=false;isSelecting=false;
+  document.getElementById('selectModeBar').classList.remove('active');
+}
+function updateSelectBar(){
+  document.getElementById('selectCount').textContent=selectedCells.length+'칸 선택됨 → 변경할 이름:';
+  const btns=document.getElementById('selectNameBtns');
+  let html=INTERPRETERS.map(i=>`<button class="select-name-btn" style="background:${i.bg};color:${i.text}" onclick="applyToSelected('${i.name}')">${i.name}</button>`).join('');
+  html+=`<button class="select-name-btn" style="${PENDING_DELETE_STYLE}" onclick="applyToSelected('${PENDING_DELETE}')">⚠ ${PENDING_DELETE}</button>`;
+  btns.innerHTML=html;
+}
+
+function parseTag(tag){ const isG1=tag.startsWith('g1');const rest=tag.slice(isG1?2:3);const[y,m]=rest.split('-').map(Number);return{isG1,y,m}; }
+function getStore(tag){ const{isG1,y,m}=parseTag(tag);const d=getData(y,m);return isG1?d.g1:d.kbs; }
+
+function attachEvents(){
+  if(isAdmin){
+    document.querySelectorAll('.name-chip').forEach(chip=>{
+      chip.setAttribute('draggable','true');
+      chip.addEventListener('dragstart',e=>{dragSrc={dtype:chip.dataset.dtype,date:+chip.dataset.date,prog:chip.dataset.prog};chip.classList.add('dragging');e.dataTransfer.effectAllowed='move';});
+      chip.addEventListener('dragend',()=>{chip.classList.remove('dragging');document.querySelectorAll('td').forEach(t=>t.classList.remove('drag-over'));});
+      chip.addEventListener('click',e=>{e.stopPropagation();openModal(chip.dataset.dtype,+chip.dataset.date,chip.dataset.prog);});
+    });
+  }
+  document.querySelectorAll('td[data-date]').forEach(td=>{
+    if(!isAdmin)return;
+    const dtype=td.dataset.dtype,prog=td.dataset.prog,date=+td.dataset.date;
+    td.addEventListener('dragover',e=>{e.preventDefault();if(!isSelectMode)td.classList.add('drag-over');});
+    td.addEventListener('dragleave',()=>td.classList.remove('drag-over'));
+    td.addEventListener('drop',e=>{
+      e.preventDefault();td.classList.remove('drag-over');
+      if(legendDragName){getStore(dtype)[date][prog]=legendDragName;renderAll();markUnsaved();return;}
+      if(!dragSrc)return;
+      const dd=td.dataset.dtype,dp=td.dataset.prog,dt=+td.dataset.date;
+      if(dragSrc.dtype!==dd||dragSrc.prog!==dp)return;
+      const s=getStore(dd),tmp=s[dragSrc.date][dragSrc.prog];s[dragSrc.date][dragSrc.prog]=s[dt][dp];s[dt][dp]=tmp;
+      dragSrc=null;renderAll();markUnsaved();
+    });
+    td.addEventListener('click',e=>{
+      if(isSelectMode){addSelectedCell(dtype,date,prog,td);updateSelectBar();return;}
+      if(!td.querySelector('.name-chip'))openModal(dtype,date,prog);
+    });
+    let longPressTimer;
+    td.addEventListener('pointerdown',()=>{longPressTimer=setTimeout(()=>{if(!isSelectMode)enterSelectMode(dtype,date,prog,td);else{addSelectedCell(dtype,date,prog,td);updateSelectBar();}isSelecting=true;},500);});
+    td.addEventListener('pointerup',()=>{clearTimeout(longPressTimer);isSelecting=false;});
+    td.addEventListener('pointercancel',()=>{clearTimeout(longPressTimer);isSelecting=false;});
+    td.addEventListener('pointerenter',()=>{if(isSelectMode&&isSelecting){addSelectedCell(dtype,date,prog,td);updateSelectBar();}});
+  });
+  document.addEventListener('click',e=>{if(isSelectMode&&!e.target.closest('td[data-date]')&&!e.target.closest('.select-mode-bar'))cancelSelectMode();},{once:false});
+}
+
+let editTarget=null;
+function openModal(dtype,date,prog){
+  if(!isAdmin){showSaveToast('🔒 관리자만 변경할 수 있습니다.',true);return;}
+  const{y,m}=parseTag(dtype);
+  const labels={광장:'뉴스광장','930':'KBS930','9시':'KBS9시',G1:'G1뉴스'};
+  editTarget={dtype,date,prog};
+  document.getElementById('modalSub').textContent=`${m}월 ${date}일 (${DAYKO[getDow(y,m,date)]}) · ${labels[prog]}`;
+  let gridHtml=INTERPRETERS.map(i=>`<button class="modal-name-btn" style="background:${i.bg};color:${i.text}" onclick="selectName('${i.name}')">${i.name}</button>`).join('');
+  gridHtml+=`<button class="modal-name-btn" style="${PENDING_DELETE_STYLE}grid-column:1/-1;margin-top:4px;" onclick="selectName('${PENDING_DELETE}')">⚠ ${PENDING_DELETE} (KBS:0.6회 / G1:0.5회)</button>`;
+  document.getElementById('modalGrid').style.gridTemplateColumns='repeat(3,1fr)';
+  document.getElementById('modalGrid').innerHTML=gridHtml;
+  document.getElementById('editModal').classList.add('open');
+  applyMobileStyle();
+}
+function selectName(name){
+  if(!editTarget)return;
+  getStore(editTarget.dtype)[editTarget.date][editTarget.prog]=name;
+  closeModal();renderAll();markUnsaved();
+}
+function clearCell(){
+  if(!editTarget)return;
+  getStore(editTarget.dtype)[editTarget.date][editTarget.prog]=null;
+  closeModal();renderAll();markUnsaved();
+}
+function markUnsaved(){
+  const btn=document.getElementById('saveBtn');
+  if(btn){btn.textContent='💾 저장 (미저장)';btn.style.background='#e67e22';btn.style.borderColor='#e67e22';btn.disabled=false;}
+  clearTimeout(markUnsaved._timer);
+  markUnsaved._timer=setTimeout(()=>{saveToServer(curY,curM);},2000);
+}
+function closeModal(){ document.getElementById('editModal').classList.remove('open');editTarget=null; }
+document.getElementById('editModal').addEventListener('click',e=>{if(e.target===document.getElementById('editModal'))closeModal();});
+document.getElementById('pwModal').addEventListener('click',e=>{if(e.target===document.getElementById('pwModal'))closePwModal();});
+document.getElementById('interpEditModal').addEventListener('click',e=>{if(e.target===document.getElementById('interpEditModal'))closeInterpEdit();});
+
+function resetCurrent(){
+  if(!isAdmin){showSaveToast('🔒 관리자만 초기화할 수 있습니다.',true);return;}
+  if(!confirm('현재 월 일정을 초기화할까요? (등록된 특보 기록은 유지됩니다)'))return;
+  const k=storeKey(curY,curM);
+  const keepSpecials=(editStore[k]&&editStore[k].specials)||[];
+  delete editStore[k];
+  serverLoaded[k]=true;
+  editStore[k]=buildData(curY,curM);
+  editStore[k].specials=keepSpecials;
+  renderAll();
+}
+
+renderLegend();
+window.addEventListener('resize',applyMobileStyle);
+
+// 버전 체크: 파일이 업데이트되었으면 localStorage 초기화
+(()=>{
+  const savedVersion=localStorage.getItem('app_version');
+  if(savedVersion!==APP_VERSION){
+    console.log(`버전 업데이트됨: ${savedVersion} → ${APP_VERSION}`);
+    localStorage.removeItem('rotation_patterns_v2');
+    localStorage.removeItem('interpreters_v2');
+    localStorage.removeItem('interpCycleSettings');
+    localStorage.removeItem('cyclePatterns_v1');
+    localStorage.setItem('app_version',APP_VERSION);
+  }
+})();
+
+(async()=>{
+  await initializeInterpreters();
+  await initializePatterns();
+  initMyLogin();
+  renderLegend();
+  renderAll();
+  document.querySelectorAll('td[data-date]').forEach(td=>{td.innerHTML='<span class="sk sk-cell"></span>';});
+  const k=storeKey(curY,curM);const before=JSON.stringify(editStore[k]);
+  await loadFromServer(curY,curM);
+  if(JSON.stringify(editStore[k])!==before)renderAll();
+  else{attachEvents();applyFontSize();}
+})();
+
+if('serviceWorker' in navigator){ navigator.serviceWorker.register('/sw.js').catch(()=>{}); }
+</script>
+</body>
+</html>

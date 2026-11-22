@@ -59,11 +59,8 @@ body.noea .ea{display:none!important}
   }
   @media print {
     body > *:not(#printArea) { display: none !important; }
-    #printArea { display: block !important; background: #fff; color: #000; padding: 20mm; font-family: "Malgun Gothic", sans-serif; }
-    #printArea h1 { font-size: 22px; text-align: center; margin: 10px 0 20px; }
-    #printArea table { font-size: 12px; }
-    #printArea th, #printArea td { border: 1px solid #000; }
-    @page { size: A4; margin: 15mm; }
+    #printArea { display: block !important; background: #fff; color: #000; padding: 0; }
+    @page { size: A4; margin: 15mm 18mm; }
   }
 </style>
 <link rel="stylesheet" href="/ui.css?v=1">
@@ -79,8 +76,10 @@ body.noea .ea{display:none!important}
   <button onclick="goHomeAll()">홈(문서 목록)</button>
   <button onclick="openWrite(null)">새 문서 작성</button>
   <button onclick="openSearch()">검색</button>
+  <button onclick="openRecv()">📥 받은 문서 <span id="recvCnt" class="badge wait" style="display:none"></span></button>
+  <button onclick="openSent()">📤 보낸 문서</button>
   <button onclick="openLedger()">공문 대장</button>
-  <button id="staffBtn" onclick="openSettings()" style="display:none">번호 설정</button>
+  <button id="staffBtn" onclick="openSettings()" style="display:none">공문 설정</button>
   <button id="logoutBtn" onclick="logout()">로그아웃</button>
 </nav>
 
@@ -129,13 +128,22 @@ body.noea .ea{display:none!important}
           <select id="fKind"><option>공문</option><option>업무협조전</option><option>내부결재</option></select></div>
         <div class="narrow"><label>시행일자</label><input type="date" id="fDate"></div>
         <div class="narrow"><label>직인 (인쇄 시)</label><select id="fSeal"><option value="지회">지회 직인</option><option value="센터">센터 직인</option><option value="">없음</option></select></div>
-        <div><label>수신 (내부결재는 비워도 됨)</label><input id="fRecipient" placeholder="예: 강원특별자치도농아인협회장"></div>
+        <div class="narrow"><label>공개 구분</label><select id="fOpen"><option>공개</option><option>부분공개</option><option>비공개</option></select></div>
       </div>
-      <label>제목</label><input id="fTitle">
-      <label>본문 (한 줄이 한 항목, 줄 앞에 "- " 를 붙이면 하위 항목)</label>
-      <textarea id="fBody" placeholder="1. 관련: 2026년 예산 집행 협조&#10;- 세부 내용 첫째&#10;- 세부 내용 둘째"></textarea>
-      <label>붙임 (한 줄에 하나)</label>
-      <textarea id="fAttach" style="min-height:60px"></textarea>
+      <div class="row">
+        <div><label>수신 (내부결재는 '내부결재')</label><input id="fRecipient" placeholder="예: 주요 인사, 유관기관 및 단체장"></div>
+        <div><label>(경유) — 없으면 비워 두기</label><input id="fVia"></div>
+      </div>
+      <label>제목</label><input id="fTitle" placeholder="예: 「2026 강원수어문화제」 개최 안내">
+      <label>본문</label>
+      <div class="hint" style="margin-top:0">· 그냥 쓴 줄 → <b>1. 2. 3.</b> 번호가 저절로 붙어요<br>
+        · 줄 앞에 <b>가.</b> 를 쓰면 → 가. 나. 다. (한 칸 들여쓰기) · <b>1)</b> → 1) 2) · <b>가)</b> → 가) 나)<br>
+        · 줄 앞에 <b>-</b> 를 쓰면 번호 없이 그대로 (위 줄보다 한 칸 들여쓰기)<br>
+        · 순서가 바뀌어도 번호는 다시 매겨져요. 오른쪽 아래 미리보기로 확인하세요</div>
+      <textarea id="fBody" style="min-height:200px" placeholder="귀하와 귀 기관의 무궁한 발전과 건승을 기원합니다.&#10;행사 개요&#10;가. 행사명: 2026 강원수어문화제&#10;가. 일시: 2026년 10월 24일(토)&#10;- 자유롭게 방문하여 참여할 수 있습니다."></textarea>
+      <label>붙임 (한 줄에 하나, '끝.'은 저절로 붙어요)</label>
+      <textarea id="fAttach" style="min-height:60px" placeholder="2026 강원수어문화제 포스터 1부.&#10;2026 강원수어문화제 초대장 1부."></textarea>
+      <label>협조자 (없으면 비워 두기)</label><input id="fCoop">
       <div class="btns">
         <button onclick="saveDraftClick()">임시 저장</button>
         <button class="main" onclick="submitClick()" title="문서 번호가 붙고 공문 대장에 올라갑니다. 인쇄해서 수기로 결재받으세요">기안하기 (번호 부여)</button>
@@ -158,6 +166,11 @@ body.noea .ea{display:none!important}
       </div>
       <div id="stepsMsg" class="msg"></div>
     </div>
+
+    <div class="card">
+      <h3 style="margin-top:0">미리보기 <span class="muted">(인쇄 모양 · 쓰는 대로 바뀌어요)</span></h3>
+      <div id="pvWrap" style="overflow:hidden;border:1px solid #dde3ea;background:#888;padding:10px"><div id="pvPage" style="width:794px;background:#fff;padding:56px 60px;box-sizing:border-box;transform-origin:0 0"></div></div>
+    </div>
   </section>
 
   <!-- 문서 보기 -->
@@ -170,6 +183,20 @@ body.noea .ea{display:none!important}
         <tbody id="viewSteps"></tbody></table>
       <div class="btns" id="viewBtns"></div>
       <div id="viewMsg" class="msg"></div>
+    </div>
+    <div class="card" id="sendCard" style="display:none">
+      <h3 style="margin-top:0">📤 다른 곳으로 보내기</h3>
+      <div class="hint">수기 결재가 끝난 공문을 스캔(또는 휴대폰으로 찍어 PDF로)해서 올리고, 받을 곳을 고르세요. 받은 곳의 <b>받은 문서</b>에 바로 들어갑니다.</div>
+      <label>결재한 공문 PDF (꼭 필요)</label><input type="file" id="sdMain" accept="application/pdf,.pdf">
+      <label>붙임 파일 (있으면, 여러 개 고를 수 있어요)</label><input type="file" id="sdAtt" multiple>
+      <label>받을 곳</label><div id="sdTo" style="border:1px solid #dde3ea;border-radius:6px;padding:8px"></div>
+      <label>전할 말 (선택)</label><textarea id="sdNote" style="min-height:50px"></textarea>
+      <div class="btns"><button class="main" id="sdBtn" onclick="sendDoc()">보내기</button><button onclick="$('sendCard').style.display='none'">닫기</button></div>
+      <div id="sdMsg" class="msg"></div>
+    </div>
+    <div class="card" id="sentCard" style="display:none">
+      <h3 style="margin-top:0">이 문서를 보낸 기록</h3>
+      <div id="sentForDoc"></div>
     </div>
     <div class="btns noembed"><button onclick="openHome()">목록으로</button></div>
   </section>
@@ -211,9 +238,45 @@ body.noea .ea{display:none!important}
     </div>
   </section>
 
+  <!-- 받은 문서 -->
+  <section id="screenRecv" class="screen">
+    <h2>📥 받은 문서</h2>
+    <div class="hint" style="margin-bottom:8px">다른 지회·도협회·센터가 보낸 문서입니다. 열면 보낸 곳에 '열람'으로 표시되고, <b>접수</b>를 누르면 우리 접수번호가 붙어요.</div>
+    <div class="card">
+      <div class="row"><div class="narrow"><label>연도</label><select id="rYear" onchange="loadRecv()"></select></div></div>
+      <div id="recvMsg" class="msg"></div>
+      <table><thead><tr><th>상태</th><th>보낸 곳</th><th>문서 번호</th><th>제목</th><th>받은 날</th><th>접수번호</th></tr></thead>
+        <tbody id="recvBody"></tbody></table>
+    </div>
+  </section>
+
+  <!-- 보낸 문서 -->
+  <section id="screenSent" class="screen">
+    <h2>📤 보낸 문서</h2>
+    <div class="hint" style="margin-bottom:8px">우리가 보낸 문서와 받은 곳마다 열람·접수 여부입니다. 보내기는 기안한 문서 화면의 <b>📤 다른 곳으로 보내기</b>에서 해요.</div>
+    <div class="card">
+      <div class="row"><div class="narrow"><label>연도</label><select id="tYear" onchange="loadSent()"></select></div></div>
+      <div id="sentMsg" class="msg"></div>
+      <table><thead><tr><th>문서 번호</th><th>제목</th><th>받은 곳 (열람·접수)</th><th>보낸 날</th><th>보낸 사람</th></tr></thead>
+        <tbody id="sentBody"></tbody></table>
+    </div>
+  </section>
+
+  <!-- 주고받은 문서 한 건 -->
+  <section id="screenSendView" class="screen">
+    <div class="card">
+      <div id="svHead"></div>
+      <div id="svFiles" style="margin-top:10px"></div>
+      <div id="svTo" style="margin-top:10px"></div>
+      <div class="btns" id="svBtns"></div>
+      <div id="svMsg" class="msg"></div>
+    </div>
+  </section>
+
   <!-- 번호 설정 (관리자) -->
   <section id="screenSettings" class="screen">
-    <h2>문서 번호 설정</h2>
+    <h2>공문 설정</h2>
+    <h3>문서 번호</h3>
     <div class="card">
       <div class="hint">우리 지회 문서 번호의 모양입니다. 이미 부여된 번호는 바뀌지 않고, 앞으로 기안하는 문서부터 적용됩니다. 직원 등록은 "직원·권한 관리"에서 합니다.</div>
       <div class="row">
@@ -224,6 +287,17 @@ body.noea .ea{display:none!important}
         <div class="narrow"><label>일련번호 자릿수</label><select id="seWidth"><option>1</option><option>2</option><option selected>3</option><option>4</option><option>5</option></select></div>
       </div>
       <div class="hint" id="sePreview"></div>
+    </div>
+    <h3>공문 양식 (인쇄에 들어가는 내용)</h3>
+    <div class="card">
+      <div class="hint">비워 두면 기본값(기관 정보의 주소·전화, 기관 전체 이름)을 씁니다. 로고는 협회 로고가 들어갑니다.</div>
+      <div class="row"><div><label>머리 표어 (맨 위 작은 글씨)</label><input id="fmSlogan" placeholder="예: 모두의 언어, 수어를 배웁시다!"></div></div>
+      <div class="row"><div><label>머리 기관명 (로고 옆 큰 글씨)</label><input id="fmHead" placeholder="예: 사단법인 한국농아인협회강원특별자치도협회"></div>
+        <div><label>발신명의 (아래쪽 큰 글씨)</label><input id="fmSender" placeholder="예: 사단법인 한국농아인협회강원특별자치도협회장"></div></div>
+      <div class="row"><div class="narrow"><label>우편번호</label><input id="fmZip"></div><div><label>주소</label><input id="fmAddr"></div><div><label>홈페이지</label><input id="fmWeb" placeholder="http://"></div></div>
+      <div class="row"><div><label>전화</label><input id="fmTel"></div><div><label>전송(팩스)</label><input id="fmFax"></div><div><label>이메일</label><input id="fmMail"></div></div>
+    </div>
+    <div class="card">
       <div class="btns"><button class="main" onclick="saveSettingsClick()">저장</button></div>
       <div id="settingsMsg" class="msg"></div>
     </div>
@@ -234,6 +308,9 @@ body.noea .ea{display:none!important}
 <div id="printArea"></div>
 
 <script>
+// 기관 전체 이름: 지회는 '강원특별자치도농아인협회○○지회'(띄어쓰기 없이), 도협회는 협회 이름, 센터 등은 그 이름 그대로
+function fullOrg(n) { n = String(n || '').trim(); if (!n || n === '도협회') return '강원특별자치도농아인협회'; return /지회$/.test(n) && n.indexOf('농아인협회') < 0 ? '강원특별자치도농아인협회' + n : n; }
+
 // ============ 1) 설정 (Supabase 대시보드 > Project Settings > API 에서 복사) ============
 const SUPABASE_URL = 'https://uamlualqqcqmpdkprjfs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhbWx1YWxxcWNxbXBka3ByamZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNjE0OTMsImV4cCI6MjExMDYzNzQ5M30._f4p4pfcKaYbmjKRXOPpkMo7Ydcc26oVVI6lRFYsLkY';
@@ -311,6 +388,7 @@ async function boot() {
   $('topNav').style.display = 'flex';
   $('staffBtn').style.display = me.is_admin ? '' : 'none';
   SUB.ready = true;
+  recvBadge();
   if (SUB.go) subGo(SUB.go); else goHome();
   subReady();
 }
@@ -324,6 +402,8 @@ function subReady() { if (EMBED && window.parent !== window) try { window.parent
 function subGo(t) {
   SUB.go = t;
   if (t === 'ledger') { $('lKind').value = ''; openLedger(); return; }
+  if (t === 'recv') { openRecv(); return; }
+  if (t === 'sent') { openSent(); return; }
   KIND = SUB_KIND[t] || ''; goHome();
 }
 window.addEventListener('message', (e) => {
@@ -388,14 +468,46 @@ function textToBody(text) {
   });
   return items;
 }
+// ---- 본문 번호 매기기 (문서24 모양) ----
+// 그냥 쓴 줄 = 1. / '가.' = 가. / '1)' = 1) / '가)' = 가) / '-'·'·' 로 시작 = 번호 없이 그대로
+const KO_NUM = '가나다라마바사아자차카타파하';
+function parseLines(src) {
+  const out = [];
+  String(src || '').split('\n').forEach((raw) => {
+    const t = raw.trim(); if (!t) return;
+    let m;
+    if (/^[-·•※○]/.test(t)) out.push({ lv: 'b', text: t });
+    else if ((m = t.match(/^[가-힣]\.\s*(.*)$/)) && m[1]) out.push({ lv: 1, text: m[1] });
+    else if ((m = t.match(/^\d+\)\s*(.*)$/)) && m[1]) out.push({ lv: 2, text: m[1] });
+    else if ((m = t.match(/^[가-힣]\)\s*(.*)$/)) && m[1]) out.push({ lv: 3, text: m[1] });
+    else out.push({ lv: 0, text: t.replace(/^\d+\.\s*/, '') });
+  });
+  return out;
+}
+function numberLines(lines) {
+  const c = [0, 0, 0, 0]; let last = 0;
+  return lines.map((l) => {
+    if (l.lv === 'b') return { ind: last + 1, num: '', text: l.text };
+    c[l.lv]++; for (let i = l.lv + 1; i < 4; i++) c[i] = 0; last = l.lv;
+    const n = c[l.lv];
+    const num = l.lv === 0 ? n + '.' : l.lv === 1 ? (KO_NUM[n - 1] || n) + '.' : l.lv === 2 ? n + ')' : (KO_NUM[n - 1] || n) + ')';
+    return { ind: l.lv, num, text: l.text };
+  });
+}
+function srcOf(f) { return f.src != null ? f.src : bodyToText(f.body); }
 function readForm() {
+  const src = $('fBody').value;
   return {
     date: $('fDate').value,
     seal: $('fSeal').value,
+    open: $('fOpen').value,
     recipient: $('fRecipient').value.trim(),
+    via: $('fVia').value.trim(),
     title: $('fTitle').value.trim(),
-    body: textToBody($('fBody').value),
-    attachments: $('fAttach').value.split('\n').map((s) => s.trim()).filter(Boolean)
+    src,
+    body: textToBody(src),
+    attachments: $('fAttach').value.split('\n').map((s) => s.trim()).filter(Boolean),
+    coop: $('fCoop').value.trim()
   };
 }
 function fillForm(d) {
@@ -404,10 +516,36 @@ function fillForm(d) {
   $('fDate').value = f.date || '';
   $('fSeal').value = f.seal === undefined ? (d.kind === '공문' ? '지회' : '') : f.seal;
   $('fRecipient').value = f.recipient || '';
+  $('fVia').value = f.via || '';
+  $('fOpen').value = f.open || '공개';
+  $('fCoop').value = f.coop || '';
   $('fTitle').value = f.title || '';
-  $('fBody').value = bodyToText(f.body);
+  $('fBody').value = srcOf(f);
   $('fAttach').value = (f.attachments || []).join('\n');
 }
+// 종류를 내부결재로 바꾸면 수신 = '내부결재'
+function kindChanged() {
+  const k = $('fKind').value, r = $('fRecipient');
+  if (k === '내부결재' && !r.value.trim()) r.value = '내부결재';
+  if (k !== '내부결재' && r.value.trim() === '내부결재') r.value = '';
+  if (k === '내부결재') $('fSeal').value = '';
+  renderPreview();
+}
+// 미리보기 (쓰는 대로 바뀜)
+let PV_ASSETS = null, pvTimer = null;
+async function renderPreview() {
+  if (!$('screenWrite').classList.contains('on')) return;
+  if (!PV_ASSETS) { try { const r = await sb.rpc('doc_print_assets', { p_id: null }); PV_ASSETS = r.data || {}; } catch (e) { PV_ASSETS = {}; } }
+  const d = { kind: $('fKind').value, number: current && current.number || '(기안하면 번호)', recipient: $('fRecipient').value.trim(), title: $('fTitle').value.trim() };
+  $('pvPage').innerHTML = buildDocHtml(d, readForm(), readSteps(), PV_ASSETS, '1011px');
+  const w = $('pvWrap').clientWidth - 20, sc = Math.min(1, w / 794);
+  $('pvPage').style.transform = 'scale(' + sc + ')';
+  $('pvWrap').style.height = ($('pvPage').offsetHeight * sc + 20) + 'px';
+}
+function pvSoon() { clearTimeout(pvTimer); pvTimer = setTimeout(renderPreview, 250); }
+document.addEventListener('input', (e) => { if (e.target.closest && e.target.closest('#screenWrite')) pvSoon(); });
+document.addEventListener('change', (e) => { if (e.target.id === 'fKind') kindChanged(); else if (e.target.closest && e.target.closest('#screenWrite')) pvSoon(); });
+window.addEventListener('resize', pvSoon);
 async function openWrite(id) {
   showScreen('screenWrite');
   msg('writeMsg', ''); msg('stepsMsg', '');
@@ -418,7 +556,9 @@ async function openWrite(id) {
     $('writeTitle').textContent = '새 문서 작성';
     $('fKind').value = KIND || '공문'; $('fDate').value = new Date().toISOString().slice(0, 10); $('fSeal').value = '지회';
     $('fRecipient').value = ''; $('fTitle').value = ''; $('fBody').value = ''; $('fAttach').value = '';
+    $('fVia').value = ''; $('fCoop').value = ''; $('fOpen').value = '공개';
     addStepRow({});
+    kindChanged();
     return;
   }
   const { data, error } = await sb.from('doc_documents').select('*').eq('id', id).single();
@@ -428,6 +568,7 @@ async function openWrite(id) {
   fillForm(data);
   const { data: st } = await sb.from('doc_steps').select('*').eq('doc_id', id).order('seq');
   (st && st.length ? st : [{}]).forEach((s) => addStepRow(s));
+  renderPreview();
 }
 
 // 직원을 고르면 이름·이메일·직책을 채움 (같은 지회 직원만 결재자가 될 수 있음)
@@ -448,7 +589,7 @@ function addStepRow(s) {
     <td class="ea"><input class="sEmail" value="${esc(s.email || '')}"></td>
     <td class="ea"><select class="sMethod">${opt(['확인', '전자서명', '수기서명'], s.method || (E_APPROVAL ? '확인' : '수기서명'))}</select></td>
     <td class="ea"><select class="sType">${opt(['결재', '전결', '합의', '협조'], s.type || '결재')}</select></td>
-    <td><button class="danger" onclick="this.closest('tr').remove()">삭제</button></td>`;
+    <td><button class="danger" onclick="this.closest('tr').remove();pvSoon()">삭제</button></td>`;
   $('stepsBody').appendChild(tr);
 }
 function readSteps() {
@@ -523,9 +664,9 @@ function renderView() {
     <div class="muted">수신: ${esc(d.recipient || '-')} · 기안자: ${esc(d.drafter_name)} · 시행일자: ${esc(f.date || '-')} ·
       상태: <span class="badge ${STATUS_CLASS[d.status] || ''}">${esc(stLabel(d.status))}</span> ${d.deleted ? '· <b>삭제됨</b>' : ''}</div>`;
 
-  $('viewBody').innerHTML = (f.body || []).length
-    ? f.body.map((it) => `<div>${esc(it.text)}</div>` + (it.subs || []).map((s) => `<div class="sub-line">- ${esc(s)}</div>`).join('')).join('')
-    : '<span class="muted">본문 없음</span>';
+  const vl = numberLines(parseLines(srcOf(f)));
+  $('viewBody').innerHTML = (f.via ? `<div class="muted">(경유) ${esc(f.via)}</div>` : '') + (vl.length ? bodyHtml(vl) : '<span class="muted">본문 없음</span>')
+    + ((f.attachments || []).length ? `<div style="margin-top:8px"><b>붙임</b> ${(f.attachments || []).map((a, i) => esc((f.attachments.length > 1 ? (i + 1) + '. ' : '') + a)).join(' · ')}</div>` : '');
 
   $('viewSteps').innerHTML = currentSteps.length
     ? currentSteps.map((s) => `<tr><td>${s.seq}</td><td>${esc(s.role)}</td><td>${esc(s.name)}</td><td class="ea">${esc(s.method)}</td>
@@ -541,11 +682,14 @@ function renderView() {
   if (canPaper) b.push(`<button onclick="recallDoc()" title="고칠 내용이 생겼을 때. 번호는 그대로 둡니다.">↩ 회수해서 수정</button>`);
   b.push(`<button onclick="copyDoc()">복사</button>`, `<button onclick="printDoc()">인쇄 / PDF 저장</button>`);
   if (d.number && !d.deleted) b.push(`<button id="pdfBtn" onclick="savePdfDrive()">📁 드라이브에 PDF 저장</button>`);
+  if (d.number && ['완료', '발송'].includes(d.status) && !d.deleted && (me.is_admin || isDrafter)) b.push(`<button class="main" onclick="openSendCard()">📤 다른 곳으로 보내기</button>`);
   if (me.is_admin || isDrafter) {
     b.push(d.deleted ? `<button onclick="setDeleted(false)">되살리기</button>`
                      : `<button class="danger" onclick="setDeleted(true)">삭제</button>`);
   }
   $('viewBtns').innerHTML = b.join('');
+  $('sendCard').style.display = 'none';
+  loadSentForDoc(d);
 }
 
 async function submitExisting() {
@@ -627,33 +771,62 @@ async function setDeleted(flag) {
 
 // 인쇄 (브라우저의 "PDF로 저장"을 쓰면 PDF 파일이 됩니다)
 // 우리 지회 직인·연락처와 전자서명 이미지를 서버에서 받아 함께 찍음
-async function buildPrintHtml() {
-  const d = current, f = d.form || {};
-  let as = { seals: {}, sigs: {}, chapter_name: me.chapter_name, phone: '', center_phone: '', address: '' };
-  try { const r = await sb.rpc('doc_print_assets', { p_id: d.id }); if (r.data) as = r.data; } catch (e) {}
+// ---- 공문 모양 (문서24 형태) : 인쇄·PDF·미리보기 같이 씀 ----
+function bodyHtml(lines) {
+  return lines.map((l) => `<div style="display:flex;padding-left:${l.ind * 1.6}em;margin:1px 0">${l.num ? `<span style="flex:0 0 auto;min-width:1.7em">${esc(l.num)}</span>` : ''}<span style="flex:1">${esc(l.text)}</span></div>`).join('');
+}
+function bigName(t, size) {   // '사단법인 ○○' → '사단법인'은 작게
+  const m = String(t || '').match(/^(사단법인|사회복지법인|재단법인)\s*(.*)$/);
+  return m ? `<span style="font-size:${Math.round(size * 0.62)}pt;margin-right:6px">${m[1]}</span><span style="font-size:${size}pt">${esc(m[2])}</span>`
+           : `<span style="font-size:${size}pt">${esc(t)}</span>`;
+}
+function dotDate(v) { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[1]}. ${+m[2]}. ${+m[3]}.` : ''; }
+function buildDocHtml(d, f, steps, as, minH) {
+  as = as || {}; const cfg = as.cfg || {};
+  const head = cfg['머리 기관명'] || fullOrg(as.chapter_name || me.chapter_name);
+  const sender = cfg['발신명의'] || (head + '장');
+  const lines = numberLines(parseLines(srcOf(f)));
+  const att = f.attachments || [];
+  if (!att.length && lines.length) lines[lines.length - 1] = Object.assign({}, lines[lines.length - 1], { text: lines[lines.length - 1].text + '  끝.' });
+  const attHtml = att.length ? `<div style="display:flex;margin-top:18px"><span style="flex:0 0 3.4em">붙임</span><div style="flex:1">${att.map((a, i) =>
+      `<div style="display:flex">${att.length > 1 ? `<span style="flex:0 0 1.7em">${i + 1}.</span>` : ''}<span>${esc(a)}${i === att.length - 1 ? '&nbsp;&nbsp;끝.' : ''}</span></div>`).join('')}</div></div>` : '';
+  const seal = f.seal && as.seals && as.seals[f.seal] ? `<img src="${esc(as.seals[f.seal])}" style="position:absolute;right:-22mm;top:50%;transform:translateY(-50%);height:22mm;opacity:.92">` : '';
   const done = (s) => s.status === '완료' || s.status === '전결';
-  const signRow = currentSteps.map((s) => `<th>${esc(s.role)}</th>`).join('');
-  const nameRow = currentSteps.map((s) => {
+  const roles = (steps || []).filter((s) => s.role || s.name).map((s) => {
     let mark = '';
-    if (s.method !== '수기서명' && done(s)) {
-      const img = s.method === '전자서명' && as.sigs[(s.email || '').toLowerCase()];
-      mark = img ? `<img src="${esc(img)}" style="max-height:40px;max-width:90px">` : esc(s.name);
+    if (s.method && s.method !== '수기서명' && done(s)) {
+      const img = s.method === '전자서명' && as.sigs && as.sigs[(s.email || '').toLowerCase()];
+      mark = img ? `<img src="${esc(img)}" style="max-height:12mm;max-width:24mm;vertical-align:middle">` : esc(s.name);
     }
-    return `<td style="height:48px;text-align:center">${mark}</td>`;
-  }).join('');
-  const seal = f.seal && as.seals[f.seal] ? `<img src="${esc(as.seals[f.seal])}" style="height:70px;vertical-align:middle;margin-left:8px">` : '';
-  const contact = [as.phone && ('전화 ' + as.phone), as.center_phone && ('센터 ' + as.center_phone), as.address].filter(Boolean).join(' · ');
-  return `
-    <div style="text-align:right">${esc(d.number || '')}</div>
-    <h1>${esc(d.title)}</h1>
-    <p>시행일자: ${esc(f.date || '')}</p>
-    <p>수신: ${esc(d.recipient || '')}</p>
-    ${(f.body || []).map((it) => `<p>${esc(it.text)}</p>` + (it.subs || []).map((s) => `<p style="margin-left:14px">- ${esc(s)}</p>`).join('')).join('')}
-    ${(f.attachments || []).length ? `<p>붙임: ${(f.attachments || []).map(esc).join(', ')}</p>` : ''}
-    <p style="text-align:center;font-size:20px;margin-top:30px">${esc(as.chapter_name || '')}${seal}</p>
-    <table style="margin-top:24px"><tr>${signRow}</tr><tr>${nameRow}</tr></table>
-    <p style="margin-top:20px">${esc(d.drafter_name)}</p>
-    ${contact ? `<p style="font-size:11px;color:#444">${esc(contact)}</p>` : ''}`;
+    return `<span style="white-space:nowrap">${esc(s.role || s.name)}<span style="display:inline-block;min-width:20mm;margin-left:3mm">${mark}</span></span>`;
+  });
+  const row = (k, v, bold) => `<div style="display:flex;margin:2px 0"><span style="flex:0 0 4.2em;letter-spacing:${k.length === 2 ? '0.6em' : '0'}">${k}</span><span style="flex:1;${bold ? 'font-weight:700' : ''}">${v}</span></div>`;
+  const tel = [cfg['전화'] && ('전화 ' + cfg['전화']), cfg['전송'] && ('전송 ' + cfg['전송']), cfg['이메일']].filter(Boolean).join('&nbsp;/&nbsp;');
+  const addr = [[cfg['우편번호'] && ('우 ' + cfg['우편번호']), cfg['주소']].filter(Boolean).join(' '), cfg['홈페이지']].filter(Boolean).join(' / ');
+  return `<div style="font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#000;font-size:12pt;line-height:1.5;display:flex;flex-direction:column;min-height:${minH || '262mm'};box-sizing:border-box">
+    ${cfg['머리 표어'] ? `<div style="text-align:center;font-size:11pt;letter-spacing:1px">${esc(cfg['머리 표어'])}</div>` : ''}
+    <div style="display:flex;align-items:center;justify-content:center;gap:5mm;margin:2mm 0 6mm"><img src="/og/emblem.png" style="height:19mm"><div style="font-weight:800;letter-spacing:-0.5px">${bigName(head, 21)}</div></div>
+    ${row('수신', esc(d.kind === '내부결재' ? (d.recipient || '내부결재') : d.recipient))}
+    ${row('(경유)', esc(f.via || ''))}
+    ${row('제목', esc(d.title), true)}
+    <div style="border-top:1.5px dashed #000;margin:3mm 0 5mm"></div>
+    ${bodyHtml(lines)}
+    ${attHtml}
+    <div style="flex:1;min-height:14mm"></div>
+    <div style="text-align:center;font-weight:800;margin-bottom:3mm"><span style="position:relative;display:inline-block">${bigName(sender, 20)}${seal}</span></div>
+    <div style="border-top:4px double #000;margin-bottom:3mm"></div>
+    <div style="display:flex;justify-content:space-between;gap:4mm;flex-wrap:wrap;min-height:7mm">${roles.join('')}</div>
+    <div style="margin-top:1mm">협조자&nbsp;&nbsp;${esc(f.coop || '')}</div>
+    <div style="display:flex;justify-content:space-between;margin-top:1mm"><span>시행&nbsp;&nbsp;${esc(d.number || '')}&nbsp;&nbsp;&nbsp;(${esc(dotDate(f.date))})</span><span style="min-width:45mm">접수</span></div>
+    <div style="font-size:10pt;margin-top:1mm">${esc(addr)}</div>
+    <div style="font-size:10pt;display:flex;justify-content:space-between"><span>${tel}</span><span>/ ${esc(f.open || '공개')}</span></div>
+  </div>`;
+}
+async function buildPrintHtml(minH) {
+  const d = current, f = d.form || {};
+  let as = { seals: {}, sigs: {}, chapter_name: me.chapter_name, cfg: {} };
+  try { const r = await sb.rpc('doc_print_assets', { p_id: d.id }); if (r.data) as = r.data; } catch (e) {}
+  return buildDocHtml(d, f, currentSteps, as, minH);
 }
 // 이미지가 다 뜰 때까지 잠깐 기다림 (최대 1.5초)
 async function waitImages(root) {
@@ -685,8 +858,8 @@ async function savePdfDrive() {
     if (!window.html2canvas) await loadScript('https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js');
     if (!window.jspdf) await loadScript('https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js');
     box = document.createElement('div');
-    box.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;padding:60px 56px;background:#fff;color:#000;font-family:"Malgun Gothic","맑은 고딕",sans-serif;font-size:14px;line-height:1.6;box-sizing:border-box';
-    box.innerHTML = '<style>.pdfbox h1{font-size:22px;text-align:center;margin:10px 0 20px}.pdfbox table{border-collapse:collapse;font-size:12px}.pdfbox th,.pdfbox td{border:1px solid #000;padding:6px 10px}.pdfbox p{margin:6px 0}</style><div class="pdfbox">' + await buildPrintHtml() + '</div>';
+    box.style.cssText = 'position:fixed;left:-10000px;top:0;width:794px;padding:56px 60px;background:#fff;color:#000;font-family:"Malgun Gothic","맑은 고딕",sans-serif;font-size:14px;line-height:1.6;box-sizing:border-box';
+    box.innerHTML = await buildPrintHtml('1011px');
     document.body.appendChild(box);
     await waitImages(box);
     const canvas = await window.html2canvas(box, { scale: 2, backgroundColor: '#fff', useCORS: true });
@@ -779,14 +952,15 @@ async function saveLedgerSheet() {
 }
 
 // ============ 9) 번호 설정 (관리자만) ============
-const SE_IDS = { '번호 앞 이름': 'seName', '종류 표기 방식': 'seStyle', '구분 기호': 'seSep', '연도 자릿수': 'seYear', '일련번호 자릿수': 'seWidth' };
+const SE_IDS = { '번호 앞 이름': 'seName', '종류 표기 방식': 'seStyle', '구분 기호': 'seSep', '연도 자릿수': 'seYear', '일련번호 자릿수': 'seWidth',
+  '머리 표어': 'fmSlogan', '머리 기관명': 'fmHead', '발신명의': 'fmSender', '우편번호': 'fmZip', '주소': 'fmAddr', '홈페이지': 'fmWeb', '전화': 'fmTel', '전송': 'fmFax', '이메일': 'fmMail' };
 async function openSettings() {
   if (!me.is_admin) return;
   showScreen('screenSettings');
   msg('settingsMsg', '');
   const { data, error } = await sb.rpc('doc_get_settings');
   if (error) return msg('settingsMsg', errText(error));
-  Object.keys(SE_IDS).forEach((k) => { $(SE_IDS[k]).value = data[k]; $(SE_IDS[k]).onchange = $(SE_IDS[k]).oninput = previewNumber; });
+  Object.keys(SE_IDS).forEach((k) => { $(SE_IDS[k]).value = data[k] || ''; $(SE_IDS[k]).onchange = $(SE_IDS[k]).oninput = previewNumber; });
   previewNumber();
 }
 function previewNumber() {
@@ -799,9 +973,143 @@ async function saveSettingsClick() {
   const p = {}; Object.keys(SE_IDS).forEach((k) => { p[k] = $(SE_IDS[k]).value.trim(); });
   const { error } = await sb.rpc('doc_save_settings', { p_settings: p });
   msg('settingsMsg', error ? errText(error) : '저장했습니다.', !error);
+  if (!error) PV_ASSETS = null;
 }
 
-// ============ 10) 시작 ============
+// ============ 10) 문서 주고받기 ============
+function yearSel(id) {
+  const sel = $(id);
+  if (!sel.options.length) { for (let y = TODAY_YEAR; y >= TODAY_YEAR - 5; y--) sel.add(new Option(y + '년', y)); sel.value = TODAY_YEAR; }
+  return Number(sel.value);
+}
+function day(t) { return t ? new Date(t).toLocaleDateString('ko-KR') : ''; }
+// 왼쪽 메뉴 숫자 다시 세기 (업무 시스템에 알림)
+async function recvBadge() {
+  try { const r = await sb.rpc('doc_recv_badge'); const n = r.data || 0; $('recvCnt').textContent = n; $('recvCnt').style.display = n ? '' : 'none'; } catch (e) {}
+  if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'doc-badge' }, location.origin); } catch (e) {}
+}
+// 보내기 카드
+let TARGETS = null;
+async function openSendCard() {
+  $('sendCard').style.display = ''; msg('sdMsg', '');
+  if (!TARGETS) { const r = await sb.rpc('doc_send_targets'); if (r.error) return msg('sdMsg', errText(r.error)); TARGETS = r.data || []; }
+  const grps = {}; TARGETS.forEach((t) => (grps[t.grp] = grps[t.grp] || []).push(t));
+  $('sdTo').innerHTML = Object.keys(grps).map((g) => `<div style="margin:4px 0"><label style="display:inline;margin:0;color:#222;font-weight:bold"><input type="checkbox" style="width:auto" onchange="this.closest('div').querySelectorAll('.sdt').forEach((c)=>c.checked=this.checked)"> ${esc(g)} 전체</label><br>
+    ${grps[g].map((t) => `<label style="display:inline-block;margin:3px 12px 3px 0;color:#222"><input type="checkbox" class="sdt" value="${t.id}" style="width:auto"> ${esc(t.name)}</label>`).join('')}</div>`).join('');
+  $('sendCard').scrollIntoView({ behavior: 'smooth' });
+}
+async function sendDoc() {
+  const main = $('sdMain').files[0], att = [...$('sdAtt').files];
+  const to = [...document.querySelectorAll('.sdt:checked')].map((c) => Number(c.value));
+  if (!main) return msg('sdMsg', '결재한 공문 PDF를 골라 주세요.');
+  if (!/\.pdf$/i.test(main.name) && main.type !== 'application/pdf') return msg('sdMsg', '공문은 PDF 파일로 올려 주세요.');
+  if (!to.length) return msg('sdMsg', '받을 곳을 하나 이상 고르세요.');
+  const all = [main, ...att];
+  if (all.length > 10) return msg('sdMsg', '파일은 10개까지 보낼 수 있어요.');
+  const big = all.find((f) => f.size > 30 * 1024 * 1024); if (big) return msg('sdMsg', big.name + ' 파일이 30MB보다 커요.');
+  if (!confirm(to.length + '곳에 보낼까요?')) return;
+  $('sdBtn').disabled = true; msg('sdMsg', '파일을 올리는 중입니다...', true);
+  const folder = me.chapter_id + '/' + (current.year || TODAY_YEAR) + '/' + (crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2));
+  const files = [];
+  try {
+    for (let i = 0; i < all.length; i++) {
+      const f = all[i], ext = (f.name.match(/\.([A-Za-z0-9]{1,8})$/) || [, 'bin'])[1].toLowerCase();
+      const path = folder + '/' + i + '.' + ext;
+      const { error } = await sb.storage.from('doc-files').upload(path, f, { contentType: f.type || 'application/octet-stream', upsert: false });
+      if (error) throw new Error(f.name + ' 올리기 실패: ' + errText(error));
+      files.push({ path, name: f.name, size: f.size, main: i === 0 });
+    }
+    const { error } = await sb.rpc('doc_send_create', { p_doc_id: current.id, p_files: files, p_to: to, p_note: $('sdNote').value });
+    if (error) throw error;
+    $('sdMain').value = ''; $('sdAtt').value = ''; $('sdNote').value = '';
+    $('sendCard').style.display = 'none';
+    msg('viewMsg', to.length + '곳에 보냈습니다.', true);
+    loadSentForDoc(current);
+  } catch (e) {
+    if (files.length) sb.storage.from('doc-files').remove(files.map((x) => x.path)).catch(() => {});
+    msg('sdMsg', errText(e));
+  } finally { $('sdBtn').disabled = false; }
+}
+function toSummary(list) {
+  return (list || []).map((t) => `${esc(t.name)} <span class="badge ${t.recv_no ? 'done' : t.read_at ? 'run' : 'wait'}">${t.recv_no ? '접수' : t.read_at ? '열람' : '안 봄'}</span>`).join(' ');
+}
+async function loadSentForDoc(d) {
+  if (!d.number) { $('sentCard').style.display = 'none'; return; }
+  const { data } = await sb.rpc('doc_sent_list', { p_year: d.year || TODAY_YEAR, p_doc_id: d.id });
+  if (!data || !data.length) { $('sentCard').style.display = 'none'; return; }
+  $('sentCard').style.display = '';
+  $('sentForDoc').innerHTML = data.map((x) => `<div class="click" style="cursor:pointer;padding:6px 0;border-bottom:1px solid #eee" onclick="openSendView('${x.id}')">
+    ${day(x.created_at)} · ${x.cancelled ? '<b>발송 취소</b> · ' : ''}${toSummary(x.to)}</div>`).join('');
+}
+// 받은 문서함
+async function openRecv() { showScreen('screenRecv'); subTell('recv'); loadRecv(); }
+async function loadRecv() {
+  msg('recvMsg', '');
+  const { data, error } = await sb.rpc('doc_recv_list', { p_year: yearSel('rYear') });
+  if (error) return msg('recvMsg', errText(error));
+  $('recvBody').innerHTML = (data || []).length ? data.map((x) => {
+    const st = x.cancelled ? '<span class="badge">발송 취소</span>' : x.recv_no ? '<span class="badge done">접수 완료</span>' : x.read_at ? '<span class="badge run">열람 · 접수 전</span>' : '<span class="badge wait">새 문서</span>';
+    return `<tr class="click" onclick="openSendView('${x.id}')"><td>${st}</td><td>${esc(x.from)}</td><td>${esc(x.number)}</td><td>${esc(x.title)}</td><td>${day(x.created_at)}</td>
+      <td>${esc(x.recv_no)}${x.recv_by ? `<div class="muted">${esc(x.recv_by)}</div>` : ''}</td></tr>`;
+  }).join('') : '<tr><td colspan="6" class="muted">받은 문서가 없습니다.</td></tr>';
+  recvBadge();
+}
+// 보낸 문서함
+async function openSent() { showScreen('screenSent'); subTell('sent'); loadSent(); }
+async function loadSent() {
+  msg('sentMsg', '');
+  const { data, error } = await sb.rpc('doc_sent_list', { p_year: yearSel('tYear'), p_doc_id: null });
+  if (error) return msg('sentMsg', errText(error));
+  $('sentBody').innerHTML = (data || []).length ? data.map((x) => `<tr class="click" onclick="openSendView('${x.id}')"><td>${esc(x.number)}</td><td>${esc(x.title)}</td>
+      <td style="white-space:normal">${x.cancelled ? '<b>발송 취소</b> ' : ''}${toSummary(x.to)}</td><td>${day(x.created_at)}</td><td>${esc(x.sender_name)}</td></tr>`).join('')
+    : '<tr><td colspan="5" class="muted">보낸 문서가 없습니다.</td></tr>';
+}
+// 한 건 보기
+let SV = null;
+async function openSendView(id) {
+  showScreen('screenSendView'); msg('svMsg', '');
+  const { data: x, error } = await sb.rpc('doc_send_get', { p_id: id });
+  if (error) return msg('svMsg', errText(error));
+  SV = x;
+  $('svHead').innerHTML = `<div class="muted">${x.mine ? '보낸 문서' : '받은 문서'} · ${esc(x.number)}</div>
+    <h2 style="margin:4px 0">${esc(x.title)}</h2>
+    <div class="muted">보낸 곳: ${esc(x.from_full)} · 보낸 사람: ${esc(x.sender_name)} · ${ko(x.created_at)}</div>
+    ${x.cancelled ? '<div class="msg err">보낸 곳에서 발송을 취소한 문서입니다.</div>' : ''}
+    ${x.note ? `<div class="hint">${esc(x.note).replace(/\n/g, '<br>')}</div>` : ''}
+    ${!x.mine ? (x.recv_no ? `<div class="msg ok">✅ 접수 완료 · ${esc(x.recv_no)} · ${esc(x.recv_by)} · ${ko(x.recv_at)}</div>` : x.cancelled ? '' : '<div class="msg">아직 접수하지 않았어요. 우리 지회 직원 중 한 명이 접수하면 모두에게 접수 완료로 보여요.</div>') : ''}`;
+  $('svFiles').innerHTML = (x.files || []).length ? '<b>파일</b>' + x.files.map((f, i) => `<div style="padding:4px 0">${f.main ? '📄 <b>공문</b>' : '📎 붙임'} ${esc(f.name)} <span class="muted">${f.size ? Math.ceil(f.size / 1024) + 'KB' : ''}</span>
+      <button onclick="openFile(${i}, false)">열기</button><button onclick="openFile(${i}, true)">내려받기</button></div>`).join('') : '';
+  $('svTo').innerHTML = x.mine ? `<b>받은 곳</b><table><thead><tr><th>받은 곳</th><th>열람</th><th>접수</th></tr></thead><tbody>${(x.to || []).map((t) =>
+      `<tr><td>${esc(t.name)}</td><td>${t.read_at ? ko(t.read_at) + ' · ' + esc(t.read_by) : '<span class="muted">안 봄</span>'}</td><td>${t.recv_no ? esc(t.recv_no) + ' · ' + ko(t.recv_at) : '<span class="muted">접수 전</span>'}</td></tr>`).join('')}</tbody></table>` : '';
+  const b = [];
+  if (!x.mine && !x.recv_no && !x.cancelled) b.push('<button class="main" onclick="acceptRecv()">📥 접수하기</button>');
+  if (x.mine && x.doc_id) b.push(`<button onclick="openDoc('${x.doc_id}')">원래 문서 보기</button>`);
+  if (x.mine && !x.cancelled) b.push('<button class="danger" onclick="cancelSend()">발송 취소</button>');
+  b.push(`<button onclick="${x.mine ? 'openSent()' : 'openRecv()'}">목록으로</button>`);
+  $('svBtns').innerHTML = b.join('');
+  if (!x.mine) recvBadge();
+}
+async function openFile(i, dl) {
+  const f = SV.files[i]; if (!f) return;
+  const w = dl ? null : window.open('', '_blank');
+  const { data, error } = await sb.storage.from('doc-files').createSignedUrl(f.path, 600, dl ? { download: f.name } : undefined);
+  if (error) { if (w) w.close(); return msg('svMsg', '파일을 열 수 없습니다: ' + errText(error)); }
+  if (w) w.location = data.signedUrl; else location.href = data.signedUrl;
+}
+async function acceptRecv() {
+  const { data, error } = await sb.rpc('doc_recv_accept', { p_id: SV.id });
+  if (error) return msg('svMsg', errText(error));
+  openSendView(SV.id);
+  alert('접수했습니다. 접수번호: ' + data);
+}
+async function cancelSend() {
+  if (!confirm('발송을 취소할까요? 받은 곳에서 파일을 더 이상 열 수 없게 됩니다.')) return;
+  const { error } = await sb.rpc('doc_send_cancel', { p_id: SV.id });
+  if (error) return msg('svMsg', errText(error));
+  openSendView(SV.id);
+}
+
+// ============ 11) 시작 ============
 boot();
 </script>
 </body>

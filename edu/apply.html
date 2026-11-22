@@ -48,6 +48,8 @@ select { width:100%; padding:12px; border:1.5px solid var(--line); border-radius
 // 기관 전체 이름: 지회는 '강원특별자치도농아인협회○○지회'(띄어쓰기 없이), 도협회는 협회 이름, 센터 등은 그 이름 그대로
 function fullOrg(n) { n = String(n || '').trim(); if (!n || n === '도협회') return '강원특별자치도농아인협회'; return /지회$/.test(n) && n.indexOf('농아인협회') < 0 ? '강원특별자치도농아인협회' + n : n; }
 
+// 미리보기: 수어교육관리 화면이 창 안에 띄우고 강좌 정보를 보내 줌 (신청해도 접수 안 됨)
+const PREVIEW = new URLSearchParams(location.search).has('preview');
 const TOKEN = location.pathname.split('/').filter(Boolean).pop() || '';
 const $ = s => document.querySelector(s);
 const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -67,7 +69,8 @@ function statusBox() {   // 접수 결과(대기·승인·반려) 확인: 신청
 function bindStatus() {
   const f = $('#sf'); if (!f) return;
   f.onsubmit = async ev => {
-    ev.preventDefault(); const b = $('#sb'); b.disabled = true;
+    ev.preventDefault(); if (PREVIEW) { $('#se').innerHTML = '<div class="err">미리보기 화면에서는 조회되지 않습니다.</div>'; return; }
+    const b = $('#sb'); b.disabled = true;
     try {
       const r = await api('applyStatus', { 이름: $('#sn').value, 연락처: $('#sp').value });
       $('#se').innerHTML = r.결과.length ? r.결과.map(x => `<div class="st"><b>${esc(x.강좌명)}</b> <b class="s ${x.상태 === '반려' ? 'r' : x.상태 === '대기' ? 'w' : ''}">${x.상태 === '대기' ? '접수 완료 · 확인 중' : x.상태 === '승인' ? '수강 확정' : '수강 불가'}</b>
@@ -78,9 +81,7 @@ function bindStatus() {
   };
 }
 function dead(msg) { $('#app').innerHTML = `<div class="wrap"><div class="center"><h2>신청할 수 없습니다</h2><p>${esc(msg)}</p></div>${statusBox()}</div>`; bindStatus(); }
-(async () => {
-  let c;
-  try { c = await api('applyInfo'); } catch (e) { return dead(e.message); }
+function boot(c) {
   const period = c.시작일 && c.종료일 ? `${c.시작일} ~ ${c.종료일}` : '';
   const fd = c.항목 || { 주소: true, 전달할말: true, 추가: [] }, memoLab = fd.전달할말라벨 || '전달할 말';
   const extraHtml = (fd.추가 || []).map(x => `<label class="f" for="${x.id}">${esc(x.라벨)}${x.필수 ? '' : ' (선택)'}</label>` + (x.유형 === '선택'
@@ -131,6 +132,7 @@ function dead(msg) { $('#app').innerHTML = `<div class="wrap"><div class="center
   };
   $('#f').onsubmit = async ev => {
     ev.preventDefault();
+    if (PREVIEW) { $('#e').innerHTML = '<div class="err">미리보기 화면이라 실제로 접수되지 않습니다.</div>'; return; }
     const b = $('#b'); b.disabled = true; $('#e').innerHTML = '';
     try {
       const r = await api('applySubmit', { 이름: $('#n').value, 연락처: $('#p').value, 비고: $('#m') ? $('#m').value : '', 주소: addrText(), 답변: Object.fromEntries((fd.추가 || []).map(x => [x.id, $('#' + x.id).value])), 동의: $('#a').checked, website: $('#w').value });
@@ -153,7 +155,20 @@ function dead(msg) { $('#app').innerHTML = `<div class="wrap"><div class="center
       $('#e').innerHTML = `<div class="err">${esc(e.message)}</div>`; b.disabled = false;
     }
   };
-})();
+}
+if (PREVIEW) {
+  window.addEventListener('message', e => {
+    if (e.origin !== location.origin || !e.data || e.data.type !== 'apply-preview') return;
+    boot(e.data.c);
+    const bar = document.createElement('div');
+    bar.textContent = '👁 미리보기 — 수강생에게 이렇게 보입니다. 신청해도 접수되지 않아요.';
+    bar.style.cssText = 'position:sticky;top:0;z-index:50;background:#fff7d6;color:#7a5a00;font-weight:700;font-size:13px;text-align:center;padding:8px';
+    document.body.prepend(bar);
+  });
+  if (window.parent !== window) window.parent.postMessage({ type: 'apply-preview-ready' }, location.origin);
+} else {
+  api('applyInfo').then(boot, e => dead(e.message));
+}
 </script>
 </body>
 </html>

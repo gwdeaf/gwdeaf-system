@@ -357,6 +357,10 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
           <div class="ctitle"><span>👥 오늘의 현황</span><span class="mute" id="bd-date"></span></div>
           <div id="board"><div class="empty">불러오는 중…</div></div>
         </div>
+        <div class="card hide" id="newscard" style="order:2">
+          <div class="ctitle"><span>📺 뉴스 통역 (7일)</span><a class="btn" href="/news/" target="_blank" rel="noopener">배정표 열기 ↗</a></div>
+          <div id="newsbox"><div class="empty">불러오는 중…</div></div>
+        </div>
         <div class="card" style="order:3">
           <div class="ctitle"><span>⭐ 자주 쓰는 메뉴</span><button class="btn" onclick="openMy('quick')">편집</button></div>
           <div id="quick" class="qgrid"><div class="empty">불러오는 중…</div></div>
@@ -366,10 +370,6 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
         <div class="card" id="todaycard" style="order:-1">
           <div class="ctitle"><span>📌 오늘 내 일정</span><button class="btn" id="dg-btn" onclick="toggleDigest()" title="매일 아침(평일 9:00) Slack으로 오늘 일정 받기">🔔 알림 켜짐</button></div>
           <div id="today"><div class="empty">불러오는 중…</div></div>
-        </div>
-        <div class="card hide" id="newscard" style="order:-1">
-          <div class="ctitle"><span>📺 뉴스 통역 (7일)</span><a class="btn" href="/news/" target="_blank" rel="noopener">배정표 열기 ↗</a></div>
-          <div id="newsbox"><div class="empty">불러오는 중…</div></div>
         </div>
         <div class="card" style="order:0">
           <div class="ctitle"><span>🗓 내 근태</span><button class="btn" onclick="go('att','leave')">근태 / 휴가 관리 →</button></div>
@@ -1024,7 +1024,7 @@ async function loadNews(){
     var body = !d.saved ? '<span class="mute">이 달 배정표가 아직 저장되지 않았어요</span>'
       : !items.length ? '<span class="mute">배정 없음</span>'
       : items.map(function(x){ var mine = x.name === me; return '<span style="display:inline-block;margin:2px 6px 2px 0;' + (mine ? 'font-weight:800;color:#2f5bd6' : '') + '"><span class="mute">' + esc(SHORT[x.prog] || x.prog) + '</span> ' + esc(x.name) + '</span>'; }).join('');
-    return '<div class="sch" style="cursor:default"><div class="dt" style="width:72px">' + md(d.date) + '<small>' + (i === 0 ? '오늘' : '(' + wd.charAt(dt.getDay()) + ')') + '</small></div><div class="tx">' + body + '</div></div>';
+    return '<div class="sch" style="cursor:default"><div class="dt" style="width:96px;white-space:nowrap">' + md(d.date) + ' <span class="mute" style="font-weight:600">' + (i === 0 ? '오늘' : '(' + wd.charAt(dt.getDay()) + ')') + '</span></div><div class="tx">' + body + '</div></div>';
   }).join('');
 }
 /* ── 📌 오늘 내 일정: 휴가·시수·출장·시간외(근태) + 수어교육·통역(DB) + 캘린더(제목에 내 이름) ── */

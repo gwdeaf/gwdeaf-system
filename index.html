@@ -480,7 +480,7 @@ function renderNav(){
   var h = topHtml('inq:s:', '💬', '문의함', "go('inq')").replace('</a>', '<span class="nbadge hide" id="inq-badge"></span></a>');
   h += grpHtml('🏖', '근태 / 휴가 관리');
   [['leave','내 근태현황'],['leave-apply','휴가(시수) 신청'],['overtime','시간외 신청']].forEach(function(k){ h += kidHtml('att', false, k[0], k[1]); });
-  h += '<div class="kls">출퇴근 기록</div>' + kidHtml('att', false, 'attend', '월별 근태현황');
+  h += kidHtml('att', false, 'attend', '월별 근태현황');
   if (ATT && ATT.staff && ATT.staff.role === '선임')   // 선임만 보임 (기존 '선임 확인' 권한 그대로)
     h += grpHtml('✅', '선임 확인') + kidHtml('att', false, 'senior:leavemgr', '후임 신청 현황') + kidHtml('att', false, 'senior:dashboard', '시수 신청 현황') + kidHtml('att', false, 'senior:altdashboard', '대체시수 신청 현황');
   h += grpHtml('🚌', '출장 관리') + kidHtml('att', false, 'trip-apply', '출장 신청') + kidHtml('att', false, 'trip-hist', '출장 내역');

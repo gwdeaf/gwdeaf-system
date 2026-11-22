@@ -274,17 +274,15 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .nav .kls{margin:clamp(4px,.8vh,9px) 6px 2px 34px;padding:clamp(3px,.6vh,6px) 10px;font-size:.8rem;font-weight:800;color:var(--pri);background:var(--pri-soft);border-radius:7px;letter-spacing:0}
 /* 대시보드 시스템 관리: 화면 아래쪽 전체 폭 */
 #mgr-card{margin-top:18px}
-/* 왼쪽 메뉴 글씨 1.5배 */
-.shell{grid-template-columns:300px minmax(0,1fr)}
-.nav a.top,.nav .grp{font-size:1.38rem}
-.nav .kid{font-size:1.28rem;padding-left:48px}
-.nav .kls{font-size:1.15rem}
-.nav .ic{width:30px;flex:none}
-.nav .grp .arw{font-size:1rem}
-.nav .top .nbadge,.nav .kid .nbadge{font-size:.9rem}
+/* 왼쪽 메뉴 글씨 = 홈 카드 제목(공지사항·오늘의 현황)과 같은 크기 */
+.shell{grid-template-columns:260px minmax(0,1fr)}
+.nav a.top,.nav .grp{font-size:1.02rem}
+.nav .kid{font-size:.95rem}
+.nav .kls{font-size:.85rem}
+.nav .ic{width:24px;flex:none}
 @media(max-width:860px){
   .shell{display:block}
-  .side{position:fixed;left:0;top:0;bottom:0;width:320px;max-width:88vw;height:auto;transform:translateX(-102%);transition:transform .2s;box-shadow:none;border-right:1px solid var(--line)}
+  .side{position:fixed;left:0;top:0;bottom:0;width:280px;max-width:88vw;height:auto;transform:translateX(-102%);transition:transform .2s;box-shadow:none;border-right:1px solid var(--line)}
   .side.open{transform:none;box-shadow:0 0 40px rgba(0,0,0,.18)}
   .scrim.open{display:block;position:fixed;inset:0;background:rgba(17,24,39,.35);z-index:35}
   .menubtn{display:inline-block}

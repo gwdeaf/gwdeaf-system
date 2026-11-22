@@ -2223,6 +2223,19 @@ async function renderApply() {
   if (S.cTab !== 'apply') return;
   drawApply(A);
 }
+function applyPreview(data) {
+  const ov = document.createElement('div');
+  ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:rgba(15,23,42,.55);display:flex;align-items:center;justify-content:center;padding:12px';
+  ov.innerHTML = `<div style="background:#fff;border-radius:16px;width:min(440px,100%);height:min(820px,100%);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 20px 60px rgba(0,0,0,.3)">
+    <div style="display:flex;align-items:center;gap:8px;padding:10px 14px;border-bottom:1px solid var(--line)"><b style="flex:1">👁 접수 화면 미리보기</b><span class="hint" style="margin:0">휴대폰 화면 크기</span><button class="btn small" data-x>닫기</button></div>
+    <iframe title="접수 화면 미리보기" src="/edu/apply.html?preview=1" style="flex:1;border:0;width:100%"></iframe></div>`;
+  const close = () => { window.removeEventListener('message', onMsg); ov.remove(); };
+  const fr = ov.querySelector('iframe');
+  const onMsg = e => { if (e.source === fr.contentWindow && e.data && e.data.type === 'apply-preview-ready') fr.contentWindow.postMessage({ type: 'apply-preview', c: data }, location.origin); };
+  window.addEventListener('message', onMsg);
+  ov.onclick = e => { if (e.target === ov || e.target.hasAttribute('data-x')) close(); };
+  document.body.appendChild(ov);
+}
 function drawApply(A) {
   const c = S.detail.course, body = $('#cTabBody'), L = A.link, st = S.ap;
   const url = L.active ? location.origin + '/a/' + L.token : '';
@@ -2246,7 +2259,7 @@ function drawApply(A) {
       <li>주소는 접수 목록에서만 보이며, 승인해도 참여자 명단에는 복사되지 않습니다.</li>
       <li>이름·연락처는 암호화되어 저장되며 도협회에서는 볼 수 없습니다. 신청 화면에서 개인정보 수집·이용 동의를 받습니다.</li>
       <li>수강생은 접수 화면 맨 아래 <b>내 접수 결과 확인</b>에서 이름·연락처를 넣고 승인·대기·수강 불가 상태를 직접 볼 수 있습니다. (접수 링크를 닫지 않으면 마감 후에도 조회됩니다)</li></ul></div>
-  <div class="panel"><b>접수 항목</b> <span class="hint" style="margin:0">이름·연락처는 항상 받습니다. 그 밖에 받을 내용을 고르거나 새 항목을 추가하세요(최대 10개). 새 강좌에서 접수를 처음 열면 우리 지회에서 가장 최근에 쓴 항목이 자동으로 들어갑니다.</span>
+  <div class="panel"><b>접수 항목</b> <span class="hint" style="margin:0">이름·연락처는 항상 받습니다. 그 밖에 받을 내용을 고르거나 새 항목을 추가하세요(최대 10개). 새 강좌에서 접수를 처음 열면 우리 지회에서 가장 최근에 쓴 항목이 자동으로 들어갑니다. <b>👁 미리보기</b>로 저장 전에 수강생 화면을 확인할 수 있습니다.</span>
     ${L.active ? `<div class="row" style="gap:18px;margin-top:8px"><label><input type="checkbox" id="fdAddr" ${fd.주소 ? 'checked' : ''}> 주소 받기</label><label><input type="checkbox" id="fdMemo" ${fd.전달할말 ? 'checked' : ''}> 전달할 말 받기</label></div>
     ${(A.지회항목 || []).length ? `<div class="row" style="gap:8px;margin-top:8px;flex-wrap:wrap"><label class="f" for="fdLoad" style="margin:0">우리 지회 다른 강좌 항목 불러오기</label><select id="fdLoad" style="max-width:260px"><option value="">— 강좌 선택 —</option>${A.지회항목.map((x, i) => `<option value="${i}">${esc(x.강좌명)} (${x.항목.추가.length}개)</option>`).join('')}</select></div>` : ''}
     ${fd.추가.map((x, i) => `<div style="border:1px solid var(--line);border-radius:10px;padding:10px;margin-top:8px"><div class="grid2">
@@ -2254,7 +2267,7 @@ function drawApply(A) {
       <div><label class="f">입력 방식</label><select data-fd="유형" data-i="${i}"><option value="글" ${x.유형 === '글' ? 'selected' : ''}>글로 쓰기</option><option value="선택" ${x.유형 === '선택' ? 'selected' : ''}>목록에서 고르기</option></select></div>
       ${x.유형 === '선택' ? `<div class="full"><label class="f">선택지 (쉼표로 구분)</label><input type="text" data-fd="선택지" data-i="${i}" maxlength="200" value="${esc((x.선택지 || []).join(', '))}" placeholder="예: 청각장애인, 비장애인"></div>` : ''}</div>
       <div class="row" style="margin-top:6px"><label><input type="checkbox" data-fd="필수" data-i="${i}" ${x.필수 ? 'checked' : ''}> 꼭 입력해야 함</label><span class="spacer"></span><button class="btn small danger" data-fdel="${i}">삭제</button></div></div>`).join('')}
-    <div class="row" style="margin-top:10px"><button class="btn" id="fdAdd" ${fd.추가.length >= 10 ? 'disabled' : ''}>+ 항목 추가 (${fd.추가.length}/10)</button><button class="btn primary" id="fdSave">접수 항목 저장</button></div>
+    <div class="row" style="margin-top:10px"><button class="btn" id="fdAdd" ${fd.추가.length >= 10 ? 'disabled' : ''}>+ 항목 추가 (${fd.추가.length}/10)</button><button class="btn primary" id="fdSave">접수 항목 저장</button><button class="btn" id="fdPrev">👁 미리보기</button></div>
     <p class="hint" style="margin:8px 0 0">이미 받은 접수는 바뀌지 않습니다. 항목을 고쳐도 이전 답변은 그대로 남습니다.</p>`
     : '<p class="hint" style="margin-bottom:0">위에서 접수를 시작하면 받을 항목을 정할 수 있습니다.</p>'}</div>
   <div class="panel" id="pstPanel"><b>🖼 홍보 포스터 올리기</b> <span class="hint" style="margin:0">직접 만든 포스터 이미지(JPG·PNG)를 올리면 접수 링크 화면 맨 위에 보입니다.</span>
@@ -2285,6 +2298,14 @@ function drawApply(A) {
     if ($('#fdLoad')) $('#fdLoad').onchange = async e => { const x = A.지회항목[Number(e.target.value)]; if (!x) return;
       if (fd.추가.length && !(await ask(`'${x.강좌명}'의 접수 항목으로 바꿀까요? 지금 화면의 추가 항목은 바뀝니다. (저장을 눌러야 적용)`, { ok: '불러오기' }))) { e.target.value = ''; return; }
       st.fd = JSON.parse(JSON.stringify(x.항목)); drawApply(A); toast('불러왔습니다. 확인 후 [접수 항목 저장]을 눌러 주세요.'); };
+    $('#fdPrev').onclick = async () => {   // 저장 전 지금 고친 그대로 수강생 화면 보기 (접수 안 됨)
+      let poster = '';
+      if (A.포스터.있음) { try { poster = (await call('getPosterImg', c.강좌ID)).이미지 || ''; } catch (e) {} }
+      applyPreview({ 강좌명: c.강좌명, 지회명: c.지회명, 시작일: c.시작일, 종료일: c.종료일, 총회차: Number(c.총회차) || 0, 회당시간: Number(c.회당시간) || 0,
+        기관명: c.기관명 || '', 수준: c.수준 || '', 요일시간: c.요일시간 || '', 장소: c.장소 || '', 모집인원: String(c.모집인원 || ''),
+        마감일: $('#apDl').value || L.실제마감 || '', 안내: $('#apNote').value, 포스터: poster,
+        항목: Object.assign({}, fd, { 추가: fd.추가.filter(x => String(x.라벨 || '').trim()).map((x, i) => Object.assign({}, x, { id: 'pv' + i, 선택지: x.선택지 || [] })) }) });
+    };
     $('#fdSave').onclick = () => act($('#fdSave'), async () => {
       const r = await call('saveApplyLink', c.강좌ID, { 마감일: $('#apDl').value, 안내: $('#apNote').value, 사용: true, 항목: fd });
       st.fd = null; drawApply(r); toast('접수 항목을 저장했습니다.');

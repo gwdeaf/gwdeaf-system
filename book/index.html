@@ -228,12 +228,32 @@ function docBtns(o) {
   if (o.need_receipt) b.push(ok ? `<button class="sub sm" onclick="docOf(${o.id},'receipt')">배송료 영수증</button>` : '');
   return b.join('');
 }
+function md(d) { const x = new Date(d); return (x.getMonth() + 1) + '/' + x.getDate(); }
+function docsDone(o) {   // 서류 발급 상태 (지회·도협회 모두 보임)
+  const dd = o.docs_done || {}, out = [];
+  if (o.need_statement) out.push('거래명세서 ' + (dd.statement ? '<b style="color:#18794e">✅ 발급 완료 ' + md(dd.statement.at) + '</b>' : '<span style="color:#8a5a00">발급 전</span>'));
+  if (o.need_receipt) out.push('배송료 영수증 ' + (dd.receipt ? '<b style="color:#18794e">✅ 발급 완료 ' + md(dd.receipt.at) + '</b>' : '<span style="color:#8a5a00">발급 전</span>'));
+  return out.length ? '<div class="hint">📄 ' + out.join(' · ') + '</div>' : '';
+}
+function docChecks(o) {   // 도협회: 주문 확인 뒤 서류 발급 체크
+  if (!(o.need_statement || o.need_receipt)) return '';
+  const ok = o.status === '주문확인' || o.status === '발송완료', dd = o.docs_done || {};
+  const cb = (k, l) => `<label style="display:inline-flex;align-items:center;gap:4px;margin-right:12px;${ok ? '' : 'opacity:.45'}"><input type="checkbox" ${dd[k] ? 'checked' : ''} ${ok ? '' : 'disabled'} onchange="docDone(${o.id},'${k}',this.checked)"> ${l} 발급 완료${dd[k] ? ' <span class="hint" style="margin:0">(' + md(dd[k].at) + ' ' + esc(dd[k].by) + ')</span>' : ''}</label>`;
+  return `<div class="acts" style="align-items:center"><span class="hint" style="margin:0">서류 발급</span>${o.need_statement ? cb('statement', '거래명세서') : ''}${o.need_receipt ? cb('receipt', '배송료 영수증') : ''}${ok ? '' : '<span class="hint" style="margin:0">주문 확인 후 체크할 수 있어요</span>'}</div>`;
+}
+async function docDone(id, k, v) {
+  try { const o = await rpc('book_doc_done', { p_id: id, p_kind: k, p_done: v }); const i = ORDERS.findIndex(x => x.id === id); if (i >= 0) ORDERS[i] = o; showAdmin(); msg(v ? '발급 완료로 표시했습니다.' : '발급 완료를 취소했습니다.', 'ok'); }
+  catch (e) { msg(e.message, 'err'); showAdmin(); }
+}
 function itemsText(o) { return (o.items || []).map(i => esc(i.name) + ' ' + i.qty + '권').join(', '); }
+function itemsList(o) {   // 교재마다 한 줄씩
+  return `<table class="t" style="margin-top:8px;font-size:14px"><tr><th>교재</th><th class="c" style="width:70px">수량</th><th class="r" style="width:90px">단가</th><th class="r" style="width:100px">금액</th></tr>${(o.items || []).map(i => `<tr><td>${esc(i.name)}</td><td class="c">${i.qty}권</td><td class="r">${won(i.price)}</td><td class="r">${won(i.price * i.qty)}</td></tr>`).join('')}<tr><td colspan="3" class="r"><b>합계</b></td><td class="r"><b>${won(o.total)}원</b></td></tr></table>`;
+}
 async function showMy() {
   $('view').innerHTML = '<div class="card">불러오는 중…</div>';
   try { ORDERS = await rpc('book_orders_list', { p_all: false }); } catch (e) { return msg(e.message, 'err'); }
   $('view').innerHTML = `<div class="card"><h2>📋 우리 지회 주문 내역</h2>${ORDERS.length ? ORDERS.map(o => `<div class="ord"><div class="top"><span class="no">${esc(o.order_no)}</span><span class="chip s-${o.status}">${o.status === '주문확인' ? '주문 확인' : o.status === '발송완료' ? '발송 완료' : o.status}</span><span class="hint" style="margin:0">${esc(String(o.created_at).slice(0, 10))} · ${esc(o.buyer_name)}</span></div>
-    <div style="margin-top:6px">${itemsText(o)} · <b>${won(o.total)}원</b> · ${esc(shipLabel(o.ship, o.ship_fee))}</div>
+    ${itemsList(o)}<div class="hint">🚚 ${esc(shipLabel(o.ship, o.ship_fee))}</div>${docsDone(o)}
     <div style="margin-top:6px">${steps(o)}</div>${o.ship_note ? `<div class="hint">📮 ${esc(o.ship_note)}</div>` : ''}${o.need_tax ? `<div class="hint">🧾 전자계산서: ${esc(o.tax_status || '신청접수')}</div>` : ''}
     <div class="acts">${docBtns(o)}${o.status === '접수' ? `<button class="danger sm" onclick="cancelOrder(${o.id})">주문 취소</button>` : ''}</div></div>`).join('') : '<div class="hint">아직 주문한 내역이 없습니다.</div>'}</div>`;
 }
@@ -248,7 +268,7 @@ async function showAdmin() {
   $('view').innerHTML = `<div class="card"><h2>🗂 교재 주문 관리</h2><div class="opts" id="a-f">${[['접수', '접수 ' + n('접수')], ['주문확인', '주문 확인 ' + n('주문확인')], ['발송완료', '발송 완료 ' + n('발송완료')], ['취소', '취소 ' + n('취소')], ['', '전체 ' + ORDERS.length]].map(x => `<span class="opt ${AF === x[0] ? 'on' : ''}" data-v="${x[0]}">${x[1]}</span>`).join('')}</div>
     <div class="hint" style="margin:8px 0">${list.length}건 · 합계 ${won(money)}원 (취소 제외, 택배비 별도)</div>
     ${list.length ? list.map(o => `<div class="ord"><div class="top"><span class="no">${esc(o.order_no)}</span><span class="chip s-${o.status}">${o.status}</span><b>${esc(o.chapter_name)}</b><span class="hint" style="margin:0">${esc(o.buyer_name)} · ${esc(o.tel)} · ${esc(String(o.created_at).slice(0, 16).replace('T', ' '))}</span></div>
-      <div style="margin-top:6px">${itemsText(o)} · <b>${won(o.total)}원</b></div>
+      ${itemsList(o)}
       <div class="hint">${esc(shipLabel(o.ship, o.ship_fee))}${o.address ? ' · ' + esc(o.address) : ''} · 입금 예정 ${esc(o.pay_date || '-')}${o.memo ? ' · 💬 ' + esc(o.memo) : ''}</div>
       <div class="hint">서류: ${[o.need_statement ? '거래명세서' : '', o.need_receipt ? '배송료 영수증' : '', o.need_tax ? '전자계산서(' + esc(o.biz_no) + ')' : ''].filter(Boolean).join(', ') || '없음'}</div>
       <div style="margin-top:6px">${steps(o)}</div>
@@ -258,6 +278,7 @@ async function showAdmin() {
         ${o.status === '주문확인' || o.status === '발송완료' ? `<button class="sub sm" onclick="setSt(${o.id},'${o.status === '발송완료' ? '주문확인' : '접수'}')">↩ 되돌리기</button>` : ''}
         ${o.status !== '취소' ? `<button class="sub sm" onclick="if(confirm('이 주문을 취소할까요?'))setSt(${o.id},'취소')">취소</button>` : ''}
         <span style="flex:1"></span>${docBtns(Object.assign({}, o, { status: '주문확인' }))}</div>
+      ${docChecks(o)}
       <div class="acts" style="align-items:center"><span class="hint" style="margin:0">서류 날짜</span><input type="date" value="${esc(o.doc_date || '')}" style="width:auto;margin:0" onchange="upd(${o.id},{doc_date:this.value})">
         ${o.need_tax ? `<span class="hint" style="margin:0">계산서</span><select style="width:auto;margin:0" onchange="upd(${o.id},{tax_status:this.value})">${['신청접수', '발행완료', '보완 요청'].map(k => `<option ${o.tax_status === k ? 'selected' : ''}>${k}</option>`).join('')}</select>${o.has_biz_file ? `<button class="sub sm" onclick="bizFile(${o.id})">📎 사업자등록증</button>` : ''}` : ''}</div></div>`).join('') : '<div class="hint">해당하는 주문이 없습니다.</div>'}</div>`;
   $('a-f').querySelectorAll('.opt').forEach(x => x.onclick = () => { AF = x.dataset.v; showAdmin(); });

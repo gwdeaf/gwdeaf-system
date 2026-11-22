@@ -364,7 +364,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
       </div>
       <div class="col">
         <div class="card" id="todaycard" style="order:-1">
-          <div class="ctitle"><span>📌 오늘 내 일정</span><button class="btn" id="dg-btn" onclick="toggleDigest()" title="매일 아침(평일 8:30) Slack으로 오늘 일정 받기">🔔 알림 켜짐</button></div>
+          <div class="ctitle"><span>📌 오늘 내 일정</span><button class="btn" id="dg-btn" onclick="toggleDigest()" title="매일 아침(평일 9:00) Slack으로 오늘 일정 받기">🔔 알림 켜짐</button></div>
           <div id="today"><div class="empty">불러오는 중…</div></div>
         </div>
         <div class="card hide" id="newscard" style="order:-1">
@@ -798,7 +798,7 @@ async function openMy(focus){
 }
 /* ── 🔔 Slack 알림 설정 (user_prefs.slack = {all, off:[]}, 처음엔 모두 켜짐) ── */
 var SLK_CATS = [
-  ['digest', '📌 아침 오늘 내 일정', '평일 아침 8:30'],
+  ['digest', '📌 아침 오늘 내 일정', '평일 아침 9:00'],
   ['notice', '📢 새 공지', '나에게 보이는 공지'],
   ['doc', '📨 받은 문서', '우리 지회로 들어온 공문'],
   ['inq', '💬 문의함', '새 문의 · 새 답글'],

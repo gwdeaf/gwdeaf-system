@@ -277,7 +277,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 /* 시수·대체시수 같은 중간 제목은 눈에 띄게 */
 .nav .kls{margin:clamp(4px,.8vh,9px) 6px 2px 34px;padding:clamp(3px,.6vh,6px) 10px;font-size:.8rem;font-weight:800;color:var(--pri);background:var(--pri-soft);border-radius:7px;letter-spacing:0}
 /* 대시보드 시스템 관리: 화면 아래쪽 전체 폭 */
-#mgr-card{margin-top:18px}
+
 /* 왼쪽 메뉴 글씨 = 홈 카드 제목(공지사항·오늘의 현황)과 같은 크기 */
 .shell{grid-template-columns:260px minmax(0,1fr)}
 .nav a.top,.nav .grp{font-size:1.02rem}
@@ -399,11 +399,11 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
           <div class="ctitle"><span>⭐ 즐겨찾기</span><button class="btn" onclick="openMy('quick')">편집</button></div>
           <div id="quick" class="qgrid"><div class="empty">불러오는 중…</div></div>
         </div>
+        <div class="card hide" id="mgr-card" style="order:4">
+          <div class="ctitle"><span>🛠 시스템 관리</span><button class="btn" onclick="editMgr()">편집</button></div>
+          <div id="mgr" class="qgrid"></div>
+        </div>
       </div>
-    </div>
-    <div class="card hide" id="mgr-card">
-      <div class="ctitle"><span>🛠 시스템 관리</span></div>
-      <div class="mgr" id="mgr"></div>
     </div>
   </main>
   <main id="view-attall" class="hide">
@@ -481,7 +481,7 @@ async function start(){
     $('blk-t').textContent = t; $('blk-d').innerHTML = d; return;
   }
   ME = w; render(); show('app');
-  loadNotices(); loadAtt(); loadBoard(); loadQuick(); if (w.is_hq || w.role === 'admin') loadNews(); if (w.can_manage) loadMgr(); inqBadge(); setInterval(inqBadge, 120000);
+  loadNotices(); loadAtt(); loadBoard(); loadQuick(); if (w.is_hq || w.role === 'admin') loadNews(); inqBadge(); setInterval(inqBadge, 120000);
   fromHash();
 }
 
@@ -770,9 +770,7 @@ function render(){
   renderNav();
   try { var gk = 'guideSeen:' + (ME.email || ''); if (!localStorage.getItem(gk)) { localStorage.setItem(gk, '1'); setTimeout(function(){ openGuide(ME, 'home'); }, 600); } } catch(e){}
   loadNoticeMeta();
-  var anyAdm = ME.can_manage || isAttAdmin() || isVehAdmin();
-  $('mgr-card').classList.toggle('hide', !anyAdm);
-  if (anyAdm && !ME.can_manage) $('mgr').innerHTML = mgrExtra();
+  loadMgr();
 }
 
 /* ── 공지사항 ── */
@@ -1245,13 +1243,46 @@ function drawBoard(){
 }
 
 /* ── 지회 관리 요약 (담당자·공동 관리자) ── */
+/* ── 🛠 시스템 관리: 권한에 맞는 관리 바로가기 중 각자 골라서 (user_prefs.mgr) ── */
+function mgrCatalog(){
+  var hqAtt = ME.role === 'admin' || (ME.is_hq && (ME.role === 'lead' || hasPerm('att.chapter_manage')));
+  return [
+    { id:'staff', ic:'👥', l:'직원·권한 관리', ok: ME.can_manage, go: function(){ go('access'); } },
+    { id:'approval', ic:'✍️', l:'결재라인', ok: ME.can_manage, go: function(){ go('access'); } },
+    { id:'log', ic:'📜', l:'권한 변경 기록', ok: ME.can_manage, go: function(){ go('access'); } },
+    { id:'att', ic:'🏖', l:'근태 관리', ok: isAttAdmin(), go: function(){ go('att', 'dashboard', true); } },
+    { id:'attend', ic:'🕘', l:'출퇴근 관리', ok: isAttAdmin(), go: function(){ go('att', 'attend', true); } },
+    { id:'attall', ic:'🏢', l:'지회 근태 보기', ok: hqAtt, go: function(){ go('att', 'attend', true); } },
+    { id:'car', ic:'🚗', l:'차량 관리', ok: isVehAdmin(), go: function(){ go('car', '', true); } },
+    { id:'acct', ic:'💰', l:'회계 집행 현황', ok: hasPerm('acct.'), go: function(){ go('acct', 'status'); } },
+    { id:'doc', ic:'📝', l:'공문 대장', ok: true, go: function(){ go('doc', 'ledger'); } },
+    { id:'book', ic:'📦', l:'교재 주문 관리', ok: ME.role === 'admin' || (ME.is_hq && hasPerm('book.manage')), go: function(){ go('book', 'admin'); } },
+    { id:'inq', ic:'💬', l:'문의함', ok: true, go: function(){ go('inq'); } }
+  ].filter(function(x){ return x.ok; });
+}
+var MGR_DEF = ['staff', 'approval', 'log', 'att', 'car', 'book'], MGR_LIST = [];
 async function loadMgr(){
-  var r = await sb.rpc('list_staff');
-  if (r.error) { $('mgr').innerHTML = '<div class="empty" style="grid-column:1/-1">' + esc(r.error.message) + '</div>'; return; }
-  var list = r.data || [], act = list.filter(function(s){ return s.active; }).length, off = list.length - act;
-  $('mgr').innerHTML = '<a class="mbox" onclick="go(\'access\')"><div class="n">' + act + '명</div><div class="l">사용 중인 직원' + (off ? ' (중지 ' + off + ')' : '') + '</div></a>'
-    + '<a class="mbox" onclick="go(\'access\')"><div class="n">결재라인</div><div class="l">부서별 결재칸 설정</div></a>'
-    + '<a class="mbox" onclick="go(\'access\')"><div class="n">변경 기록</div><div class="l">권한 변경 내역 보기</div></a>' + mgrExtra();
+  await loadPrefs();
+  var cat = mgrCatalog(), adm = ME.can_manage || isAttAdmin() || isVehAdmin() || cat.some(function(x){ return x.id === 'book' || x.id === 'attall'; });
+  $('mgr-card').classList.toggle('hide', !adm);
+  if (!adm) return;
+  var ids = Array.isArray(PREFS.mgr) ? PREFS.mgr : MGR_DEF;
+  MGR_LIST = ids.map(function(id){ return cat.filter(function(x){ return x.id === id; })[0]; }).filter(Boolean);
+  $('mgr').innerHTML = MGR_LIST.length ? MGR_LIST.map(function(x, i){ return '<button class="qbtn" onclick="MGR_LIST[' + i + '].go()"><span class="ic">' + x.ic + '</span>' + esc(x.l) + '</button>'; }).join('')
+    : '<div class="empty">편집을 눌러 바로가기를 고르세요.</div>';
+}
+function editMgr(){
+  var cat = mgrCatalog(), cur = Array.isArray(PREFS.mgr) ? PREFS.mgr : MGR_DEF;
+  $('modal').innerHTML = '<div class="modal" style="max-width:420px"><h3>🛠 시스템 관리 바로가기</h3><p class="mute" style="margin:0 0 10px;font-size:.85rem">홈 오른쪽에 보일 관리 메뉴를 고르세요. (내 권한에 있는 것만 보여요)</p>'
+    + '<div class="mylist" id="mg-l" style="display:block;max-height:none">' + cat.map(function(x){ return '<label style="display:flex;gap:8px;align-items:center;padding:6px 2px"><input type="checkbox" value="' + x.id + '"' + (cur.indexOf(x.id) >= 0 ? ' checked' : '') + ' style="width:auto"> ' + x.ic + ' ' + esc(x.l) + '</label>'; }).join('') + '</div>'
+    + '<div class="mfoot"><button class="btn" onclick="saveMgr(true)">기본값으로</button><span style="flex:1"></span><button class="btn" onclick="closeModal()">닫기</button><button class="btn pri" onclick="saveMgr()">저장</button></div></div>';
+  $('modal').classList.remove('hide');
+}
+async function saveMgr(reset){
+  var ids = []; if (!reset) document.querySelectorAll('#mg-l input:checked').forEach(function(c){ ids.push(c.value); });
+  var r = await sb.rpc('my_prefs_set', { p_key: 'mgr', p_val: reset ? null : ids });
+  if (r.error) { toast(r.error.message); return; }
+  PREFS.mgr = reset ? null : ids; closeModal(); loadMgr(); toast('시스템 관리 바로가기를 저장했습니다.');
 }
 
 start();

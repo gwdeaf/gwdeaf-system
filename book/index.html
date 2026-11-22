@@ -1,0 +1,359 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>교재 주문</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<link rel="stylesheet" href="/ui.css?v=1">
+<style>
+  body { font-family: 'Malgun Gothic', sans-serif; margin: 0; background: #f5f7fa; font-size: 15px; color: #222; }
+  header { background: #2f5bd6; color: #fff; padding: 12px 16px; } header h1 { font-size: 18px; margin: 0; } #who { font-size: 13px; opacity: .9; }
+  nav { display: flex; flex-wrap: wrap; gap: 8px; padding: 10px 16px; background: #fff; border-bottom: 1px solid #ddd; }
+  button { font-size: 14px; padding: 9px 14px; border: 0; border-radius: 7px; background: #2f5bd6; color: #fff; cursor: pointer; font-family: inherit; }
+  button.sub { background: #e6e9ef; color: #222; } button.danger { background: #c0392b; } button.ok { background: #18a058; } button.sm { padding: 5px 10px; font-size: 13px; }
+  button:disabled { opacity: .5; cursor: default; }
+  main { padding: 14px 16px 40px; max-width: 1100px; }
+  .card { background: #fff; border-radius: 10px; padding: 14px 16px; margin-bottom: 12px; box-shadow: 0 1px 2px rgba(0,0,0,.08); }
+  .card h2 { font-size: 16px; margin: 0 0 10px; }
+  label.f { display: block; margin-top: 10px; font-weight: bold; font-size: 13px; color: #444; }
+  input, select, textarea { width: 100%; box-sizing: border-box; font-size: 15px; padding: 9px 10px; margin-top: 4px; border: 1px solid #c7ccd6; border-radius: 7px; font-family: inherit; }
+  input[type=checkbox], input[type=radio] { width: auto; margin: 0 6px 0 0; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 14px; } @media (max-width: 680px) { .grid2 { grid-template-columns: 1fr; } }
+  .hint { color: #64748b; font-size: 13px; margin-top: 4px; }
+  .msg { padding: 10px; border-radius: 7px; margin: 0 0 10px; display: none; } .msg.err { background: #fdecea; color: #922; display: block; } .msg.ok { background: #e9f7ef; color: #1e6b3b; display: block; }
+  table.t { width: 100%; border-collapse: collapse; font-size: 14px; } table.t th, table.t td { border-bottom: 1px solid #e5e7eb; padding: 8px 6px; text-align: left; vertical-align: middle; }
+  table.t th { background: #f1f5f9; font-size: 13px; white-space: nowrap; } td.r, th.r { text-align: right; } td.c, th.c { text-align: center; }
+  .qty { display: inline-flex; align-items: center; gap: 4px; } .qty input { width: 64px; text-align: center; margin: 0; padding: 6px; } .qty button { padding: 5px 10px; }
+  tr.off td { color: #aab0bb; }
+  .opts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+  .opt { border: 2px solid #dde1e8; border-radius: 9px; padding: 9px 14px; cursor: pointer; background: #fff; font-size: 14px; }
+  .opt.on { border-color: #2f5bd6; background: #eef3ff; font-weight: 700; }
+  .sumbar { position: sticky; bottom: 0; background: #fff; border-top: 2px solid #2f5bd6; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; box-shadow: 0 -2px 10px rgba(0,0,0,.06); border-radius: 10px 10px 0 0; }
+  .sumbar .tot { font-size: 18px; font-weight: 800; color: #1a3a6b; flex: 1; }
+  .chip { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 99px; background: #eef0f4; color: #555; white-space: nowrap; }
+  .s-접수 { background: #fff4d6; color: #8a5a00; } .s-주문확인 { background: #e3ecff; color: #2f5bd6; } .s-발송완료 { background: #dff5e7; color: #18794e; } .s-취소 { background: #f3f4f6; color: #9aa0a6; text-decoration: line-through; }
+  .steps { display: flex; gap: 4px; align-items: center; font-size: 12px; color: #9aa0a6; flex-wrap: wrap; } .steps b { color: #18794e; }
+  .ord { border: 1px solid #e5e7eb; border-radius: 10px; padding: 12px; margin-bottom: 10px; background: #fff; }
+  .ord .top { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; } .ord .no { font-weight: 800; } .ord .acts { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+  #ov { position: fixed; inset: 0; background: rgba(15,23,42,.55); display: none; z-index: 50; align-items: flex-start; justify-content: center; overflow: auto; padding: 20px 10px; }
+  #ov.open { display: flex; } #ovbox { background: #e8e8e8; border-radius: 10px; max-width: 800px; width: 100%; }
+  #ovbar { display: flex; gap: 6px; padding: 10px; background: #fff; border-radius: 10px 10px 0 0; position: sticky; top: 0; } #ovbar .sp { flex: 1; }
+  #ovdoc { padding: 16px; }
+  /* 서류 (견적서·주문서·거래명세서·영수증) */
+  .doc-wrap{background:#fff;max-width:720px;margin:0 auto;padding:40px;box-shadow:0 4px 20px rgba(0,0,0,.15);border-radius:4px;font-family:'Noto Sans KR','Malgun Gothic',sans-serif;color:#111}
+  .qd-title-wrap{border-bottom:3px double #1a3a6b;padding-bottom:16px;margin-bottom:20px;display:flex;align-items:flex-end;justify-content:space-between;gap:10px}
+  .qd-title{font-size:26px;font-weight:900;letter-spacing:6px;color:#1a3a6b;font-family:'Noto Serif KR','Batang',serif}
+  .qd-meta{font-size:11px;color:#555;text-align:right;line-height:1.8}.qd-meta strong{color:#111}
+  .qd-parties{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:20px}
+  .qd-party{border:1px solid #ccc;border-radius:4px;overflow:hidden}.qd-party-head{background:#1a3a6b;color:#fff;padding:7px 12px;font-weight:700;font-size:12px;text-align:center}
+  .qd-party-body{padding:10px 12px}.qd-party-row{display:flex;padding:3px 0;font-size:12px;border-bottom:1px dotted #eee}.qd-party-row:last-child{border-bottom:none}
+  .qd-party-label{width:72px;flex-shrink:0;color:#666;font-size:11px}.qd-party-val{font-weight:500;word-break:break-all}
+  .qd-items,.stmt-items{width:100%;border-collapse:collapse;margin-bottom:18px}.qd-items thead tr,.stmt-items thead tr{background:#1a3a6b;color:#fff}
+  .qd-items th,.stmt-items th{padding:8px 10px;font-size:12px;font-weight:600;text-align:center}.qd-items td,.stmt-items td{padding:8px 10px;font-size:12px;text-align:center;border-bottom:1px solid #ddd}
+  .stmt-items th,.stmt-items td{border:1px solid #ddd}.qd-items td:first-child{text-align:left;font-weight:500}
+  .qd-total-wrap{display:flex;justify-content:flex-end;margin-bottom:20px}.qd-total-table{border:1px solid #ccc;border-radius:4px;overflow:hidden;min-width:220px}
+  .qd-total-row{display:flex;background:#1a3a6b;color:#fff}.qd-total-label{padding:7px 14px;font-size:12px;flex:1;font-weight:700}.qd-total-val{padding:7px 14px;font-size:15px;font-weight:800;text-align:right;min-width:120px}
+  .qd-notice{background:#fffbf0;border:1px solid #ffe082;border-radius:4px;padding:12px 14px;font-size:11px;color:#5a4000;line-height:1.9;margin-bottom:20px}
+  .qd-req{background:#e8f5e9;border:1px solid #a5d6a7;border-radius:4px;padding:10px 14px;font-size:11px;color:#1b5e20;margin-bottom:20px}
+  .qd-bank{background:#f0f7ff;border:2px solid #1a3a6b;border-radius:6px;padding:12px 18px;margin-bottom:20px;font-size:13px}
+  .qd-sign{display:flex;justify-content:flex-end}.qd-sign>div{position:relative;display:inline-block;min-width:200px;border:1px solid #ccc;border-radius:4px;padding:12px 20px;text-align:center}
+  .qd-sign .t{font-size:11px;color:#666;margin-bottom:28px}.qd-sign .n{font-size:14px;font-weight:700;padding-top:6px}
+  .qd-sign img{position:absolute;bottom:2px;right:2px;width:72px;height:72px;object-fit:contain;opacity:.85;pointer-events:none}
+  body.embed header { display: none; }
+  @media (max-width: 640px) { main { padding: 10px; } .qd-parties { grid-template-columns: 1fr; } .doc-wrap { padding: 20px 14px; } }
+  @media print { body * { visibility: hidden; } #ovdoc, #ovdoc * { visibility: visible; } #ovdoc { position: absolute; left: 0; top: 0; width: 100%; padding: 0; } .doc-wrap { box-shadow: none; padding: 16px; } .qd-parties { grid-template-columns: 1fr 1fr !important; } }
+</style>
+</head>
+<body>
+<header><h1>📦 교재 주문</h1><div id="who">불러오는 중…</div></header>
+<nav id="topNav" style="display:none">
+  <button data-tab="order" onclick="go('order')">🛒 주문하기</button>
+  <button data-tab="my" class="sub" onclick="go('my')">📋 주문 내역</button>
+  <button data-tab="admin" class="sub mgr" onclick="go('admin')" style="display:none">🗂 주문 관리 <span id="bdg"></span></button>
+  <button data-tab="books" class="sub mgr" onclick="go('books')" style="display:none">⚙️ 교재·판매자 정보</button>
+</nav>
+<main><div id="msg" class="msg"></div><div id="view"></div></main>
+<div id="ov"><div id="ovbox"><div id="ovbar"></div><div id="ovdoc"></div></div></div>
+<script src="//t1.daumcdn.net/mapjsapi/bundle/postcode/prod/postcode.v2.js"></script>
+<script>
+const SUPABASE_URL = 'https://uamlualqqcqmpdkprjfs.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhbWx1YWxxcWNxbXBka3ByamZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNjE0OTMsImV4cCI6MjExMDYzNzQ5M30._f4p4pfcKaYbmjKRXOPpkMo7Ydcc26oVVI6lRFYsLkY';
+const EMBED = new URLSearchParams(location.search).get('embed') === '1';
+if (EMBED) document.body.classList.add('embed');
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+async function rpc(name, a) { const { data, error } = await sb.rpc(name, a || {}); if (error) throw new Error(error.message || '오류가 났습니다.'); return data; }
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const won = n => Number(n || 0).toLocaleString('ko-KR');
+function msg(t, type) { const m = $('msg'); m.textContent = t || ''; m.className = 'msg ' + (type || ''); if (t) window.scrollTo(0, 0); }
+function todayStr() { return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }); }
+function krDate(d) { if (!d) return ''; const s = String(d).slice(0, 10).split('-'); return s[0] + '년 ' + Number(s[1]) + '월 ' + Number(s[2]) + '일'; }
+
+// ── 하위 메뉴 (업무 시스템 왼쪽 메뉴와 연결) ──
+const SUB = { go: new URLSearchParams(location.search).get('go') || '', ready: false };
+function subTell(t) { if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-tab', tab: t }, location.origin); } catch (e) {} }
+function subReady() { SUB.ready = true; if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-ready', tab: SUB.go }, location.origin); } catch (e) {} }
+window.addEventListener('message', e => { if (e.origin !== location.origin || !e.data || e.data.type !== 'sub-go') return; SUB.go = e.data.tab; if (SUB.ready) go(SUB.go || 'order', true); });
+function badgeTell(n) { if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'book-badge', n: n }, location.origin); } catch (e) {} }
+
+let D = null, CART = {}, F = { receive: 'delivery', ship: 'prepaid', st: false, rc: false, tax: false }, ORDERS = [], AF = '접수';
+async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { $('view').innerHTML = '<div class="card">업무 시스템에 로그인한 뒤 다시 열어 주세요.</div>'; return; }
+  try { D = await rpc('book_init'); } catch (e) { $('view').innerHTML = '<div class="card">' + esc(e.message) + '</div>'; return; }
+  $('who').textContent = D.me.chapter_name + ' · ' + (D.me.name || D.me.email);
+  document.querySelectorAll('.mgr').forEach(b => b.style.display = D.mgr ? '' : 'none');
+  setBadge(D.badge);
+  $('topNav').style.display = 'flex';
+  go(SUB.go || (D.mgr && D.me.is_hq ? 'admin' : 'order'), true);
+  subReady();
+}
+function setBadge(n) { $('bdg').textContent = n ? '(' + n + ')' : ''; badgeTell(n || 0); }
+function go(t, quiet) {
+  if ((t === 'admin' || t === 'books') && !D.mgr) t = 'order';
+  document.querySelectorAll('#topNav button[data-tab]').forEach(b => b.classList.toggle('sub', b.dataset.tab !== t));
+  msg(''); subTell(t);
+  ({ order: showOrder, my: showMy, admin: showAdmin, books: showBooks })[t]();
+}
+
+// ═════════ 주문하기 ═════════
+const set = k => (D.seller || {})[k] || '';
+const freeAt = () => Number(set('무료배송 기준')) || 50000, preFee = () => Number(set('선불 택배비')) || 5000;
+function itemsOf() { return D.items.filter(b => b.active); }
+function reqOk(b) { return !b.req_item || ((CART[b.req_item] || 0) >= b.req_qty); }
+function cartTotal() { return itemsOf().reduce((s, b) => s + (CART[b.id] ? b.price * CART[b.id] : 0), 0); }
+function shipNow() { const tot = cartTotal(); return F.receive === 'pickup' ? 'pickup' : tot >= freeAt() ? 'free' : F.ship; }
+function shipLabel(s, fee) { return s === 'prepaid' ? '선불 (택배비 ' + won(fee || preFee()) + '원 별도)' : s === 'postpaid' ? '착불' : s === 'free' ? '택배 (배송비 무료)' : '인편 (직접 수령)'; }
+function showOrder() {
+  const v = $('view'), me = D.me;
+  v.innerHTML = `<div class="card"><h2>📖 교재 선택</h2><div id="books"></div></div>
+  <div class="card"><h2>🚚 주문자 · 배송</h2><div class="grid2">
+    <div><label class="f">주문자명 *</label><input id="o-name" value="${esc(me.name)}"></div>
+    <div><label class="f">기관명</label><input id="o-org" value="${esc(me.org_full)}"></div>
+    <div><label class="f">이메일</label><input id="o-email" type="email" value="${esc(me.email)}"></div>
+    <div><label class="f">연락처 *</label><input id="o-tel" value="${esc(me.tel)}" placeholder="033-000-0000"></div>
+    <div><label class="f">입금 예정일 *</label><input id="o-pay" type="date" min="${todayStr()}"></div></div>
+    <label class="f">수령 방법 *</label><div class="opts" id="o-rcv"><span class="opt" data-v="delivery">🚚 택배</span><span class="opt" data-v="pickup">🙋 인편 (직접 수령)</span></div>
+    <div id="o-addrbox"><label class="f">배송지 *</label><div style="display:flex;gap:6px"><input id="o-addr" value="${esc(me.address)}" placeholder="주소"><button type="button" class="sub" onclick="findAddr()" style="white-space:nowrap">주소 찾기</button></div></div>
+    <div id="o-shipbox"><label class="f">택배 방식 *</label><div class="opts" id="o-ship"><span class="opt" data-v="prepaid">선불 (택배비 ${won(preFee())}원 별도 청구)</span><span class="opt" data-v="postpaid">착불 (받을 때 결제)</span></div></div>
+    <div id="o-free" class="hint" style="display:none;color:#18794e;font-weight:700">🎉 주문 금액 ${won(freeAt())}원 이상이라 배송비가 없습니다.</div></div>
+  <div class="card"><h2>📋 필요 서류 · 계산서</h2><div class="opts" id="o-docs"><span class="opt" data-v="st">거래명세서</span><span class="opt" data-v="rc">배송료 영수증 (선불일 때)</span><span class="opt" data-v="tax">전자계산서</span></div>
+    <div id="o-taxbox" style="display:none" class="grid2"><div><label class="f">사업자등록번호 *</label><input id="o-biz" value="${esc(me.biz_no)}" placeholder="123-45-67890"></div>
+      <div><label class="f">계산서 받을 이메일</label><input id="o-taxmail" type="email" placeholder="비우면 위 이메일"></div>
+      <div style="grid-column:1/-1"><label class="f">사업자등록증 첨부 (PDF·사진, 10MB까지)</label><input id="o-bizfile" type="file" accept=".pdf,image/*"></div></div>
+    <label class="f">기타 요청사항</label><textarea id="o-memo" rows="2" maxlength="500" placeholder="배송 관련 요청, 특이사항"></textarea>
+    <div class="hint" style="margin-top:10px">${set('사업자등록증 링크') ? `<a href="${esc(set('사업자등록증 링크'))}" target="_blank" rel="noopener">🏢 도협회 사업자등록증</a> · ` : ''}${set('통장사본 링크') ? `<a href="${esc(set('통장사본 링크'))}" target="_blank" rel="noopener">🏦 통장사본</a>` : ''}</div></div>
+  <div class="sumbar"><div class="tot" id="o-tot">0원</div><button class="sub" onclick="previewQuote()">🖨️ 견적서·주문서 미리보기</button><button id="o-go" onclick="doOrder()">주문하기</button></div>`;
+  const bind = (id, fn) => $(id).querySelectorAll('.opt').forEach(o => o.onclick = () => { fn(o.dataset.v); refreshOrder(); });
+  bind('o-rcv', x => F.receive = x); bind('o-ship', x => F.ship = x);
+  bind('o-docs', x => { F[x] = !F[x]; });
+  drawBooks(); refreshOrder();
+}
+function drawBooks() {
+  const list = itemsOf();
+  $('books').innerHTML = list.length ? `<table class="t"><tr><th>교재</th><th class="r">단가</th><th class="c">수량</th><th class="r">금액</th></tr>${list.map(b => {
+    const ok = reqOk(b), q = CART[b.id] || 0, rq = b.req_item ? D.items.find(x => x.id === b.req_item) : null;
+    return `<tr class="${ok ? '' : 'off'}"><td><b>${esc(b.name)}</b><div class="hint" style="margin:0">${esc(b.author)}${rq ? ` · 📌 ${esc(rq.name)} ${b.req_qty}권 이상 주문 시` : ''}</div></td><td class="r">${won(b.price)}원</td>
+      <td class="c"><span class="qty"><button class="sub" onclick="chQty(${b.id},-1)" ${!q ? 'disabled' : ''}>−</button><input type="number" min="0" max="999" value="${q}" onchange="setQty(${b.id},this.value)" ${ok ? '' : 'disabled'}><button class="sub" onclick="chQty(${b.id},1)" ${ok ? '' : 'disabled'}>+</button></span></td>
+      <td class="r"><b>${q ? won(b.price * q) + '원' : '—'}</b></td></tr>`; }).join('')}</table>` : '<div class="hint">판매 중인 교재가 없습니다.</div>';
+}
+function chQty(id, d) { setQty(id, (CART[id] || 0) + d); }
+function setQty(id, v) {
+  v = Math.max(0, Math.min(999, parseInt(v) || 0)); if (v) CART[id] = v; else delete CART[id];
+  itemsOf().forEach(b => { if (!reqOk(b) && CART[b.id]) delete CART[b.id]; });   // 조건이 풀리면 빼기 (예: 강사지침서)
+  drawBooks(); refreshOrder();
+}
+function refreshOrder() {
+  const tot = cartTotal(), s = shipNow();
+  const on = (id, val) => $(id).querySelectorAll('.opt').forEach(o => o.classList.toggle('on', val(o.dataset.v)));
+  on('o-rcv', x => x === F.receive); on('o-ship', x => x === F.ship); on('o-docs', x => F[x]);
+  $('o-addrbox').style.display = F.receive === 'delivery' ? '' : 'none';
+  $('o-shipbox').style.display = F.receive === 'delivery' && tot < freeAt() ? '' : 'none';
+  $('o-free').style.display = F.receive === 'delivery' && tot >= freeAt() ? '' : 'none';
+  const rc = $('o-docs').querySelector('[data-v=rc]'); rc.style.opacity = s === 'prepaid' ? 1 : .4; if (s !== 'prepaid' && F.rc) { F.rc = false; rc.classList.remove('on'); }
+  $('o-taxbox').style.display = F.tax ? '' : 'none';
+  $('o-tot').innerHTML = '합계 ' + won(tot) + '원' + (s === 'prepaid' && tot ? ' <span class="hint" style="font-size:13px">+ 선불 택배비 ' + won(preFee()) + '원 별도</span>' : '');
+}
+function findAddr() {
+  if (!window.daum || !daum.Postcode) { msg('주소 찾기를 불러오지 못했습니다. 주소를 직접 입력해 주세요.', 'err'); return; }
+  new daum.Postcode({ oncomplete: d => { $('o-addr').value = '(' + d.zonecode + ') ' + (d.roadAddress || d.jibunAddress) + ' '; $('o-addr').focus(); } }).open();
+}
+function formOrder() {
+  return { items: Object.keys(CART).map(id => ({ id: Number(id), qty: CART[id] })), buyer_name: $('o-name').value.trim(), org_name: $('o-org').value.trim(),
+    email: $('o-email').value.trim(), tel: $('o-tel').value.trim(), pay_date: $('o-pay').value, receive: F.receive, ship: F.ship,
+    address: F.receive === 'delivery' ? $('o-addr').value.trim() : '', need_statement: F.st, need_receipt: F.rc && shipNow() === 'prepaid', need_tax: F.tax,
+    biz_no: F.tax ? $('o-biz').value.trim() : '', tax_email: F.tax ? $('o-taxmail').value.trim() : '', memo: $('o-memo').value.trim() };
+}
+function draftOrder() {   // 미리보기용 (아직 주문 전)
+  const p = formOrder(), s = shipNow();
+  return Object.assign({}, p, { order_no: '(주문 전)', created_at: new Date().toISOString(), org_name: p.org_name || D.me.org_full, ship: s, ship_fee: s === 'prepaid' ? preFee() : 0,
+    items: p.items.map(x => { const b = D.items.find(i => i.id === x.id); return { name: b.name, author: b.author, price: b.price, qty: x.qty }; }), total: cartTotal() });
+}
+function previewQuote() { if (!Object.keys(CART).length) { msg('교재를 먼저 골라 주세요.', 'err'); return; } openDoc(draftOrder(), 'quote', ['quote', 'order']); }
+async function doOrder() {
+  const p = formOrder();
+  if (!p.items.length) return msg('교재를 1종 이상 골라 주세요.', 'err');
+  if (!p.buyer_name || !p.tel) return msg('주문자명과 연락처를 입력해 주세요.', 'err');
+  if (p.receive === 'delivery' && !p.address) return msg('배송지를 입력해 주세요.', 'err');
+  if (!p.pay_date) return msg('입금 예정일을 골라 주세요.', 'err');
+  if (p.need_tax && !p.biz_no) return msg('전자계산서를 받으려면 사업자등록번호를 입력해 주세요.', 'err');
+  const btn = $('o-go'); btn.disabled = true; btn.textContent = '주문하는 중…';
+  try {
+    const f = F.tax && $('o-bizfile').files[0];
+    if (f) {
+      if (f.size > 10 * 1024 * 1024) throw new Error('사업자등록증 파일은 10MB까지 올릴 수 있습니다.');
+      const path = D.me.chapter_id + '/' + Date.now() + '-' + Math.random().toString(36).slice(2, 8) + '.' + ((f.name.split('.').pop() || 'pdf').toLowerCase().replace(/[^a-z0-9]/g, '') || 'pdf');
+      const up = await sb.storage.from('book-files').upload(path, f, { contentType: f.type || 'application/octet-stream' });
+      if (up.error) throw new Error('사업자등록증을 올리지 못했습니다: ' + up.error.message);
+      p.biz_file = path;
+    }
+    const o = await rpc('book_order_create', { p });
+    CART = {}; F.st = F.rc = F.tax = false;
+    go('my');
+    msg('✅ 주문이 접수되었습니다. 주문번호 ' + o.order_no + ' · ' + (set('주문 안내') || '도협회가 확인하면 알려 드립니다.'), 'ok');
+  } catch (e) { msg(e.message, 'err'); btn.disabled = false; btn.textContent = '주문하기'; }
+}
+
+// ═════════ 주문 내역 (지회) ═════════
+function steps(o) {
+  if (o.status === '취소') return '<span class="chip s-취소">취소</span>';
+  const t = d => d ? ' ' + String(new Date(d).toLocaleDateString('ko-KR', { timeZone: 'Asia/Seoul', month: 'numeric', day: 'numeric' })).replace(/\s/g, '') : '';
+  const st = [['접수', o.created_at], ['주문확인', o.confirmed_at], ['발송완료', o.shipped_at]], cur = st.findIndex(x => x[0] === o.status);
+  return '<span class="steps">' + st.map((x, i) => i <= cur ? '<b>● ' + (x[0] === '주문확인' ? '주문 확인' : x[0] === '발송완료' ? '발송 완료' : x[0]) + t(x[1]) + '</b>' : '<span>○ ' + (x[0] === '주문확인' ? '주문 확인' : x[0] === '발송완료' ? '발송 완료' : x[0]) + '</span>').join(' → ') + '</span>';
+}
+function docBtns(o) {
+  const ok = o.status === '주문확인' || o.status === '발송완료', b = [`<button class="sub sm" onclick="docOf(${o.id},'quote')">견적서</button>`, `<button class="sub sm" onclick="docOf(${o.id},'order')">주문서</button>`];
+  if (o.need_statement) b.push(ok ? `<button class="sub sm" onclick="docOf(${o.id},'statement')">거래명세서</button>` : '<span class="hint">거래명세서는 도협회 확인 후</span>');
+  if (o.need_receipt) b.push(ok ? `<button class="sub sm" onclick="docOf(${o.id},'receipt')">배송료 영수증</button>` : '');
+  return b.join('');
+}
+function itemsText(o) { return (o.items || []).map(i => esc(i.name) + ' ' + i.qty + '권').join(', '); }
+async function showMy() {
+  $('view').innerHTML = '<div class="card">불러오는 중…</div>';
+  try { ORDERS = await rpc('book_orders_list', { p_all: false }); } catch (e) { return msg(e.message, 'err'); }
+  $('view').innerHTML = `<div class="card"><h2>📋 우리 지회 주문 내역</h2>${ORDERS.length ? ORDERS.map(o => `<div class="ord"><div class="top"><span class="no">${esc(o.order_no)}</span><span class="chip s-${o.status}">${o.status === '주문확인' ? '주문 확인' : o.status === '발송완료' ? '발송 완료' : o.status}</span><span class="hint" style="margin:0">${esc(String(o.created_at).slice(0, 10))} · ${esc(o.buyer_name)}</span></div>
+    <div style="margin-top:6px">${itemsText(o)} · <b>${won(o.total)}원</b> · ${esc(shipLabel(o.ship, o.ship_fee))}</div>
+    <div style="margin-top:6px">${steps(o)}</div>${o.ship_note ? `<div class="hint">📮 ${esc(o.ship_note)}</div>` : ''}${o.need_tax ? `<div class="hint">🧾 전자계산서: ${esc(o.tax_status || '신청접수')}</div>` : ''}
+    <div class="acts">${docBtns(o)}${o.status === '접수' ? `<button class="danger sm" onclick="cancelOrder(${o.id})">주문 취소</button>` : ''}</div></div>`).join('') : '<div class="hint">아직 주문한 내역이 없습니다.</div>'}</div>`;
+}
+async function cancelOrder(id) { if (!confirm('이 주문을 취소할까요?')) return; try { await rpc('book_order_cancel', { p_id: id }); showMy(); msg('주문을 취소했습니다.', 'ok'); } catch (e) { msg(e.message, 'err'); } }
+
+// ═════════ 주문 관리 (도협회) ═════════
+async function showAdmin() {
+  $('view').innerHTML = '<div class="card">불러오는 중…</div>';
+  try { ORDERS = await rpc('book_orders_list', { p_all: true }); } catch (e) { return msg(e.message, 'err'); }
+  const n = k => ORDERS.filter(o => o.status === k).length; setBadge(n('접수'));
+  const list = ORDERS.filter(o => !AF || o.status === AF), money = list.filter(o => o.status !== '취소').reduce((s, o) => s + o.total, 0);
+  $('view').innerHTML = `<div class="card"><h2>🗂 교재 주문 관리</h2><div class="opts" id="a-f">${[['접수', '접수 ' + n('접수')], ['주문확인', '주문 확인 ' + n('주문확인')], ['발송완료', '발송 완료 ' + n('발송완료')], ['취소', '취소 ' + n('취소')], ['', '전체 ' + ORDERS.length]].map(x => `<span class="opt ${AF === x[0] ? 'on' : ''}" data-v="${x[0]}">${x[1]}</span>`).join('')}</div>
+    <div class="hint" style="margin:8px 0">${list.length}건 · 합계 ${won(money)}원 (취소 제외, 택배비 별도)</div>
+    ${list.length ? list.map(o => `<div class="ord"><div class="top"><span class="no">${esc(o.order_no)}</span><span class="chip s-${o.status}">${o.status}</span><b>${esc(o.chapter_name)}</b><span class="hint" style="margin:0">${esc(o.buyer_name)} · ${esc(o.tel)} · ${esc(String(o.created_at).slice(0, 16).replace('T', ' '))}</span></div>
+      <div style="margin-top:6px">${itemsText(o)} · <b>${won(o.total)}원</b></div>
+      <div class="hint">${esc(shipLabel(o.ship, o.ship_fee))}${o.address ? ' · ' + esc(o.address) : ''} · 입금 예정 ${esc(o.pay_date || '-')}${o.memo ? ' · 💬 ' + esc(o.memo) : ''}</div>
+      <div class="hint">서류: ${[o.need_statement ? '거래명세서' : '', o.need_receipt ? '배송료 영수증' : '', o.need_tax ? '전자계산서(' + esc(o.biz_no) + ')' : ''].filter(Boolean).join(', ') || '없음'}</div>
+      <div style="margin-top:6px">${steps(o)}</div>
+      <div class="acts">
+        ${o.status === '접수' ? `<button class="sm" onclick="setSt(${o.id},'주문확인')">✅ 주문 확인</button>` : ''}
+        ${o.status === '접수' || o.status === '주문확인' ? `<button class="ok sm" onclick="ship(${o.id})">📦 발송 완료</button>` : ''}
+        ${o.status === '주문확인' || o.status === '발송완료' ? `<button class="sub sm" onclick="setSt(${o.id},'${o.status === '발송완료' ? '주문확인' : '접수'}')">↩ 되돌리기</button>` : ''}
+        ${o.status !== '취소' ? `<button class="sub sm" onclick="if(confirm('이 주문을 취소할까요?'))setSt(${o.id},'취소')">취소</button>` : ''}
+        <span style="flex:1"></span>${docBtns(Object.assign({}, o, { status: '주문확인' }))}</div>
+      <div class="acts" style="align-items:center"><span class="hint" style="margin:0">서류 날짜</span><input type="date" value="${esc(o.doc_date || '')}" style="width:auto;margin:0" onchange="upd(${o.id},{doc_date:this.value})">
+        ${o.need_tax ? `<span class="hint" style="margin:0">계산서</span><select style="width:auto;margin:0" onchange="upd(${o.id},{tax_status:this.value})">${['신청접수', '발행완료', '보완 요청'].map(k => `<option ${o.tax_status === k ? 'selected' : ''}>${k}</option>`).join('')}</select>${o.has_biz_file ? `<button class="sub sm" onclick="bizFile(${o.id})">📎 사업자등록증</button>` : ''}` : ''}</div></div>`).join('') : '<div class="hint">해당하는 주문이 없습니다.</div>'}</div>`;
+  $('a-f').querySelectorAll('.opt').forEach(x => x.onclick = () => { AF = x.dataset.v; showAdmin(); });
+}
+async function upd(id, p) { try { await rpc('book_order_update', { p_id: id, p }); msg('저장했습니다.', 'ok'); const o = await rpc('book_orders_list', { p_all: true }); ORDERS = o; } catch (e) { msg(e.message, 'err'); } }
+async function setSt(id, st) { try { await rpc('book_order_update', { p_id: id, p: { status: st } }); showAdmin(); } catch (e) { msg(e.message, 'err'); } }
+async function ship(id) {
+  const note = prompt('발송 메모 (택배사·송장번호 등, 비워도 됩니다)', '');
+  if (note === null) return;
+  try { await rpc('book_order_update', { p_id: id, p: { status: '발송완료', ship_note: note } }); showAdmin(); } catch (e) { msg(e.message, 'err'); }
+}
+async function bizFile(id) {
+  try { const path = await rpc('book_biz_file', { p_id: id }); const r = await sb.storage.from('book-files').createSignedUrl(path, 300); if (r.error) throw new Error(r.error.message); window.open(r.data.signedUrl, '_blank'); } catch (e) { msg(e.message, 'err'); }
+}
+
+// ═════════ 교재 · 판매자 정보 (도협회) ═════════
+function showBooks() {
+  const opts = (sel, me) => '<option value="">없음</option>' + D.items.filter(b => b.id !== me).map(b => `<option value="${b.id}" ${sel === b.id ? 'selected' : ''}>${esc(b.name)}</option>`).join('');
+  const K = ['상호', '사업자번호', '전화', '주소', '이메일', '은행', '계좌번호', '예금주', '선불 택배비', '무료배송 기준', '사업자등록증 링크', '통장사본 링크', '주문 안내'];
+  $('view').innerHTML = `<div class="card"><h2>📚 교재 목록</h2><div style="overflow-x:auto"><table class="t"><tr><th>교재명</th><th>저자</th><th class="r">단가</th><th>주문 조건</th><th class="c">판매</th><th></th></tr>
+    ${D.items.map(b => `<tr id="bk${b.id}"><td><input data-k="name" value="${esc(b.name)}"></td><td><input data-k="author" value="${esc(b.author)}"></td><td><input data-k="price" type="number" min="0" value="${b.price}" style="width:100px"></td>
+      <td style="min-width:220px"><select data-k="req_item" style="width:auto">${opts(b.req_item, b.id)}</select> <input data-k="req_qty" type="number" min="0" value="${b.req_qty || ''}" style="width:70px" placeholder="권"> 권 이상</td>
+      <td class="c"><input data-k="active" type="checkbox" ${b.active ? 'checked' : ''}></td><td><button class="sm" onclick="saveItem(${b.id})">저장</button></td></tr>`).join('')}
+    <tr id="bknew"><td><input data-k="name" placeholder="새 교재명"></td><td><input data-k="author"></td><td><input data-k="price" type="number" min="0" style="width:100px"></td><td><select data-k="req_item" style="width:auto">${opts(null, 0)}</select> <input data-k="req_qty" type="number" min="0" style="width:70px" placeholder="권"> 권 이상</td><td></td><td><button class="ok sm" onclick="saveItem(0)">추가</button></td></tr></table></div>
+    <div class="hint">주문 조건: 예) 강사지침서 = '재미있게 배우는 한국수어2' 10권 이상 주문할 때만 고를 수 있음. 판매를 끄면 지회 주문 화면에서 사라집니다.</div></div>
+  <div class="card"><h2>🏢 판매자 정보 (견적서·명세서에 들어감)</h2><div class="grid2">${K.map(k => `<div${k === '주문 안내' ? ' style="grid-column:1/-1"' : ''}><label class="f">${k}</label><input data-s="${esc(k)}" value="${esc(set(k))}"></div>`).join('')}</div>
+    <div class="hint">직인은 <b>직원·권한 관리 › 기관 정보</b>에 올린 도협회 직인이 들어갑니다. ${D.seal ? '✅ 등록됨' : '⚠️ 아직 없음'}</div>
+    <div style="margin-top:10px"><button onclick="saveSet()">판매자 정보 저장</button></div></div>`;
+}
+async function saveItem(id) {
+  const r = $(id ? 'bk' + id : 'bknew'), g = k => r.querySelector('[data-k=' + k + ']');
+  const p = { id: id || '', name: g('name').value, author: g('author').value, price: Number(g('price').value || 0), req_item: g('req_item').value, req_qty: g('req_qty').value };
+  if (id) p.active = g('active').checked;
+  try { D = Object.assign(D, await rpc('book_item_save', { p })); showBooks(); msg('교재를 저장했습니다.', 'ok'); } catch (e) { msg(e.message, 'err'); }
+}
+async function saveSet() {
+  const p = {}; document.querySelectorAll('[data-s]').forEach(i => p[i.dataset.s] = i.value.trim());
+  try { D = Object.assign(D, await rpc('book_settings_save', { p })); showBooks(); msg('판매자 정보를 저장했습니다.', 'ok'); } catch (e) { msg(e.message, 'err'); }
+}
+
+// ═════════ 서류 (견적서 · 주문서 · 거래명세서 · 배송료 영수증) ═════════
+const DOCN = { quote: '견적서', order: '주문서', statement: '거래명세서', receipt: '배송료 영수증' };
+function docOf(id, type) {
+  const o = ORDERS.find(x => x.id === id); if (!o) return;
+  const ok = ['quote', 'order'].concat(o.need_statement ? ['statement'] : [], o.need_receipt ? ['receipt'] : []);
+  openDoc(o, type, ok);
+}
+function openDoc(o, type, tabs) {
+  $('ovbar').innerHTML = tabs.map(t => `<button class="${t === type ? '' : 'sub'} sm" onclick='openDoc(${JSON.stringify(o).replace(/'/g, '&#39;')},"${t}",${JSON.stringify(tabs)})'>${DOCN[t]}</button>`).join('')
+    + '<span class="sp"></span><button class="sm" onclick="window.print()">🖨️ 인쇄 / PDF</button><button class="sub sm" onclick="closeDoc()">닫기</button>';
+  $('ovdoc').innerHTML = buildDoc(o, type); $('ov').classList.add('open');
+}
+function closeDoc() { $('ov').classList.remove('open'); }
+$('ov').addEventListener('click', e => { if (e.target.id === 'ov') closeDoc(); });
+function buildDoc(o, type) {
+  const prow = (l, v) => `<div class="qd-party-row"><span class="qd-party-label">${l}</span><span class="qd-party-val">${esc(v || '-')}</span></div>`;
+  const party = (h, rows) => `<div class="qd-party"><div class="qd-party-head">${h}</div><div class="qd-party-body">${rows}</div></div>`;
+  const seller = prow('상호', set('상호')) + prow('사업자번호', set('사업자번호')) + prow('전화', set('전화')) + prow('주소', set('주소')) + prow('이메일', set('이메일'));
+  const sign = (t, n, stamp) => `<div class="qd-sign"><div><div class="t">${t}</div><div class="n">${esc(n)}</div>${stamp && D.seal ? `<img src="${esc(D.seal)}" alt="">` : ''}</div></div>`;
+  const total = (l, v) => `<div class="qd-total-wrap"><div class="qd-total-table"><div class="qd-total-row"><div class="qd-total-label">${l}</div><div class="qd-total-val">${won(v)} 원</div></div></div></div>`;
+  const shipNote = o.ship === 'prepaid' ? `<div style="text-align:right;font-size:11px;color:#c62828;margin:-14px 0 16px">* 택배비 ${won(o.ship_fee || preFee())}원 별도</div>` : '';
+  const bank = set('계좌번호') ? `<div class="qd-bank"><div style="font-size:12px;font-weight:700;color:#1a3a6b;margin-bottom:6px">입금 계좌 안내</div>${esc(set('은행'))} <b style="font-size:15px;color:#1a3a6b;letter-spacing:1px">${esc(set('계좌번호'))}</b> <span style="color:#555;font-size:12px;margin-left:8px">예금주: ${esc(set('예금주'))}</span></div>` : '';
+  const req = [o.need_statement ? '거래명세서' : '', o.need_receipt ? '배송료영수증' : '', o.need_tax ? '전자계산서' : ''].filter(Boolean);
+  const reqBox = req.length ? `<div class="qd-req">📋 <b>요청 서류:</b> ${req.join(', ')}</div>` : '';
+  const items = `<table class="qd-items"><thead><tr><th style="text-align:left;width:46%">품목 (교재명)</th><th>수량</th><th>단가</th><th>금액</th></tr></thead><tbody>${(o.items || []).map(i => `<tr><td>${esc(i.name)}${i.author ? `<br><span style="font-size:10px;color:#888">${esc(i.author)}</span>` : ''}</td><td>${i.qty}</td><td style="text-align:right">${won(i.price)}</td><td style="text-align:right">${won(i.price * i.qty)}</td></tr>`).join('')}</tbody><tfoot><tr style="background:#f5f5f5;font-weight:700"><td colspan="3" style="text-align:right">합 계</td><td style="text-align:right">${won(o.total)}</td></tr></tfoot></table>`;
+  const day = String(o.created_at || '').slice(0, 10), ddate = o.doc_date || day;
+  const head = (t, meta) => `<div class="qd-title-wrap"><div class="qd-title">${t}</div><div class="qd-meta">${meta}</div></div>`;
+  const buyer = prow('담당자', (o.org_name || o.buyer_name) + ' 귀중') + prow('기관명', o.org_name) + prow('이메일', o.email) + prow('연락처', o.tel) + prow('배송지', o.address || '인편');
+  if (type === 'quote') {
+    const exp = new Date(day + 'T00:00:00'); exp.setDate(exp.getDate() + 30);
+    return `<div class="doc-wrap">${head('견 &nbsp;적 &nbsp;서', `견적일자 : <strong>${krDate(day)}</strong><br>유효기간 : <strong>${krDate(exp.toLocaleDateString('sv-SE'))}까지</strong><br>택배방식 : <strong>${esc(shipLabel(o.ship, o.ship_fee))}</strong>`)}
+      <div class="qd-parties">${party('수신 (구매자)', buyer)}${party('공급자 (판매자)', seller)}</div>${items}${total('견적 합계금액', o.total)}${shipNote}${bank}${reqBox}${sign('위와 같이 견적서를 제출합니다.', set('상호'), true)}</div>`;
+  }
+  if (type === 'order') {
+    const b2 = prow('담당자', o.buyer_name) + prow('기관명', o.org_name) + prow('이메일', o.email) + prow('연락처', o.tel) + prow('배송지', o.address || '인편') + prow('택배방식', shipLabel(o.ship, o.ship_fee)) + prow('입금예정일', o.pay_date);
+    return `<div class="doc-wrap">${head('주 &nbsp;문 &nbsp;서', `주문일자 : <strong>${krDate(day)}</strong><br>주문번호 : <strong>${esc(o.order_no)}</strong><br>입금예정일 : <strong>${esc(o.pay_date || '-')}</strong>`)}
+      <div class="qd-parties">${party('주문자 정보', b2)}${party('공급자 정보', seller)}</div>${items}${total('주문 합계금액', o.total)}${shipNote}${bank}${reqBox}${o.memo ? `<div class="qd-notice">요청사항: ${esc(o.memo)}</div>` : ''}${sign('위와 같이 주문서를 제출합니다.', o.buyer_name, false)}</div>`;
+  }
+  if (type === 'statement') {
+    const rows = (o.items || []).map((i, n) => `<tr><td>${n + 1}</td><td style="text-align:left">${esc(i.name)}</td><td>권</td><td style="text-align:right">${won(i.price)}</td><td>${i.qty}</td><td style="text-align:right">${won(i.price * i.qty)}</td><td></td></tr>`).join('')
+      + Array(Math.max(0, 10 - (o.items || []).length)).fill('<tr><td>&nbsp;</td><td></td><td></td><td></td><td></td><td></td><td></td></tr>').join('');
+    const b3 = prow('상호/성명', (o.org_name || o.buyer_name) + ' 귀중') + prow('담당자', o.buyer_name) + prow('연락처', o.tel) + prow('배송지', o.address || '인편') + prow('택배방식', shipLabel(o.ship, o.ship_fee));
+    return `<div class="doc-wrap">${head('거 래 명 세 서', `작성일 : <strong>${krDate(ddate)}</strong><br>주문번호 : <strong>${esc(o.order_no)}</strong>`)}
+      <div class="qd-parties">${party('수 신 (구매자)', b3)}${party('공 급 자 (판매자)', seller)}</div>
+      <table class="stmt-items"><thead><tr><th style="width:6%">No</th><th style="text-align:left">품목명</th><th style="width:8%">단위</th><th style="width:14%">단가</th><th style="width:8%">수량</th><th style="width:16%">금액</th><th style="width:12%">비고</th></tr></thead><tbody>${rows}</tbody></table>
+      ${total('합 계 금 액', o.total)}${sign('위와 같이 거래명세서를 발행합니다.', set('상호'), true)}</div>`;
+  }
+  const fee = o.ship_fee || preFee();
+  const b4 = prow('성명', o.buyer_name + ' 귀중') + prow('기관명', o.org_name) + prow('연락처', o.tel);
+  return `<div class="doc-wrap">${head('영 &nbsp;수 &nbsp;증', `영수증번호 : <strong>REC-${esc(String(o.order_no).replace('ORD-', ''))}</strong><br>발행일 : <strong>${krDate(ddate)}</strong>`)}
+    <div class="qd-parties">${party('수 신 (구매자)', b4)}${party('공 급 자 (판매자)', seller)}</div>
+    <table class="stmt-items"><thead><tr><th style="text-align:left;width:30%">항목</th><th style="text-align:left">내용</th><th style="width:25%">금액</th></tr></thead><tbody><tr><td style="text-align:left">택배 배송료</td><td style="text-align:left">선불 택배 (주문번호: ${esc(o.order_no)})</td><td style="text-align:right;font-weight:700">${won(fee)} 원</td></tr><tr><td>&nbsp;</td><td></td><td></td></tr></tbody></table>
+    ${total('합 계', fee)}<div class="qd-notice">위 금액을 정히 영수합니다.</div>${sign('위 금액을 정히 영수합니다.', set('상호'), true)}</div>`;
+}
+init();
+sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_IN' && !D) init(); });
+</script>
+</body>
+</html>

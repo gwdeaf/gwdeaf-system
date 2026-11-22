@@ -58,7 +58,7 @@ const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJ
 const sb = supabase.createClient(SB_URL, SB_KEY);
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
-const SYS = {core:"관리", vehicle:"차량운행", edu:"수어교육", att:"근태", interp:"통역일지", acct:"회계", cert:"증서·증명", member:"회원관리", perf:"사업실적", news:"뉴스 배정표"};
+const SYS = {core:"관리", vehicle:"차량운행", edu:"수어교육", att:"근태", interp:"통역일지", acct:"회계", cert:"증서·증명", member:"회원관리", perf:"사업실적", news:"뉴스 배정표", book:"교재 주문"};
 const ROLE = {admin:"도협회 관리자", lead:"지회 담당", staff:"직원"};
 const ACT = {add_staff:"직원 등록", update_staff:"직원 정보 수정", enable_staff:"사용 재개", disable_staff:"사용 중지", grant:"권한 부여", revoke:"권한 해제",
              save_approval:"결재라인 저장", delete_approval:"결재라인 삭제", assign_lead:"지회 담당 지정", set_admin:"도협회 관리자 변경"};

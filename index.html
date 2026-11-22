@@ -60,7 +60,11 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{background:#fff;border:1px solid var(--line);border-radius:99px;padding:5px 12px;font-size:.8rem;color:#4b5563;font-weight:600}
 .chip.pri{background:var(--pri-soft);border-color:#d5e0ff;color:var(--pri)}
-.grid{display:grid;grid-template-columns:minmax(0,1.7fr) minmax(0,1fr);gap:18px;align-items:start}
+.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) 190px;gap:18px;align-items:start}
+.qcol .qgrid{grid-template-columns:1fr;gap:6px}
+.qcol .qbtn{flex-direction:row;align-items:center;gap:8px;min-height:0;padding:9px 10px}
+.qcol .qbtn small{display:none}
+@media(max-width:1180px){.grid{grid-template-columns:minmax(0,1.2fr) minmax(0,1fr)}.qcol{grid-column:1/-1}.qcol .qgrid{grid-template-columns:repeat(auto-fill,minmax(150px,1fr))}}
 .col{display:flex;flex-direction:column;gap:18px;min-width:0}
 .mute{color:var(--mute);font-size:.8rem;font-weight:600}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(31,41,55,.04)}
@@ -375,10 +379,6 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
           <div class="ctitle"><span>📺 뉴스 통역 (7일)</span><a class="btn" href="/news/" target="_blank" rel="noopener">배정표 열기 ↗</a></div>
           <div id="newsbox"><div class="empty">불러오는 중…</div></div>
         </div>
-        <div class="card" style="order:3">
-          <div class="ctitle"><span>⭐ 자주 쓰는 메뉴</span><button class="btn" onclick="openMy('quick')">편집</button></div>
-          <div id="quick" class="qgrid"><div class="empty">불러오는 중…</div></div>
-        </div>
       </div>
       <div class="col">
         <div class="card" id="todaycard" style="order:-1">
@@ -392,6 +392,12 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
         <div class="card" id="calcard" style="order:1">
           <div class="ctitle"><span>📅 일정</span><span class="mute" id="calname">구글 캘린더</span></div>
           <div id="calbox"><div class="empty">불러오는 중…</div></div>
+        </div>
+      </div>
+      <div class="col qcol">
+        <div class="card" style="order:3">
+          <div class="ctitle"><span>⭐ 즐겨찾기</span><button class="btn" onclick="openMy('quick')">편집</button></div>
+          <div id="quick" class="qgrid"><div class="empty">불러오는 중…</div></div>
         </div>
       </div>
     </div>
@@ -507,9 +513,12 @@ function renderNav(){
   h += grpHtml('🚌', '출장 관리') + kidHtml('att', false, 'trip-apply', '출장 신청') + kidHtml('att', false, 'trip-hist', '출장 내역');
   if (isAttAdmin()) h += kidHtml('att', true, 'trip', '출장대장');
   if (hasPerm('vehicle.')) h += topHtml('car:s:', '🚗', '차량운행일지', "go('car')");
-  if (hasPerm('edu.')) {
+  var bookMgr = ME.role === 'admin' || (ME.is_hq && hasPerm('book.manage'));
+  if (hasPerm('edu.') || bookMgr) {
     h += grpHtml('📚', '수어교육관리');
-    [['dash','대시보드'],['courses','강좌'],['apply','접수·강사비'],['report','보고·통계'],['files','자료요청']].forEach(function(k){ if (EDU_HIDE.indexOf(k[0]) < 0) h += kidHtml('edu', false, k[0], k[1]); });
+    if (hasPerm('edu.')) [['dash','대시보드'],['courses','강좌'],['apply','접수·강사비'],['report','보고·통계'],['files','자료요청']].forEach(function(k){ if (EDU_HIDE.indexOf(k[0]) < 0) h += kidHtml('edu', false, k[0], k[1]); });
+    h += kidHtml('book', false, 'order', '교재 주문');
+    if (bookMgr) h += kidHtml('book', false, 'admin', '교재 주문 관리').replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', '<span class="nbadge hide" id="book-badge"></span></a>');
   }
   h += grpHtml('📝', '공문 작성') + kidHtml('doc', false, 'internal', '내부결재') + kidHtml('doc', false, 'coop', '업무협조전') + kidHtml('doc', false, 'send', '문서 발송') + kidHtml('doc', false, 'recv', '받은 문서').replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', '<span class="nbadge hide" id="docr-badge"></span></a>') + kidHtml('doc', false, 'sent', '보낸 문서') + kidHtml('doc', false, 'ledger', '공문 대장');
   if (hasPerm('interp.')) h += grpHtml('🗣', '통역실적') + kidHtml('interp', false, 'dash', '대시보드') + kidHtml('interp', false, 'log', '통역일지')
@@ -584,8 +593,8 @@ function wlMark(t){ document.querySelectorAll('#wltabs button').forEach(function
 function wlDate(v){ try { $('frame').contentWindow.postMessage({ type: 'wl-date', date: v }, location.origin); } catch(e){} }
 function toggleSide(){ $('side').classList.toggle('open'); $('scrim').classList.toggle('open'); }
 function closeSide(){ $('side').classList.remove('open'); $('scrim').classList.remove('open'); }
-var SUBAPP = { doc:'/doc/', interp:'/interp/', worklog:'/worklog/', acct:'/acct/', cert:'/cert/', perf:'/perf/' };
-var SUBDEF = { doc:'internal', interp:'dash', worklog:'write', acct:'prop', cert:'issue', perf:'dash' };   // 하위 메뉴 없이 열면 첫 메뉴
+var SUBAPP = { book:'/book/', doc:'/doc/', interp:'/interp/', worklog:'/worklog/', acct:'/acct/', cert:'/cert/', perf:'/perf/' };
+var SUBDEF = { book:'order', doc:'internal', interp:'dash', worklog:'write', acct:'prop', cert:'issue', perf:'dash' };   // 하위 메뉴 없이 열면 첫 메뉴
 function go(kind, tab, adm){
   tab = tab || ''; adm = !!adm; closeSide();
   if (SUBAPP[kind] && !tab) tab = SUBDEF[kind];
@@ -626,7 +635,7 @@ function go(kind, tab, adm){
   try { history.replaceState(null, '', '#' + kind + (adm ? '-admin' : '') + (tab ? '/' + tab : '')); } catch(e){}
 }
 function fromHash(){
-  var m = /^#(att|car|edu|doc|interp|worklog|acct|cert|member|access)(-admin)?(?:\/(.+))?$/.exec(location.hash || ''); if (!m) return false;
+  var m = /^#(att|car|edu|book|doc|interp|worklog|acct|cert|member|access)(-admin)?(?:\/(.+))?$/.exec(location.hash || ''); if (!m) return false;
   if (m[1] === 'car' && !hasPerm('vehicle.')) return false;
   if (m[1] === 'edu' && !hasPerm('edu.')) return false;
   go(m[1], m[3] ? decodeURIComponent(m[3]) : '', !!m[2]); return true;
@@ -662,6 +671,7 @@ window.addEventListener('message', function(e){
     try { history.replaceState(null, '', '#' + k + '/' + d.tab); } catch(x){}
   }
   if (d.type === 'doc-badge' && e.source === $('frame').contentWindow) { docBadge(); return; }
+  if (d.type === 'book-badge' && e.source === $('frame').contentWindow) { bookBadgeSet(d.n); return; }
   if (d.type === 'nav-go' && e.source === $('frame').contentWindow && d.kind) { go(d.kind, d.tab || '', !!d.adm); return; }
   if (d.type === 'edu-tab' && e.source === $('frame').contentWindow && FR.key === 'edu:s') {
     if (!document.querySelector('#nav [data-id="' + mid('edu', false, d.tab) + '"]')) return;
@@ -827,6 +837,7 @@ var SLK_CATS = [
   ['notice', '📢 새 공지', '나에게 보이는 공지'],
   ['doc', '📨 받은 문서', '우리 지회로 들어온 공문'],
   ['inq', '💬 문의함', '새 문의 · 새 답글'],
+  ['book', '📦 교재 주문', '도협회: 새 주문 · 지회: 주문 확인 / 발송'],
   ['report', '📊 지회 보고', '도협회: 지회 보고 도착 · 지회: 승인 / 보완 요청'],
   ['sup_ok', '✅ 선임 확인 요청', '후임의 시간외 · 시수 · 병가 · 대체시수 (선임만)'],
   ['sup_ref', '👀 선임 참고', '후임의 휴가 · 출장 · 대체휴무 (선임만)']];
@@ -935,9 +946,12 @@ async function delNotice(id){
 var INQ = [], INQ_CUR = null, INQ_T = null;
 async function inqBadge(){
   try { var r = await sb.rpc('inq_badge'); var n = r.data || 0, b = $('inq-badge'); if (b) { b.textContent = n; b.classList.toggle('hide', !n); } } catch(e){}
-  docBadge();
+  docBadge(); bookBadge();
 }
 // 받은 공문 중 아직 접수 안 된 수 (우리 지회 누군가 접수하면 사라짐)
+var BOOKN = 0;
+function bookBadgeSet(n){ BOOKN = n || 0; var b = $('book-badge'); if (b) { b.textContent = BOOKN; b.classList.toggle('hide', !BOOKN); } }
+async function bookBadge(){ if (!$('book-badge')) return; try { var r = await sb.rpc('book_badge'); bookBadgeSet(r.data || 0); } catch(e){} }
 async function docBadge(){
   var b = $('docr-badge'); if (!b) return;
   try { var r = await sb.rpc('doc_recv_badge'); var n = r.data || 0; b.textContent = n; b.classList.toggle('hide', !n); } catch(e){}

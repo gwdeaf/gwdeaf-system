@@ -101,6 +101,16 @@
     '<p class="hint">수어교육관리는 기능이 많아 <b>따로 자세한 설명서</b>가 있습니다. 수어교육관리 화면 오른쪽 위 <b>사용설명서</b>를 누르세요.</p>' +
     '<p class="hint">도협회는 지회 강좌의 요약만 보고, 수강생 이름·연락처는 볼 수 없습니다.</p>' },
 
+  { id: 'book', ic: '📦', t: '교재 주문', show: function (ME) { return has(ME, 'edu.') || has(ME, 'book.') || ME.role === 'admin'; }, b:
+    '<p>지회가 도협회에 수어 교재를 주문합니다. 왼쪽 메뉴 <b>수어교육관리 › 교재 주문</b>.</p>' +
+    '<ul>' +
+    '<li><b>🛒 주문하기</b>: 교재 수량을 정하고, 주문자·연락처·입금 예정일·수령 방법(택배/인편)을 고릅니다. 이름·기관명·이메일·지난번 주소는 자동으로 채워집니다. 5만 원 이상이면 배송비가 없고, 그보다 적으면 선불(택배비 별도)·착불을 고릅니다. 강사지침서처럼 조건이 있는 교재는 조건(예: 한국수어2 10권 이상)을 채우면 고를 수 있습니다.</li>' +
+    '<li><b>필요 서류</b>: 거래명세서·배송료 영수증(선불일 때)·전자계산서(사업자등록번호와 사업자등록증 첨부)를 고릅니다. 주문 전 <b>견적서·주문서 미리보기</b>로 출력할 수 있습니다.</li>' +
+    '<li><b>📋 주문 내역</b>: 진행 상태가 <b>접수 → 주문 확인 → 발송 완료</b>로 보입니다. 견적서·주문서는 언제든, 거래명세서·영수증은 도협회가 주문을 확인하면 출력할 수 있습니다. 접수 상태일 때만 직접 취소할 수 있습니다.</li>' +
+    '<li><b>🗂 교재 주문 관리</b> (도협회 관리자·\'교재 주문 관리\' 권한): 새 주문은 왼쪽 메뉴에 빨간 숫자로 보이고 Slack으로도 옵니다. <b>✅ 주문 확인</b>, <b>📦 발송 완료</b>(택배사·송장 메모)를 누르면 주문한 사람에게 Slack으로 알려 줍니다. 서류 날짜, 전자계산서 처리 상태, 사업자등록증 파일도 여기서 봅니다.</li>' +
+    '<li><b>⚙️ 교재·판매자 정보</b>: 교재 추가·가격·판매 여부·주문 조건, 견적서에 들어가는 상호·사업자번호·계좌 등을 고칩니다. 직인은 도협회 기관 정보의 직인이 들어갑니다.</li>' +
+    '</ul>' },
+
   { id: 'doc', ic: '📝', t: '공문 작성', show: ALL, b:
     '<p>왼쪽 메뉴 <b>내부결재 · 업무협조전 · 문서 발송</b>을 누르면 그 종류의 문서만 보이고, <b>+ 새 ○○ 작성</b>으로 바로 씁니다. (문서 발송 = 외부로 보내는 공문)</p>' +
     '<ol>' +
@@ -276,7 +286,7 @@
     '</ul>' }
   ];
 
-  var KIND = { home: 'home', att: 'att', car: 'car', edu: 'edu', doc: 'doc', interp: 'interp', worklog: 'worklog', acct: 'acct', cert: 'cert', member: 'member', access: 'manager' };
+  var KIND = { home: 'home', att: 'att', car: 'car', edu: 'edu', book: 'book', doc: 'doc', interp: 'interp', worklog: 'worklog', acct: 'acct', cert: 'cert', member: 'member', access: 'manager' };
 
   var css = '#gdBack{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px}' +
     '#gdBox{background:#fff;border-radius:14px;width:min(920px,100%);height:min(86vh,760px);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.25)}' +

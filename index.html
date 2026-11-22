@@ -496,7 +496,6 @@ function renderNav(){
   h += grpHtml('🏖', '근태 / 휴가 관리');
   [['leave','내 근태현황'],['leave-apply','휴가(시수) 신청'],['overtime','시간외 신청']].forEach(function(k){ h += kidHtml('att', false, k[0], k[1]); });
   h += kidHtml('att', false, 'attend', '월별 근태현황');
-  if (ME && (ME.role === 'admin' || (ME.is_hq && (ME.role === 'lead' || (ME.perms || []).indexOf('att.chapter_manage') >= 0)))) h += '<a class="kid" data-id="attall:s:" data-lb="지회 근태 보기" onclick="go(\'attall\')">지회 근태 보기</a>';
   if (ATT && ATT.staff && ATT.staff.role === '선임')   // 선임만 보임 (기존 '선임 확인' 권한 그대로)
     h += grpHtml('✅', '선임 확인') + kidHtml('att', false, 'senior:leavemgr', '후임 신청 현황') + kidHtml('att', false, 'senior:dashboard', '시수 신청 현황') + kidHtml('att', false, 'senior:altdashboard', '대체시수 신청 현황');
   h += grpHtml('🚌', '출장 관리') + kidHtml('att', false, 'trip-apply', '출장 신청') + kidHtml('att', false, 'trip-hist', '출장 내역');

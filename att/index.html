@@ -1231,10 +1231,18 @@
     </div>
   </div>
   <div id="alert-area-adm-attend"></div>
+  <div id="hq-switch" class="no-print" style="display:none;gap:0.4rem;margin-bottom:0.8rem;flex-wrap:wrap">
+    <button type="button" class="hq-b on" data-hq="mine" onclick="hqMode('mine')">🏠 우리 직원</button>
+    <button type="button" class="hq-b" data-hq="today" onclick="hqMode('today')">🏢 오늘 전체 지회</button>
+    <button type="button" class="hq-b" data-hq="month" onclick="hqMode('month')">🏢 지회별 월별 근태</button>
+  </div>
+  <div id="hq-box" style="display:none"></div>
+  <div id="adm-att-mine">
   <div id="adm-att-body"><div class="muted" style="padding:1rem;">불러오는 중...</div></div>
   <div class="card" style="margin-top:1rem;">
     <div class="card-title">📝 수정 이력 (이 달)</div>
     <div style="overflow-x:auto;"><table class="adm-table"><thead><tr><th>수정 일시</th><th>직원</th><th>대상 날짜</th><th>항목</th><th>이전 값</th><th>변경 값</th></tr></thead><tbody id="adm-att-log"><tr><td colspan="6" class="empty">-</td></tr></tbody></table></div>
+  </div>
   </div>
 </div>
 
@@ -1298,6 +1306,8 @@
   <style>
     .lt-btn{border:2px solid var(--border,#ddd);background:#fff;border-radius:999px;padding:0.55rem 1.1rem;font-size:0.95rem;cursor:pointer;font-family:inherit;color:inherit;}
     .lt-btn.on{border-color:var(--primary,#2f5bd6);background:var(--primary,#2f5bd6);color:#fff;font-weight:700;}
+    .hq-b{border:2px solid var(--border,#ddd);background:#fff;border-radius:999px;padding:0.45rem 1rem;font-size:0.9rem;cursor:pointer;font-family:inherit;color:inherit;}
+    .hq-b.on{border-color:var(--primary,#2f5bd6);background:var(--primary,#2f5bd6);color:#fff;font-weight:700;}
   </style>
   <div class="btn-group no-print" id="la-day-btns">
     <button class="btn btn-primary" id="leave-submit-btn" onclick="submitLeaveReq()" style="justify-content:center;">📤 신청하고 출력하기</button>
@@ -2341,7 +2351,7 @@ function switchAdminTab(tab) {
   if (tab==='settings')  loadAdminSettings();
   if (tab==='notice')    { resetNoticeForm(); loadAdminNotices(); }
   if (tab==='promo')     loadAdminPromo();
-  if (tab==='attend')    loadAdminAttend();
+  if (tab==='attend')    { hqInit(); if (HQ.mode === 'mine') loadAdminAttend(); else hqMode(HQ.mode); }
   if (tab==='trip')      loadAdminTrip();
 }
 
@@ -6859,6 +6869,83 @@ function printMyAttend() { if (myAttendData) printAttendMonths([myAttendData.mon
 // 관리자: 출퇴근 관리
 // ============================================================
 var admAttEditCtx = null;
+/* ── 도협회: 지회 근태 보기 (보기만, 출퇴근 시각만 — 위치·출장지·사유는 서버가 빼고 보냄) ── */
+var HQ = { mode: 'mine', ch: '', ym: '', chs: null, months: [] };
+function hqCan() { return !!(ME && (ME.isProvince || (ME.isAdmin && /도협회/.test(String(ME.chapterName || ''))))); }
+function hqInit() {
+  var sw = document.getElementById('hq-switch'); if (!sw) return;
+  sw.style.display = hqCan() ? 'flex' : 'none';
+  if (!hqCan() && HQ.mode !== 'mine') hqMode('mine');
+}
+function hqCall(fn, arg) { return new Promise(function(ok) { gasRun(fn, JSON.stringify(arg || {}), ok, function(m) { ok({ ok: false, msg: m }); }); }); }
+function hqMode(m) {
+  HQ.mode = m;
+  document.querySelectorAll('[data-hq]').forEach(function(b) { b.classList.toggle('on', b.getAttribute('data-hq') === m); });
+  var mine = m === 'mine';
+  document.getElementById('adm-att-mine').style.display = mine ? '' : 'none';
+  document.getElementById('hq-box').style.display = mine ? 'none' : '';
+  document.querySelectorAll('#view-adm-attend .page-tools').forEach(function(t) { t.style.visibility = mine ? '' : 'hidden'; });
+  if (m === 'today') hqToday(); else if (m === 'month') hqMonthForm();
+}
+var HQ_C = { '출근': '#18a058', '출근 전': '#9aa3b2', '퇴근': '#2f5bd6', '휴가': '#e08a1e', '출장': '#8b5cf6' };
+var HQ_T = 'width:100%;border-collapse:collapse;font-size:0.86rem;', HQ_TD = 'padding:7px 8px;border-bottom:1px solid #e8ebf1;text-align:center;white-space:nowrap;';
+function hqTh(t, l) { return '<th style="' + HQ_TD + 'background:#f5f7fb;font-weight:700;color:#555;' + (l ? 'text-align:left;' : '') + '">' + t + '</th>'; }
+function hqTd(t, st) { return '<td style="' + HQ_TD + (st || '') + '">' + t + '</td>'; }
+async function hqToday() {
+  var box = document.getElementById('hq-box'); box.innerHTML = '<div class="muted" style="padding:1rem;">전체 지회를 불러오는 중… (조금 걸릴 수 있어요)</div>';
+  var r = await hqCall('provinceTodayAll');
+  if (!r || !r.ok) { box.innerHTML = '<div class="danger-text" style="padding:1rem;">' + esc((r && r.msg) || '불러오지 못했습니다.') + '</div>'; return; }
+  var K = ['출근', '퇴근', '출근 전', '휴가', '출장'];
+  box.innerHTML = '<div class="muted" style="margin-bottom:0.5rem">' + esc(localDateStr()) + ' 기준 · 보기만 · 출퇴근 시각만 (위치는 보이지 않음) · 지회 줄을 누르면 직원별 상태가 펼쳐집니다.</div>'
+    + '<div style="overflow-x:auto;border:1px solid #e8ebf1;border-radius:10px;background:#fff"><table style="' + HQ_T + '"><tr>' + hqTh('지회', 1) + hqTh('인원') + K.map(function(k) { return hqTh(k); }).join('') + '</tr>'
+    + r.list.map(function(c, i) {
+      var n = {}; (c.people || []).forEach(function(p) { n[p.status] = (n[p.status] || 0) + 1; });
+      return '<tr style="cursor:pointer" onclick="var d=document.getElementById(\'hq-d' + i + '\');d.style.display=d.style.display===\'none\'?\'\':\'none\'">' + hqTd('<b>' + esc(c.chapter) + '</b> <span class="muted">▾</span>', 'text-align:left;') + hqTd(c.ok ? c.total : '-')
+        + K.map(function(k) { return hqTd(n[k] || 0, 'color:' + (n[k] ? HQ_C[k] : '#c4c9d2') + ';font-weight:' + (n[k] ? 800 : 400) + ';'); }).join('') + '</tr>'
+        + '<tr id="hq-d' + i + '" style="display:none"><td colspan="7" style="' + HQ_TD + 'text-align:left;white-space:normal;background:#fafbfd">' + ((c.people || []).length ? c.people.map(function(p) {
+          return '<span style="display:inline-block;margin:2px 14px 2px 0"><b>' + esc(p.name) + '</b> <span style="color:' + (HQ_C[p.status] || '#888') + ';font-weight:700">' + esc(p.status) + '</span>' + (p.time ? ' ' + esc(p.time) : '') + (p.note ? ' <span class="muted">' + esc(p.note) + '</span>' : '') + '</span>';
+        }).join('') : '<span class="muted">근태 직원목록이 비어 있어요.</span>') + '</td></tr>';
+    }).join('') + '</table></div>';
+}
+async function hqMonthForm() {
+  var box = document.getElementById('hq-box');
+  if (!HQ.ym) HQ.ym = localDateStr().slice(0, 7);
+  if (!HQ.chs) { var r = await hqCall('provinceChapters'); HQ.chs = (r && r.ok && r.list) || []; }
+  box.innerHTML = '<div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;margin-bottom:0.6rem">'
+    + '<select id="hq-ch" style="max-width:220px"><option value="">— 지회 선택 —</option>' + HQ.chs.map(function(c) { return '<option value="' + esc(c.id) + '"' + (String(c.id) === HQ.ch ? ' selected' : '') + '>' + esc(c.name) + '</option>'; }).join('') + '</select>'
+    + '<input type="month" id="hq-ym" value="' + esc(HQ.ym) + '" style="max-width:170px"><button class="btn btn-primary btn-sm" onclick="hqMonth()">보기</button></div><div id="hq-mbox"><div class="muted" style="padding:1rem;">지회를 고르고 [보기]를 누르세요. (보기만 · 출퇴근 시각만)</div></div>';
+  if (HQ.ch) hqMonth();
+}
+async function hqMonth() {
+  HQ.ch = document.getElementById('hq-ch').value; HQ.ym = document.getElementById('hq-ym').value;
+  var mb = document.getElementById('hq-mbox');
+  if (!HQ.ch || !HQ.ym) { mb.innerHTML = '<div class="muted" style="padding:1rem;">지회와 달을 골라 주세요.</div>'; return; }
+  mb.innerHTML = '<div class="muted" style="padding:1rem;">불러오는 중…</div>';
+  var r = await hqCall('provinceAttMonth', { chapterId: HQ.ch, ym: HQ.ym });
+  if (!r || !r.ok) { mb.innerHTML = '<div class="danger-text" style="padding:1rem;">' + esc((r && r.msg) || '불러오지 못했습니다.') + '</div>'; return; }
+  var ms = HQ.months = r.months || [];
+  if (!ms.length) { mb.innerHTML = '<div class="muted" style="padding:1rem;">근태 직원목록이 비어 있어요.</div>'; return; }
+  var w = function(v) { return hqTd(v || 0, v ? 'color:#d9534f;font-weight:700;' : ''); };
+  mb.innerHTML = '<div class="muted" style="margin-bottom:0.5rem">' + esc(r.chapter) + ' · ' + esc(HQ.ym) + ' · 직원 줄을 누르면 날짜별 출퇴근 시각이 펼쳐집니다.</div>'
+    + '<div style="overflow-x:auto;border:1px solid #e8ebf1;border-radius:10px;background:#fff"><table style="' + HQ_T + '"><tr>' + hqTh('직원', 1) + ['출근일', '지각', '조퇴', '미기록', '휴가', '출장', '대체휴무', '시간외'].map(function(t) { return hqTh(t); }).join('') + '</tr>'
+    + ms.map(function(m, i) {
+      var s2 = m.summary || {};
+      return '<tr style="cursor:pointer" onclick="hqDays(' + i + ')">' + hqTd('<b>' + esc(m.name) + '</b> <span class="muted">' + esc(m.position || '') + ' ▾</span>', 'text-align:left;') + hqTd((s2.attDays || 0) + '/' + (s2.weekdays || 0))
+        + w(s2.late) + w(s2.early) + w(s2.missing) + hqTd(s2.leave || 0) + hqTd(s2.trip || 0) + hqTd(s2.comp || 0) + hqTd(s2.otCount ? s2.otCount + '회 ' + s2.otHours + 'h' : 0) + '</tr>'
+        + '<tr id="hq-m' + i + '" style="display:none"><td colspan="9" style="padding:0"></td></tr>';
+    }).join('') + '</table></div>';
+}
+function hqDays(i) {
+  var tr = document.getElementById('hq-m' + i), m = HQ.months[i]; if (!tr || !m) return;
+  if (tr.style.display !== 'none') { tr.style.display = 'none'; return; }
+  tr.firstChild.innerHTML = '<table style="' + HQ_T + 'background:#fafbfd"><tr>' + hqTh('날짜') + hqTh('출근') + hqTh('퇴근') + hqTh('상태') + hqTh('휴가·출장·시간외', 1) + '</tr>' + (m.rows || []).map(function(x) {
+    var etc = [x.leave, x.comp, x.trip ? '출장' + (x.trip.time ? ' ' + x.trip.time : '') : '', x.ot ? '시간외 ' + x.ot : ''].filter(Boolean).join(' · ');
+    var g = x.weekend ? 'color:#b0b6c2;' : '', red = '<span style="color:#d9534f;font-weight:700"> ';
+    return '<tr>' + hqTd(x.day + ' (' + esc(x.dow) + ')', g) + hqTd(esc(x.inTime || '') + (x.inFlag ? red + esc(x.inFlag) + '</span>' : ''), g) + hqTd(esc(x.outTime || '') + (x.outFlag ? red + esc(x.outFlag) + '</span>' : ''), g)
+      + hqTd(esc(x.status || '') + (x.edited ? ' <span class="muted">(수정)</span>' : ''), g + (/미기록/.test(x.status) ? 'color:#d9534f;font-weight:700;' : '')) + hqTd(esc(etc), g + 'text-align:left;') + '</tr>';
+  }).join('') + '</table>';
+  tr.style.display = '';
+}
 function loadAdminAttend(keepSel) {
   var ymEl = document.getElementById('adm-att-ym'); if (!ymEl.value) ymEl.value = localDateStr().slice(0, 7);
   var ym = ymEl.value;

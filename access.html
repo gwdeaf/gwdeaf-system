@@ -184,7 +184,7 @@ function staffCard(s, mgr){
       <div>${lb("퇴근 기준 시각")}<input id="e_aout" type="time" value="${esc(a.stdOut)}"></div>
       <div>${lb("시급 (원)")}<input id="e_ahour" inputmode="numeric" value="${esc(a.hourly==="0"?"":a.hourly)}"></div>
       <div>${lb("연락처")}<input id="e_acontact" value="${esc(a.contact)}"></div>
-      <div>${lb("슬랙 ID (선임만)")}<input id="e_aslack" value="${esc(a.slackId)}" placeholder="U0…"></div>
+      <div>${lb("슬랙 ID (이 직원 본인 · 알림 받을 때 필요)")}<input id="e_aslack" value="${esc(a.slackId)}" placeholder="U0…"></div>
       <div>${lb("비고")}<input id="e_anote" value="${esc(a.note)}"></div>`
       : (ATTI && ATTI.sheet && s.active ? '<div class="full muted" style="font-size:12px">근태 직원목록에 같은 이름의 다른 직원이 있어 연결하지 못했습니다. 이름을 구분해 주세요.</div>' : '');
     return `<div class="card"><div class="grid">

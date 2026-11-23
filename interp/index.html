@@ -12,7 +12,7 @@
   header h1 { font-size: 18px; margin: 0; }
   header .who { font-size: 13px; opacity: .9; }
   nav { background: #fff; border-bottom: 1px solid #dde3ea; padding: 8px 12px; display: flex; gap: 6px; flex-wrap: wrap; }
-  main { padding: 16px; max-width: 860px; margin: 0 auto; } main:has(#screenStats.on), main:has(#screenList.on), main:has(#screenSheet.on) { max-width: 1500px; }
+  main { padding: 16px; max-width: 860px; margin: 0 auto; } main:has(#screenStats.on), main:has(#screenList.on), main:has(#screenSheet.on), main:has(#screenCSheet.on) { max-width: 1500px; }
   .screen { display: none; } .screen.on { display: block; }
   h2 { font-size: 18px; margin: 4px 0 12px; }
   .card { background: #fff; border: 1px solid #dde3ea; border-radius: 8px; padding: 16px; margin-bottom: 14px; }
@@ -72,6 +72,7 @@
   <button class="tab stab" data-sm="b" onclick="setStMode('b')" style="display:none">사업실적</button>
   <button class="tab stab" data-sm="y" onclick="setStMode('y')" style="display:none">통역실적</button>
   <button class="tab ctab" data-tab="cwrite" onclick="setTab('cwrite')" style="display:none">일지 쓰기</button>
+  <button class="tab ctab" data-tab="csheet" id="csheetBtn" onclick="setTab('csheet')" style="display:none">시트 입력</button>
   <button class="tab ctab" data-tab="cmine" onclick="setTab('cmine')" style="display:none">내 기록</button>
   <button class="tab ctab" data-tab="call" id="callBtn" onclick="setTab('call')" style="display:none">전체 기록</button>
   <button id="logoutBtn" onclick="logout()">로그아웃</button>
@@ -130,11 +131,31 @@
       <div style="overflow-x:auto;margin-top:8px"><table class="sheet"><thead><tr><th>#</th><th>날짜</th><th>시작</th><th>종료</th><th>구분</th><th>의뢰방법</th><th>의뢰자</th><th>장소</th><th>종류</th><th>방법</th><th>대상</th><th>농인</th><th>청인</th><th>내용</th><th></th></tr></thead><tbody id="shBody"></tbody></table></div>
       <datalist id="dl_type"><option>출장</option><option>내방</option><option>전화</option></datalist>
       <datalist id="dl_method"><option>내방</option><option>인터넷</option><option>문자</option><option>영상전화</option><option>전화</option><option>기타(문서)</option></datalist>
-      <datalist id="dl_cat"><option>일상생활</option><option>행사</option><option>법률</option><option>교육</option><option>의료</option><option>방송</option><option>관공서</option><option>취업알선</option><option>기타</option></datalist>
+      <datalist id="dl_cat"><option>일상생활</option><option>행사</option><option>법률</option><option>교육</option><option>의료</option><option>방송</option><option>취업알선</option></datalist>
       <datalist id="dl_way"><option>수어음성통역</option><option>중계통역</option><option>기타</option></datalist>
       <datalist id="dl_target"><option>농인</option><option>문맹농인</option><option>청인</option><option>기타</option></datalist>
       <div style="margin-top:10px;display:flex;gap:8px;align-items:center"><button class="main" id="shSave" onclick="shSave()">💾 한번에 저장</button><span class="muted" id="shCount"></span></div>
       <div id="shMsg" class="msg" style="white-space:pre-line"></div>
+    </div>
+  </section>
+
+  <section id="screenCSheet" class="screen">
+    <h2>상담일지 · 시트 입력</h2>
+    <div class="card">
+      <div class="hint" style="margin:0 0 6px">한 줄에 상담 한 건씩 적고 맨 아래 <b>💾 한번에 저장</b>을 누르세요. 엑셀·구글 시트에서 여러 칸을 <b>복사</b>해 칸을 누르고 <b>Ctrl+V</b> 하면 그 칸부터 채워집니다.<br>
+        칸 순서는 상담 시트(B~N열)와 같아요: 날짜 · 시간 · 상담자 · 의뢰자 · 상담내용 · 장소 · 구분 · 상담구분 · 인원 · 상담종류 · 의뢰방법 · 대상 · 비고. <b>상담자</b> 칸은 비워도 되고, 무엇을 적어도 <b>내 이름</b>으로 저장됩니다. 쓰던 내용은 이 기기에 임시로 남아요.</div>
+      <div class="row" style="align-items:flex-end">
+        <div class="narrow"><label>연도 ('11월 9일'처럼 쓸 때)</label><input id="cshYear" inputmode="numeric" style="width:90px"></div>
+        <div style="flex:1;display:flex;gap:6px;flex-wrap:wrap"><button onclick="cshAdd(1)">+ 줄 추가</button><button onclick="cshAdd(10)">+ 10줄</button><button onclick="cshClear()">모두 지우기</button></div>
+      </div>
+      <div style="overflow-x:auto;margin-top:8px"><table class="sheet"><thead><tr><th>#</th><th>날짜</th><th>시간</th><th>상담자</th><th>의뢰자</th><th>상담내용</th><th>장소</th><th>구분</th><th>상담구분</th><th>인원</th><th>상담종류</th><th>의뢰방법</th><th>대상</th><th>비고</th><th></th></tr></thead><tbody id="cshBody"></tbody></table></div>
+      <datalist id="cdl_gubun"><option>상담</option><option>취업알선</option><option>사후관리</option></datalist>
+      <datalist id="cdl_ctype"><option>전화</option><option>내방</option><option>출장</option></datalist>
+      <datalist id="cdl_kind"><option>일상생활</option><option>행사</option><option>법률</option><option>교육</option><option>의료</option><option>방송</option><option>기타</option></datalist>
+      <datalist id="cdl_method"><option>영상전화</option><option>문자</option><option>전화</option><option>내방</option><option>인터넷</option><option>기타</option></datalist>
+      <datalist id="cdl_target"><option>농인</option><option>청인(가족)</option><option>문맹농인</option><option>기타</option></datalist>
+      <div style="margin-top:10px;display:flex;gap:8px;align-items:center"><button class="main" id="cshSave" onclick="cshSave()">💾 한번에 저장</button><span class="muted" id="cshCount"></span></div>
+      <div id="cshMsg" class="msg" style="white-space:pre-line"></div>
     </div>
   </section>
 
@@ -250,14 +271,14 @@ async function boot() {
 }
 sb.auth.onAuthStateChange((event) => { if (event === 'SIGNED_IN') boot(); });
 
-function subGo(t) { setTab(t === 'stats' ? 'stats' : t === 'counsel' ? (me.can_write ? 'cwrite' : 'cmine') : (me.can_write ? 'write' : 'mine')); }   // 대시보드는 없앰(옛 링크는 일지로)
-const isC = (t) => t === 'cwrite' || t === 'cmine' || t === 'call';
+function subGo(t) { setTab(t === 'stats' ? 'stats' : t === 'counsel' ? (me.can_cwrite ? 'cwrite' : 'cmine') : (me.can_write ? 'write' : 'mine')); }   // 대시보드는 없앰(옛 링크는 일지로)
+const isC = (t) => t === 'cwrite' || t === 'csheet' || t === 'cmine' || t === 'call';
 function setTab(t) {
   tab = t;
   document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
   const C = isC(t), S = t === 'stats';   // 통역일지 / 상담일지 / 통계 화면마다 그 탭만 보임
   document.querySelectorAll('.itab').forEach((b) => b.style.display = C || S ? 'none' : (b.id === 'allBtn' ? (me.can_view ? '' : 'none') : b.id === 'sheetBtn' ? (me.can_write ? '' : 'none') : ''));
-  document.querySelectorAll('.ctab').forEach((b) => b.style.display = !C ? 'none' : (b.id === 'callBtn' ? (me.can_view ? '' : 'none') : ''));
+  document.querySelectorAll('.ctab').forEach((b) => b.style.display = !C ? 'none' : (b.id === 'callBtn' ? (me.can_view ? '' : 'none') : b.id === 'csheetBtn' ? (me.can_cwrite ? '' : 'none') : ''));
   document.querySelectorAll('.stab').forEach((b) => b.style.display = S ? '' : 'none');
   subTell(t === 'stats' ? 'stats' : C ? 'counsel' : 'log');
   if (t === 'sheet') {
@@ -267,7 +288,12 @@ function setTab(t) {
   }
   if (t === 'cwrite') {
     showScreen('screenCWrite');
-    if (!me.can_write) msg('cwriteMsg', '상담일지 입력 권한이 없습니다. (통역일지 입력 권한 필요) 센터 담당자에게 요청하세요.');
+    if (!me.can_cwrite) msg('cwriteMsg', '상담일지 입력 권한이 없습니다. 센터 담당자에게 요청하세요. (직원·권한 관리 → 상담일지 입력)');
+    return;
+  }
+  if (t === 'csheet') {
+    showScreen('screenCSheet'); cshInit();
+    if (!me.can_cwrite) msg('cshMsg', '상담일지 입력 권한이 없습니다. 센터 담당자에게 요청하세요.');
     return;
   }
   if (t === 'dash') { showScreen('screenDash'); loadDash(); return; }
@@ -871,20 +897,21 @@ function shKeep() { clearTimeout(shT); shT = setTimeout(() => { try { localStora
 document.addEventListener('input', (e) => { if (e.target.closest && e.target.closest('#shBody')) shKeep(); });
 // 붙여넣기: 엑셀·시트에서 복사한 여러 칸을 그 칸부터 채움 (모자라면 줄을 늘림)
 document.addEventListener('paste', (e) => {
-  const inp = e.target; if (!inp.closest || !inp.closest('#shBody')) return;
+  const inp = e.target; if (!inp.closest || !inp.closest('#shBody, #cshBody')) return;
+  const CS = !!inp.closest('#cshBody'), COLS = CS ? CSH_COLS : SH_COLS, BODY = CS ? 'cshBody' : 'shBody';
   const text = (e.clipboardData || window.clipboardData).getData('text');
   if (!/[\t\n]/.test(text)) return;
   e.preventDefault();
   const lines = text.replace(/\r/g, '').replace(/\n$/, '').split('\n').map((l) => l.split('\t'));
-  let tr = inp.closest('tr'); const c0 = SH_COLS.findIndex((c) => c[0] === inp.dataset.k);
+  let tr = inp.closest('tr'); const c0 = COLS.findIndex((c) => c[0] === inp.dataset.k);
   lines.forEach((cells, li) => {
-    if (!tr) { shAdd(1); tr = $('shBody').rows[$('shBody').rows.length - 1]; }
+    if (!tr) { (CS ? cshAdd : shAdd)(1); tr = $(BODY).rows[$(BODY).rows.length - 1]; }
     const ins = tr.querySelectorAll('input');
     cells.forEach((v, ci) => { const t = ins[c0 + ci]; if (t) t.value = v.trim(); });
     tr = tr.nextElementSibling;
     if (li === lines.length - 1) return;
   });
-  shKeep(); msg('shMsg', `${lines.length}줄을 붙여 넣었습니다.`, true);
+  (CS ? cshKeep : shKeep)(); msg(CS ? 'cshMsg' : 'shMsg', `${lines.length}줄을 붙여 넣었습니다.`, true);
 });
 // 값 정리: 날짜·시간·숫자
 function shDate(v, y) {
@@ -928,6 +955,58 @@ async function shSave() {
   $('shSave').disabled = false;
   $('shBody').innerHTML = ''; shAdd(5); try { localStorage.removeItem(shKey()); } catch (e) {}
   msg('shMsg', `${data.count}줄을 저장했습니다.` + (ok ? ` 구글 시트에도 ${ok}줄 적었습니다.` : '') + (skip ? ' (구글 시트가 연결되지 않아 시스템에만 저장)' : '') + (fail ? ` 시트 기록 실패 ${fail}줄 — 내 기록에서 확인하세요.` : ''), true);
+}
+// ============ 상담일지 시트 입력 ============
+const CSH_COLS = [['date', 92], ['time', 58], ['who', 70], ['client', 110], ['content', 260], ['place', 90], ['gubun', 70, 'cdl_gubun'], ['ctype', 66, 'cdl_ctype'], ['people', 46], ['kind', 76, 'cdl_kind'], ['method', 80, 'cdl_method'], ['target', 80, 'cdl_target'], ['note', 110]];
+const cshKey = () => 'counsel-sheet:' + (me && me.email);
+function cshRowHtml(v) {
+  v = v || {};
+  return `<tr><td class="n"></td>${CSH_COLS.map((c) => `<td><input data-k="${c[0]}" style="width:${c[1]}px${c[0] === 'who' ? ';color:#999' : ''}" ${c[2] ? `list="${c[2]}"` : ''} ${c[0] === 'who' ? `placeholder="${esc(me ? me.name : '')}"` : ''} value="${esc(v[c[0]] || '')}"></td>`).join('')}<td class="n" style="white-space:nowrap"><button class="sm" title="이 줄 복사" onclick="cshDup(this)">⧉</button> <button class="sm" title="이 줄 지우기" onclick="cshDel(this)">✕</button></td></tr>`;
+}
+function cshRaw() { return [...$('cshBody').rows].map((tr) => { const v = {}; tr.querySelectorAll('input').forEach((i) => { v[i.dataset.k] = i.value.trim(); }); return v; }); }
+function cshRows() { return cshRaw().filter((v) => Object.keys(v).some((k) => k !== 'who' && v[k])); }
+function cshNum() { [...$('cshBody').rows].forEach((r, i) => { r.cells[0].textContent = i + 1; }); const n = cshRows().length; $('cshCount').textContent = n ? `${n}줄 입력됨` : ''; }
+function cshInit() {
+  if (!$('cshYear').value) $('cshYear').value = new Date().getFullYear();
+  if ($('cshBody').rows.length) return;
+  let saved = []; try { saved = JSON.parse(localStorage.getItem(cshKey()) || '[]'); } catch (e) {}
+  $('cshBody').innerHTML = (saved.length ? saved : [{}, {}, {}, {}, {}]).map(cshRowHtml).join('');
+  cshNum();
+}
+function cshAdd(n) { $('cshBody').insertAdjacentHTML('beforeend', Array.from({ length: Math.max(0, n) }, () => cshRowHtml()).join('')); cshNum(); }
+function cshDup(btn) { const tr = btn.closest('tr'), v = {}; tr.querySelectorAll('input').forEach((i) => { v[i.dataset.k] = i.value; }); tr.insertAdjacentHTML('afterend', cshRowHtml(v)); cshNum(); cshKeep(); }
+function cshDel(btn) { btn.closest('tr').remove(); if (!$('cshBody').rows.length) cshAdd(1); cshNum(); cshKeep(); }
+function cshClear() { if (!confirm('입력한 줄을 모두 지울까요?')) return; $('cshBody').innerHTML = ''; cshAdd(5); cshKeep(); msg('cshMsg', ''); }
+let cshT = null;
+function cshKeep() { clearTimeout(cshT); cshT = setTimeout(() => { try { localStorage.setItem(cshKey(), JSON.stringify(cshRows())); } catch (e) {} cshNum(); }, 300); }
+document.addEventListener('input', (e) => { if (e.target.closest && e.target.closest('#cshBody')) cshKeep(); });
+async function cshSave() {
+  msg('cshMsg', '');
+  const y = Number($('cshYear').value) || new Date().getFullYear();
+  const rows = cshRows().map((v) => ({ date: shDate(v.date, y), time: shTime(v.time), client: v.client, content: v.content, place: v.place || '사무실',
+    gubun: v.gubun || '상담', ctype: v.ctype || '전화', people: String(v.people || '').replace(/[^0-9]/g, '') || '1',
+    kind: v.kind || '일상생활', method: v.method || '영상전화', target: v.target || '농인', note: v.note }));
+  if (!rows.length) return msg('cshMsg', '저장할 줄이 없습니다.');
+  if (!confirm(`${rows.length}줄을 상담일지에 저장할까요?`)) return;
+  $('cshSave').disabled = true; msg('cshMsg', '저장하는 중입니다…', true);
+  [...$('cshBody').rows].forEach((r) => r.classList.remove('bad'));
+  const { data, error } = await sb.rpc('counsel_save_bulk', { p_rows: rows });
+  if (error) {
+    $('cshSave').disabled = false;
+    const bad = [...String(errText(error)).matchAll(/(\d+)번째 줄/g)].map((m) => Number(m[1]));
+    const filled = [...$('cshBody').rows].filter((tr) => [...tr.querySelectorAll('input')].some((i) => i.dataset.k !== 'who' && i.value.trim()));
+    bad.forEach((n) => { if (filled[n - 1]) filled[n - 1].classList.add('bad'); });
+    return msg('cshMsg', '저장하지 않았습니다. 빨간 줄을 고쳐 주세요.\n' + errText(error));
+  }
+  let ok = 0, skip = 0, fail = 0;   // 구글 시트(상담 탭)에도 한 줄씩
+  for (let i = 0; i < data.ids.length; i++) {
+    msg('cshMsg', `${data.count}줄 저장 완료. 구글 시트에 적는 중… (${i + 1}/${data.ids.length})`, true);
+    const r = await gdrive({ action: 'counselAppend', id: data.ids[i] });
+    if (r.ok && !r.skipped) ok++; else if (r.skipped) skip++; else fail++;
+  }
+  $('cshSave').disabled = false;
+  $('cshBody').innerHTML = ''; cshAdd(5); try { localStorage.removeItem(cshKey()); } catch (e) {}
+  msg('cshMsg', `${data.count}줄을 저장했습니다.` + (ok ? ` 구글 시트에도 ${ok}줄 적었습니다.` : '') + (skip ? ' (구글 시트가 연결되지 않아 시스템에만 저장)' : '') + (fail ? ` 시트 기록 실패 ${fail}줄 — 내 기록에서 확인하세요.` : ''), true);
 }
 // ============ 내 기록 수정 · 삭제 ============
 let EDIT_BACK = null;

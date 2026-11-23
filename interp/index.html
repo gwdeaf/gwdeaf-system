@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>통역실적</title>
+<title>수어통역</title>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   * { box-sizing: border-box; }
@@ -57,12 +57,15 @@
 <link rel="stylesheet" href="/ui.css?v=1">
 </head>
 <body>
-<header><h1>통역실적</h1><div class="who" id="whoText"></div></header>
+<header><h1>수어통역</h1><div class="who" id="whoText"></div></header>
 <nav id="topNav" style="display:none">
-  <button class="tab on" data-tab="write" onclick="setTab('write')">일지 쓰기</button>
-  <button class="tab" data-tab="mine" onclick="setTab('mine')">내 기록</button>
-  <button class="tab" data-tab="all" id="allBtn" onclick="setTab('all')" style="display:none">센터 전체 기록</button>
-  <button class="tab" data-tab="stats" id="statsBtn" onclick="setTab('stats')" style="display:none">통계</button>
+  <button class="tab itab on" data-tab="write" onclick="setTab('write')">일지 쓰기</button>
+  <button class="tab itab" data-tab="mine" onclick="setTab('mine')">내 기록</button>
+  <button class="tab itab" data-tab="all" id="allBtn" onclick="setTab('all')" style="display:none">센터 전체 기록</button>
+  <button class="tab itab" data-tab="stats" id="statsBtn" onclick="setTab('stats')" style="display:none">통계</button>
+  <button class="tab ctab" data-tab="cwrite" onclick="setTab('cwrite')" style="display:none">상담일지 쓰기</button>
+  <button class="tab ctab" data-tab="cmine" onclick="setTab('cmine')" style="display:none">내 상담 기록</button>
+  <button class="tab ctab" data-tab="call" id="callBtn" onclick="setTab('call')" style="display:none">센터 전체 상담</button>
   <button id="logoutBtn" onclick="logout()">로그아웃</button>
 </nav>
 <main>
@@ -107,6 +110,40 @@
       <div id="favMsg" class="msg"></div></div>
   </section>
 
+  <section id="screenCWrite" class="screen">
+    <h2>상담일지 쓰기</h2>
+    <div class="card"><b style="font-size:13px">⭐ 즐겨찾기 불러오기</b>
+      <div class="fav" id="cfavLoad"></div></div>
+    <div class="card">
+      <div class="row">
+        <div><label>날짜</label><input type="date" id="c_date"></div>
+        <div><label>시간</label><input id="c_time" inputmode="numeric" maxlength="5" placeholder="09:00" oninput="fmtTime(this)"></div>
+        <div><label>상담자</label><input id="c_who" disabled></div>
+      </div>
+      <div class="row">
+        <div><label>의뢰자</label><input id="c_client" placeholder="예: 홍천군지회, 이*린"></div>
+        <div><label>장소</label><input id="c_place" value="사무실"></div>
+        <div><label>구분</label><select id="c_gubun"><option>상담</option><option>취업알선</option><option>사후관리</option></select></div>
+      </div>
+      <div class="row">
+        <div><label>상담구분</label><select id="c_ctype"><option>전화</option><option>내방</option><option>출장</option></select></div>
+        <div><label>상담인원</label><input type="number" id="c_people" value="1" min="0"></div>
+        <div><label>상담종류</label><select id="c_kind"><option>일상생활</option><option>행사</option><option>법률</option><option>교육</option><option>의료</option><option>방송</option><option>기타</option></select></div>
+      </div>
+      <div class="row">
+        <div><label>상담의뢰방법</label><select id="c_method"><option>영상전화</option><option>문자</option><option>전화</option><option>내방</option><option>인터넷</option><option>기타</option></select></div>
+        <div><label>대상</label><select id="c_target"><option>농인</option><option>청인(가족)</option><option>문맹농인</option><option>기타</option></select></div>
+        <div><label>비고</label><input id="c_note"></div>
+      </div>
+      <label>상담내용</label><textarea id="c_content" placeholder="상담 내용을 입력하세요 (예: 실비보험 관련 질문 상담)"></textarea>
+      <div style="margin-top:10px"><button class="main" id="cSaveBtn" onclick="submitCounsel()">💾 상담일지 저장</button></div>
+      <div id="cwriteMsg" class="msg"></div>
+    </div>
+    <div class="card"><b style="font-size:13px">⭐ 지금 입력한 내용을 즐겨찾기에 저장</b>
+      <div><button onclick="saveCPreset(1)">1번에 저장</button><button onclick="saveCPreset(2)">2번에 저장</button><button onclick="saveCPreset(3)">3번에 저장</button></div>
+      <div id="cfavMsg" class="msg"></div></div>
+  </section>
+
   <section id="screenDash" class="screen">
     <div class="stbar" style="justify-content:space-between"><h2 id="dTitle" style="margin:0">통역실적 대시보드</h2>
       <div class="noprint"><select id="dYear" style="width:auto" onchange="loadDash()"></select></div></div>
@@ -144,7 +181,7 @@ const ALLOWED_DOMAIN = 'gwdeaf.or.kr';
 const EMBED = new URLSearchParams(location.search).get('embed') === '1';
 if (EMBED) document.body.classList.add('embed');
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-let me = null, tab = 'write', presets = {};
+let me = null, tab = 'write', presets = {}, cpresets = {};
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const errText = (e) => (e && (e.message || e.error_description)) || '알 수 없는 오류가 났습니다.';
@@ -171,19 +208,29 @@ async function boot() {
   $('topNav').style.display = 'flex';
   $('allBtn').style.display = me.can_view && !me.is_hq ? '' : 'none';
   $('statsBtn').style.display = me.can_stats || me.can_review ? '' : 'none';
-  $('date').value = today();
+  $('date').value = today(); $('c_date').value = today(); $('c_who').value = me.name;
   try { const r = await sb.rpc('interp_presets_get'); presets = r.data || {}; } catch (e) { presets = {}; }
-  drawFav();
+  try { const r = await sb.rpc('counsel_presets_get'); cpresets = r.data || {}; } catch (e) { cpresets = {}; }
+  drawFav(); drawCFav();
   if (SUB.go) subGo(SUB.go); else setTab(me.can_write ? 'write' : 'mine');
   subReady();
 }
 sb.auth.onAuthStateChange((event) => { if (event === 'SIGNED_IN') boot(); });
 
-function subGo(t) { setTab(t === 'stats' ? 'stats' : (me.can_write ? 'write' : 'mine')); }   // 대시보드는 없앰(옛 링크는 일지로)
+function subGo(t) { setTab(t === 'stats' ? 'stats' : t === 'counsel' ? (me.can_write ? 'cwrite' : 'cmine') : (me.can_write ? 'write' : 'mine')); }   // 대시보드는 없앰(옛 링크는 일지로)
+const isC = (t) => t === 'cwrite' || t === 'cmine' || t === 'call';
 function setTab(t) {
   tab = t;
   document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
-  subTell(t === 'stats' ? 'stats' : t === 'dash' ? 'dash' : 'log');
+  const C = isC(t);   // 상담일지 화면이면 상담 탭만, 아니면 통역 탭만 보임
+  document.querySelectorAll('.itab').forEach((b) => b.style.display = C ? 'none' : (b.id === 'allBtn' ? (me.can_view && !me.is_hq ? '' : 'none') : b.id === 'statsBtn' ? (me.can_stats || me.can_review ? '' : 'none') : ''));
+  document.querySelectorAll('.ctab').forEach((b) => b.style.display = !C ? 'none' : (b.id === 'callBtn' ? (me.can_view ? '' : 'none') : ''));
+  subTell(t === 'stats' ? 'stats' : C ? 'counsel' : 'log');
+  if (t === 'cwrite') {
+    showScreen('screenCWrite');
+    if (!me.can_write) msg('cwriteMsg', '상담일지 입력 권한이 없습니다. (통역일지 입력 권한 필요) 센터 담당자에게 요청하세요.');
+    return;
+  }
   if (t === 'dash') { showScreen('screenDash'); loadDash(); return; }
   if (t === 'stats') {
     showScreen('screenStats'); if (!$('stYm').value) $('stYm').value = lastMonth();
@@ -196,7 +243,7 @@ function setTab(t) {
     return;
   }
   showScreen('screenList');
-  $('listTitle').textContent = t === 'all' ? '센터 전체 기록' : '내 기록';
+  $('listTitle').textContent = { all: '센터 전체 기록', mine: '내 기록', cmine: '내 상담 기록', call: '센터 전체 상담' }[t] || '내 기록';
   if (!$('from').value) { const d = new Date(); d.setDate(1); $('from').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01'; $('to').value = today(); }
   loadList();
 }
@@ -312,6 +359,14 @@ function drawYear() {
       { t: '통역종류', cols: obj('cat', ['행사','법률','교육','의료','방송','관공서','일상생활','취업알선','기타']).concat([['합계', ['cases']]]) }])}
     <p class="muted">상담지도·취업알선·사후관리·수어교육·기타 연인원은 통역일지에 없는 항목이라 이 표에는 나오지 않습니다.</p>`;
 }
+// 도협회: 도센터(강원도수어통역센터) 자체 통계·보고
+const hqBtn = () => me.can_stats ? `<div class="noprint" style="margin-bottom:10px"><button onclick="loadHqStats()">🏢 도센터 통계 · 도협회 보고</button></div>` : '';
+async function loadHqStats() {
+  msg('stMsg', ''); const ym = $('stYm').value || lastMonth();
+  const { data, error } = await sb.rpc('interp_stats', { p_ym: ym });
+  if (error) return msg('stMsg', errText(error));
+  ST = data; drawCenterStats();
+}
 async function loadStats() {
   msg('stMsg', ''); $('stBody').innerHTML = '<p class="muted">불러오는 중…</p>';
   if ($('stMode').value === 'y') return loadYear();
@@ -333,7 +388,7 @@ function drawCenterStats() {
     : st === 'REJECTED' ? `<button class="main" onclick="submitReport()">📤 재보고</button>`
     : st === 'SUBMITTED' ? `<button onclick="cancelReport()">보고 취소</button> <span class="muted">보고한 달은 통역일지를 새로 입력할 수 없습니다(잠금). 고칠 내용이 있으면 보고를 취소하세요.</span>`
     : '<span class="muted">도협회가 승인하여 도협회 전체 통계에 반영되었습니다. 이 달의 통역일지는 잠겨 있습니다.</span>';
-  $('stBody').innerHTML = `<div class="card"><div class="stbar"><b>${esc(d.centerName)}</b> · ${ymText(d.targetYearMonth)} ${stBadge(st, r.submittedAt)}</div>
+  $('stBody').innerHTML = (me.can_review ? '<div class="noprint" style="margin-bottom:10px"><button onclick="loadStats()">← 센터별 보고 현황</button></div>' : '') + `<div class="card"><div class="stbar"><b>${esc(d.centerName)}</b> · ${ymText(d.targetYearMonth)} ${stBadge(st, r.submittedAt)}</div>
       ${st === 'REJECTED' ? `<div class="reject"><b>도협회 보완 요청</b> (${dtText(r.reviewedAt)} · ${esc(r.reviewedBy || '')})<br>사유: ${esc(r.rejectReason)}<br><span style="font-size:12px">잠금이 풀렸습니다. 통역일지를 고친 뒤 [재보고]를 누르세요.</span></div>` : ''}
       ${r.submittedAt && st !== 'DRAFT' ? `<div class="muted" style="margin-top:4px">보고: ${dtText(r.submittedAt)} · ${esc((r.submittedBy || {}).name || '')} ${esc((r.submittedBy || {}).position || '')}${r.reviewedAt && st === 'APPROVED' ? ' · 승인: ' + dtText(r.reviewedAt) : ''}</div>` : ''}
       <div class="noprint" style="margin-top:10px">${btn}</div></div>
@@ -361,7 +416,7 @@ async function loadBoard(ym) {
 function drawBoard() {
   const d = BOARD, a = d.approved || {}, cnt = (k) => d.rows.filter((r) => r.status === k).length;
   $('stTitle').textContent = '센터별 통역 실적 보고 현황 (도협회)';
-  $('stBody').innerHTML = `<div class="card"><b>${ymText(d.targetYearMonth)}</b> · 승인 ${cnt('APPROVED')} · 검토 대기 ${cnt('SUBMITTED')} · 보완 요청 ${cnt('REJECTED')} · 미보고 ${cnt('DRAFT')} (전체 ${d.rows.length}개 센터)
+  $('stBody').innerHTML = hqBtn() + `<div class="card"><b>${ymText(d.targetYearMonth)}</b> · 승인 ${cnt('APPROVED')} · 검토 대기 ${cnt('SUBMITTED')} · 보완 요청 ${cnt('REJECTED')} · 미보고 ${cnt('DRAFT')} (전체 ${d.rows.length}개 센터)
       <div class="muted" style="font-size:12px;margin-top:4px">검토 대기 줄을 눌러 상세 통계를 보고 승인 또는 보완 요청하세요.</div></div>
     <div class="card" style="overflow-x:auto"><table><thead><tr><th>센터명</th><th>대상 연월</th><th>총 건수</th><th>총 시간</th><th>보고 상태</th><th>보고 일시</th></tr></thead><tbody>
       ${d.rows.map((r) => `<tr class="${r.status !== 'DRAFT' ? 'click' : ''}" ${r.status !== 'DRAFT' ? `onclick="openDetail(${r.centerId})"` : ''}><td>${esc(r.centerName)}</td><td>${ymText(r.targetYearMonth)}</td>
@@ -381,7 +436,7 @@ function drawRange() {
   const mm = (ym) => Number(String(ym).slice(5)) + '월';
   const all = d.rows.flatMap((r) => ms.map((y) => (r.months[y] || {}).status || 'DRAFT')), cnt = (k) => all.filter((x) => x === k).length;
   $('stTitle').textContent = '센터별 통역 실적 보고 현황 (도협회)';
-  $('stBody').innerHTML = `<div class="card"><b>${ymText(d.from)} ~ ${ymText(d.to)}</b> (${ms.length}개월) · 승인 ${cnt('APPROVED')} · 검토 대기 ${cnt('SUBMITTED')} · 보완 요청 ${cnt('REJECTED')} · 미보고 ${cnt('DRAFT')}
+  $('stBody').innerHTML = hqBtn() + `<div class="card"><b>${ymText(d.from)} ~ ${ymText(d.to)}</b> (${ms.length}개월) · 승인 ${cnt('APPROVED')} · 검토 대기 ${cnt('SUBMITTED')} · 보완 요청 ${cnt('REJECTED')} · 미보고 ${cnt('DRAFT')}
       <div class="muted" style="font-size:12px;margin-top:4px">칸을 누르면 그 달 보고를 보고 승인 또는 보완 요청할 수 있습니다. 합계는 보고 완료·승인된 달만 더합니다.</div></div>
     <div class="card yr" style="overflow-x:auto"><table><thead><tr><th>센터명</th>${ms.map((y) => `<th>${ms.length > 12 || ms[0].slice(0, 4) !== ms[ms.length - 1].slice(0, 4) ? y.slice(2, 4) + '.' : ''}${mm(y)}</th>`).join('')}<th>건수 합계</th><th>시간 합계</th></tr></thead><tbody>
       ${d.rows.map((r) => `<tr><td style="text-align:left">${esc(r.centerName)}</td>${ms.map((y) => { const x = r.months[y] || {}, st = x.status || 'DRAFT';
@@ -420,6 +475,7 @@ async function openDetail(centerId, ym) {
 
 async function loadList() {
   msg('listMsg', '');
+  if (isC(tab)) return loadCList();
   const { data, error } = await sb.rpc('interp_list', { p_from: $('from').value || null, p_to: $('to').value || null, p_all: tab === 'all' });
   if (error) return msg('listMsg', errText(error));
   const all = tab === 'all';
@@ -477,6 +533,58 @@ async function savePreset(n) {
   const { error } = await sb.rpc('interp_preset_save', { p_num: n, p_data: d });
   if (error) return msg('favMsg', errText(error));
   presets[n] = d; drawFav(); msg('favMsg', n + '번에 저장했습니다.', true);
+}
+// ============ 상담일지 ============
+const CFIELDS = ['time', 'client', 'place', 'gubun', 'ctype', 'people', 'kind', 'method', 'target', 'note', 'content'];
+function cformData() { const o = {}; CFIELDS.forEach((f) => { o[f] = $('c_' + f).value; }); return o; }
+async function submitCounsel() {
+  msg('cwriteMsg', '');
+  const p = Object.assign({ date: $('c_date').value }, cformData());
+  if (!p.date) return msg('cwriteMsg', '날짜를 입력해 주세요.');
+  if (!okTime(p.time.trim())) return msg('cwriteMsg', '시간을 00:00 ~ 23:59 형식으로 입력해 주세요.');
+  if (!p.client.trim()) return msg('cwriteMsg', '의뢰자를 입력해 주세요.');
+  if (!p.content.trim()) return msg('cwriteMsg', '상담내용을 입력해 주세요.');
+  $('cSaveBtn').disabled = true; msg('cwriteMsg', '저장 중입니다...', true);
+  try {
+    const { data, error } = await sb.rpc('counsel_save', { p });
+    if (error) return msg('cwriteMsg', errText(error));
+    let note = '';
+    const r = await gdrive({ action: 'counselAppend', id: data.id });   // 구글 시트(상담 탭)에도 기록
+    if (r.ok && !r.skipped) note = ' 구글 시트에도 기록했습니다.';
+    else if (r.skipped) note = ' (구글 시트가 연결되지 않아 시스템에만 저장했습니다.)';
+    else note = ' 단, 구글 시트 기록은 실패했습니다: ' + (r.msg || '');
+    msg('cwriteMsg', '저장 완료!' + note, r.ok !== false);
+    ['client', 'content', 'note', 'time'].forEach((f) => { $('c_' + f).value = ''; });
+    $('c_people').value = 1;
+  } catch (e) { msg('cwriteMsg', errText(e)); }
+  finally { $('cSaveBtn').disabled = false; }
+}
+async function loadCList() {
+  const all = tab === 'call';
+  const { data, error } = await sb.rpc('counsel_list', { p_from: $('from').value || null, p_to: $('to').value || null, p_all: all });
+  if (error) return msg('listMsg', errText(error));
+  $('listHead').innerHTML = '<tr><th>날짜</th><th>시간</th>' + (all ? '<th>상담자</th>' : '') + '<th>의뢰자</th><th>상담내용</th><th>장소</th><th>구분</th><th>상담구분</th><th>인원</th><th>종류</th><th>의뢰방법</th><th>대상</th><th>비고</th><th>시트</th></tr>';
+  const st = { ok: ['ok', '기록됨'], skip: ['wait', '연결 안 됨'], error: ['err', '실패'] };
+  $('listBody').innerHTML = (data || []).map((r) => {
+    const s = st[r.sheet_status] || ['wait', '대기'];
+    return `<tr><td>${esc(r.log_date)}</td><td>${esc(r.log_time)}</td>${all ? '<td>' + esc(r.counselor_name) + '</td>' : ''}<td>${esc(r.client)}</td><td style="white-space:normal;min-width:180px">${esc(r.content)}</td><td>${esc(r.place)}</td><td>${esc(r.gubun)}</td><td>${esc(r.ctype)}</td><td>${r.people}</td><td>${esc(r.kind)}</td><td>${esc(r.method)}</td><td>${esc(r.target)}</td><td>${esc(r.note)}</td><td><span class="${s[0]}">${s[1]}</span></td></tr>`;
+  }).join('') || `<tr><td colspan="${all ? 14 : 13}" class="muted">기록이 없습니다.</td></tr>`;
+}
+function drawCFav() {
+  $('cfavLoad').innerHTML = [1, 2, 3].map((n) => { const d = cpresets[n]; return `<button onclick="loadCPreset(${n})">⭐ ${n}번${d ? ': ' + esc(d.client || d.place || '저장건') : ' (비어 있음)'}</button>`; }).join('');
+}
+function loadCPreset(n) {
+  const d = cpresets[n];
+  if (!d) return msg('cwriteMsg', n + '번에 저장된 즐겨찾기가 없습니다.');
+  CFIELDS.forEach((f) => { if (d[f] !== undefined && d[f] !== null && f !== 'time') $('c_' + f).value = d[f]; });
+  msg('cwriteMsg', n + '번 즐겨찾기를 불러왔습니다.', true);
+}
+async function saveCPreset(n) {
+  const d = cformData(); delete d.time;
+  if (!d.client && !d.place) return msg('cfavMsg', '의뢰자나 장소를 먼저 입력해 주세요.');
+  const { error } = await sb.rpc('counsel_preset_save', { p_num: n, p_data: d });
+  if (error) return msg('cfavMsg', errText(error));
+  cpresets[n] = d; drawCFav(); msg('cfavMsg', n + '번에 저장했습니다.', true);
 }
 boot();
 </script>

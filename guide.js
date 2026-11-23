@@ -294,19 +294,27 @@
   var css = '#gdBack{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px}' +
     '#gdBox{background:#fff;border-radius:14px;width:min(920px,100%);height:min(86vh,760px);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.25)}' +
     '#gdHead{display:flex;align-items:center;gap:10px;padding:14px 16px;border-bottom:1px solid #e5e9f2}' +
-    '#gdHead h2{margin:0;font-size:18px;flex:1}#gdHead input{flex:0 1 260px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px}' +
+    '#gdHead h2{margin:0;font-size:18px;flex:1;white-space:nowrap}#gdHead input{flex:0 1 260px;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;font-size:14px}' +
     '#gdHead button{border:1px solid #e5e9f2;background:#fff;border-radius:8px;padding:7px 12px;font-size:14px;cursor:pointer}' +
     '#gdMain{flex:1;display:flex;min-height:0}#gdList{width:220px;border-right:1px solid #e5e9f2;overflow:auto;padding:8px}' +
     '#gdList a{display:block;padding:8px 10px;border-radius:8px;color:#1f2937;text-decoration:none;font-size:14px;cursor:pointer}' +
     '#gdList a:hover{background:#f1f5f9}#gdList a.on{background:#eaf0ff;color:#2f5bd6;font-weight:700}' +
-    '#gdBody{flex:1;overflow:auto;padding:18px 22px;font-size:15px;line-height:1.75;color:#1f2937}' +
-    '#gdBody h3{margin:0 0 10px;font-size:18px}#gdBody ol,#gdBody ul{padding-left:22px;margin:8px 0}#gdBody li{margin:4px 0}' +
-    '#gdBody p{margin:8px 0}#gdBody .hint{color:#64748b;font-size:14px}#gdBody mark{background:#fff3a3}' +
+    '#gdBody{flex:1;overflow:auto;padding:18px 22px;font-size:15px;line-height:1.75;color:#1f2937;word-break:keep-all;overflow-wrap:anywhere}' +
+    '#gdBody h3{margin:0 0 14px;font-size:18px;padding-bottom:8px;border-bottom:2px solid #eaf0ff}' +
+    '#gdBody ol,#gdBody ul{padding-left:22px;margin:10px 0}#gdBody li{margin:0 0 12px;padding-left:2px}#gdBody li::marker{color:#2f5bd6;font-weight:700}' +
+    '#gdBody ul>li{padding:10px 12px;margin:0 0 8px -22px;list-style:none;background:#f8fafc;border:1px solid #edf1f7;border-radius:10px}' +
+    '#gdBody .lb{display:block;margin-bottom:2px;color:#1e3a8a}' +
+    '#gdBody p{margin:12px 0}#gdBody .hint{color:#64748b;font-size:14px;background:#f8fafc;border-left:3px solid #cbd5e1;padding:6px 10px;border-radius:0 6px 6px 0}#gdBody mark{background:#fff3a3}' +
     '@media(max-width:700px){#gdMain{flex-direction:column}#gdList{width:auto;max-height:150px;border-right:0;border-bottom:1px solid #e5e9f2;display:flex;flex-wrap:wrap;gap:4px}#gdList a{padding:6px 9px;font-size:13px}#gdHead input{flex:1 1 120px}}';
 
   var cur = 'start', list = [];
   function el(id) { return document.getElementById(id); }
   function strip(h) { return h.replace(/<[^>]+>/g, ' '); }
+  // 읽기 쉽게: 문장마다 줄바꿈, '굵은 제목: 설명' 은 제목을 한 줄로
+  function pretty(h) {
+    h = h.replace(/<li>\s*(<b>[^<]+<\/b>(?:\s*\([^)<]*\))?)\s*:\s*/g, '<li><span class="lb">$1</span>');
+    return h.replace(/>([^<]*)</g, function (m, t) { return '>' + t.replace(/([다요])\.\s+(?=\S|$)/g, '$1.<br>') + '<'; });
+  }
   function drawList(q) {
     var shown = q ? list.filter(function (s) { return (s.t + ' ' + strip(s.b)).indexOf(q) >= 0; }) : list;
     el('gdList').innerHTML = shown.length ? shown.map(function (s) {
@@ -317,7 +325,7 @@
   }
   function show(id, q) {
     var s = list.filter(function (x) { return x.id === id; })[0] || list[0]; cur = s.id;
-    var b = s.b;
+    var b = pretty(s.b);
     if (q) b = b.replace(/>([^<]+)</g, function (m, t) { return '>' + t.split(q).join('<mark>' + q + '</mark>') + '<'; });
     el('gdBody').innerHTML = '<h3>' + s.ic + ' ' + s.t + '</h3>' + b;
     el('gdBody').scrollTop = 0;

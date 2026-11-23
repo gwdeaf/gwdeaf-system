@@ -1370,7 +1370,7 @@
   <!-- STEP 0: 사전 신청 (선임이 수락해야 타이머가 열림) -->
   <div class="card" id="ot-step-request">
     <div class="card-title">📝 시간외 근무 사전 신청</div>
-    <div class="hint" style="margin-bottom:0.8rem;">시간외 근무를 하기 전에, 담당 선임에게 <b>사유</b>를 적어 먼저 신청하세요. 선임이 <b>수락</b>하면 근무 당일 아래 [내 사전 신청]에 <b>▶ 근무 시작</b> 버튼이 나타납니다. 근무 보고서는 [🖨️ 출력]해서 수기로 결재받으세요.</div>
+    <div class="hint" style="margin-bottom:0.8rem;">시간외 근무를 하기 전에, 담당 선임에게 <b>사유</b>를 적어 먼저 신청하세요. 선임이 <b>수락</b>하면, 근무를 마치고 <b>퇴근을 찍은 뒤</b> 아래 [내 사전 신청]의 <b>📝 보고서 작성</b>을 누르세요. 신청 시간 안에서 퇴근 시각까지 자동으로 채워집니다. 근무 보고서는 [🖨️ 출력]해서 수기로 결재받으세요.</div>
     <label style="display:flex;align-items:center;gap:6px;font-weight:600;margin-bottom:0.6rem;cursor:pointer;"><input type="checkbox" id="ot-req-repeat" onchange="otRepeatToggle()" style="width:auto;"> 🔁 반복 신청 <span style="font-weight:400;color:var(--text-muted);font-size:0.82rem;">(예: 매주 월~금 19:00~20:30 수어교육 — 한 번 신청, 한 달에 한 번 체크)</span></label>
     <div class="form-grid">
       <div class="form-group"><label id="ot-req-date-label">근무 예정일</label><input type="date" id="ot-req-date" style="width:100%"></div>
@@ -1825,7 +1825,7 @@
     </div>
   </div>
   <div class="hint">
-    · <b>역할</b> — 선임: 담당 직원(후임)의 <b>시간외 사전신청을 수락</b>하고(수락해야 근무 시작 가능), 시수·대체시수를 확인합니다. 휴가·시간외 보고·대체휴무·출장은 즉시 확정 → 출력해서 수기 결재 (직원 쪽 '담당 선임'에 선임 이름을 지정)<br>
+    · <b>역할</b> — 선임: 담당 직원(후임)의 <b>시간외 사전신청을 수락</b>하고(수락해야 퇴근 후 보고서 작성 가능), 시수·대체시수를 확인합니다. 휴가·시간외 보고·대체휴무·출장은 즉시 확정 → 출력해서 수기 결재 (직원 쪽 '담당 선임'에 선임 이름을 지정)<br>
     · <b>슬랙 ID</b> — 선임만 입력합니다. 후임이 신청하면 이 슬랙으로 DM이 갑니다. (슬랙 프로필 → ⋮ → 멤버 ID 복사, U로 시작) 봇 토큰은 [기관 설정]에서 한 번만 등록합니다.<br>
     · <b>담당 선임이 비어 있는 직원</b>은 시간외 사전신청을 할 수 없습니다(수락할 사람이 없음). 다른 신청은 됩니다.<br>
     · <b>기본 연차</b> — 매년 기본으로 주는 연차. 특정 연도만 다르게 주려면 [연차 관리]에서 입력합니다.<br>
@@ -4450,7 +4450,29 @@ function otSaved() { try { return JSON.parse(localStorage.getItem(otTimerKey()) 
 function otSaveClear() { try { localStorage.removeItem(otTimerKey()); } catch (e) {} }
 function otReqEndMs(h) { return new Date(h.workDate + 'T' + h.endTime + ':00').getTime(); }
 
-// ── 시계를 못 눌렀을 때: 직접 입력 (퇴근 기록이 있으면 그걸로 채움) ──
+// ── 보고서 작성: 수락된 사전 신청 + 그날 퇴근 기록이 있어야 함 (시작~퇴근 시각, 신청 시간 안) ──
+function otReportStart(id) {
+  var h = otReqs.filter(function(x){ return x.id === id; })[0];
+  if (!h || !otReqReady(h.status)) return;
+  gasRun('getMyAttendOn', JSON.stringify({date: h.workDate}), function(r) {
+    var out = r && r.ok ? r.outTime : '';
+    if (!out) { showLeaveAlert(esc(h.workDate)+' 퇴근 기록이 없어요. <b>퇴근을 찍은 뒤</b> 보고서를 작성해 주세요. (퇴근을 못 찍었으면 관리자에게 출퇴근 기록 수정을 요청하세요)','warn','alert-area-overtime'); return; }
+    if (out <= h.startTime) { showLeaveAlert('퇴근 기록('+esc(out)+')이 신청 시작 시간('+esc(h.startTime)+')보다 빨라요. 시간외 근무로 볼 시간이 없어요.','warn','alert-area-overtime'); return; }
+    var end = out < h.endTime ? out : h.endTime;
+    otActiveReq = h; otMethod = '퇴근 기록';
+    ['ot-step-request','ot-req-list-card','ot-series-card','ot-step-timer'].forEach(function(i){ var e = document.getElementById(i); if (e) e.style.display = 'none'; });
+    document.getElementById('ot-step-report').style.display = '';
+    document.getElementById('ot-report-btns').style.display = '';
+    var d = document.getElementById('ot-date'); d.value = h.workDate; d.readOnly = true;
+    var s = document.getElementById('ot-start'), e = document.getElementById('ot-end');
+    s.value = h.startTime; e.value = end; s.min = e.min = h.startTime; s.max = e.max = end;
+    onOtDateChangeLeave();
+    var b = document.getElementById('ot-manual-box');
+    b.style.display = '';
+    b.innerHTML = '🕒 퇴근 기록 <b>'+esc(out)+'</b> · 신청 '+esc(h.startTime)+'~'+esc(h.endTime)+' → <b>'+esc(h.startTime)+'~'+esc(end)+'</b>로 채웠어요. 이 시간 안에서만 고칠 수 있어요.'
+      + '<div style="margin-top:6px;"><button class="row-btn no" onclick="initOtForm()">← 다른 신청 선택</button></div>';
+  }, function(m){ showLeaveAlert('오류: '+esc(m),'warn','alert-area-overtime'); });
+}
 function otManualStart(id) {
   var h = otReqs.filter(function(x){ return x.id === id; })[0];
   if (!h || !otReqReady(h.status)) return;
@@ -4489,9 +4511,7 @@ function otFillFromAttend(outTime, auto) {
   otMethod = '퇴근 기록';
   otManualBox('🕒 퇴근 기록 <b>'+esc(outTime)+'</b> → <b>'+esc(h.startTime)+'~'+esc(end)+'</b>로 채웠어요. 다르면 고쳐 주세요.');
 }
-document.addEventListener('input', function(e) {
-  if ((e.target.id === 'ot-start' || e.target.id === 'ot-end') && otMethod === '퇴근 기록') otMethod = '직접 입력';
-});
+
 
 // ── 반복 시간외 ──
 var otSeries = [], otSeriesSel = null, otSeriesLast = null;
@@ -4615,12 +4635,11 @@ function renderOtRequests() {
   tb.innerHTML = otReqs.slice(0, 15).map(function(h) {
     var act = '';
     var cancelBtn = ' <button class="row-btn no" onclick="cancelOtRequest('+h.row+')">취소</button>';
-    var manBtn = ' <button class="row-btn plain" title="시계를 못 눌렀을 때" onclick="otManualStart(\''+esc(h.id)+'\')">✍️ 직접 입력</button>';
+    var repBtn = '<button class="row-btn ok" title="퇴근을 찍은 뒤에 쓸 수 있어요" onclick="otReportStart(\''+esc(h.id)+'\')">📝 보고서 작성</button>';
     if (h.status === '대기') act = cancelBtn;
     else if (otReqReady(h.status)) {
-      if (h.workDate === today) act = '<button class="row-btn ok" onclick="selectOtReq(\''+esc(h.id)+'\')">▶ 근무 시작</button>' + manBtn + cancelBtn;
-      else if (h.workDate > today) act = '<span style="color:var(--text-muted);font-size:0.78rem;">'+esc(h.workDate.slice(5))+' 당일에 시작</span>' + cancelBtn;
-      else if (h.workDate >= addDaysStr(today, -OT_LATE_DAYS)) act = '<span style="color:#b7791f;font-size:0.78rem;">시계를 못 눌렀나요?</span>' + manBtn + cancelBtn;
+      if (h.workDate > today) act = '<span style="color:var(--text-muted);font-size:0.78rem;">'+esc(h.workDate.slice(5))+' 퇴근 후 작성</span>' + cancelBtn;
+      else if (h.workDate >= addDaysStr(today, -OT_LATE_DAYS)) act = repBtn + cancelBtn;
       else act = '<span style="color:var(--danger);font-size:0.78rem;">기한 지남 (선임에게 문의)</span>' + cancelBtn;
     } else if (h.status === '완료') act = '<span style="color:var(--text-muted);font-size:0.78rem;">보고서 제출함</span>';
     return '<tr style="border-bottom:1px solid var(--border);">'
@@ -4629,7 +4648,7 @@ function renderOtRequests() {
       + '<td style="padding:7px 8px;text-align:center;">'+statusBadge(h.status)+'</td>'
       + '<td style="padding:7px 8px;text-align:center;white-space:nowrap;">'+act+'</td></tr>';
   }).join('');
-  otRestoreTimer();
+  otSaveClear();   // 예전 시계 기록은 쓰지 않음
 }
 // 화면을 닫았다 열어도 켜 둔 시계를 이어서 (이 기기에 저장)
 function otRestoreTimer() {
@@ -4890,8 +4909,9 @@ function calcOvertimeLeave() {
   var start   = document.getElementById('ot-start').value;
   var end     = document.getElementById('ot-end').value;
   if (!date||!start||!end) { showLeaveAlert('날짜와 시간을 모두 입력해 주세요.','warn','alert-area-overtime'); return; }
-  if (otMethod !== '타이머' && otActiveReq && (start < otActiveReq.startTime || end > otActiveReq.endTime || end <= start)) {
-    showLeaveAlert('신청한 시간('+esc(otActiveReq.startTime)+'~'+esc(otActiveReq.endTime)+') 안에서 시작·종료를 입력해 주세요.','warn','alert-area-overtime'); return; }
+  var maxEnd = document.getElementById('ot-end').max || (otActiveReq && otActiveReq.endTime);
+  if (otMethod !== '타이머' && otActiveReq && (start < otActiveReq.startTime || end > maxEnd || end <= start)) {
+    showLeaveAlert('신청 시간 안, 퇴근 시각까지('+esc(otActiveReq.startTime)+'~'+esc(maxEnd)+')만 입력할 수 있어요.','warn','alert-area-overtime'); return; }
   showLeaveAlert('계산 중...','info','alert-area-overtime');
   gasRunLeave('getWeeklyActualHours', JSON.stringify({name:leaveUser.name, date:date}), function(weekInfo) {
     if (!weekInfo.ok) { showLeaveAlert('주간 근무 정보 오류: '+(weekInfo.msg||''),'warn','alert-area-overtime'); return; }
@@ -4969,7 +4989,7 @@ function submitOvertimeReq() {
     }), function(res) {
       document.getElementById('ot-submit-btn').disabled = false;
       if (res.ok) {
-        showLeaveAlert(otMethod === '타이머' ? '✅ 시간외 신청이 완료되었습니다!' : '✅ 제출했습니다. 담당 선임이 확인하면 확정됩니다.','success','alert-area-overtime');
+        showLeaveAlert(otMethod === '타이머' || otMethod === '퇴근 기록' ? '✅ 시간외 보고서를 제출했습니다. 🖨️ 출력해서 수기로 결재받으세요.' : '✅ 제출했습니다. 담당 선임이 확인하면 확정됩니다.','success','alert-area-overtime');
         document.getElementById('ot-submit-btn').style.display = 'none';
         document.getElementById('ot-after-submit').style.display = 'flex';
       } else {

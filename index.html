@@ -577,8 +577,9 @@ function renderNav(){
     if (bookMgr) h += kidHtml('book', false, 'admin', '교재 주문 관리').replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', '<span class="nbadge hide" id="book-badge"></span></a>');
   }
   h += grpHtml('📝', '공문 작성') + kidHtml('doc', false, 'internal', '내부결재') + kidHtml('doc', false, 'coop', '업무협조전') + kidHtml('doc', false, 'send', '문서 발송') + kidHtml('doc', false, 'recv', '받은 문서').replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', '<span class="nbadge hide" id="docr-badge"></span></a>') + kidHtml('doc', false, 'sent', '보낸 문서') + kidHtml('doc', false, 'ledger', '공문 대장');
-  if (hasPerm('interp.')) h += grpHtml('🗣', '통역실적') + kidHtml('interp', false, 'log', '통역일지')
-    + (['interp.view', 'interp.report', 'interp.review'].some(function(k){ return (ME.perms || []).indexOf(k) >= 0; }) ? kidHtml('interp', false, 'stats', '통계') : '');
+  if (hasPerm('interp.')) h += grpHtml('🗣', '수어통역') + kidHtml('interp', false, 'log', '통역일지')
+    + (['interp.view', 'interp.report', 'interp.review'].some(function(k){ return (ME.perms || []).indexOf(k) >= 0; }) ? kidHtml('interp', false, 'stats', '통계') : '')
+    + kidHtml('interp', false, 'counsel', '상담일지');
   h += grpHtml('📒', '업무일지') + kidHtml('worklog', false, 'write', '업무일지 작성') + kidHtml('worklog', false, 'print', '업무일지 인쇄');
   if (hasPerm('acct.')) h += grpHtml('💰', '회계') + kidHtml('acct', false, 'budget', '예산 편성') + kidHtml('acct', false, 'prop', '품의') + kidHtml('acct', false, 'res', '결의') + kidHtml('acct', false, 'cash', '출납부') + kidHtml('acct', false, 'ledger', '원장') + kidHtml('acct', false, 'bank', '통장 내역') + kidHtml('acct', false, 'status', '집행 현황');
   if (hasPerm('cert.')) h += grpHtml('📜', '증서·증명 발급') + kidHtml('cert', false, 'issue', '증서·증명 발급') + kidHtml('cert', false, 'list', '발급 대장');
@@ -650,7 +651,7 @@ function wlDate(v){ try { $('frame').contentWindow.postMessage({ type: 'wl-date'
 function toggleSide(){ $('side').classList.toggle('open'); $('scrim').classList.toggle('open'); }
 function closeSide(){ $('side').classList.remove('open'); $('scrim').classList.remove('open'); }
 var SUBAPP = { book:'/book/', doc:'/doc/', interp:'/interp/', worklog:'/worklog/', acct:'/acct/', cert:'/cert/', perf:'/perf/' };
-var SUBDEF = { book:'order', doc:'internal', interp:'dash', worklog:'write', acct:'prop', cert:'issue', perf:'dash' };   // 하위 메뉴 없이 열면 첫 메뉴
+var SUBDEF = { book:'order', doc:'internal', interp:'log', worklog:'write', acct:'prop', cert:'issue', perf:'dash' };   // 하위 메뉴 없이 열면 첫 메뉴
 function go(kind, tab, adm){
   tab = tab || ''; adm = !!adm; closeSide();
   if (SUBAPP[kind] && !tab) tab = SUBDEF[kind];
@@ -848,7 +849,7 @@ function render(){
 /* ── 자주 쓰는 메뉴 · 마이페이지 ── */
 var PREFS = null;
 var QUICK_DEFAULT = ['att:s:leave-apply', 'att:s:leave', 'att:s:trip-apply', 'att:s:write', 'car:s:', 'edu:s:courses', 'doc:s:internal', 'interp:s:log', 'worklog:s:write', 'acct:s:prop', 'cert:s:issue', 'member:s:'];
-var QUICK_OLD = { 'att:s:trip':'att:s:trip-apply', 'doc:s:':'doc:s:internal', 'interp:s:':'interp:s:log', 'worklog:s:':'worklog:s:write', 'acct:s:':'acct:s:prop', 'cert:s:':'cert:s:issue', 'att:a:trip':'att:a:trip' };   // 메뉴 개편 전에 저장한 항목
+var QUICK_OLD = { 'att:s:trip':'att:s:trip-apply', 'doc:s:':'doc:s:internal', 'interp:s:':'interp:s:log', 'interp:s:dash':'interp:s:log', 'worklog:s:':'worklog:s:write', 'acct:s:':'acct:s:prop', 'cert:s:':'cert:s:issue', 'att:a:trip':'att:a:trip' };   // 메뉴 개편 전에 저장한 항목
 function quickIds(){ return (Array.isArray(PREFS.quick) ? PREFS.quick : QUICK_DEFAULT).map(function(id){ return QUICK_OLD[id] || id; }); }
 function navItems(){   // 왼쪽 메뉴에 있는 항목 (권한에 맞게 보이는 것만)
   var out = [];

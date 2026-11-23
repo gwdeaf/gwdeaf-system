@@ -428,6 +428,7 @@ async function boot() {
   if (error) { alert(errText(error)); return; }
   if (!data || !data.active) { $('topNav').style.display = 'none'; showScreen('screenDenied'); return; }
   me = data;
+  if (me.is_hq) { const o = $('fSeal').options; o[0].text = '도협회 직인'; o[1].text = '도센터 직인'; }
   try { const r = await sb.rpc('doc_staff_list'); staffList = r.data || []; } catch (e) { staffList = []; }
   $('whoText').textContent = `${me.chapter_name} · ${me.name} (${me.email})${me.is_admin ? ' · 관리자' : ''}`;
   $('topNav').style.display = 'flex';

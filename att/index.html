@@ -1179,7 +1179,13 @@
     <div id="pc-reason-why" style="font-size:0.9rem;margin-bottom:0.4rem;"></div>
     <div id="pc-reason-addr" class="hint" style="margin-bottom:0.6rem;"></div>
     <div class="form-group" id="pc-place-wrap" style="display:none;margin-bottom:0.6rem;"><label>방문처 <span style="font-weight:400;color:#888;font-size:0.75rem">(선택)</span></label><input type="text" id="pc-visit" maxlength="100" placeholder="예) ○○초등학교" style="width:100%"></div>
-    <div class="form-group"><label>사유</label><select id="pc-reason-sel" onchange="onPunchReasonSel()" style="width:100%"></select></div>
+    <div id="pc-cat-wrap" style="display:none;margin-bottom:0.4rem;">
+      <div id="pc-sug-wrap" style="display:none;margin-bottom:0.6rem;"><label style="font-weight:700;font-size:0.88rem;">📌 오늘 내 일정에서 고르기</label><div id="pc-sug" style="display:flex;flex-direction:column;gap:6px;margin-top:6px;"></div></div>
+      <label style="font-weight:700;font-size:0.88rem;">구분 *</label>
+      <div id="pc-cats" style="display:flex;flex-wrap:wrap;gap:6px;margin:6px 0 8px;"></div>
+      <input type="text" id="pc-cat-txt" maxlength="90" placeholder="장소·내용 (예: ○○복지관 수어교실)" style="width:100%">
+    </div>
+    <div class="form-group" id="pc-sel-wrap"><label>사유</label><select id="pc-reason-sel" onchange="onPunchReasonSel()" style="width:100%"></select></div>
     <div class="form-group" id="pc-reason-txt-wrap" style="display:none;margin-top:0.5rem;"><input type="text" id="pc-reason-txt" maxlength="100" placeholder="사유를 입력하세요" style="width:100%"></div>
     <label id="pc-save-wrap" style="display:none;margin-top:0.5rem;font-size:0.85rem;"><input type="checkbox" id="pc-reason-save" checked> 자주 쓰는 사유 목록에 저장</label>
     <div id="pc-reason-chips" style="margin-top:0.6rem;"></div>
@@ -6697,6 +6703,22 @@ function showReasonPanel(res, geoNote) {
     document.getElementById('pc-reason-sel').value = '__new';
     document.getElementById('pc-reason-txt').value = (tq.purpose || '').slice(0, 100);
   }
+  // 사무실 밖(범위밖·위치없음)이면 구분(교육·통역·행사·회의·출장·기타) + 오늘 일정에서 자동 채우기
+  var outside = res.type !== 'trip' && (res.flags || []).some(function(f) { return f.code === 'place' || f.code === 'nogps'; });
+  punchState.outside = outside; punchState.cat = ''; punchState.sug = res.suggest || [];
+  document.getElementById('pc-cat-wrap').style.display = outside ? '' : 'none';
+  ['pc-sel-wrap', 'pc-reason-chips'].forEach(function(id) { document.getElementById(id).style.display = outside ? 'none' : ''; });
+  if (outside) {
+    document.getElementById('pc-cat-txt').value = '';
+    document.getElementById('pc-cats').innerHTML = (res.cats || ['교육', '통역', '행사', '회의', '출장', '기타']).map(function(c) {
+      return '<button type="button" class="hq-b pc-cat" data-c="' + esc(c) + '" onclick="pickPunchCat(\'' + esc(c) + '\')">' + ({ 교육: '🧑‍🏫', 통역: '🤟', 행사: '🎪', 회의: '🤝', 출장: '🚗', 기타: '✏️' }[c] || '') + ' ' + esc(c) + '</button>';
+    }).join('');
+    document.getElementById('pc-sug-wrap').style.display = punchState.sug.length ? '' : 'none';
+    document.getElementById('pc-sug').innerHTML = punchState.sug.map(function(x, i) {
+      return '<button type="button" class="btn btn-outline pc-sugb" data-i="' + i + '" onclick="pickPunchSug(' + i + ')" style="display:block;width:100%;text-align:left;line-height:1.45;">' + esc(x.ic || '') + ' <b>' + esc(x.cat) + '</b> · ' + esc(x.text) + '</button>';
+    }).join('');
+    if (punchState.sug.length === 1) pickPunchSug(0);      // 오늘 일정이 하나면 바로 채움
+  }
   document.getElementById('pc-reason').style.display = '';
   onPunchReasonSel();
   try { document.getElementById('pc-reason').scrollIntoView({behavior: 'smooth', block: 'center'}); } catch (e) {}
@@ -6716,12 +6738,26 @@ function onPunchReasonSel() {
   document.getElementById('pc-reason-txt-wrap').style.display = v === '__new' ? '' : 'none';
   document.getElementById('pc-save-wrap').style.display = v === '__new' ? '' : 'none';
 }
+function pickPunchCat(c) {
+  punchState.cat = c;
+  document.querySelectorAll('#pc-cats .pc-cat').forEach(function(b) { b.classList.toggle('on', b.getAttribute('data-c') === c); });
+}
+function pickPunchSug(i) {
+  var x = punchState.sug[i]; if (!x) return;
+  pickPunchCat(x.cat); document.getElementById('pc-cat-txt').value = x.text;
+  document.querySelectorAll('#pc-sug .pc-sugb').forEach(function(b) { b.style.borderColor = b.getAttribute('data-i') === String(i) ? 'var(--primary,#2f5bd6)' : ''; b.style.background = b.getAttribute('data-i') === String(i) ? '#eef3ff' : ''; });
+}
 function hideReasonPanel() { var p = document.getElementById('pc-reason'); if (p) p.style.display = 'none'; }
 function punchCancel() { hideReasonPanel(); setPunchBusy(false); punchState.pending = null; var t = punchState.info && punchState.info.today; if (t) renderPunchStatus(t); punchAlert('취소했습니다. (기록되지 않았습니다)', 'info'); }
 function punchConfirmReason() {
   var p = punchState.pending; if (!p) return;
   var v = document.getElementById('pc-reason-sel').value, reason = v, isNew = false;
-  if (v === '__new') { reason = (document.getElementById('pc-reason-txt').value || '').trim(); isNew = true; }
+  if (punchState.outside) {     // 사무실 밖: [구분] 내용
+    var det = (document.getElementById('pc-cat-txt').value || '').trim();
+    if (!punchState.cat) { punchAlert('구분(교육·통역·행사·회의·출장·기타)을 골라 주세요.', 'warn'); return; }
+    if (!det) { punchAlert('장소나 내용을 적어 주세요. (오늘 일정을 누르면 자동으로 채워져요)', 'warn'); return; }
+    reason = ('[' + punchState.cat + '] ' + det).slice(0, 100); v = '';
+  } else if (v === '__new') { reason = (document.getElementById('pc-reason-txt').value || '').trim(); isNew = true; }
   if (!reason) { punchAlert('사유를 선택하거나 입력해 주세요.', 'warn'); return; }
   var save = isNew && document.getElementById('pc-reason-save').checked;
   var place = (document.getElementById('pc-visit').value || '').trim();

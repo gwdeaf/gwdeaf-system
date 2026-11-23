@@ -65,9 +65,17 @@
     #screenWrite .row, #screenCWrite .row { gap: 6px; flex-wrap: nowrap; }
     #screenWrite .row > div, #screenCWrite .row > div { min-width: 0; flex: 1 1 0; }
     #screenWrite label, #screenCWrite label { margin: 5px 0 2px; font-size: 12px; }
-    #screenWrite input, #screenWrite select, #screenCWrite input, #screenCWrite select { min-height: 38px; padding: 4px 6px; font-size: 14px; }
-    #screenWrite input[type=date], #screenCWrite input[type=date] { font-size: 12.5px; padding: 4px 3px; }
-    #screenWrite textarea, #screenCWrite textarea { min-height: 64px; font-size: 14px; }
+    #screenWrite input, #screenWrite select, #screenCWrite input, #screenCWrite select {
+      -webkit-appearance: none; appearance: none; display: block; width: 100%; height: 42px; min-height: 42px; margin: 0;
+      padding: 0 8px; font-size: 16px; line-height: 40px; border-radius: 8px; background-color: #fff; color: #222; }
+    #screenWrite select, #screenCWrite select { padding-right: 24px; text-overflow: ellipsis; white-space: nowrap;
+      background: #fff url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='6'%3E%3Cpath d='M1 1l4 4 4-4' stroke='%23667' stroke-width='1.6' fill='none'/%3E%3C/svg%3E") no-repeat right 8px center; }
+    #screenWrite input[type=date], #screenCWrite input[type=date] { font-size: 14px; padding: 0 4px; text-align: left; }
+    #screenWrite input[type=date]::-webkit-date-and-time-value, #screenCWrite input[type=date]::-webkit-date-and-time-value { text-align: left; margin: 0; }
+    #screenWrite input:disabled, #screenCWrite input:disabled { background: #f3f5f8; color: #555; -webkit-text-fill-color: #555; opacity: 1; }
+    #screenWrite .fav button.empty, #screenCWrite .fav button.empty { color: #8a94a6; border-color: #c9d1dc; }
+    #sheetBtn, #csheetBtn { display: none !important; }
+    #screenWrite textarea, #screenCWrite textarea { min-height: 70px; font-size: 16px; padding: 8px; border-radius: 8px; -webkit-appearance: none; }
     #screenWrite .fav, #screenCWrite .fav { flex-wrap: nowrap; gap: 4px; margin-top: 4px; }
     #screenWrite .fav button, #screenCWrite .fav button { min-height: 34px; padding: 4px 6px; font-size: 12.5px; margin: 0; flex: 1 1 0; min-width: 0; }
     #saveBtn, #cSaveBtn { width: 100%; min-height: 46px; font-size: 16px; font-weight: 700; margin: 0; }
@@ -812,7 +820,7 @@ async function submitLog() {
 }
 
 function drawFav() {
-  $('favLoad').innerHTML = [1, 2, 3].map((n) => { const d = presets[n]; return `<button onclick="loadPreset(${n})">⭐ ${n}번${d ? ': ' + esc(d.client || d.location || '저장건') : ' (비어 있음)'}</button>`; }).join('');
+  $('favLoad').innerHTML = [1, 2, 3].map((n) => { const d = presets[n]; return `<button onclick="loadPreset(${n})" ${d ? '' : 'class="empty" title="비어 있음"'}>⭐ ${n}번${d ? ': ' + esc(d.client || d.location || '저장건') : ''}</button>`; }).join('');
 }
 function loadPreset(n) {
   const d = presets[n];
@@ -872,7 +880,7 @@ async function loadCList() {
   }).join('') || `<tr><td colspan="15" class="muted">기록이 없습니다.</td></tr>`;
 }
 function drawCFav() {
-  $('cfavLoad').innerHTML = [1, 2, 3].map((n) => { const d = cpresets[n]; return `<button onclick="loadCPreset(${n})">⭐ ${n}번${d ? ': ' + esc(d.client || d.place || '저장건') : ' (비어 있음)'}</button>`; }).join('');
+  $('cfavLoad').innerHTML = [1, 2, 3].map((n) => { const d = cpresets[n]; return `<button onclick="loadCPreset(${n})" ${d ? '' : 'class="empty" title="비어 있음"'}>⭐ ${n}번${d ? ': ' + esc(d.client || d.place || '저장건') : ''}</button>`; }).join('');
 }
 function loadCPreset(n) {
   const d = cpresets[n];

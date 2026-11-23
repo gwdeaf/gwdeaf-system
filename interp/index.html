@@ -298,7 +298,7 @@ function setTab(t) {
   }
   if (t === 'dash') { showScreen('screenDash'); loadDash(); return; }
   if (t === 'stats') {
-    showScreen('screenStats'); if (!$('stYm').value) $('stYm').value = lastMonth();
+    showScreen('screenStats'); if (!$('stYm').value) $('stYm').value = today().slice(0, 7);
     document.querySelectorAll('.stab').forEach((b) => b.classList.toggle('on', b.dataset.sm === $('stMode').value));
     loadStats(); return;
   }
@@ -391,7 +391,7 @@ function stModeChg() {
   document.querySelectorAll('.stab').forEach((b) => b.classList.toggle('on', b.dataset.sm === v));
   $('stYmBox').style.display = y ? 'none' : ''; $('stYm2Box').style.display = 'none';
   $('stYrBox').style.display = y ? '' : 'none'; $('stMoBox').style.display = v === 'b' ? '' : 'none'; $('stPerBox').style.display = v === 'y' ? '' : 'none'; $('stCtBox').style.display = v === 'b' && me.can_review ? '' : 'none';
-  if (!$('stPer').options.length) { for (let k = 1; k <= 12; k++) $('stPer').add(new Option(k + '월', k + '-' + k)); [['상반기', '1-6'], ['하반기', '7-12'], ['연간', '1-12']].forEach((o) => $('stPer').add(new Option(o[0], o[1]))); $('stPer').value = (new Date().getMonth() || 12) + '-' + (new Date().getMonth() || 12); }
+  if (!$('stPer').options.length) { for (let k = 1; k <= 12; k++) $('stPer').add(new Option(k + '월', k + '-' + k)); [['상반기', '1-6'], ['하반기', '7-12'], ['연간', '1-12']].forEach((o) => $('stPer').add(new Option(o[0], o[1]))); $('stPer').value = (new Date().getMonth() + 1) + '-' + (new Date().getMonth() + 1); }
   if (y && !$('stYr').options.length) { const n = new Date().getFullYear(); for (let k = n; k >= n - 4; k--) $('stYr').add(new Option(k + '년', k)); }
   if (!$('stM1').options.length) { for (let k = 1; k <= 12; k++) { $('stM1').add(new Option(k + '월', k)); $('stM2').add(new Option(k + '월', k)); } $('stM1').value = 1; $('stM2').value = new Date().getMonth() + 1; }
   loadStats();
@@ -619,7 +619,7 @@ async function saveExcel() {
 // 도협회: 도센터(강원도수어통역센터) 자체 통계·보고
 const hqBtn = () => me.can_stats ? `<div class="noprint" style="margin-bottom:10px"><button onclick="loadHqStats()">🏢 도센터 통계</button></div>` : '';
 async function loadHqStats(ym) {
-  msg('stMsg', ''); ym = ym || $('stYm').value || lastMonth();
+  msg('stMsg', ''); ym = ym || $('stYm').value || today().slice(0, 7);
   const { data, error } = await sb.rpc('interp_stats', { p_ym: ym });
   if (error) return msg('stMsg', errText(error));
   ST = data; drawCenterStats();

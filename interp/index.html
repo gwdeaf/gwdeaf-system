@@ -277,13 +277,13 @@ function setTab(t) {
   tab = t;
   document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
   const C = isC(t), S = t === 'stats';   // 통역일지 / 상담일지 / 통계 화면마다 그 탭만 보임
-  document.querySelectorAll('.itab').forEach((b) => b.style.display = C || S ? 'none' : (b.id === 'allBtn' ? (me.can_view ? '' : 'none') : b.id === 'sheetBtn' ? (me.can_write ? '' : 'none') : ''));
-  document.querySelectorAll('.ctab').forEach((b) => b.style.display = !C ? 'none' : (b.id === 'callBtn' ? (me.can_view ? '' : 'none') : b.id === 'csheetBtn' ? (me.can_cwrite ? '' : 'none') : ''));
+  document.querySelectorAll('.itab').forEach((b) => b.style.display = C || S ? 'none' : (b.id === 'allBtn' ? (me.can_view ? '' : 'none') : b.id === 'sheetBtn' ? (me.can_sheet ? '' : 'none') : ''));
+  document.querySelectorAll('.ctab').forEach((b) => b.style.display = !C ? 'none' : (b.id === 'callBtn' ? (me.can_view ? '' : 'none') : b.id === 'csheetBtn' ? (me.can_csheet ? '' : 'none') : ''));
   document.querySelectorAll('.stab').forEach((b) => b.style.display = S ? '' : 'none');
   subTell(t === 'stats' ? 'stats' : C ? 'counsel' : 'log');
   if (t === 'sheet') {
     showScreen('screenSheet'); shInit();
-    if (!me.can_write) msg('shMsg', '통역일지 입력 권한이 없습니다. 센터 담당자에게 요청하세요.');
+    if (!me.can_sheet) msg('shMsg', '통역일지 시트 입력 권한이 없습니다. 센터 담당자에게 요청하세요.');
     return;
   }
   if (t === 'cwrite') {
@@ -293,7 +293,7 @@ function setTab(t) {
   }
   if (t === 'csheet') {
     showScreen('screenCSheet'); cshInit();
-    if (!me.can_cwrite) msg('cshMsg', '상담일지 입력 권한이 없습니다. 센터 담당자에게 요청하세요.');
+    if (!me.can_csheet) msg('cshMsg', '상담일지 시트 입력 권한이 없습니다. 센터 담당자에게 요청하세요.');
     return;
   }
   if (t === 'dash') { showScreen('screenDash'); loadDash(); return; }

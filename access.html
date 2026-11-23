@@ -405,12 +405,19 @@ function driveView(){
       ${MG && CH(c.id) && !CH(c.id).is_hq ? sec("0","👤 지회 담당자", null,
         CH(c.id).lead_email?`현재 담당: <b>${esc(CH(c.id).lead_name)}</b> <span class="muted">${esc(CH(c.id).lead_email)}</span> · 직원 ${CH(c.id).staff_count||0}명`:"아직 담당자가 없습니다. 담당자는 그 지회의 직원·권한과 연결 설정을 관리합니다.",
         `<div class="drow"><input id="l_e${c.id}" placeholder="새 담당 이메일 (@gwdeaf.or.kr)"><input id="l_n${c.id}" placeholder="이름 (처음 등록할 때)" style="max-width:200px"><button class="btn" onclick="setLead(${c.id})">${CH(c.id).lead_email?"담당자 교체":"담당자 지정"}</button></div>`, "") : ""}
-      ${sec(1,"📁 구글 드라이브 폴더", c.connected,
+      ${sec(1,"📁 기본 드라이브 폴더", !!c.base_ok,
         c.connected?`<b>${esc(c.folder_name)}</b> · 하위 폴더 ${c.subfolders.length}개`:"출장대장·월별근태·연차현황·운행일지·교육실적 폴더가 자동으로 만들어집니다.",
         `${c.status==="error"?`<div class="muted" style="color:#c0392b">⚠️ ${esc(c.status_msg)}</div>`:""}
         ${c.connected?`<label class="dck"><input type="checkbox" ${c.auto_append?"checked":""} onchange="driveAuto(${c.id},this.checked)"> 자동 쌓기 <span class="muted">(출장·휴가·운행·공문·교육 기록을 시트에 자동 추가)</span></label>`:""}
         <div class="drow"><input id="d_f${c.id}" placeholder="드라이브(또는 폴더) 주소 붙여넣기"><button class="btn" onclick="driveConnect(${c.id})">${c.connected?"다시 연결":"연결"}</button>${c.connected?`<button class="btn sub" onclick="driveOff(${c.id})">해제</button>`:""}</div>`,
         `공유 드라이브의 <b>멤버 관리</b>에 서비스 계정(${sa})을 <b>콘텐츠 관리자</b>로 추가 → 드라이브 주소를 복사해 붙여넣기`)}
+      ${sec("1-2","🗄 부서·업무별 드라이브", null,
+        "업무마다 저장할 드라이브를 따로 정합니다. 드라이브는 그 부서 직원에게만 공유하세요. 정하지 않은 업무는 위 <b>기본 드라이브</b>에 저장됩니다.",
+        `${(c.dests||[]).map(x=>`<div class="dx"><span><b>${esc(x.name)}</b> <span class="muted">${esc(x.folder_name)}</span>${x.status!=="ok"?` <span class="badge o">${esc(x.status_msg||"오류")}</span>`:""}</span><button class="btn sub" onclick="destDel(${c.id},'${x.id}')">삭제</button></div>`).join("")||'<div class="muted" style="margin:6px 0">아직 넣은 드라이브가 없습니다.</div>'}
+        <div class="drow"><input id="d_dn${c.id}" placeholder="이름 (예: 교육부)" style="max-width:160px"><input id="d_du${c.id}" placeholder="드라이브(또는 폴더) 주소 붙여넣기"><button class="btn" onclick="destAdd(${c.id})">추가</button></div>
+        ${(c.dests||[]).length?`<div style="margin-top:10px"><b style="font-size:13px">업무별 저장 위치</b>${Object.keys(drv.groups||{}).map(gk=>`<div class="dx"><span>${esc(gk)} <span class="muted" style="font-size:12px">(${esc(drv.groups[gk].join("·"))})</span></span>
+          <select onchange="destRoute(${c.id},'${gk}',this.value)"><option value="">기본 드라이브</option>${(c.dests||[]).map(x=>`<option value="${x.id}" ${(c.routes||{})[gk]===x.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select></div>`).join("")}</div>`:""}`,
+        `① 부서·업무용 드라이브를 만들고 그 부서 직원만 멤버로 넣기 ② 멤버 관리에 서비스 계정(${sa})을 <b>콘텐츠 관리자</b>로 추가(직접 해야 함) ③ 이름과 주소를 넣고 추가 ④ 업무별 저장 위치에서 드라이브 고르기<br>저장 위치를 바꾸면 새 드라이브에 새 시트로 쌓기 시작합니다. 예전 파일은 그대로 남습니다.`)}
       ${sec(2,"📅 공용 구글 캘린더 (휴가·출장 자동 등록)", !!c.calendar_id,
         c.calendar_id?`<b>${esc(c.calendar_name)}</b> · 휴가·출장 신청이 이 캘린더에 자동으로 들어가고 홈 화면에 보입니다.`:"휴가·출장 신청이 자동으로 들어가는 캘린더입니다. (지회당 1개)",
         `<div class="drow"><input id="d_c${c.id}" placeholder="캘린더 ID (예: abc123@group.calendar.google.com)"><button class="btn" onclick="calConnect(${c.id})">${c.calendar_id?"다시 연결":"연결"}</button>${c.calendar_id?`<button class="btn sub" onclick="calOff(${c.id})">해제</button>`:""}</div>`,
@@ -453,6 +460,12 @@ async function driveConnect(id){
   toast(r.ok ? "연결했습니다. 하위 폴더도 만들었습니다." : r.msg, !r.ok);
   await loadDrive(); driveView();
 }
+async function destAdd(id){
+  const r = await gd({action:"destAdd", chapterId:id, name:val("d_dn"+id), folder:val("d_du"+id)});
+  toast(r.ok?"추가했습니다.":r.msg, !r.ok); if(r.ok){ await loadDrive(); driveView(); } }
+async function destDel(id, did){ if(!confirm("이 드라이브를 목록에서 뺄까요? (드라이브 속 파일은 지워지지 않습니다)")) return;
+  const r = await gd({action:"destDel", chapterId:id, id:did}); toast(r.ok?"뺐습니다.":r.msg, !r.ok); await loadDrive(); driveView(); }
+async function destRoute(id, gk, did){ const r = await gd({action:"destRoute", chapterId:id, group:gk, id:did}); toast(r.ok?gk+" 저장 위치를 바꿨습니다.":r.msg, !r.ok); await loadDrive(); driveView(); }
 async function driveAuto(id,on){ const r = await gd({action:"setAuto", chapterId:id, on}); toast(r.ok?(on?"자동 쌓기를 켰습니다.":"자동 쌓기를 껐습니다."):r.msg, !r.ok); await loadDrive(); driveView(); }
 async function interpConnect(id){
   const f = val("d_i"+id); if(!f) return toast("구글 시트 주소를 붙여 넣어 주세요.", true);

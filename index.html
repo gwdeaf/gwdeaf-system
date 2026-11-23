@@ -577,9 +577,8 @@ function renderNav(){
     if (bookMgr) h += kidHtml('book', false, 'admin', '교재 주문 관리').replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', '<span class="nbadge hide" id="book-badge"></span></a>');
   }
   h += grpHtml('📝', '공문 작성') + kidHtml('doc', false, 'internal', '내부결재') + kidHtml('doc', false, 'coop', '업무협조전') + kidHtml('doc', false, 'send', '문서 발송') + kidHtml('doc', false, 'recv', '받은 문서').replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', '<span class="nbadge hide" id="docr-badge"></span></a>') + kidHtml('doc', false, 'sent', '보낸 문서') + kidHtml('doc', false, 'ledger', '공문 대장');
-  if (hasPerm('interp.')) h += grpHtml('🗣', '수어통역') + kidHtml('interp', false, 'log', '통역일지')
-    + (['interp.view', 'interp.report', 'interp.review'].some(function(k){ return (ME.perms || []).indexOf(k) >= 0; }) ? kidHtml('interp', false, 'stats', '통계') : '')
-    + kidHtml('interp', false, 'counsel', '상담일지');
+  if (hasPerm('interp.')) h += grpHtml('🤟', '수어통역') + kidHtml('interp', false, 'log', '통역일지') + kidHtml('interp', false, 'counsel', '상담일지')
+    + (['interp.view', 'interp.report', 'interp.review'].some(function(k){ return (ME.perms || []).indexOf(k) >= 0; }) ? kidHtml('interp', false, 'stats', '통계') : '');
   h += grpHtml('📒', '업무일지') + kidHtml('worklog', false, 'write', '업무일지 작성') + kidHtml('worklog', false, 'print', '업무일지 인쇄');
   if (hasPerm('acct.')) h += grpHtml('💰', '회계') + kidHtml('acct', false, 'budget', '예산 편성') + kidHtml('acct', false, 'prop', '품의') + kidHtml('acct', false, 'res', '결의') + kidHtml('acct', false, 'cash', '출납부') + kidHtml('acct', false, 'ledger', '원장') + kidHtml('acct', false, 'bank', '통장 내역') + kidHtml('acct', false, 'status', '집행 현황');
   if (hasPerm('cert.')) h += grpHtml('📜', '증서·증명 발급') + kidHtml('cert', false, 'issue', '증서·증명 발급') + kidHtml('cert', false, 'list', '발급 대장');

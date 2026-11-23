@@ -60,7 +60,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .chips{display:flex;gap:6px;flex-wrap:wrap}
 .chip{background:#fff;border:1px solid var(--line);border-radius:99px;padding:5px 12px;font-size:.8rem;color:#4b5563;font-weight:600}
 .chip.pri{background:var(--pri-soft);border-color:#d5e0ff;color:var(--pri)}
-.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr) 190px;gap:18px;align-items:start}
+.grid{display:grid;grid-template-columns:minmax(0,1.25fr) minmax(0,1fr);gap:18px;align-items:start}
 .qcol .qgrid{grid-template-columns:1fr;gap:6px}
 .qcol .qbtn{flex-direction:row;align-items:center;gap:8px;min-height:0;padding:9px 10px}
 .qcol .qbtn small{display:none}
@@ -365,12 +365,13 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .qbar .qed{flex:none;border:0;background:none;color:var(--pri);font-size:.8rem;font-weight:700;cursor:pointer}
 .qbar .empty{font-size:.8rem;padding:0;color:var(--mute)}
 @media(max-width:860px){.qbar{top:0;position:relative;padding:6px 12px}.qbar .qchips{flex-wrap:nowrap}#mhome .mh-sec.mqh,#mquick{display:none}}
-.grid:has(.qcol #mgr-card.hide){grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}
-.grid:has(.qcol #mgr-card.hide) .qcol{display:none}
 /* 화면 모드: 다크 = 전체 색 뒤집기 (그림·사진·동영상은 원래 색) */
 html.dark{filter:invert(.9) hue-rotate(180deg);background:#111}
 html.dark img,html.dark video,html.dark canvas,html.dark .noinv{filter:invert(1) hue-rotate(180deg)}
-.thm{border:1px solid var(--line);background:#fff;border-radius:10px;padding:6px 9px;font-size:.9rem;cursor:pointer}
+.thm{display:flex;border:1px solid var(--line);background:#fff;border-radius:10px;padding:2px;gap:2px}
+.thm button{border:0;background:none;border-radius:8px;padding:5px 9px;font-size:.82rem;font-weight:700;color:var(--mute);cursor:pointer;white-space:nowrap}
+.thm button.on{background:var(--pri-soft);color:var(--pri)}
+@media(max-width:860px){.thm button{padding:4px 7px;font-size:.78rem}}
 </style>
 <link rel="stylesheet" href="/ui.css?v=1">
 <style>.gbtn2{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 11px;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--text)}.gbtn2:hover{background:var(--pri-soft)}@media(max-width:600px){.gbtn2 .gtx{display:none}}</style>
@@ -425,7 +426,7 @@ html.dark img,html.dark video,html.dark canvas,html.dark .noinv{filter:invert(1)
       <span class="tdate" id="today"></span>
       <span class="pstat hide" id="pstat" onclick="openPunch()" title="출퇴근 기록"></span>
       <button class="pbtn hide" id="pbtn" onclick="openPunch()">📍 출퇴근</button>
-      <button class="thm" id="thm" onclick="cycleTheme()" title="화면 모드"></button>
+      <div class="thm" title="화면 모드"><button data-th="light" onclick="setTheme('light')">☀️ 라이트</button><button data-th="dark" onclick="setTheme('dark')">🌙 다크</button></div>
       <button class="gbtn2" onclick="openGuide(ME, (CUR||'home').split(':')[0])" title="사용 안내">📖<span class="gtx"> 사용 안내</span><span class="gtx2"> 사용설명서</span></button>
       <div class="tuser" onclick="openMy()" title="마이페이지"><div class="av sm" id="tb-av"></div><span id="tb-nm"></span></div>
     </div>
@@ -465,12 +466,6 @@ html.dark img,html.dark video,html.dark canvas,html.dark .noinv{filter:invert(1)
         <div class="card" id="calcard" data-mi="📅" data-ml="일정" style="order:1">
           <div class="ctitle"><span>📅 일정</span><span class="mute" id="calname">구글 캘린더</span></div>
           <div id="calbox"><div class="empty">불러오는 중…</div></div>
-        </div>
-      </div>
-      <div class="col qcol">
-        <div class="card hide" id="mgr-card" data-mi="🛠" data-ml="시스템 관리" style="order:4">
-          <div class="ctitle"><span>🛠 시스템 관리</span><button class="btn" onclick="editMgr()">편집</button></div>
-          <div id="mgr" class="qgrid"></div>
         </div>
       </div>
     </div>
@@ -710,18 +705,13 @@ function fromHash(){
   go(m[1], m[3] ? decodeURIComponent(m[3]) : '', !!m[2]); return true;
 }
 /* ── 글씨 크기 (기기마다 저장: 보통 1 · 크게 1.15) ── */
-/* 화면 모드: light / dark / system (이 기기에 저장) */
-var THEME = 'system'; try { THEME = localStorage.getItem('gw-theme') || 'system'; } catch(e){}
-var THEME_MQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
-var THEME_NM = { dark: '다크', light: '라이트', system: '시스템 설정 따라가기' };
+/* 화면 모드: 라이트 / 다크 (이 기기에 저장) */
+var THEME = 'light'; try { THEME = localStorage.getItem('gw-theme') === 'dark' ? 'dark' : 'light'; } catch(e){}
 function applyTheme(){
-  var dark = THEME === 'dark' || (THEME === 'system' && THEME_MQ && THEME_MQ.matches);
-  document.documentElement.classList.toggle('dark', !!dark);
-  var b = document.getElementById('thm'); if (b) { b.textContent = THEME === 'dark' ? '🌙' : THEME === 'light' ? '☀️' : '🖥'; b.title = '화면 모드: ' + THEME_NM[THEME] + ' (누르면 바뀜)'; }
+  document.documentElement.classList.toggle('dark', THEME === 'dark');
+  document.querySelectorAll('.thm button').forEach(function(b){ b.classList.toggle('on', b.dataset.th === THEME); });
 }
-function setTheme(v){ THEME = v; try { localStorage.setItem('gw-theme', v); } catch(e){} applyTheme(); }
-function cycleTheme(){ var next = { light: 'dark', dark: 'system', system: 'light' }[THEME] || 'light'; setTheme(next); toast('화면 모드: ' + THEME_NM[next]); }
-if (THEME_MQ && THEME_MQ.addEventListener) THEME_MQ.addEventListener('change', applyTheme);
+function setTheme(v){ THEME = v === 'dark' ? 'dark' : 'light'; try { localStorage.setItem('gw-theme', THEME); } catch(e){} applyTheme(); }
 applyTheme();
 var FS = 1; try { FS = parseFloat(localStorage.getItem('gw-fs')) || 1; } catch(e){}
 var FS_LV = [1, 1.15];   // 보통(아이콘 한 줄 4개) · 크게(한 줄 3개)
@@ -893,7 +883,7 @@ async function loadPrefs(){
   return PREFS;
 }
 /* ── 휴대폰 홈: 카드를 아이콘으로 · 누르면 크게 ── */
-var MCARDS = ['todaycard', 'card-notice', 'card-board', 'card-att', 'calcard', 'newscard', 'mgr-card'];
+var MCARDS = ['todaycard', 'card-notice', 'card-board', 'card-att', 'calcard', 'newscard'];
 function mhCount(id){
   if (id === 'card-notice') return ntUnread();
   if (id === 'todaycard') { var b = $('todaybox'); return b ? b.querySelectorAll('.sch').length : 0; }
@@ -1404,6 +1394,7 @@ function mgrCatalog(){
 }
 var MGR_DEF = ['staff', 'approval', 'log', 'att', 'car', 'book'], MGR_LIST = [];
 async function loadMgr(){
+  if (!$('mgr-card')) return;   // 홈 오른쪽 '시스템 관리' 칸은 없앰 (왼쪽 메뉴 시스템 관리 사용)
   await loadPrefs();
   var cat = mgrCatalog(), adm = ME.can_manage || isAttAdmin() || isVehAdmin() || cat.some(function(x){ return x.id === 'book' || x.id === 'attall'; });
   $('mgr-card').classList.toggle('hide', !adm);

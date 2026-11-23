@@ -12,7 +12,7 @@
   header h1 { font-size: 18px; margin: 0; }
   header .who { font-size: 13px; opacity: .9; }
   nav { background: #fff; border-bottom: 1px solid #dde3ea; padding: 8px 12px; display: flex; gap: 6px; flex-wrap: wrap; }
-  main { padding: 16px; max-width: 860px; margin: 0 auto; }
+  main { padding: 16px; max-width: 860px; margin: 0 auto; } main:has(#screenStats.on), main:has(#screenList.on) { max-width: 1400px; }
   .screen { display: none; } .screen.on { display: block; }
   h2 { font-size: 18px; margin: 4px 0 12px; }
   .card { background: #fff; border: 1px solid #dde3ea; border-radius: 8px; padding: 16px; margin-bottom: 14px; }
@@ -42,7 +42,7 @@
   .modal { position: fixed; inset: 0; background: rgba(0,0,0,.4); display: flex; align-items: center; justify-content: center; padding: 16px; z-index: 50; }
   .modal .card { max-width: 720px; width: 100%; max-height: 90vh; overflow: auto; }
   tr.click { cursor: pointer; } tr.click:hover { background: #f3f6fb; }
-  .yr table { font-size: 13px; white-space: nowrap; } .yr th, .yr td { text-align: center; padding: 5px 6px; } .yr tr.sum td { background: #eef3ff; font-weight: 700; }
+  .yr table { font-size: 13px; white-space: nowrap; border-collapse: collapse; } .yr th, .yr td { text-align: center; padding: 5px 6px; border: 1px solid #9aa4b2; } .yr th { background: #f1f4f9; } .yr tr.sum td { background: #eef3ff; font-weight: 700; }
   .print-only { display: none; } button.sm { padding: 4px 8px; font-size: 12px; min-height: 0; }
   @media print { .print-only { display: block !important; } .list table { font-size: 10px; } .list td, .list th { padding: 3px 4px; } header, nav, .noprint, #listMsg { display: none !important; } .screen:not(.on) { display: none !important; } .yr { break-inside: avoid; } .yr table { font-size: 10px; } }
   .msg { margin: 8px 0; font-size: 14px; } .msg .err { color: #b03a2e; } .msg .ok { color: #1e7a3c; }
@@ -159,6 +159,7 @@
       <div id="stYm2Box" style="display:none"><label>끝 연월</label><input type="month" id="stYm2"></div>
       <div id="stYrBox" style="display:none"><label>연도</label><select id="stYr"></select></div>
       <div id="stMoBox" style="display:none"><label>기간</label><div style="display:flex;gap:4px;align-items:center"><select id="stM1"></select>~<select id="stM2"></select></div></div>
+      <div id="stPerBox" style="display:none"><label>기간</label><select id="stPer"></select></div>
       <div id="stCtBox" style="display:none"><label>센터</label><select id="stCt"></select></div>
       <div style="flex:0 0 auto;align-self:flex-end"><button class="main" onclick="loadStats()">조회</button> <button onclick="window.print()">🖨 인쇄</button> <button onclick="saveExcel()">📊 엑셀로 저장</button></div></div>
       <div id="stMsg" class="msg"></div></div>
@@ -329,7 +330,8 @@ let YR = null;
 function stModeChg() {
   const v = $('stMode').value, y = v !== 'm';
   $('stYmBox').style.display = y ? 'none' : ''; $('stYm2Box').style.display = !y && me.can_review ? '' : 'none';
-  $('stYrBox').style.display = y ? '' : 'none'; $('stMoBox').style.display = v === 'b' ? '' : 'none'; $('stCtBox').style.display = y && me.can_review ? '' : 'none';
+  $('stYrBox').style.display = y ? '' : 'none'; $('stMoBox').style.display = v === 'b' ? '' : 'none'; $('stPerBox').style.display = v === 'y' ? '' : 'none'; $('stCtBox').style.display = v === 'b' && me.can_review ? '' : 'none';
+  if (!$('stPer').options.length) { for (let k = 1; k <= 12; k++) $('stPer').add(new Option(k + '월', k + '-' + k)); [['상반기', '1-6'], ['하반기', '7-12'], ['연간', '1-12']].forEach((o) => $('stPer').add(new Option(o[0], o[1]))); $('stPer').value = (new Date().getMonth() || 12) + '-' + (new Date().getMonth() || 12); }
   if (y && !$('stYr').options.length) { const n = new Date().getFullYear(); for (let k = n; k >= n - 4; k--) $('stYr').add(new Option(k + '년', k)); }
   if (!$('stM1').options.length) { for (let k = 1; k <= 12; k++) { $('stM1').add(new Option(k + '월', k)); $('stM2').add(new Option(k + '월', k)); } $('stM1').value = 1; $('stM2').value = new Date().getMonth() + 1; }
   loadStats();
@@ -347,9 +349,11 @@ async function loadYear() {
 }
 // 값 꺼내기: 통역(I) · 상담(C) · 직접 입력(E), k = 월 번호 또는 H1/H2/Y
 const KEYS = ['1','2','3','4','5','6','7','8','9','10','11','12','H1','H2','Y'];
-const monthsOf = (k) => k === 'H1' ? [1,2,3,4,5,6] : k === 'H2' ? [7,8,9,10,11,12] : k === 'Y' ? [1,2,3,4,5,6,7,8,9,10,11,12] : [Number(k)];
+let RANGE_M = [];   // 통역실적 '합계' 줄: 고른 기간의 달들
+const monthsOf = (k) => k === 'H1' ? [1,2,3,4,5,6] : k === 'H2' ? [7,8,9,10,11,12] : k === 'Y' ? [1,2,3,4,5,6,7,8,9,10,11,12] : k === 'R' ? RANGE_M : [Number(k)];
 function gv(o, path) { for (const x of path) o = o ? o[x] : 0; return Number(o) || 0; }
-const I = (k, path) => gv((YR.rows || {})[k], path), C = (k, path) => gv(((YR.c || {}).rows || {})[k], path);
+const I = (k, path) => k === 'R' ? RANGE_M.reduce((a, m) => a + gv((YR.rows || {})[m], path), 0) : gv((YR.rows || {})[k], path);
+const C = (k, path) => k === 'R' ? RANGE_M.reduce((a, m) => a + gv(((YR.c || {}).rows || {})[m], path), 0) : gv(((YR.c || {}).rows || {})[k], path);
 const E = (k, f) => monthsOf(k).reduce((a, m) => a + gv(((YR.c || {}).extra || {})[m], [f]), 0);
 const nfmt = (v) => v ? Number(v).toLocaleString() : '-';
 function ytable(title, groups, rowsKeys, valFn, labFn) {
@@ -361,7 +365,15 @@ function ytable(title, groups, rowsKeys, valFn, labFn) {
 const BR = (x) => x.replace('영상전화', '영상<br>전화').replace('문맹농인', '문맹<br>농인').replace('일상생활', '일상<br>생활').replace('취업알선', '취업<br>알선').replace('수어음성', '수어<br>음성');
 // 통역실적 (실적보고서 22~91행): 월별 연인원 · 실인원 · 세부실적
 function drawYear() {
-  const d = YR, lab = (k) => k === 'H1' ? '상반기' : k === 'H2' ? '하반기' : k === 'Y' ? '소 계' : k + '월';
+  const d = YR, lab = (k) => k === 'H1' ? '상반기' : k === 'H2' ? '하반기' : k === 'Y' ? '소 계' : k === 'R' ? '합 계' : k + '월';
+  const m1 = Number($('stM1').value) || 1, m2 = Number($('stM2').value) || 12;
+  if (m1 > m2) return msg('stMsg', '시작 월이 끝 월보다 늦습니다.');
+  RANGE_M = []; for (let k = m1; k <= m2; k++) RANGE_M.push(k);
+  const keys = RANGE_M.map(String);
+  if (m1 <= 1 && m2 >= 6) keys.push('H1');
+  if (m1 <= 7 && m2 >= 12) keys.push('H2');
+  if (m1 === 1 && m2 === 12) keys.push('Y'); else if (!(m1 === 1 && m2 === 6) && !(m1 === 7 && m2 === 12)) keys.push('R');
+  const rangeNote = keys.includes('R') && RANGE_M.length > 1 ? ' 합계 줄의 실인원은 달마다 센 수를 더한 값입니다.' : '';
   const grp = (f, ef) => {   // f = ppl / uniq,  ef = 직접 입력 칸 이름
     const cols = [
       ...['출장','내방','전화'].map((t) => [t, (k) => I(k, ['type', t, f])]),
@@ -373,18 +385,75 @@ function drawYear() {
     const note = ['참고사항', (k) => /^\d+$/.test(k) ? String(((d.c.extra || {})[k] || {}).note || '') : ''];
     return [{ t: '통역', cols: cols.slice(0, 3) }, { t: '상담지도', cols: cols.slice(3, 10) }, { t: '수어교육 · 기타', cols: cols.slice(10) }, { t: '', cols: [sum, note] }];
   };
-  $('stTitle').textContent = `${d.centerName} · ${d.year}년 통역실적`;
-  $('stBody').innerHTML = `<p class="muted noprint">통역일지·상담일지로 자동 계산합니다. 수어교육·기타는 직접 입력합니다. 연인원 = 인원 합계, 실인원 = 의뢰자 중복 제외.
+  $('stTitle').textContent = `${d.centerName} · ${d.year}년 ${m1}월 ~ ${m2}월 통역실적`;
+  $('stBody').innerHTML = `<p class="muted noprint">통역일지·상담일지로 자동 계산합니다. 수어교육·기타는 직접 입력합니다. 연인원 = 인원 합계, 실인원 = 의뢰자 중복 제외.${rangeNote}
       ${d.c.canEdit ? ' <button class="sm" onclick="openExtra()">✏️ 수어교육 · 기타 · 목표 입력</button>' : ''}</p>
-    ${ytable('연인원', grp('ppl', 'Ppl'), KEYS, null, lab)}
-    ${ytable('실인원', grp('uniq', 'Uniq'), KEYS, null, lab)}
+    ${ytable('연인원', grp('ppl', 'Ppl'), keys, null, lab)}
+    ${ytable('실인원', grp('uniq', 'Uniq'), keys, null, lab)}
     ${ytable('세부실적 · 통역의뢰방법 / 통역시간(시간) / 통역대상', [
       { t: '통역의뢰방법', cols: ['인터넷','문자','영상전화','전화','내방','기타'].map((x) => [BR(x), (k) => I(k, ['method', x])]).concat([['합계', (k) => I(k, ['cases'])]]) },
-      { t: '통역시간', cols: ['새벽','오전','오후','야간','합계'].map((x) => [x, (k) => I(k, ['hours', x])]) },
-      { t: '통역대상', cols: ['농인','문맹농인','청인','기타'].map((x) => [BR(x), (k) => I(k, ['target', x])]).concat([['합계', (k) => I(k, ['cases'])]]) }], KEYS, null, lab)}
+      { t: '통역시간', cols: ['새벽','오전','오후','야간','합계'].map((x) => [x, (k) => k !== 'R' ? I(k, ['hours', x]) : Math.floor((x === '합계' ? ['새벽','오전','오후','야간'].reduce((a, y) => a + I('R', ['mins', y]), 0) : I('R', ['mins', x])) / 60)]) },
+      { t: '통역대상', cols: ['농인','문맹농인','청인','기타'].map((x) => [BR(x), (k) => I(k, ['target', x])]).concat([['합계', (k) => I(k, ['cases'])]]) }], keys, null, lab)}
     ${ytable('세부실적 · 통역방법 / 통역종류', [
       { t: '통역방법', cols: ['수어음성','중계','기타'].map((x) => [BR(x), (k) => I(k, ['way', x])]).concat([['합계', (k) => I(k, ['cases'])]]) },
-      { t: '통역종류', cols: ['행사','법률','교육','의료','방송','관공서','일상생활','취업알선','기타'].map((x) => [BR(x), (k) => I(k, ['cat', x])]).concat([['합계', (k) => I(k, ['cases'])]]) }], KEYS, null, lab)}`;
+      { t: '통역종류', cols: ['행사','법률','교육','의료','방송','관공서','일상생활','취업알선','기타'].map((x) => [BR(x), (k) => I(k, ['cat', x])]).concat([['합계', (k) => I(k, ['cases'])]]) }], keys, null, lab)}`;
+}
+// 통역실적 (실적조사표 양식): 센터별 줄 · 월 / 상반기 / 하반기 / 연간
+let CT = null;
+async function loadCenterTable() {
+  const [m1, m2] = $('stPer').value.split('-').map(Number), y = Number($('stYr').value);
+  const { data, error } = await sb.rpc('interp_center_table', { p_year: y, p_m1: m1, p_m2: m2 });
+  if (error) { $('stBody').innerHTML = ''; return msg('stMsg', errText(error)); }
+  CT = data;
+  if (!data.all) { const c = await sb.rpc('interp_counsel_year', { p_year: y }); YR = { year: y, c: c.data || {} }; }   // 수어교육·기타 입력용
+  drawCenterTable();
+}
+function drawCenterTable() {
+  const d = CT, rows = d.rows || [], per = $('stPer').options[$('stPer').selectedIndex].text;
+  const g = (o, path) => gv(o, path);
+  const nf = (v) => v ? Number(v).toLocaleString() : '';
+  const hrs = (r, x) => Math.floor(g(r.i, ['mins', x]) / 60), hTot = (r) => Math.floor(['새벽','오전','오후','야간'].reduce((a, x) => a + g(r.i, ['mins', x]), 0) / 60);
+  // 열 정의: [머리, 값 함수]
+  const pcols = (f) => [
+    ...['출장','내방','전화'].map((t) => (r) => g(r.i, ['type', t, f])),
+    ...['출장','내방','전화'].map((t) => (r) => g(r.c, ['counsel', t, f])),
+    (r) => g(r.c, ['job', f]),
+    ...['출장','내방','전화'].map((t) => (r) => g(r.c, ['after', t, f])),
+    (r) => g(r.e, [f === 'ppl' ? 'eduPpl' : 'eduUniq']), (r) => g(r.e, [f === 'ppl' ? 'etcPpl' : 'etcUniq'])];
+  const head1 = (note) => `<tr><th rowspan="3">연번</th><th rowspan="3">지역</th><th rowspan="3">센터명</th><th colspan="3" rowspan="2">통역</th><th colspan="7">상담지도</th><th rowspan="3">수어<br>교육</th><th rowspan="3">기타</th><th rowspan="3">계</th><th rowspan="3">${note}</th></tr>
+    <tr><th colspan="3">상담</th><th rowspan="2">취업<br>알선</th><th colspan="3">사후관리</th></tr>
+    <tr><th>출장</th><th>내방</th><th>전화</th><th>출장</th><th>내방</th><th>전화</th><th>출장</th><th>내방</th><th>전화</th></tr>`;
+  const body = (cols, withNote) => {
+    const tot = cols.map(() => 0); let all = 0;
+    const tr = rows.map((r, i) => { const v = cols.map((c) => c(r)); v.forEach((x, k) => { tot[k] += x; }); const s = v.reduce((a, b) => a + b, 0); all += s;
+      return `<tr><td>${i + 1}</td><td>${i === 0 ? '강원' : ''}</td><td style="text-align:left">${esc(r.name)}</td>${v.map((x) => `<td>${nf(x)}</td>`).join('')}<td><b>${nf(s)}</b></td>${withNote ? `<td style="text-align:left;white-space:normal">${esc((r.e || {}).note || '')}</td>` : ''}</tr>`; }).join('');
+    return tr + `<tr class="sum"><td colspan="3">소 계</td>${tot.map((x) => `<td>${nf(x) || 0}</td>`).join('')}<td>${nf(all) || 0}</td>${withNote ? '<td></td>' : ''}</tr>`;
+  };
+  const sumRow = (vals) => `<tr class="sum"><td colspan="3">소 계</td>${vals.map((x) => `<td>${nf(x) || 0}</td>`).join('')}</tr>`;
+  const iM = ['인터넷','문자','영상전화','전화','내방','기타'], iT = ['농인','문맹농인','청인','기타'], iW = ['수어음성','중계','기타'], iC = ['행사','법률','교육','의료','방송','관공서','일상생활','취업알선','기타'];
+  const c21 = (r) => [...iM.map((x) => g(r.i, ['method', x])), g(r.i, ['cases']), ...['새벽','오전','오후','야간'].map((x) => hrs(r, x)), hTot(r), ...iT.map((x) => g(r.i, ['targetPpl', x])), iT.reduce((a, x) => a + g(r.i, ['targetPpl', x]), 0)];
+  const c22 = (r) => [...iW.map((x) => g(r.i, ['way', x])), g(r.i, ['cases']), ...iC.map((x) => g(r.i, ['cat', x])), g(r.i, ['cases'])];
+  const sumOf = (fn) => { const t = []; rows.forEach((r) => fn(r).forEach((x, k) => { t[k] = (t[k] || 0) + x; })); return t; };
+  const t21 = sumOf(c21); t21[11] = Math.floor(rows.reduce((a, r) => a + ['새벽','오전','오후','야간'].reduce((b, x) => b + g(r.i, ['mins', x]), 0), 0) / 60);
+  const ttl = `${d.year}년도 ${per} 수어통역센터`;
+  $('stTitle').textContent = `${ttl} 실적`;
+  $('stBody').innerHTML = `<p class="muted noprint">통역일지·상담일지로 자동 계산합니다. 수어교육·기타·참고사항은 직접 입력합니다. 연인원 = 인원 합계, 실인원 = 의뢰자 중복 제외 (그 기간 안에서).
+      ${YR && YR.c && YR.c.canEdit && !d.all ? ' <button class="sm" onclick="openExtra()">✏️ 수어교육 · 기타 입력</button>' : ''}</p>
+    <h3>1. 연인원 실적 <span class="muted" style="font-size:12px">${ttl} 실적(연인원)</span></h3>
+    <div class="card yr" style="overflow-x:auto"><table data-title="1. 연인원 실적 — ${ttl} 실적(연인원)"><thead>${head1('기타 연인원<br>참고사항')}</thead><tbody>${body(pcols('ppl'), true)}</tbody></table></div>
+    <h3>2. 실인원 실적 <span class="muted" style="font-size:12px">${ttl} 실적(실인원)</span></h3>
+    <div class="card yr" style="overflow-x:auto"><table data-title="2. 실인원 실적 — ${ttl} 실적(실인원)"><thead>${head1('실인원<br>참고사항')}</thead><tbody>${body(pcols('uniq'), true)}</tbody></table></div>
+    <h3>3. 세부 실적 <span class="muted" style="font-size:12px">${ttl} 세부실적(2-1)</span></h3>
+    <div class="card yr" style="overflow-x:auto"><table data-title="3. 세부 실적 — ${ttl} 세부실적(2-1)"><thead>
+      <tr><th rowspan="2">연번</th><th rowspan="2">지역</th><th rowspan="2">센터명</th><th colspan="7">통역의뢰방법</th><th colspan="5">통역시간 (단위: 시간)</th><th colspan="5">통역대상 (인원)</th></tr>
+      <tr>${iM.concat(['합계']).map((x) => `<th>${BR(x)}</th>`).join('')}${['새벽','오전','오후','야간','합계'].map((x) => `<th>${x}</th>`).join('')}${['농인','문맹(문해)<br>농인','청인','기타','합계'].map((x) => `<th>${x}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${i === 0 ? '강원' : ''}</td><td style="text-align:left">${esc(r.name)}</td>${c21(r).map((x) => `<td>${nf(x)}</td>`).join('')}</tr>`).join('')}${sumRow(t21)}</tbody></table></div>
+    <h3><span class="muted" style="font-size:12px">${ttl} 세부실적(2-2)</span></h3>
+    <div class="card yr" style="overflow-x:auto"><table data-title="${ttl} 세부실적(2-2)"><thead>
+      <tr><th rowspan="2">연번</th><th rowspan="2">지역</th><th rowspan="2">센터명</th><th colspan="4">통역방법</th><th colspan="10">통역종류</th></tr>
+      <tr>${['수어·음성<br>통역','중계<br>통역','기타','합계'].map((x) => `<th>${x}</th>`).join('')}${['행사','법률','교육','의료','방송','관공서','일상생활','취업알선','기타','합계'].map((x) => `<th>${BR(x)}</th>`).join('')}</tr></thead>
+      <tbody>${rows.map((r, i) => `<tr><td>${i + 1}</td><td>${i === 0 ? '강원' : ''}</td><td style="text-align:left">${esc(r.name)}</td>${c22(r).map((x) => `<td>${nf(x)}</td>`).join('')}</tr>`).join('')}${sumRow(sumOf(c22))}</tbody></table></div>
+    <p class="muted" style="font-size:12px">※ 통역의뢰방법 합계 = 통역방법 합계 = 통역종류 합계 · 통역대상 합계 = 연인원의 통역 합계(출장+내방+전화)</p>`;
 }
 // 사업실적 (실적보고서 2~19행): 고른 기간의 합계
 function drawBiz() {
@@ -439,23 +508,31 @@ function openExtra() {
       .concat(Object.keys(by).map((m) => sb.rpc('interp_extra_save', { p_year: y, p_month: Number(m), p_data: by[m] })));
     const rs = await Promise.all(jobs), bad = rs.find((r) => r.error);
     if (bad) return msg('exMsg', errText(bad.error));
-    ov.remove(); msg('stMsg', '저장했습니다.', true); loadYear();
+    ov.remove(); msg('stMsg', '저장했습니다.', true); loadStats();
   };
 }
-// 지금 화면의 표들을 엑셀로 저장 (표마다 한 장)
+// 지금 화면의 표들을 엑셀 한 장(탭 하나)에 위에서 아래로 저장
 async function saveExcel() {
   const tables = [...$('stBody').querySelectorAll('table')];
   if (!tables.length) return msg('stMsg', '먼저 조회해 주세요.');
   if (!window.XLSX) await new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'; sc.onload = ok; sc.onerror = () => no(new Error('엑셀 도구를 불러오지 못했습니다.')); document.head.appendChild(sc); }).catch((e) => msg('stMsg', e.message));
   if (!window.XLSX) return;
-  const wb = XLSX.utils.book_new(), used = {};
+  const title = $('stTitle').textContent || '통역 통계';
+  const aoa = [[title], []], merges = [];
   tables.forEach((t, i) => {
     const c = t.cloneNode(true); c.querySelectorAll('button,input').forEach((x) => x.remove()); c.querySelectorAll('br').forEach((b) => b.replaceWith(' '));
-    let name = (t.dataset.title || (t.closest('.card') && t.closest('.card').previousElementSibling && t.closest('.card').previousElementSibling.textContent) || ('표' + (i + 1))).replace(/[\\/?*\[\]:]/g, ' ').trim().slice(0, 28) || ('표' + (i + 1));
-    while (used[name]) name = name.slice(0, 26) + (i + 1); used[name] = 1;
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(c, { raw: false }), name);
+    const name = t.dataset.title || ('표 ' + (i + 1));
+    aoa.push([name]);
+    const ws = XLSX.utils.table_to_sheet(c, { raw: true }), rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });
+    const off = aoa.length;
+    (ws['!merges'] || []).forEach((m) => merges.push({ s: { r: m.s.r + off, c: m.s.c }, e: { r: m.e.r + off, c: m.e.c } }));
+    rows.forEach((r) => aoa.push(r.map((v) => { const n = String(v).replace(/,/g, ''); return /^-?\d+(\.\d+)?$/.test(n) ? Number(n) : (v === '-' ? 0 : v); })));
+    aoa.push([]);
   });
-  XLSX.writeFile(wb, ($('stTitle').textContent || '통역 통계').replace(/[\\/:*?"<>|]/g, ' ') + '.xlsx');
+  const ws = XLSX.utils.aoa_to_sheet(aoa); ws['!merges'] = merges;
+  ws['!cols'] = Array.from({ length: Math.max(...aoa.map((r) => r.length)) }, (_, i) => ({ wch: i === 0 ? 12 : 9 }));
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '실적');
+  XLSX.writeFile(wb, title.replace(/[\\/:*?"<>|]/g, ' ') + '.xlsx');
 }
 // 도협회: 도센터(강원도수어통역센터) 자체 통계·보고
 const hqBtn = () => me.can_stats ? `<div class="noprint" style="margin-bottom:10px"><button onclick="loadHqStats()">🏢 도센터 통계</button></div>` : '';
@@ -467,6 +544,7 @@ async function loadHqStats(ym) {
 }
 async function loadStats() {
   msg('stMsg', ''); $('stBody').innerHTML = '<p class="muted">불러오는 중…</p>';
+  if ($('stMode').value === 'y') return loadCenterTable();
   if ($('stMode').value !== 'm') return loadYear();
   const ym = $('stYm').value; if (!ym) return msg('stMsg', '연월을 고르세요.');
   if (me.can_review) {

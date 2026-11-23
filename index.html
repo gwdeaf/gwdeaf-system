@@ -1212,8 +1212,8 @@ async function loadNews(){
   if (!r || r.error || !Array.isArray(r.data) || !r.data.length) return;
   card.classList.remove('hide');
   var wd = '일월화수목금토', SHORT = { 'KBS 뉴스광장': '광장', 'KBS 930뉴스': '930', 'KBS 뉴스9': '뉴스9', 'G1뉴스': 'G1' }, me = (ME && ME.name) || '';
-  $('newsbox').innerHTML = r.data.map(function(d, i){
-    var dt = new Date(d.date + 'T00:00:00'), items = d.items || [];
+  $('newsbox').innerHTML = r.data.filter(function(d){ return new Date(d.date + 'T00:00:00').getDay() !== 6; }).map(function(d){   // 토요일은 뉴스 통역 없음 → 빼고 일~금만
+    var i = d.date === r.data[0].date ? 0 : 1, dt = new Date(d.date + 'T00:00:00'), items = d.items || [];
     var body = !d.saved ? '<span class="mute">이 달 배정표가 아직 저장되지 않았어요</span>'
       : !items.length ? '<span class="mute">배정 없음</span>'
       : items.map(function(x){ var mine = x.name === me; return '<span style="display:inline-block;margin:2px 6px 2px 0;' + (mine ? 'font-weight:800;color:#2f5bd6' : '') + '"><span class="mute">' + esc(SHORT[x.prog] || x.prog) + '</span> ' + esc(x.name) + '</span>'; }).join('');

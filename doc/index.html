@@ -152,7 +152,7 @@ body.noea .ea{display:none!important}
           <div class="narrow"><label>총 매수 (표지 포함)</label><input id="fPages" inputmode="numeric" value="1"></div></div>
       </div>
       <div class="btns">
-        <button onclick="saveDraftClick()">임시 저장</button>
+        <button onclick="saveDraftClick()">💾 저장</button>
         <button class="main" onclick="submitClick()" title="문서 번호가 붙고 공문 대장에 올라갑니다. 인쇄해서 수기로 결재받으세요">기안하기 (번호 부여)</button>
         <button class="noembed" onclick="openHome()">목록으로</button>
       </div>
@@ -186,7 +186,7 @@ body.noea .ea{display:none!important}
       <div id="viewHead"></div>
       <div id="viewBody" style="margin-top:12px"></div>
       <h3>결재 현황</h3>
-      <table><thead><tr><th>순서</th><th>직책</th><th>이름</th><th class="ea">방식</th><th class="ea">구분</th><th>상태</th><th>처리일시</th></tr></thead>
+      <table><thead><tr><th>순서</th><th>직책</th><th>이름</th><th class="ea">방식</th><th class="ea">구분</th><th class="ea">상태</th><th class="ea">처리일시</th></tr></thead>
         <tbody id="viewSteps"></tbody></table>
       <div class="btns" id="viewBtns"></div>
       <div id="viewMsg" class="msg"></div>
@@ -665,7 +665,7 @@ async function saveDraft() {
   return data;
 }
 async function saveDraftClick() {
-  try { await saveDraft(); msg('writeMsg', '임시 저장했습니다.', true); }
+  try { await saveDraft(); msg('writeMsg', '저장했습니다. (기안하기 전까지 계속 고칠 수 있어요)', true); }
   catch (e) { msg('writeMsg', errText(e)); }
 }
 async function saveStepsClick() {
@@ -722,7 +722,7 @@ function renderView() {
 
   $('viewSteps').innerHTML = currentSteps.length
     ? currentSteps.map((s) => `<tr><td>${s.seq}</td><td>${esc(s.role)}</td><td>${esc(s.name)}</td><td class="ea">${esc(s.method)}</td>
-        <td class="ea">${esc(s.type)}</td><td>${esc(s.status)}</td><td>${ko(s.done_at)}</td></tr>`).join('')
+        <td class="ea">${esc(s.type)}</td><td class="ea">${esc(s.status)}</td><td class="ea">${ko(s.done_at)}</td></tr>`).join('')
     : '<tr><td colspan="7" class="muted">결재선이 없습니다.</td></tr>';
 
   const b = [];
@@ -845,8 +845,8 @@ function buildCoopHtml(d, f, steps, as, minH) {
   if (lines.length) lines[lines.length - 1] = Object.assign({}, lines[lines.length - 1], { text: lines[lines.length - 1].text + '  끝.' });
   const ap = (steps || []).filter((s) => s.role || s.name).slice().reverse();   // 위가 윗사람 (결재선 아래쪽부터)
   const apRows = (ap.length ? ap : [{ role: '', name: '' }]).map((s) => `<tr><td style="border:1px solid #000;width:22mm;text-align:center;letter-spacing:${String(s.role || '').length === 2 ? '0.9em' : '0'};padding:3px 2px">${esc(s.role || '')}</td><td style="border:1px solid #000;width:30mm;text-align:center;padding:3px 2px">${esc(s.name || '')}</td></tr>`).join('');
-  const addr = [cfg['우편번호'] && ('(' + cfg['우편번호'] + ')'), cfg['주소']].filter(Boolean).join(' ');
-  const tel = [cfg['전화'] && ('전화 ' + cfg['전화']), cfg['전송'] && ('팩스 ' + cfg['전송']), cfg['영상전화'] && ('영상전화 ' + cfg['영상전화']), cfg['이메일']].filter(Boolean).join(' / ');
+  const addr = [cfg['우편번호'] && ('(' + cfg['우편번호'] + ')'), cfg['주소'] || as.address].filter(Boolean).join(' ');   // 공문 설정이 비면 기관 정보 주소
+  const tel = [(cfg['전화'] || as.phone) && ('전화 ' + (cfg['전화'] || as.phone)), cfg['전송'] && ('팩스 ' + cfg['전송']), cfg['영상전화'] && ('영상전화 ' + cfg['영상전화']), cfg['이메일']].filter(Boolean).join(' / ');
   const wd = (v) => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return ''; const w = '일월화수목금토'[new Date(+m[1], +m[2] - 1, +m[3]).getDay()]; return `${m[1]}. ${+m[2]}. ${+m[3]}. (${w})`; };
   const row = (k, v) => `<div style="display:flex;margin:3px 0;font-weight:700"><span style="flex:0 0 4.6em;letter-spacing:${k.length === 2 ? '1.2em' : '0'}">${k}</span><span style="flex:1">${v}</span></div>`;
   return `<div style="font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#000;font-size:12pt;line-height:1.55;display:flex;flex-direction:column;min-height:${minH || '262mm'};box-sizing:border-box">
@@ -891,8 +891,8 @@ function buildDocHtml(d, f, steps, as, minH) {
     return `<span style="white-space:nowrap">${esc(s.role || s.name)}<span style="display:inline-block;min-width:20mm;margin-left:3mm">${mark}</span></span>`;
   });
   const row = (k, v, bold) => `<div style="display:flex;margin:2px 0"><span style="flex:0 0 4.2em;letter-spacing:${k.length === 2 ? '0.6em' : '0'}">${k}</span><span style="flex:1;${bold ? 'font-weight:700' : ''}">${v}</span></div>`;
-  const tel = [cfg['전화'] && ('전화 ' + cfg['전화']), cfg['전송'] && ('전송 ' + cfg['전송']), cfg['이메일']].filter(Boolean).join('&nbsp;/&nbsp;');
-  const addr = [[cfg['우편번호'] && ('우 ' + cfg['우편번호']), cfg['주소']].filter(Boolean).join(' '), cfg['홈페이지']].filter(Boolean).join(' / ');
+  const tel = [(cfg['전화'] || as.phone) && ('전화 ' + (cfg['전화'] || as.phone)), cfg['전송'] && ('전송 ' + cfg['전송']), cfg['이메일']].filter(Boolean).join('&nbsp;/&nbsp;');
+  const addr = [[cfg['우편번호'] && ('우 ' + cfg['우편번호']), cfg['주소'] || as.address].filter(Boolean).join(' '), cfg['홈페이지']].filter(Boolean).join(' / ');
   return `<div style="font-family:'Malgun Gothic','맑은 고딕',sans-serif;color:#000;font-size:12pt;line-height:1.5;display:flex;flex-direction:column;min-height:${minH || '262mm'};box-sizing:border-box">
     ${cfg['머리 표어'] ? `<div style="text-align:center;font-size:11pt;letter-spacing:1px">${esc(cfg['머리 표어'])}</div>` : ''}
     <div style="display:flex;align-items:center;justify-content:center;gap:5mm;margin:2mm 0 6mm"><img src="/og/emblem.png" style="height:19mm"><div style="font-weight:800;letter-spacing:-0.5px">${bigName(head, 21)}</div></div>

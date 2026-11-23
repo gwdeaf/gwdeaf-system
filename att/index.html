@@ -1936,6 +1936,7 @@
         <button class="btn btn-outline btn-sm" onclick="sendSlackTestDm()" style="margin-left:8px;white-space:nowrap;">📨 보내기</button>
       </div>
       <div id="cfg-slack-msg" style="font-size:0.82rem;min-height:1.2em;margin-top:0.2rem;"></div>
+      <div id="cfg-slack-last" style="font-size:0.82rem;margin-top:0.4rem;padding:8px 10px;background:var(--bg,#f5f7fb);border-radius:8px;"></div>
     </div>
 
     <div class="card" style="grid-column:1/-1;">
@@ -3631,6 +3632,9 @@ function loadSlackSettings() {
   gasRun('getSlackConfig', null, function(c) {
     var st = document.getElementById('cfg-slack-state');
     if (st && c && c.ok) { st.textContent = c.hasToken ? '✅ 연결됨' : '⚪ 미설정'; st.style.color = c.hasToken ? 'var(--success)' : 'var(--text-muted)'; }
+    var lt = document.getElementById('cfg-slack-last'), L = c && c.last;
+    if (lt) lt.innerHTML = L ? '<b>최근 선임 알림</b> ' + esc(L.at || '') + ' · ' + esc(L.from || '') + (L.to ? ' → ' + esc(L.to) : '') + ' · ' + esc(L.title || '') + '<br>'
+      + (L.ok ? '<span style="color:var(--success)">✅ 보냄</span>' : '<span style="color:var(--danger)">❌ 못 보냄: ' + esc(L.why || '') + '</span>') : '<b>최근 선임 알림</b> 아직 없음';
   }, function(){});
   gasRun('getAdminStaff', null, function(list) {
     var sel = document.getElementById('cfg-slack-test-name'); if (!sel) return;

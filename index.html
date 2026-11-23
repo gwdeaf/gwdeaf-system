@@ -280,11 +280,26 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 
 /* 휴대폰 홈: 즐겨찾기 맨 위 + 카드는 아이콘 → 누르면 크게 */
 #mhome{display:none}
-.mfs{display:flex;align-items:center;gap:6px;margin:0 2px 12px;font-size:.8rem;font-weight:700;color:var(--mute,#6b7280)}
-.mfs span{flex:1}.mfs button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:5px 10px;font:inherit;font-size:.78rem;cursor:pointer;color:var(--text)}
-.mfs button{min-width:52px;font-weight:800}
-#fs-dots{display:flex;gap:5px;font-style:normal}#fs-dots b{width:22px;height:6px;border-radius:9px;background:#d5dae3}#fs-dots b.on{background:var(--pri)}
 @media(max-width:860px){body.fs-big .mq,body.fs-big .mt{grid-template-columns:repeat(3,1fr)}}
+/* 휴대폰 위쪽: 1줄 = ☰ 로고·업무 시스템(홈) … 사용설명서 / 2줄 = 이름 · 출퇴근 · 글씨 크기 */
+.mbrand,.mbreak,.mfs2,.gtx2{display:none}
+@media(max-width:860px){
+  .topbar{flex-wrap:wrap;height:auto;padding:8px 12px;row-gap:8px}
+  .topbar .tright{display:contents}
+  .menubtn{order:1}
+  .mbrand{order:2;display:flex;align-items:center;gap:8px;font-weight:800;font-size:1.02rem;cursor:pointer;min-width:0}
+  .mbrand img{width:30px;height:30px;border-radius:9px;object-fit:contain}
+  .gbtn2{order:3;margin-left:auto}.gbtn2 .gtx{display:none}.gbtn2 .gtx2{display:inline}
+  .mbreak{order:4;display:block;flex-basis:100%;height:0}
+  .tuser{order:5}.tuser span{display:inline!important;font-weight:700}
+  .pstat,.pbtn{order:6}
+  .mfs2{order:7;display:flex;margin-left:auto;border:1px solid var(--line);border-radius:99px;overflow:hidden;background:#fff}
+  .mfs2 button{border:0;background:none;padding:6px 11px;font:inherit;font-weight:800;font-size:.85rem;cursor:pointer;color:var(--text)}
+  .mfs2 button+button{border-left:1px solid var(--line);font-size:1rem}
+  .mfs2 button.on{background:var(--pri);color:#fff}
+  .thello,.crumb{order:8;display:none!important}
+  .wltabs,.wldate{order:9}
+}
 @media(max-width:860px){
   #mhome{display:block;margin-bottom:6px}
   .mh-sec{display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:.95rem;margin:4px 2px 8px}
@@ -376,6 +391,9 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
   <div class="content">
   <div class="topbar">
     <button class="menubtn" onclick="toggleSide()">☰</button>
+    <div class="mbrand" onclick="go('home')" title="홈으로"><img src="/logo.png" alt="" onerror="this.remove()"><span>업무 시스템</span></div>
+    <div class="mbreak"></div>
+    <div class="mfs2" title="글씨 크기"><button data-fs="1" onclick="setFs(1)" aria-label="글씨 보통">가−</button><button data-fs="1.15" onclick="setFs(1.15)" aria-label="글씨 크게">가+</button></div>
     <div class="crumb hide" id="crumb"></div>
     <div class="thello" id="thello"><h2 id="hello"></h2><span class="chips" id="chips"></span></div>
     <div class="wltabs hide" id="wltabs"><button data-t="writer" class="on" onclick="wlTab('writer')">✍️ 일지 작성</button><button data-t="calendar" onclick="wlTab('calendar')">🗓️ 캘린더</button></div>
@@ -384,13 +402,12 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
       <span class="tdate" id="today"></span>
       <span class="pstat hide" id="pstat" onclick="openPunch()" title="출퇴근 기록"></span>
       <button class="pbtn hide" id="pbtn" onclick="openPunch()">📍 출퇴근</button>
-      <button class="gbtn2" onclick="openGuide(ME, (CUR||'home').split(':')[0])" title="사용 안내">📖<span class="gtx"> 사용 안내</span></button>
+      <button class="gbtn2" onclick="openGuide(ME, (CUR||'home').split(':')[0])" title="사용 안내">📖<span class="gtx"> 사용 안내</span><span class="gtx2"> 사용설명서</span></button>
       <div class="tuser" onclick="openMy()" title="마이페이지"><div class="av sm" id="tb-av"></div><span id="tb-nm"></span></div>
     </div>
   </div>
   <main id="view-home">
     <div id="mhome">
-      <div class="mfs"><span>글씨 크기</span><button onclick="stepFs(-1)" aria-label="글씨 작게">가 −</button><i id="fs-dots"></i><button onclick="stepFs(1)" aria-label="글씨 크게" style="font-size:.95rem">가 +</button></div>
       <div class="mh-sec">⭐ 즐겨찾기 <a onclick="openMy('quick')">편집</a></div>
       <div id="mquick" class="mq"></div>
       <div class="mh-sec">한눈에 보기</div>
@@ -671,14 +688,13 @@ function fromHash(){
   if (m[1] === 'edu' && !hasPerm('edu.')) return false;
   go(m[1], m[3] ? decodeURIComponent(m[3]) : '', !!m[2]); return true;
 }
-/* ── 글씨 크기 (기기마다 저장: 작게 0.9 · 보통 1 · 크게 1.15) ── */
+/* ── 글씨 크기 (기기마다 저장: 보통 1 · 크게 1.15) ── */
 var FS = 1; try { FS = parseFloat(localStorage.getItem('gw-fs')) || 1; } catch(e){}
-var FS_LV = [0.9, 1, 1.15];   // 작게 · 보통 · 크게
-if (FS_LV.indexOf(FS) < 0) FS = FS > 1 ? 1.15 : 1;   // 예전 '아주 크게'는 '크게'로
+var FS_LV = [1, 1.15];   // 보통(아이콘 한 줄 4개) · 크게(한 줄 3개)
+if (FS_LV.indexOf(FS) < 0) FS = FS > 1 ? 1.15 : 1;
 function applyFs(){
   document.documentElement.style.fontSize = FS === 1 ? '' : (16 * FS) + 'px';
-  var lv = FS_LV.indexOf(FS), dots = $('fs-dots');
-  if (dots) dots.innerHTML = FS_LV.map(function(v, i){ return '<b' + (i <= lv ? ' class="on"' : '') + '></b>'; }).join('');
+  document.querySelectorAll('.mfs2 button').forEach(function(b){ b.classList.toggle('on', parseFloat(b.getAttribute('data-fs')) === FS); });
   document.body.classList.toggle('fs-big', FS > 1);      // 크게: 아이콘 한 줄에 3개
   try { var d = $('frame').contentDocument; if (d && d.body) d.body.style.zoom = FS === 1 ? '' : FS; } catch(e){}   // 안쪽 화면(근태·차량 등)도 같은 비율
 }

@@ -289,13 +289,14 @@ function orgView(){
   if(!org){ $("#body").innerHTML = '<div class="card muted">불러오는 중...</div>'; return; }
   $("#body").innerHTML = `<div class="card"><h2>🏢 ${esc(org.name)} 기관 정보</h2>
     <div class="muted">여기에 입력한 전화번호와 직인은 수어교육관리(포스터·수료증 등)와 공문 시스템에서 함께 사용합니다. 우리 기관 것만 보이고, 다른 기관은 볼 수 없습니다.</div>
-    <div class="grid" style="margin-top:8px"><input id="o_phone" placeholder="${org.is_hq?"도협회 전화번호":"지회 전화번호"} (예: 033-000-0000)" value="${esc(org.phone)}">
-    ${org.is_hq?"":`<input id="o_center" placeholder="센터 전화번호" value="${esc(org.center_phone)}">`}
+    <div class="grid" style="margin-top:8px">
+    <div>${org.is_hq?'<label class="muted" style="font-size:12px">도협회 전화번호</label>':''}<input id="o_phone" placeholder="${org.is_hq?"도협회 전화번호":"지회 전화번호"} (예: 033-000-0000)" value="${esc(org.phone)}"></div>
+    <div>${org.is_hq?'<label class="muted" style="font-size:12px">도센터 전화번호</label>':''}<input id="o_center" placeholder="${org.is_hq?"도센터(강원도수어통역센터) 전화번호":"센터 전화번호"}" value="${esc(org.center_phone)}"></div>
     <input id="o_direct" placeholder="직통번호 (선택)" value="${esc(org.direct_phone)}">
     <input id="o_addr" placeholder="주소 (선택)" value="${esc(org.address)}">
     <button class="btn full" onclick="orgSave()">저장</button></div></div>
     <div class="card"><h2>🔴 직인</h2><div class="muted">PNG·JPG 이미지를 올리면 자동으로 크기를 줄입니다. 배경이 투명한 PNG가 가장 깔끔합니다.</div>
-    ${Object.keys(SEAL_NAMES).filter(k=>!(org.is_hq&&k==="센터")).map(k=>`<div class="st" style="margin-top:10px"><div><b>${SEAL_NAMES[k]}</b>
+    ${Object.keys(SEAL_NAMES).map(k=>`<div class="st" style="margin-top:10px"><div><b>${org.is_hq?(k==="지회"?"도협회 직인":"도센터 직인 (강원도수어통역센터)"):SEAL_NAMES[k]}</b>
       ${org.seals[k]?`<div><img src="${esc(org.seals[k])}" style="max-height:80px;max-width:160px;border:1px solid #ddd;margin-top:4px"></div>`:'<div class="muted">등록된 직인이 없습니다.</div>'}</div>
       <div><input type="file" accept="image/png,image/jpeg,image/webp" id="o_f_${k}" style="display:none" onchange="orgSeal('${k}',this)">
       <button class="btn sub sm" onclick="$('#o_f_${k}').click()">${org.seals[k]?"바꾸기":"올리기"}</button>

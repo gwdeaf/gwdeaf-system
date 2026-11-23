@@ -281,6 +281,13 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 /* 휴대폰 홈: 즐겨찾기 맨 위 + 카드는 아이콘 → 누르면 크게 */
 #mhome{display:none}
 @media(max-width:860px){body.fs-big .mq,body.fs-big .mt{grid-template-columns:repeat(3,1fr)}}
+/* 휴대폰 뉴스 통역: 날짜 한 줄 + 아래에 배정(줄바꿈) → 큰 글씨에서도 다 보임 */
+@media(max-width:860px){
+  #newsbox .sch{flex-direction:column;align-items:flex-start;gap:4px}
+  #newsbox .sch .dt{width:auto!important;white-space:nowrap}
+  #newsbox .sch .tx{white-space:normal;overflow:visible;text-overflow:clip;display:flex;flex-wrap:wrap;gap:2px 10px}
+  #newsbox .sch .tx>span{margin:0!important}
+}
 /* 휴대폰 위쪽: 1줄 = ☰ 로고·업무 시스템(홈) … 사용설명서 / 2줄 = 이름 · 출퇴근 · 글씨 크기 */
 .mbrand,.mbreak,.mfs2,.gtx2{display:none}
 @media(max-width:860px){

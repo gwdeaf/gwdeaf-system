@@ -424,7 +424,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
           <div id="board"><div class="empty">불러오는 중…</div></div>
         </div>
         <div class="card hide" id="newscard" data-mi="📺" data-ml="뉴스 통역" style="order:2">
-          <div class="ctitle"><span>📺 뉴스 통역 (7일)</span><a class="btn" href="/news/" target="_blank" rel="noopener">배정표 열기 ↗</a></div>
+          <div class="ctitle"><span>📺 뉴스 통역 (7일)</span><a class="btn" href="/news/" target="_blank" rel="noopener" onclick="if(window.innerWidth<=860){location.href='/news/';return false;}">배정표 열기 ↗</a></div>
           <div id="newsbox"><div class="empty">불러오는 중…</div></div>
         </div>
       </div>

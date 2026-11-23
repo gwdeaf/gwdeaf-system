@@ -1464,7 +1464,7 @@
 
   <!-- STEP 2: 보고서 작성 (종료 후 표시) -->
   <div class="card" id="ot-step-report" style="display:none;">
-    <div class="card-title">📝 시간외근무 보고서</div>
+    <div class="card-title">📝 시간외 근무 보고서</div>
     <div id="ot-manual-box" style="display:none;background:#fff8e6;border:1px solid #f0d58a;border-radius:8px;padding:0.6rem 0.8rem;font-size:0.83rem;margin-bottom:0.7rem;line-height:1.6;"></div>
     <div class="form-grid">
       <div class="form-group">
@@ -4649,6 +4649,23 @@ function renderOtRequests() {
       + '<td style="padding:7px 8px;text-align:center;white-space:nowrap;">'+act+'</td></tr>';
   }).join('');
   otSaveClear();   // 예전 시계 기록은 쓰지 않음
+  var auto = ''; try { auto = localStorage.getItem('otAutoReport') || ''; localStorage.removeItem('otAutoReport'); } catch (e) {}
+  if (auto && otReqs.some(function(x){ return x.id === auto; })) otReportStart(auto);
+}
+// 퇴근을 찍으면: 오늘 수락된 시간외 사전 신청이 있으면 바로 보고서 작성 화면으로
+function otAfterPunchOut(outTime) {
+  if (!leaveUser) return;
+  gasRun('getMyOvertimeRequests', JSON.stringify({name: leaveUser.name}), function(list) {
+    var today = localDateStr();
+    var h = (Array.isArray(list) ? list : []).filter(function(x){ return x.workDate === today && otReqReady(x.status) && x.startTime < String(outTime || ''); })[0];
+    if (!h) return;
+    try { localStorage.setItem('otAutoReport', h.id); } catch (e) {}
+    punchAlert('✅ 퇴근이 기록되었습니다 — <b>' + esc(outTime) + '</b><br>오늘 시간외 사전 신청('+esc(h.startTime)+'~'+esc(h.endTime)+')이 있어 <b>시간외 보고서 작성</b> 화면으로 이동합니다…', 'success');
+    setTimeout(function() {
+      if (EMBED && EMBED_GO === 'punch' && window.parent !== window) { try { window.parent.postMessage({ type: 'ot-report' }, location.origin); return; } catch (e) {} }
+      switchTab('overtime');
+    }, 1500);
+  }, function(){});
 }
 // 화면을 닫았다 열어도 켜 둔 시계를 이어서 (이 기기에 저장)
 function otRestoreTimer() {
@@ -4931,9 +4948,9 @@ function calcOvertimeLeave() {
       // 결과 렌더링
       var wb = document.getElementById('ot-warn-box');
       if (res.warning) { wb.style.display=''; wb.textContent=res.warning; } else { wb.style.display='none'; }
-      var html = '<div class="result-row"><span class="r-label">총 근무시간</span><span class="r-value">'+res.totalHours+'h</span></div>';
-      if (res.shortage>0) html += '<div class="result-row"><span class="r-label">수당 제외 (부족분)</span><span class="r-value" style="color:#f59e0b">-'+res.shortage+'h</span></div>';
-      html += '<div class="result-row"><span class="r-label">수당 발생 시간</span><span class="r-value">'+res.paidHours+'h</span></div>';
+      var html = '<div class="result-row"><span class="r-label">총 근무시간</span><span class="r-value">'+fmtHM(res.totalHours)+'</span></div>';
+      if (res.shortage>0) html += '<div class="result-row"><span class="r-label">수당 제외 (부족분)</span><span class="r-value" style="color:#f59e0b">-'+fmtHM(res.shortage)+'</span></div>';
+      html += '<div class="result-row"><span class="r-label">수당 발생 시간</span><span class="r-value">'+fmtHM(res.paidHours)+'</span></div>';
       (res.details||[]).forEach(function(d){ if(d.paidHours>0) html+='<div class="result-row"><span class="r-label">'+d.label+'</span><span class="r-value">'+Math.round(d.pay).toLocaleString()+'원</span></div>'; });
       html += '<div class="result-row total"><span class="r-label">예상 수당 합계</span><span class="r-value">'+res.totalPay.toLocaleString()+'원</span></div>';
       document.getElementById('ot-calc-detail').innerHTML = html;
@@ -5011,17 +5028,20 @@ function resetOtFormLeave() {
   initOtForm();
 }
 
+// 시간 표기: 1.5 → '01시간 30분'
+function fmtHM(h) { var m = Math.round((Number(h) || 0) * 60); return String(Math.floor(m / 60)).padStart(2, '0') + '시간 ' + String(m % 60).padStart(2, '0') + '분'; }
+function hmDiff(s, e) { var p = function(t){ var a = String(t || '').split(':'); return (+a[0] || 0) * 60 + (+a[1] || 0); }; var d = p(e) - p(s); if (d < 0) d += 1440; return d / 60; }
 function printOvertimeReq(dArg) {
   var d = dArg || lastOtReqData;
   if (!d) return;
   var printWin = window.open('','_blank','width=800,height=600');
   if (!printWin) { alert('팝업이 차단되었습니다. 팝업을 허용해 주세요.'); return; }
-  printWin.document.write('<html><head><title>시간외근무신청서</title><style>body{font-family:"맑은 고딕","Noto Sans KR",sans-serif;font-size:11pt;padding:20mm 15mm;}h2{text-align:center;font-size:18pt;letter-spacing:.2em;margin:0;}table{width:100%;border-collapse:collapse;margin-bottom:5mm;}td{border:1px solid black;padding:4px 8px;}td.lb{background:#f0f0f0;font-weight:700;text-align:center;width:25mm;}.val{min-height:12mm;}</style></head><body>');
-  printWin.document.write('<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8mm;"><h2>시 간 외 근 무 신 청 서</h2>'+approvalBoxHTML(d.dept)+'</div>');
+  printWin.document.write('<html><head><title>시간외 근무 보고서</title><style>body{font-family:"맑은 고딕","Noto Sans KR",sans-serif;font-size:11pt;padding:20mm 15mm;}h2{text-align:center;font-size:18pt;letter-spacing:.2em;margin:0;}table{width:100%;border-collapse:collapse;margin-bottom:5mm;}td{border:1px solid black;padding:4px 8px;}td.lb{background:#f0f0f0;font-weight:700;text-align:center;width:25mm;}.val{min-height:12mm;}</style></head><body>');
+  printWin.document.write('<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8mm;"><h2>시간외 근무 보고서</h2>'+approvalBoxHTML(d.dept)+'</div>');
   printWin.document.write('<table><tr><td class="lb">성명</td><td>'+d.name+'</td><td class="lb">부서</td><td>'+d.dept+'</td></tr>');
-  printWin.document.write('<tr><td class="lb">직위</td><td>'+d.position+'</td><td class="lb">신청일</td><td>'+d.date+'</td></tr>');
-  printWin.document.write('<tr><td class="lb">근무일</td><td>'+d.workDate+'</td><td class="lb">시간</td><td>'+d.startT+' ~ '+d.endT+'</td></tr>');
-  printWin.document.write('<tr><td class="lb">수당 발생시간</td><td>'+d.paidH+'h</td><td class="lb">예상 수당</td><td>'+d.pay+'원</td></tr>');
+  printWin.document.write('<tr><td class="lb">직위</td><td>'+d.position+'</td><td class="lb">작성일</td><td>'+d.date+'</td></tr>');
+  printWin.document.write('<tr><td class="lb">근무일</td><td>'+d.workDate+'</td><td class="lb">근무시간</td><td>'+d.startT+' ~ '+d.endT+' ('+fmtHM(hmDiff(d.startT, d.endT))+')</td></tr>');
+  printWin.document.write('<tr><td class="lb">수당 발생시간</td><td>'+fmtHM(d.paidH)+'</td><td class="lb">예상 수당</td><td>'+d.pay+'원</td></tr>');
   printWin.document.write('<tr><td class="lb">업무내용</td><td colspan="3" class="val">'+d.content+'</td></tr>');
   var gpsStartCell = d.gpsStart ? d.gpsStart + (d.gpsStartMap ? ' <a href="'+d.gpsStartMap+'" target="_blank">[지도]</a>' : '') : '기록 없음';
   var gpsEndCell   = d.gpsEnd   ? d.gpsEnd   + (d.gpsEndMap   ? ' <a href="'+d.gpsEndMap+'"   target="_blank">[지도]</a>' : '') : '기록 없음';
@@ -5031,9 +5051,9 @@ function printOvertimeReq(dArg) {
     printWin.document.write('<p style="font-weight:700;margin:5mm 0 2mm;">📷 업무 사진</p>');
     printWin.document.write('<img src="'+d.photoUrl+'" style="max-width:100%;max-height:120mm;border:1px solid #ccc;border-radius:4px;">');
   }
-  printWin.document.write('<p style="text-align:center;margin:8mm 0;">위와 같이 시간외근무를 신청합니다.</p>');
+  printWin.document.write('<p style="text-align:center;margin:8mm 0;">위와 같이 시간외 근무를 보고합니다.</p>');
   printWin.document.write('<p style="text-align:center;">'+d.date+'</p>');
-  printWin.document.write('<p style="text-align:center;">신청인: '+d.name+' (서명 또는 인)</p>');
+  printWin.document.write('<p style="text-align:center;">보고자: '+d.name+' (서명 또는 인)</p>');
   printWin.document.write(addresseeHTML(d.dept));
   printWin.document.write('</body></html>');
   printWin.document.close();
@@ -6714,6 +6734,7 @@ function punchSend(type, geo, reason, saveReason, place, geoNote) {
       var name = type === 'in' ? '출근' : type === 'out' ? '퇴근' : '출장';
       punchAlert('✅ ' + name + '이(가) 기록되었습니다 — <b>' + esc(res.time) + '</b><br><span style="font-size:0.85rem;">' + esc(res.addr || '') + '</span>', 'success');
       renderPunchStatus(res.today);
+      if (type === 'out') otAfterPunchOut(res.time);
     } else if (res && res.needReason) {
       showReasonPanel(res, geoNote);
       var t = punchState.info && punchState.info.today; if (t) renderPunchStatus(t);

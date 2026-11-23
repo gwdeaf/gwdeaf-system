@@ -84,6 +84,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .nth .d{color:var(--mute);font-size:.8rem;flex:none}
 .badge{flex:none;font-size:.75rem;font-weight:800;border-radius:6px;padding:3px 7px}
 .b-imp{background:var(--red-soft);color:var(--red)}
+.ntnew{flex:none;width:8px;height:8px;border-radius:50%;background:var(--red)}
 .b-all{background:var(--pri-soft);color:var(--pri)}
 .b-chap{background:#eef0f5;color:#6b7280}
 .ntb{padding:0 2px 14px;color:#374151;line-height:1.65;white-space:pre-wrap;word-break:break-word}
@@ -868,7 +869,7 @@ async function loadPrefs(){
 /* ── 휴대폰 홈: 카드를 아이콘으로 · 누르면 크게 ── */
 var MCARDS = ['todaycard', 'card-notice', 'card-board', 'card-att', 'calcard', 'newscard', 'mgr-card'];
 function mhCount(id){
-  if (id === 'card-notice') return (NOTICES || []).length;
+  if (id === 'card-notice') return ntUnread();
   if (id === 'todaycard') { var b = $('todaybox'); return b ? b.querySelectorAll('.sch').length : 0; }
   return 0;
 }
@@ -984,13 +985,24 @@ async function loadNoticeMeta(){
   try { var r = await sb.rpc('notice_meta'); NMETA = r.data || null; } catch(e){ NMETA = null; }
   $('notice-add').classList.toggle('hide', !(NMETA && NMETA.can_write));
 }
+var NREAD = {};
+// 안 읽은 공지: 내가 쓴 공지가 아니고, 30일 안에 올라왔고, 아직 펼쳐 보지 않은 것
+function ntIsNew(n){ return n && !n.mine_sent && !NREAD[n.id] && (Date.now() - new Date(n.created_at).getTime()) < 30 * 864e5; }
+function ntUnread(){ return (NOTICES || []).filter(ntIsNew).length; }
+function ntCount(){
+  var n = ntUnread(), t = document.querySelector('#card-notice .ctitle span');
+  if (t) { var b = t.querySelector('.nbadge'); if (!b) { b = document.createElement('span'); b.className = 'nbadge'; b.style.marginLeft = '6px'; t.appendChild(b); } b.textContent = n; b.classList.toggle('hide', !n); }
+  if (typeof mhRender === 'function') mhRender();
+}
 async function loadNotices(){
+  try { var rr = await sb.rpc('notice_read_ids'); NREAD = {}; (rr.data || []).forEach(function(id){ NREAD[id] = 1; }); } catch(e){}
   var r = await sb.rpc('list_notices', { p_limit: 30 });
   if (r.error) { $('notices').innerHTML = '<div class="empty">공지를 불러오지 못했습니다.<br>' + esc(r.error.message) + '</div>'; return; }
   NOTICES = r.data || [];
   if (!NOTICES.length) { $('notices').innerHTML = '<div class="empty">등록된 공지가 없습니다.</div>'; return; }
   $('notices').innerHTML = NOTICES.map(function(n, i){
     return '<div class="nt"><div class="nth" onclick="toggleNotice(' + i + ')">'
+      + (ntIsNew(n) ? '<span class="ntnew" id="nn' + i + '" title="안 읽음"></span>' : '')
       + (n.important ? '<span class="badge b-imp">중요</span>' : '')
       + (n.mine_sent ? '<span class="badge b-sent">보낸 공지</span>' : '')
       + (n.audience && n.audience !== 'all' ? '<span class="badge b-aud">' + esc(n.audience_label) + '</span>' : '')
@@ -1001,8 +1013,13 @@ async function loadNotices(){
       + (n.can_edit ? '<button class="btn sm" onclick="openNotice(' + i + ')">수정</button><button class="btn sm red" onclick="delNotice(' + n.id + ')">삭제</button>' : '')
       + '</div></div></div>';
   }).join('');
+  ntCount();
 }
-function toggleNotice(i){ $('nb' + i).classList.toggle('hide'); }
+function toggleNotice(i){
+  $('nb' + i).classList.toggle('hide');
+  var n = NOTICES[i];
+  if (ntIsNew(n)) { NREAD[n.id] = 1; var d = $('nn' + i); if (d) d.remove(); ntCount(); sb.rpc('notice_mark_read', { p_id: n.id }).then(function(){}, function(){}); }
+}
 function openNotice(i){
   var n = (i === undefined) ? null : NOTICES[i], M = NMETA || { audiences: [{ v:'all', label:'전 직원' }], hq: false, chapters: [] };
   var aud = n ? n.audience : (M.audiences[0] ? M.audiences[0].v : 'all');

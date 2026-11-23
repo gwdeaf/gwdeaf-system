@@ -6217,6 +6217,15 @@ function promoWeekdays(s, e) {
 function promoPeriods(plans) {
   return (plans||[]).map(function(p){ return esc(p.start)+(p.end&&p.end!==p.start?' ~ '+esc(p.end):'')+' ('+fmtDays(p.days)+')'; }).join('<br>');
 }
+// 이미 사용한 연가 (자동, 고칠 수 없음)
+function promoUsedHtml(list) {
+  list = list || [];
+  var sum = list.reduce(function(a, x){ return a + (Number(x.days)||0); }, 0);
+  return '<div style="font-weight:700;margin:0.4rem 0">✅ 이미 사용한 연가 <span style="font-weight:400;color:var(--text-muted);font-size:0.85rem">(자동 · 합계 '+fmtDays(sum)+')</span></div>'
+    + (list.length ? '<table class="adm-table" style="width:100%;max-width:560px;margin-bottom:0.8rem;background:#f5f6f8;color:#555"><thead><tr><th>기간</th><th>구분</th><th>일수</th></tr></thead><tbody>'
+      + list.map(function(x){ return '<tr><td>'+(x.start ? esc(x.start)+(x.end && x.end !== x.start ? ' ~ '+esc(x.end) : '') : '-')+'</td><td>'+esc(x.kind)+'</td><td>'+fmtDays(x.days)+'</td></tr>'; }).join('')
+      + '</tbody></table>' : '<div class="hint" style="margin-bottom:0.8rem">올해 사용한 연가가 없습니다.</div>');
+}
 function loadPromoMy() {
   var body = document.getElementById('promo-my-body'); if (!body) return;
   body.innerHTML = '<div class="card"><div class="hint">불러오는 중...</div></div>';
@@ -6253,6 +6262,8 @@ function renderPromoMy() {
       + '<div class="stat-box stat-success"><div class="stat-num">'+fmtDays(n.remain)+'</div><div class="stat-label">잔여 일수(통지 시점)</div></div></div>'
       + (copyOpts ? '<div style="margin-bottom:0.6rem;display:flex;gap:0.4rem;flex-wrap:wrap;align-items:center;"><select id="pcopy-'+n.round+'" style="max-width:100%">'+copyOpts+'</select>'
         + '<button class="btn btn-outline btn-sm" onclick="promoCopy('+n.round+')">📋 이 계획서를 복사해서 수정</button></div>' : '')
+      + promoUsedHtml(promoMy.usedList)
+      + '<div style="font-weight:700;margin:0.4rem 0">📝 앞으로 사용할 계획</div>'
       + '<table class="adm-table" style="width:100%;max-width:560px"><thead><tr><th>시작일</th><th>종료일</th><th>일수</th><th></th></tr></thead><tbody>'+trs+'</tbody></table>'
       + '<div style="margin:0.6rem 0;display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;">'
       + '<button class="btn btn-outline btn-sm" onclick="promoAddRow('+n.round+')">+ 기간 추가</button>'
@@ -6306,7 +6317,8 @@ function submitPromo(round) {
 function printMyPromo(i) {
   var h = promoMy.history[i]; if (!h) return;
   printPromoEntries([{ name:leaveUser.name, dept:leaveUser.dept||'', position:leaveUser.position||'', year:h.year, round:h.round,
-    noticeDate:h.date, granted:h.granted, used:h.used, remain:h.remain, plans:h.plans, planDays:h.planDays, submitted:h.submitted }]);
+    noticeDate:h.date, granted:h.granted, used:h.used, remain:h.remain, plans:h.plans, planDays:h.planDays, submitted:h.submitted,
+    usedList: h.year === promoMy.year ? promoMy.usedList : null }]);
 }
 // 연가 사용 계획서 인쇄 (여러 명이면 한 명당 한 장) — 직원 본인·관리자 공용
 function printPromoEntries(entries) {
@@ -6319,6 +6331,9 @@ function printPromoEntries(entries) {
     w.document.write('<div class="pg"><div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8mm;"><h2>연 가 사 용 계 획 서</h2>'+approvalBoxHTML(e.dept)+'</div>'
       + '<table><tr><td class="lb">성명</td><td>'+esc(e.name)+'</td><td class="lb">부서</td><td>'+esc(e.dept||'')+'</td></tr><tr><td class="lb">직위</td><td>'+esc(e.position||'')+'</td><td class="lb">통지 회차</td><td>'+e.year+'년 '+e.round+'회차'+(e.noticeDate?' ('+esc(e.noticeDate)+')':'')+'</td></tr>'
       + '<tr><td class="lb">연가 부여</td><td>'+fmtDays(e.granted)+'</td><td class="lb">사용 / 잔여</td><td>'+fmtDays(e.used)+' / '+fmtDays(e.remain)+'</td></tr></table>'
+      + (e.usedList && e.usedList.length ? '<div style="font-weight:700;margin:0 0 2mm">이미 사용한 연가</div><table><thead><tr><th style="width:15mm">번호</th><th>사용 기간</th><th style="width:30mm">구분</th><th style="width:30mm">일수</th></tr></thead><tbody>'
+        + e.usedList.map(function(x, i){ return '<tr><td>'+(i+1)+'</td><td>'+(x.start ? esc(x.start)+(x.end && x.end !== x.start ? ' ~ '+esc(x.end) : '') : '-')+'</td><td>'+esc(x.kind)+'</td><td>'+fmtDays(x.days)+'</td></tr>'; }).join('')
+        + '</tbody></table><div style="font-weight:700;margin:0 0 2mm">사용 계획</div>' : '')
       + '<table><thead><tr><th style="width:15mm">번호</th><th>사용 기간</th><th style="width:30mm">일수</th></tr></thead><tbody>'+rows+'<tr><td colspan="2"><b>합계</b></td><td><b>'+fmtDays(e.planDays)+'</b></td></tr></tbody></table>'
       + '<p style="text-align:center;margin:8mm 0;">위와 같이 연가 사용 계획을 제출합니다.</p><p style="text-align:center;">'+esc(e.submitted||'')+'</p><p style="text-align:center;">제출자: '+esc(e.name)+' (서명 또는 인)</p>'
       + addresseeHTML(e.dept)+'</div>');

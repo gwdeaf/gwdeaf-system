@@ -473,13 +473,13 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
     <div class="inqwrap">
       <div class="inqlist" id="inq-listbox">
         <div class="inqtools">
-          <button class="btn pri" onclick="inqNewForm()">+ 새 문의</button>
+          <button class="btn pri" onclick="inqNewForm()">+ 문의</button>
           <select id="inq-f-st" onchange="inqDraw()"><option value="진행">진행 중</option><option value="해결">해결</option><option value="">전체</option></select>
-          <select id="inq-f-cat" onchange="inqDraw()"><option value="">모든 분류</option><option>수어교육</option><option>통역</option><option>근태</option><option>회계</option><option>공문</option><option>사업실적</option><option>기타</option></select>
+          <select id="inq-f-cat" onchange="inqDraw()"><option value="">모든 분류</option><option>수어교육</option><option>통역</option><option>근태</option><option>회계</option><option>공문</option><option>사업실적</option><option>구글 Workspace</option><option>기타</option></select>
         </div>
         <div id="inq-list"><div class="empty">불러오는 중…</div></div>
       </div>
-      <div class="inqthread" id="inq-thread"><div class="empty">왼쪽에서 문의를 고르거나 <b>+ 새 문의</b>를 누르세요.<br><span class="mute">도협회나 다른 지회에 물어볼 수 있습니다. 개인정보(수강생·이용인 이름 등)는 적지 마세요.</span></div></div>
+      <div class="inqthread" id="inq-thread"><div class="empty">왼쪽에서 문의를 고르거나 <b>+ 문의</b>를 누르세요.<br><span class="mute">도협회나 다른 지회에 물어볼 수 있습니다. 개인정보(수강생·이용인 이름 등)는 적지 마세요.</span></div></div>
     </div>
   </main>
   <div id="view-frame" class="hide">
@@ -577,7 +577,7 @@ function renderNav(){
     if (bookMgr) h += kidHtml('book', false, 'admin', '교재 주문 관리').replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', '<span class="nbadge hide" id="book-badge"></span></a>');
   }
   h += grpHtml('📝', '공문 작성') + kidHtml('doc', false, 'internal', '내부결재') + kidHtml('doc', false, 'coop', '업무협조전') + kidHtml('doc', false, 'send', '문서 발송') + kidHtml('doc', false, 'recv', '받은 문서').replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', '<span class="nbadge hide" id="docr-badge"></span></a>') + kidHtml('doc', false, 'sent', '보낸 문서') + kidHtml('doc', false, 'ledger', '공문 대장');
-  if (hasPerm('interp.')) h += grpHtml('🗣', '통역실적') + kidHtml('interp', false, 'dash', '대시보드') + kidHtml('interp', false, 'log', '통역일지')
+  if (hasPerm('interp.')) h += grpHtml('🗣', '통역실적') + kidHtml('interp', false, 'log', '통역일지')
     + (['interp.view', 'interp.report', 'interp.review'].some(function(k){ return (ME.perms || []).indexOf(k) >= 0; }) ? kidHtml('interp', false, 'stats', '통계') : '');
   h += grpHtml('📒', '업무일지') + kidHtml('worklog', false, 'write', '업무일지 작성') + kidHtml('worklog', false, 'print', '업무일지 인쇄');
   if (hasPerm('acct.')) h += grpHtml('💰', '회계') + kidHtml('acct', false, 'budget', '예산 편성') + kidHtml('acct', false, 'prop', '품의') + kidHtml('acct', false, 'res', '결의') + kidHtml('acct', false, 'cash', '출납부') + kidHtml('acct', false, 'ledger', '원장') + kidHtml('acct', false, 'bank', '통장 내역') + kidHtml('acct', false, 'status', '집행 현황');
@@ -1123,9 +1123,9 @@ async function inqSetStatus(done){
 async function inqNewForm(){
   INQ_CUR = null; inqDraw(); document.querySelector('.inqwrap').classList.add('reading');
   var r = await sb.rpc('inq_targets'), tg = r.data || { chapters: [] };
-  $('inq-thread').innerHTML = '<div class="iform"><div class="ith"><button class="btn sm" onclick="document.querySelector(\'.inqwrap\').classList.remove(\'reading\')">←</button><h3>새 문의</h3></div>'
+  $('inq-thread').innerHTML = '<div class="iform"><div class="ith"><button class="btn sm" onclick="document.querySelector(\'.inqwrap\').classList.remove(\'reading\')">←</button><h3>문의</h3></div>'
     + '<label>받는 곳</label><select id="iq-to">' + (tg.is_hq ? '' : '<option value="hq">도협회</option>') + tg.chapters.map(function(c){ return '<option value="' + c.id + '">' + esc(c.name) + '</option>'; }).join('') + '</select>'
-    + '<label>분류</label><select id="iq-cat"><option>수어교육</option><option>통역</option><option>근태</option><option>회계</option><option>공문</option><option>사업실적</option><option selected>기타</option></select>'
+    + '<label>분류</label><select id="iq-cat"><option>수어교육</option><option>통역</option><option>근태</option><option>회계</option><option>공문</option><option>사업실적</option><option>구글 Workspace</option><option selected>기타</option></select>'
     + '<label>제목</label><input id="iq-t" maxlength="100" placeholder="비우면 내용 첫 줄">'
     + '<label>내용</label><textarea id="iq-b" maxlength="2000" style="min-height:140px" placeholder="개인정보(수강생·이용인 이름, 연락처 등)는 적지 마세요."></textarea>'
     + '<div class="mute" style="margin-top:6px">받는 곳에서는 지회 담당자와 그 분류 업무 담당자가 봅니다. 도협회는 지회끼리 주고받은 문의도 볼 수 있습니다.</div>'

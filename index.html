@@ -372,6 +372,34 @@ html.dark img,html.dark video,html.dark canvas,html.dark .noinv{filter:invert(1)
 .thm button{border:0;background:none;border-radius:8px;padding:5px 9px;font-size:.82rem;font-weight:700;color:var(--mute);cursor:pointer;white-space:nowrap}
 .thm button.on{background:var(--pri-soft);color:var(--pri)}
 @media(max-width:860px){.thm button{padding:4px 7px;font-size:.78rem}}
+/* 휴대폰 위쪽 정리 (1줄: ☰ 로고 업무 시스템 … ☀️🌙 📖 / 2줄: 이름 · 출퇴근 · 가−가+) */
+@media(max-width:860px){
+  .topbar{padding:6px 10px;row-gap:6px;gap:6px}
+  .menubtn{order:1;padding:4px 8px}
+  .mbrand{order:2;flex:1;font-size:.98rem;white-space:nowrap;overflow:hidden}
+  .mbrand span{overflow:hidden;text-overflow:ellipsis}
+  .mbrand img{width:26px;height:26px}
+  .thm{order:3;margin-left:auto;flex:none}
+  .thm .tt{display:none}
+  .thm button{padding:4px 8px;font-size:.9rem}
+  .gbtn2{order:4;margin-left:0;flex:none;padding:5px 9px}
+  .gbtn2 .gtx2,.gbtn2 .gtx{display:none!important}
+  .mbreak{order:5}
+  .tuser{order:6;flex:none}.tuser .av{display:none}
+  .tuser span{font-size:14px}
+  .pstat,.pbtn{order:7;flex:none}
+  .pstat{padding:5px 7px;font-size:12px}
+  .pbtn{padding:6px 10px;font-size:13px}
+  .mfs2{order:8;flex:none}
+  .mfs2 button{padding:4px 9px;font-size:13px}
+  .mfs2 button+button{font-size:14px}
+  .mbrand{font-size:16px}.thm button{font-size:14px}.gbtn2{font-size:14px}
+  .wltabs,.wldate{order:9}
+  /* 바로가기: 띠 대신 홈 화면 큰 버튼 */
+  .qbar{display:none!important}
+  #mhome .mh-sec.mqh{display:flex!important}
+  #mquick{display:grid!important}
+}
 </style>
 <link rel="stylesheet" href="/ui.css?v=1">
 <style>.gbtn2{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 11px;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--text)}.gbtn2:hover{background:var(--pri-soft)}@media(max-width:600px){.gbtn2 .gtx{display:none}}</style>
@@ -426,7 +454,7 @@ html.dark img,html.dark video,html.dark canvas,html.dark .noinv{filter:invert(1)
       <span class="tdate" id="today"></span>
       <span class="pstat hide" id="pstat" onclick="openPunch()" title="출퇴근 기록"></span>
       <button class="pbtn hide" id="pbtn" onclick="openPunch()">📍 출퇴근</button>
-      <div class="thm" title="화면 모드"><button data-th="light" onclick="setTheme('light')">☀️ 라이트</button><button data-th="dark" onclick="setTheme('dark')">🌙 다크</button></div>
+      <div class="thm" title="화면 모드"><button data-th="light" onclick="setTheme('light')">☀️<span class="tt"> 라이트</span></button><button data-th="dark" onclick="setTheme('dark')">🌙<span class="tt"> 다크</span></button></div>
       <button class="gbtn2" onclick="openGuide(ME, (CUR||'home').split(':')[0])" title="사용 안내">📖<span class="gtx"> 사용 안내</span><span class="gtx2"> 사용설명서</span></button>
       <div class="tuser" onclick="openMy()" title="마이페이지"><div class="av sm" id="tb-av"></div><span id="tb-nm"></span></div>
     </div>
@@ -434,7 +462,7 @@ html.dark img,html.dark video,html.dark canvas,html.dark .noinv{filter:invert(1)
   <div class="qbar" id="qbar"><span class="ql">⭐ 바로가기</span><div id="quick" class="qchips"><span class="empty">불러오는 중…</span></div><button class="qed" onclick="openMy('quick')">편집</button></div>
   <main id="view-home">
     <div id="mhome">
-      <div class="mh-sec mqh">⭐ 즐겨찾기 <a onclick="openMy('quick')">편집</a></div>
+      <div class="mh-sec mqh">⭐ 바로가기 <a onclick="openMy('quick')">편집</a></div>
       <div id="mquick" class="mq"></div>
       <div class="mh-sec">한눈에 보기</div>
       <div id="mtiles" class="mt"></div>

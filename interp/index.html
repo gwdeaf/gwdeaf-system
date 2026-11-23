@@ -58,6 +58,21 @@
     button, select, input { min-height: 42px; } .row > div { min-width: 46%; }
     .list table { display: block; overflow-x: auto; white-space: nowrap; }
   }
+  /* 휴대폰 일지 쓰기: 한 줄에 3칸 · 여백 줄여 한 화면에 */
+  @media (max-width: 640px) {
+    #screenWrite h2, #screenCWrite h2 { display: none; }
+    #screenWrite .card, #screenCWrite .card { padding: 8px 10px; margin-bottom: 8px; }
+    #screenWrite .row, #screenCWrite .row { gap: 6px; flex-wrap: nowrap; }
+    #screenWrite .row > div, #screenCWrite .row > div { min-width: 0; flex: 1 1 0; }
+    #screenWrite label, #screenCWrite label { margin: 5px 0 2px; font-size: 12px; }
+    #screenWrite input, #screenWrite select, #screenCWrite input, #screenCWrite select { min-height: 38px; padding: 4px 6px; font-size: 14px; }
+    #screenWrite input[type=date], #screenCWrite input[type=date] { font-size: 12.5px; padding: 4px 3px; }
+    #screenWrite textarea, #screenCWrite textarea { min-height: 64px; font-size: 14px; }
+    #screenWrite .fav, #screenCWrite .fav { flex-wrap: nowrap; gap: 4px; margin-top: 4px; }
+    #screenWrite .fav button, #screenCWrite .fav button { min-height: 34px; padding: 4px 6px; font-size: 12.5px; margin: 0; flex: 1 1 0; min-width: 0; }
+    #saveBtn, #cSaveBtn { width: 100%; min-height: 46px; font-size: 16px; font-weight: 700; margin: 0; }
+    #screenWrite .card:last-child button, #screenCWrite .card:last-child button { min-height: 34px; font-size: 12.5px; padding: 4px 8px; }
+  }
 </style>
 <link rel="stylesheet" href="/ui.css?v=1">
 </head>

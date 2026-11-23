@@ -601,7 +601,8 @@ function renderNav(){
   [['leave','내 근태현황'],['leave-apply','휴가(시수) 신청'],['overtime','시간외 신청']].forEach(function(k){ h += kidHtml('att', false, k[0], k[1]); });
   h += kidHtml('att', false, 'attend', '월별 근태현황');
   if (ATT && ATT.staff && ATT.staff.role === '선임')   // 선임만 보임 (기존 '선임 확인' 권한 그대로)
-    h += grpHtml('✅', '선임 확인') + kidHtml('att', false, 'senior:leavemgr', '후임 신청 현황') + kidHtml('att', false, 'senior:dashboard', '시수 신청 현황') + kidHtml('att', false, 'senior:altdashboard', '대체시수 신청 현황');
+    h += grpHtml('✅', '선임 확인').replace('</div>', supB('total') + '</div>')
+      + supKid('senior:leavemgr', '후임 신청 현황', 'req') + supKid('senior:dashboard', '시수 신청 현황', 'sisu') + supKid('senior:altdashboard', '대체시수 신청 현황', 'alt');
   h += grpHtml('🚌', '출장 관리') + kidHtml('att', false, 'trip-apply', '출장 신청') + kidHtml('att', false, 'trip-hist', '출장 내역');
   if (isAttAdmin()) h += kidHtml('att', true, 'trip', '출장대장');
   if (hasPerm('vehicle.')) h += topHtml('car:s:', '🚗', '차량운행일지', "go('car')");
@@ -1103,7 +1104,16 @@ async function delNotice(id){
 var INQ = [], INQ_CUR = null, INQ_T = null;
 async function inqBadge(){
   try { var r = await sb.rpc('inq_badge'); var n = r.data || 0, b = $('inq-badge'); if (b) { b.textContent = n; b.classList.toggle('hide', !n); } } catch(e){}
-  docBadge(); bookBadge(); eduBadge();
+  docBadge(); bookBadge(); eduBadge(); supBadge();
+}
+// 선임: 후임이 신청해서 내가 처리할 건수 (시간외 사전신청·보고 확인·대체휴무)
+var SUPN = {};   // { total, req(시간외·대체휴무), sisu(시수·병가 시간), alt(대체시수) }
+function supB(k){ var n = SUPN[k] || 0; return '<span class="nbadge' + (n ? '' : ' hide') + '" data-sup="' + k + '">' + n + '</span>'; }
+function supKid(tab, label, k){ return kidHtml('att', false, tab, label).replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', supB(k) + '</a>'); }
+async function supBadge(){
+  if (!ATT || !ATT.staff || ATT.staff.role !== '선임') return;
+  try { var r = await attCall('getSupervisorPending', JSON.stringify({ auth: { name: ATT.staffName } })); if (!r || !r.ok) return; SUPN = { total: r.total || 0, req: r.req != null ? r.req : (r.total || 0), sisu: r.sisu || 0, alt: r.alt || 0 }; } catch(e){ return; }
+  document.querySelectorAll('[data-sup]').forEach(function(b){ var n = SUPN[b.getAttribute('data-sup')] || 0; b.textContent = n; b.classList.toggle('hide', !n); });
 }
 async function eduBadge(){ var b = $('edu-badge'); if (!b) return; try { var r = await sb.rpc('edu_confirm_badge'); var n = r.data || 0; b.textContent = n; b.classList.toggle('hide', !n); } catch(e){} }
 // 받은 공문 중 아직 접수 안 된 수 (우리 지회 누군가 접수하면 사라짐)
@@ -1334,7 +1344,7 @@ async function loadAtt(){
   try {
     var w = await attCall('whoami');
     if (!w || !w.ok) { el.innerHTML = '<div class="note">근태 정보를 불러오지 못했습니다.<br>' + esc((w && w.msg) || '') + '</div>'; return; }
-    ATT = w; renderNav();
+    ATT = w; renderNav(); supBadge();
     if (!w.staffName) { loadCal(); loadToday();
        if ($('punch')) $('punch').innerHTML = '<div class="note">근태 직원목록에 구글 계정이 연결되면 출퇴근을 기록할 수 있습니다.</div>'; el.innerHTML = '<div class="note">근태 직원목록에 내 구글 계정이 아직 연결되어 있지 않습니다.<br>지회 담당자에게 확인을 요청하세요.</div>'; return; }
     loadPunch(); loadCal(); loadToday();

@@ -536,7 +536,7 @@ function drawBiz() {
   const tc = sumI(['cases']), cc = sumC(['cases']);
   $('stTitle').textContent = `${d.centerName} · ${d.year}년 ${m1}월 ~ ${m2}월 사업실적`;
   const tline = (lab, f) => annual(f) ? `${lab} 연간 ${annual(f).toLocaleString()} → 월 ${(annual(f) / 12).toLocaleString(undefined, { maximumFractionDigits: 1 })} → 이 기간(${ms.length}개월) ${tgt(f).toLocaleString()}` : `${lab} 목표 없음`;
-  $('stBody').innerHTML = `<p class="muted noprint">통역일지·상담일지로 자동 계산합니다. 수어교육·기타는 직접 입력합니다.${d.c.canEdit ? ' <button class="sm" onclick="openTarget()">🎯 목표 설정</button> <button class="sm" onclick="openExtra()">✏️ 수어교육 · 기타 입력</button>' : ''}</p>
+  $('stBody').innerHTML = `<p class="muted noprint">통역일지·상담일지로 자동 계산합니다.${d.c.canEdit ? ' <button class="sm" onclick="openTarget()">🎯 목표 설정</button>' : me.can_review && !$('stCt').value ? ' <button class="sm" onclick="ownEdit(openTarget)">🎯 목표 설정 (도센터)</button>' : ''}</p>
     <div class="card noprint" style="padding:8px 12px;font-size:13px">🎯 ${tline('건수', 'targetCases')}<br>🎯 ${tline('연인원', 'targetPpl')}</div>
     <h3>1. 사업실적 <span class="muted" style="font-size:12px">(단위: 건, 명)</span></h3>
     <div class="card yr" style="overflow-x:auto"><table data-title="1. 사업실적"><thead>
@@ -552,6 +552,8 @@ function drawBiz() {
     ${simple('3. 상담 세부실적', [['상담의뢰방법', 7, cM.concat(['합계'])], ['상담대상', 5, cT.concat(['합계'])], ['상담영역', 8, cK.concat(['합계'])]],
       [...cM.map((x) => sumC(['method', x])), cc, ...cT.map((x) => sumC(['target', x])), cc, ...cK.map((x) => sumC(['kind', x])), cc])}`;
 }
+// 도협회 관리자가 '전체 센터'를 보고 있을 때: 도센터로 바꾼 뒤 입력 창 열기
+async function ownEdit(fn) { $('stCt').value = String(me.chapter_id); await loadYear(); if (YR && YR.c && YR.c.canEdit) fn(); }
 // 목표 설정: 연간 목표를 넣으면 월 목표 = 연간 ÷ 12 (사업실적은 고른 달 수만큼 곱함)
 function openTarget() {
   const ex = (YR.c && YR.c.extra) || {}, v = (f) => gv(ex[0], [f]) || '';

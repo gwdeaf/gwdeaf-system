@@ -207,7 +207,7 @@ async function boot() {
   me = data;
   $('whoText').textContent = `${me.is_hq ? me.chapter_name : (me.center_name || me.chapter_name)} · ${me.name} (${me.email})`;
   $('topNav').style.display = 'flex';
-  $('allBtn').style.display = me.can_view && !me.is_hq ? '' : 'none';
+  $('allBtn').style.display = me.can_view ? '' : 'none';
   $('statsBtn').style.display = me.can_stats || me.can_review ? '' : 'none';
   $('date').value = today(); $('c_date').value = today(); $('c_who').value = me.name;
   try { const r = await sb.rpc('interp_presets_get'); presets = r.data || {}; } catch (e) { presets = {}; }
@@ -224,7 +224,7 @@ function setTab(t) {
   tab = t;
   document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
   const C = isC(t);   // 상담일지 화면이면 상담 탭만, 아니면 통역 탭만 보임
-  document.querySelectorAll('.itab').forEach((b) => b.style.display = C ? 'none' : (b.id === 'allBtn' ? (me.can_view && !me.is_hq ? '' : 'none') : b.id === 'statsBtn' ? (me.can_stats || me.can_review ? '' : 'none') : ''));
+  document.querySelectorAll('.itab').forEach((b) => b.style.display = C ? 'none' : (b.id === 'allBtn' ? (me.can_view ? '' : 'none') : b.id === 'statsBtn' ? (me.can_stats || me.can_review ? '' : 'none') : ''));
   document.querySelectorAll('.ctab').forEach((b) => b.style.display = !C ? 'none' : (b.id === 'callBtn' ? (me.can_view ? '' : 'none') : ''));
   subTell(t === 'stats' ? 'stats' : C ? 'counsel' : 'log');
   if (t === 'cwrite') {
@@ -385,23 +385,23 @@ function drawCenterStats() {
   const d = ST, r = d.report || {}, st = r.status || 'DRAFT', snap = st === 'SUBMITTED' || st === 'APPROVED';
   $('stTitle').textContent = `${d.centerName} · 통역 실적 통계`;
   const btn = d.isHq ? '<span class="muted">도센터는 도협회에 보고하지 않습니다. 이 통계는 도협회 전체 통계에 바로 들어갑니다.</span>'
-    : !d.canReport ? '<span class="muted">도협회 보고는 센터 담당자(보고 권한)가 합니다.</span>'
-    : st === 'DRAFT' ? `<button class="main" onclick="submitReport()">📤 도협회 보고</button>`
-    : st === 'REJECTED' ? `<button class="main" onclick="submitReport()">📤 재보고</button>`
+    : !d.canReport ? '<span class="muted">도센터 보고는 센터 담당자(보고 권한)가 합니다.</span>'
+    : st === 'DRAFT' ? `<button class="main" onclick="submitReport()">📤 도센터에 보고</button>`
+    : st === 'REJECTED' ? `<button class="main" onclick="submitReport()">📤 도센터에 다시 보고</button>`
     : st === 'SUBMITTED' ? `<button onclick="cancelReport()">보고 취소</button> <span class="muted">보고한 달은 통역일지를 새로 입력할 수 없습니다(잠금). 고칠 내용이 있으면 보고를 취소하세요.</span>`
-    : '<span class="muted">도협회가 승인하여 도협회 전체 통계에 반영되었습니다. 이 달의 통역일지는 잠겨 있습니다.</span>';
+    : '<span class="muted">도센터가 승인하여 전체 통계에 반영되었습니다. 이 달의 통역일지는 잠겨 있습니다.</span>';
   $('stBody').innerHTML = (me.can_review ? '<div class="noprint" style="margin-bottom:10px"><button onclick="loadStats()">← 센터별 보고 현황</button></div>' : '') + `<div class="card"><div class="stbar"><b>${esc(d.centerName)}</b> · ${ymText(d.targetYearMonth)} ${stBadge(st, r.submittedAt)}</div>
-      ${st === 'REJECTED' ? `<div class="reject"><b>도협회 보완 요청</b> (${dtText(r.reviewedAt)} · ${esc(r.reviewedBy || '')})<br>사유: ${esc(r.rejectReason)}<br><span style="font-size:12px">잠금이 풀렸습니다. 통역일지를 고친 뒤 [재보고]를 누르세요.</span></div>` : ''}
+      ${st === 'REJECTED' ? `<div class="reject"><b>도센터 보완 요청</b> (${dtText(r.reviewedAt)} · ${esc(r.reviewedBy || '')})<br>사유: ${esc(r.rejectReason)}<br><span style="font-size:12px">잠금이 풀렸습니다. 통역일지를 고친 뒤 [재보고]를 누르세요.</span></div>` : ''}
       ${r.submittedAt && st !== 'DRAFT' ? `<div class="muted" style="margin-top:4px">보고: ${dtText(r.submittedAt)} · ${esc((r.submittedBy || {}).name || '')} ${esc((r.submittedBy || {}).position || '')}${r.reviewedAt && st === 'APPROVED' ? ' · 승인: ' + dtText(r.reviewedAt) : ''}</div>` : ''}
       <div class="noprint" style="margin-top:10px">${btn}</div></div>
     ${snap ? '<p class="muted">아래는 <b>보고 당시 수치</b>입니다.</p>' + summaryHtml(r.summaryData) : summaryHtml(d.live)}`;
 }
 async function submitReport() {
   const d = ST, sm = d.live || {};
-  if (!confirm(`${ymText(d.targetYearMonth)} 통역 실적(${sm.totalCases || 0}건, ${sm.totalHours || 0}시간)을 도협회에 보고할까요?\n보고하면 이 달의 통역일지는 새로 입력할 수 없게 잠깁니다.`)) return;
+  if (!confirm(`${ymText(d.targetYearMonth)} 통역 실적(${sm.totalCases || 0}건, ${sm.totalHours || 0}시간)을 도센터에 보고할까요?\n보고하면 이 달의 통역일지는 새로 입력할 수 없게 잠깁니다.`)) return;
   const { data, error } = await sb.rpc('interp_report_submit', { p_ym: d.targetYearMonth });
   if (error) return msg('stMsg', errText(error));
-  ST = data; drawCenterStats(); msg('stMsg', '도협회에 보고했습니다.', true);
+  ST = data; drawCenterStats(); msg('stMsg', '도센터에 보고했습니다.', true);
 }
 async function cancelReport() {
   if (!confirm('보고를 취소할까요? 잠금이 풀리고 미보고 상태로 돌아갑니다.')) return;

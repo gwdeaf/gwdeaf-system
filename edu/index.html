@@ -1188,8 +1188,10 @@ async function renderCourses() {
       <button class="btn small" id="xlsYear">⬇ 연도 전체 자료 엑셀</button>
       <button class="btn small" id="gsList">📊 목록 시트로 저장</button>
       <button class="btn small" id="gsYear">📊 연도 전체 시트로 저장</button></div>
+    <div id="cfPend"></div>
     <div id="list"><p class="sub">불러오는 중…</p></div>`;
   bindCrsSwitch('courses');
+  loadCfPending();
   $('#xlsList').onclick = () => {
     const y = S.filter.연도 || S.init.currentYear;
     xlsScoped(`${isAdmin() ? (S.filter.지회명 || '강원도 시군지회') : S.init.user.chapter} 강좌 목록`, org => [courseListSheet((S.listRows || []).filter(c => !org || c.주관 === org).map(c => Object.assign({}, c, c.실적 || {})), isAdmin())]);
@@ -2592,7 +2594,7 @@ function confirmBoxHtml(c) {
   const got = String(c.확인서수령 || '').toUpperCase() === 'Y';
   return `<div class="panel no-print" style="margin-bottom:12px"><div class="row" style="gap:10px;flex-wrap:wrap">
     <div><b>강의확인서</b> <span class="badge ${got ? 'b-진행중' : ''}">${got ? '완성 · 받음 ' + esc(c.확인서수령일 || '') : '아직 미완성'}</span>
-      <div class="hint" style="margin:2px 0 0" id="cfState">${webMode() ? '강사 링크의 <b>확인서</b> 탭에서 강사가 회차별 교육내용을 쓰고, 강사와 기관 담당자가 서명하면 여기서 인쇄할 수 있습니다.' : ''}</div></div>
+      <div class="hint" style="margin:2px 0 0" id="cfState">${webMode() ? '불러오는 중…' : ''}</div></div>
     <span class="spacer"></span>
     <button type="button" class="btn small" id="cfPrint">🖨 강의확인서 인쇄</button>
     <button type="button" class="btn small hidden" id="cfReset">서명 지우기</button>
@@ -2612,16 +2614,42 @@ function confirmRows(d, doc) {
   }
   return rows;
 }
+async function loadCfPending() {
+  if (!webMode()) return;
+  try {
+    const L = await call('listConfirmPending');
+    const box = $('#cfPend'); if (!box || !L || !L.length) return;
+    const lab = { 링크보내기: ['warn', '📨 학교 링크 보내기'], 학교서명대기: ['info', '⏳ 학교 서명 대기'], 학교서명완료: ['ok', '✅ 학교 서명 완료 · 출력'] };
+    box.innerHTML = `<div class="panel no-print" style="margin:0 0 12px"><b>📚 강의확인서 알림</b> <span class="hint" style="margin:0">눌러서 강좌로 가기</span>
+      ${L.map((x, i) => `<div class="row" style="padding:8px 0;border-top:1px solid var(--line);cursor:pointer;gap:8px" data-cf="${esc(x.강좌ID)}"><span class="badge">${lab[x.상태][1]}</span><span style="flex:1;min-width:0">${esc(x.강좌명)}${x.기관명 ? ' <span class="hint" style="margin:0">· ' + esc(x.기관명) + '</span>' : ''}</span></div>`).join('')}</div>`;
+    box.querySelectorAll('[data-cf]').forEach(el => el.onclick = async () => { try { showDetail(await call('getCourseDetail', el.dataset.cf)); } catch (e) { toast(e.message); } });
+  } catch (e) { /* 참고용 */ }
+}
 async function loadConfirmState() {
   if (!webMode() || !$('#cfState')) return;
   try {
     const c = S.detail.course, doc = await call('getConfirm', c.강좌ID);
     if (!$('#cfState')) return;
     const any = doc.내용.some(x => x);
-    $('#cfState').innerHTML = `교육내용 ${any ? '작성됨' : '<b>아직 안 씀</b>'} · 강사 서명 ${doc.강사서명 ? '✓' : '—'} · 기관 담당자 서명 ${doc.기관서명 ? '✓ (' + esc(doc.기관담당자) + ')' : '—'}` + (any ? '' : '<br>강사 링크의 <b>확인서</b> 탭에서 작성합니다.');
+    const step = (on, t) => `<span style="white-space:nowrap;${on ? 'color:var(--pine,#1f4d3a);font-weight:700' : 'color:#9aa5a0'}">${on ? '✓' : '○'} ${t}</span>`;
+    let html = [step(any, '교육내용'), step(doc.제출, '강사 제출'), step(doc.링크발송일시 || doc.기관서명, '링크 보냄'), step(doc.기관서명, '학교 서명' + (doc.기관서명 ? ' (' + esc(doc.기관담당자) + ')' : ''))].join(' → ');
+    if (!doc.제출 && !doc.기관서명) html += `<br>강사가 매 회차 출석·교육내용을 저장하고, 마지막 회차에 서명해서 <b>제출</b>하면 학교 서명 링크가 만들어집니다.`;
+    else if (doc.학교토큰 && !doc.기관서명) {
+      const url = location.origin + '/edu/sign.html?t=' + doc.학교토큰;
+      html += `<div class="notice ${doc.링크발송일시 ? 'info' : 'warn'}" style="margin:8px 0 0"><b>${doc.링크발송일시 ? '학교 서명을 기다리는 중' : '📨 학교 담당자에게 서명 링크를 보내 주세요'}</b>
+        <div style="display:flex;gap:6px;margin-top:6px;flex-wrap:wrap"><input id="cfUrl" readonly value="${esc(url)}" style="flex:1;min-width:200px;font-size:13px">
+        <button type="button" class="btn small" id="cfCopy">링크 복사</button>${navigator.share ? '<button type="button" class="btn small" id="cfShare">공유</button>' : ''}
+        <button type="button" class="btn small ${doc.링크발송일시 ? '' : 'primary'}" id="cfSent">${doc.링크발송일시 ? '보냄 표시 취소' : '보냈어요'}</button></div>
+        <div class="hint" style="margin:4px 0 0">문자·카카오톡·메일로 보내면 학교 담당자가 휴대폰에서 바로 서명할 수 있어요.${doc.링크발송일시 ? ' (보낸 날: ' + esc(String(doc.링크발송일시).slice(0, 10)) + ')' : ''}</div></div>`;
+    } else if (doc.기관서명) html += `<br><b>✅ 학교 서명 완료</b> — <b>강의확인서 인쇄</b>로 출력하세요.`;
+    $('#cfState').innerHTML = html;
+    if ($('#cfCopy')) $('#cfCopy').onclick = async () => { try { await navigator.clipboard.writeText($('#cfUrl').value); } catch (e) { $('#cfUrl').select(); document.execCommand('copy'); } toast('링크를 복사했습니다.'); };
+    if ($('#cfShare')) $('#cfShare').onclick = () => navigator.share({ title: '강의확인서 서명 요청', text: c.강좌명 + ' 강의확인서에 서명 부탁드립니다.', url: $('#cfUrl').value }).catch(() => {});
+    if ($('#cfSent')) $('#cfSent').onclick = () => act($('#cfSent'), async () => { await call('markConfirmSent', c.강좌ID, !doc.링크발송일시); loadConfirmState(); try { parent.postMessage({ type: 'edu-badge' }, '*'); } catch (e) {} toast(doc.링크발송일시 ? '보냄 표시를 취소했습니다.' : '보낸 것으로 표시했습니다.'); });
+    if (doc.기관서명 && !doc.담당확인일시) { call('markConfirmSeen', c.강좌ID).then(() => { try { parent.postMessage({ type: 'edu-badge' }, '*'); } catch (e) {} }).catch(() => {}); }
     if ((doc.강사서명 || doc.기관서명)) $('#cfReset').classList.remove('hidden');
     $('#cfReset').onclick = () => act($('#cfReset'), async () => {
-      if (!(await ask('두 서명을 모두 지우고 강사가 내용을 고칠 수 있게 합니다. 계속할까요?', { ok: '서명 지우기', danger: true }))) return;
+      if (!(await ask('두 서명을 모두 지우고 강사가 내용을 고칠 수 있게 합니다. 보낸 학교 링크도 더 이상 열리지 않습니다. 계속할까요?', { ok: '서명 지우기', danger: true }))) return;
       await call('resetConfirm', c.강좌ID);
       showDetail(await call('getCourseDetail', c.강좌ID));
       toast('서명을 지웠습니다.');
@@ -4510,10 +4538,12 @@ const HELP = [
   { t: '강의확인서 (강사·기관 서명)', f: 'all', b: [
     '<ol>',
     '<li>강좌 등록·수정 화면에서 <b>강의확인서 필요</b>에 체크합니다. 강사 링크에 <b>확인서</b> 탭이 생깁니다.</li>',
-    '<li>강사가 회차별 교육 내용을 쓰고, 강사와 기관 담당자가 차례로 휴대폰 화면에 <b>서명</b>합니다.</li>',
-    '<li>강좌 화면의 <b>강의확인서 인쇄</b>로 표와 서명이 들어간 확인서를 인쇄합니다.</li>',
+    '<li>강사는 매 회차 출석과 <b>교육내용</b>을 쓰고 <b>저장</b>합니다. 마지막 회차에는 서명하고 <b>제출</b>합니다.</li>',
+    '<li>제출되면 담당자에게 슬랙·배지 알림이 가고, 강좌 화면에 <b>학교 서명 링크</b>가 생깁니다. <b>링크 복사</b>(또는 공유)로 학교 담당자에게 보내고 <b>보냈어요</b>를 누릅니다.</li>',
+    '<li>학교 담당자가 링크를 열어 소속·성명을 쓰고 서명해서 제출하면 다시 알림이 옵니다.</li>',
+    '<li>강좌 화면의 <b>강의확인서 인쇄</b>로 표와 두 서명이 들어간 확인서를 인쇄합니다.</li>',
     '</ol>',
-    '<p class="hint">서명한 뒤에는 내용을 고칠 수 없습니다. 고치려면 서명을 먼저 지워야 합니다.</p>' ] },
+    '<p class="hint">제출한 뒤에는 내용을 고칠 수 없습니다. 고치려면 <b>서명 지우기</b>를 누르세요. 이때 보낸 학교 링크도 닫히고, 강사가 다시 제출하면 새 링크가 만들어집니다.</p>' ] },
   { t: '자료 요청 (도협회 ↔ 지회 파일 주고받기)', f: 'all', b: [
     '<ol>',
     '<li><b>도협회</b>: <b>자료요청</b> 메뉴에서 제목·마감일·양식 파일을 올려 지회에 요청합니다.</li>',

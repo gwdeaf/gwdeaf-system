@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<meta name="referrer" content="no-referrer">
+<title>강의확인서 서명</title>
+<style>
+:root { --pine:#1f4d3a; --pine-soft:#e6f0ea; --bg:#f4f7f5; --ink:#1b2b24; --muted:#5d6b64; --line:#d5ded9; --red:#b3261e; --red-soft:#fbe9e7; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--bg); color:var(--ink); font:16px/1.55 system-ui,-apple-system,"Apple SD Gothic Neo","Noto Sans KR",sans-serif; }
+.wrap { max-width:720px; margin:0 auto; padding:0 16px 60px; }
+header { background:var(--pine); color:#fff; padding:14px 16px; }
+header h1 { margin:0; font-size:19px; } header p { margin:2px 0 0; font-size:13px; opacity:.85; }
+.card { background:#fff; border:1px solid var(--line); border-radius:12px; padding:14px; margin:12px 0; }
+table { width:100%; border-collapse:collapse; font-size:14px; } th, td { border:1px solid var(--line); padding:7px 6px; vertical-align:top; } th { background:var(--pine-soft); }
+td.c { text-align:center; white-space:nowrap; }
+label.f { display:block; font-weight:700; font-size:14px; margin:12px 0 4px; }
+input { width:100%; padding:11px 12px; border:1.5px solid var(--line); border-radius:10px; font:inherit; background:#fff; }
+.btn { border:1.5px solid var(--pine); background:#fff; color:var(--pine); padding:12px 18px; border-radius:10px; font:inherit; font-weight:700; cursor:pointer; }
+.btn.primary { background:var(--pine); color:#fff; } .btn.small { padding:7px 12px; font-size:14px; } .btn:disabled { opacity:.5; }
+.sig { border:1.5px dashed var(--line); border-radius:10px; background:#fff; touch-action:none; width:100%; height:160px; display:block; }
+.sigimg { max-height:80px; max-width:100%; display:block; margin:6px 0; }
+.hint { color:var(--muted); font-size:13px; }
+.notice { border-radius:10px; padding:12px 14px; margin:12px 0; font-size:15px; background:var(--pine-soft); color:var(--pine); }
+.err { background:var(--red-soft); color:var(--red); }
+.center { text-align:center; padding:64px 20px; }
+.row { display:flex; gap:10px; align-items:center; } .sp { flex:1; }
+.meta { display:grid; grid-template-columns:84px 1fr; gap:4px 10px; font-size:14px; } .meta b { color:var(--muted); font-weight:700; }
+@media print { header, .noprint { display:none !important; } body { background:#fff; } .card { border:0; padding:0; } }
+</style>
+</head>
+<body>
+<div id="app"><div class="center hint">불러오는 중…</div></div>
+<script>
+const TOKEN = new URLSearchParams(location.search).get('t') || '';
+const $ = s => document.querySelector(s);
+const esc = v => String(v == null ? '' : v).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+function fullOrg(n) { n = String(n || '').trim(); if (!n || n === '도협회') return '강원특별자치도농아인협회'; return /지회$/.test(n) && n.indexOf('농아인협회') < 0 ? '강원특별자치도농아인협회' + n : n; }
+async function api(fn, ...args) {
+  let res;
+  try { res = await (await fetch('/api/call', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fn: fn, args: [TOKEN, ...args] }) })).json(); }
+  catch (e) { throw new Error('서버에 연결하지 못했습니다. 인터넷 연결을 확인하고 다시 시도해 주세요.'); }
+  if (!res || !res.ok) { const e = new Error((res && res.error) || '처리하지 못했습니다.'); e.code = res && res.code; throw e; }
+  return res.data;
+}
+function dead(m) { $('#app').innerHTML = `<div class="center"><h2>열 수 없는 링크입니다</h2><p>${esc(m)}</p></div>`; }
+function sigPad(host) {
+  host.innerHTML = '<canvas class="sig"></canvas>';
+  const cv = host.firstChild, W = 480, H = 160; cv.width = W; cv.height = H;
+  const g = cv.getContext('2d'); g.lineWidth = 3.2; g.lineCap = 'round'; g.lineJoin = 'round'; g.strokeStyle = '#111';
+  let down = false, drawn = false, last = null;
+  const pos = e => { const r = cv.getBoundingClientRect(); return { x: (e.clientX - r.left) * W / r.width, y: (e.clientY - r.top) * H / r.height }; };
+  cv.addEventListener('pointerdown', e => { e.preventDefault(); down = true; last = pos(e); cv.setPointerCapture(e.pointerId); g.beginPath(); g.moveTo(last.x, last.y); g.lineTo(last.x + .1, last.y + .1); g.stroke(); drawn = true; });
+  cv.addEventListener('pointermove', e => { if (!down) return; e.preventDefault(); const p = pos(e); g.beginPath(); g.moveTo(last.x, last.y); g.lineTo(p.x, p.y); g.stroke(); last = p; });
+  const up = () => { down = false; }; cv.addEventListener('pointerup', up); cv.addEventListener('pointercancel', up);
+  return { clear() { g.clearRect(0, 0, W, H); drawn = false; }, empty() { return !drawn; }, png() { return cv.toDataURL('image/png'); } };
+}
+function render(d) {
+  const c = d.course;
+  $('#app').innerHTML = `<header><div class="wrap" style="padding:0"><h1>강의확인서</h1><p>${esc(fullOrg(c.지회명))}</p></div></header>
+  <div class="wrap">
+    ${d.완료 ? '<div class="notice"><b>✅ 서명을 제출했습니다. 감사합니다.</b><br>아래 내용으로 강의확인서가 완성되었습니다.</div>' : '<div class="notice noprint">아래 수업 내용을 확인하신 뒤, 맨 아래에 <b>소속·성명</b>을 적고 <b>서명</b>해서 <b>제출</b>해 주세요.</div>'}
+    <div class="card"><div class="meta"><b>강좌명</b><span>${esc(c.강좌명)}</span><b>교육 기관</b><span>${esc(c.기관명 || '-')}</span><b>기간</b><span>${esc(c.시작일)} ~ ${esc(c.종료일)}</span>
+      <b>횟수</b><span>총 ${c.총회차}회${c.회당시간 ? ' · 회당 ' + c.회당시간 + '시간' : ''}</span><b>강사</b><span>${esc(c.강사 || '-')}${c.보조강사 ? ' · 보조 ' + esc(c.보조강사) : ''}</span></div></div>
+    <div class="card" style="padding:8px"><table><tr><th style="width:46px">회차</th><th style="width:96px">수업일</th><th style="width:48px">인원</th><th>교육내용</th></tr>
+      ${d.rows.map(r => `<tr><td class="c">${r.회차}회</td><td class="c">${esc(r.수업일) || '-'}</td><td class="c">${esc(r.인원)}</td><td>${esc(r.내용).replace(/\n/g, '<br>')}</td></tr>`).join('')}</table></div>
+    <div class="card"><b>강사 서명</b>${d.강사서명 ? `<img class="sigimg" src="${esc(d.강사서명)}" alt="강사 서명">` : ''}<div class="hint">${esc(c.강사 || '')} · ${esc(d.강사서명일시)}</div></div>
+    ${d.완료 ? `<div class="card"><b>기관 담당자 서명</b><img class="sigimg" src="${esc(d.기관서명)}" alt="기관 담당자 서명"><div class="hint">${esc(d.기관소속)} ${esc(d.기관담당자)} · ${esc(d.기관서명일시)}</div></div>
+      <div class="row noprint"><span class="sp"></span><button class="btn" onclick="window.print()">🖨 인쇄 / PDF 저장</button></div>`
+    : `<div class="card"><b>기관 담당자 확인</b>
+      <label class="f" for="org">소속·직위</label><input id="org" maxlength="60" placeholder="예: ${esc(c.기관명 || '○○초등학교')} 교무부장">
+      <label class="f" for="nm">성명 *</label><input id="nm" maxlength="30" autocomplete="name">
+      <label class="f">서명 *</label><div id="pad"></div>
+      <div class="row" style="margin-top:8px"><button class="btn small" id="clr">지우기</button><span class="sp"></span></div>
+      <div id="msg"></div>
+      <div class="row" style="margin-top:14px"><span class="sp"></span><button class="btn primary" id="go">서명하고 제출</button></div></div>`}
+    <p class="hint noprint" style="margin-top:20px">이 링크는 서명할 분께만 보낸 링크입니다. 다른 사람에게 전달하지 말아 주세요.</p>
+  </div>`;
+  if (d.완료) return;
+  const pad = sigPad($('#pad'));
+  $('#clr').onclick = () => pad.clear();
+  $('#go').onclick = async () => {
+    const msg = t => { $('#msg').innerHTML = t ? `<div class="notice err">${esc(t)}</div>` : ''; };
+    const name = $('#nm').value.trim();
+    if (!name) return msg('성명을 입력해 주세요.');
+    if (pad.empty()) return msg('서명란에 서명해 주세요.');
+    if (!confirm('서명하고 제출할까요? 제출 후에는 고칠 수 없습니다.')) return;
+    $('#go').disabled = true; msg('');
+    try { render(await api('sSign', { org: $('#org').value, name: name, png: pad.png() })); window.scrollTo(0, 0); }
+    catch (e) { $('#go').disabled = false; if (e.code === 'LINK') dead(e.message); else msg(e.message); }
+  };
+}
+(async function () {
+  if (!/^[0-9a-f]{40}$/.test(TOKEN)) return dead('링크 주소가 올바르지 않습니다. 받은 링크 전체를 다시 열어 주세요.');
+  try { render(await api('sInfo')); } catch (e) { dead(e.message); }
+})();
+</script>
+</body>
+</html>

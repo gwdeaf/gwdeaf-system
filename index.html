@@ -571,7 +571,7 @@ function renderNav(){
   var bookMgr = ME.role === 'admin' || (ME.is_hq && hasPerm('book.manage'));
   if (hasPerm('edu.') || bookMgr) {
     h += grpHtml('📚', '수어교육관리');
-    if (hasPerm('edu.')) [['dash','대시보드'],['courses','강좌'],['apply','접수·강사비'],['report','보고·통계'],['files','자료요청']].forEach(function(k){ if (EDU_HIDE.indexOf(k[0]) < 0) h += kidHtml('edu', false, k[0], k[1]); });
+    if (hasPerm('edu.')) [['dash','대시보드'],['courses','강좌'],['apply','접수·강사비'],['report','보고·통계'],['files','자료요청']].forEach(function(k){ if (EDU_HIDE.indexOf(k[0]) < 0) { var kh = kidHtml('edu', false, k[0], k[1]); if (k[0] === 'courses') kh = kh.replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', '<span class="nbadge hide" id="edu-badge"></span></a>'); h += kh; } });
     h += kidHtml('book', false, 'order', '교재 주문');
     if (bookMgr) h += kidHtml('book', false, 'admin', '교재 주문 관리').replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', '<span class="nbadge hide" id="book-badge"></span></a>');
   }
@@ -740,6 +740,7 @@ window.addEventListener('message', function(e){
     try { history.replaceState(null, '', '#' + k + '/' + d.tab); } catch(x){}
   }
   if (d.type === 'doc-badge' && e.source === $('frame').contentWindow) { docBadge(); return; }
+  if (d.type === 'edu-badge' && e.source === $('frame').contentWindow) { eduBadge(); return; }
   if (d.type === 'book-badge' && e.source === $('frame').contentWindow) { bookBadgeSet(d.n); return; }
   if (d.type === 'nav-go' && e.source === $('frame').contentWindow && d.kind) { go(d.kind, d.tab || '', !!d.adm); return; }
   if (d.type === 'edu-tab' && e.source === $('frame').contentWindow && FR.key === 'edu:s') {
@@ -931,6 +932,7 @@ var SLK_CATS = [
   ['notice', '📢 새 공지', '나에게 보이는 공지'],
   ['doc', '📨 받은 문서', '우리 지회로 들어온 공문'],
   ['inq', '💬 문의함', '새 문의 · 새 답글'],
+  ['edu', '📚 수어교육', '강의확인서 제출 · 학교 서명 완료'],
   ['book', '📦 교재 주문', '도협회: 새 주문 · 지회: 주문 확인 / 발송'],
   ['report', '📊 지회 보고', '도협회: 지회 보고 도착 · 지회: 승인 / 보완 요청'],
   ['sup_ok', '✅ 선임 확인 요청', '후임의 시간외 · 시수 · 병가 · 대체시수 (선임만)'],
@@ -1040,8 +1042,9 @@ async function delNotice(id){
 var INQ = [], INQ_CUR = null, INQ_T = null;
 async function inqBadge(){
   try { var r = await sb.rpc('inq_badge'); var n = r.data || 0, b = $('inq-badge'); if (b) { b.textContent = n; b.classList.toggle('hide', !n); } } catch(e){}
-  docBadge(); bookBadge();
+  docBadge(); bookBadge(); eduBadge();
 }
+async function eduBadge(){ var b = $('edu-badge'); if (!b) return; try { var r = await sb.rpc('edu_confirm_badge'); var n = r.data || 0; b.textContent = n; b.classList.toggle('hide', !n); } catch(e){} }
 // 받은 공문 중 아직 접수 안 된 수 (우리 지회 누군가 접수하면 사라짐)
 var BOOKN = 0;
 function bookBadgeSet(n){ BOOKN = n || 0; var b = $('book-badge'); if (b) { b.textContent = BOOKN; b.classList.toggle('hide', !BOOKN); } }

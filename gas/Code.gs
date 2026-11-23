@@ -74,7 +74,7 @@ const SHEETS = {
   RESULTS: { name: '최종실적', headers: ['강좌ID', '지회명', '연도', '반기', '강좌명', '주관', '교육구분', '수준', '기관명', '기간', '강사', '교재', '총회차', '진행회차', '회당시간', '총강의시간', '등록인원', '실인원', '연인원', '수료인원', '수료율', '수료집계', '계산일시'] },
   REPORTS: { name: '보고현황', headers: ['지회명', '연도', '반기', '상태', '강좌수', '실인원', '연인원', '수료인원', '총강의시간', '제출일시', '제출자', '처리일시', '처리자', '반려사유'] },
   CERTSET: { name: '수료증서식', headers: ['강좌ID', '지회명', '제목', '번호접두어', '번호연도', '자리수', '문구', '기관명', '직위', '성명', '수정일시'] },
-  CONFIRMS: { name: '강의확인서', headers: ['강좌ID', '내용', '강사서명', '강사서명일시', '기관소속', '기관담당자', '기관서명', '기관서명일시', '수정자', '수정일시'] },
+  CONFIRMS: { name: '강의확인서', headers: ['강좌ID', '내용', '강사서명', '강사서명일시', '기관소속', '기관담당자', '기관서명', '기관서명일시', '수정자', '수정일시', '제출일시', '학교토큰해시', '학교토큰', '링크발송일시', '담당확인일시'] },
   DISPATCH: { name: '파견요청', headers: ['파견ID', '학교명', '지회명', '담당교사', '담당교사연락처', '장소', '일정', '회당시간', '회차수', '수준', '출석방식', '강사비기준', '강사단가', '보조강사단가', '비고', '상태', '차수', '회신', '강좌ID', '만든이', '만든일시', '수정일시'] },
   INQUIRIES: { name: '문의', headers: ['문의ID', '지회명', '제목', '강좌ID', '파견ID', '상태', '글', '지회확인', '도협회확인', '마지막쪽', '마지막일시', '만든일시', '수정일시'] },
   NOTICES: { name: '공지사항', headers: ['공지ID', '제목', '내용', '대상', '시작일', '종료일', '상태', '등록자', '등록일시', '수정일시'] },
@@ -2862,7 +2862,8 @@ function confirmView_(c, row) {
   const total = Number(c.총회차) || 0, r = row || {};
   return { 내용: confirmContents_(r, total), 강사서명: String(r.강사서명 || ''), 강사서명일시: String(r.강사서명일시 || ''),
     기관소속: String(r.기관소속 || ''), 기관담당자: String(r.기관담당자 || ''), 기관서명: String(r.기관서명 || ''), 기관서명일시: String(r.기관서명일시 || ''),
-    완료: !!(r.강사서명 && r.기관서명), 수정일시: String(r.수정일시 || '') };
+    완료: !!(r.강사서명 && r.기관서명), 수정일시: String(r.수정일시 || ''),
+    제출일시: String(r.제출일시 || ''), 제출: !!r.제출일시, 링크발송일시: String(r.링크발송일시 || ''), 담당확인일시: String(r.담당확인일시 || '') };
 }
 function getConfirm_(user, courseId) {
   const c = confirmCourse_(user, courseId);
@@ -2917,7 +2918,7 @@ function resetConfirmSign_(user, courseId) {
   const t = readTable_(SHEETS.CONFIRMS);
   const ex = t.rows.find(r => String(r.강좌ID) === id);
   if (ex) {
-    ['강사서명', '강사서명일시', '기관소속', '기관담당자', '기관서명', '기관서명일시'].forEach(k => { ex[k] = ''; });
+    ['강사서명', '강사서명일시', '기관소속', '기관담당자', '기관서명', '기관서명일시', '제출일시', '학교토큰해시', '학교토큰', '링크발송일시', '담당확인일시'].forEach(k => { ex[k] = ''; });
     ex.수정자 = user.name || user.id; ex.수정일시 = now_();
     updateRow_(t, ex);
     const ct = readTable_(SHEETS.COURSES), row = ct.rows.find(r => String(r.강좌ID) === id);
@@ -2928,17 +2929,152 @@ function resetConfirmSign_(user, courseId) {
 }
 
 
+
+// ---- 강의확인서 새 흐름: 강사가 매회 출석+교육내용 [저장] → 마지막 회차에 서명하고 [제출] → 학교 링크 → 학교 담당자 서명 ----
+function getConfirmAdmin_(user, courseId) {
+  const c = confirmCourse_(user, courseId);
+  const row = readTable_(SHEETS.CONFIRMS).rows.find(r => String(r.강좌ID) === String(c.강좌ID));
+  const v = confirmView_(c, row);
+  v.학교토큰 = row && row.제출일시 && !row.기관서명 ? String(row.학교토큰 || '') : '';   // 담당자만: 학교에 보낼 링크
+  return v;
+}
+// 담당자 할 일: 학교 링크 보내기 / 학교 서명 완료(출력) — 우리 지회 강좌만
+function listConfirmPending_(user) {
+  const cs = readTable_(SHEETS.COURSES).rows.filter(c => c.지회명 === user.chapter && c.상태 !== '삭제'), out = [];
+  readTable_(SHEETS.CONFIRMS).rows.forEach(r => {
+    if (!r.제출일시) return;
+    const c = cs.find(x => String(x.강좌ID) === String(r.강좌ID)); if (!c) return;
+    const st = r.기관서명 ? (r.담당확인일시 ? '' : '학교서명완료') : (r.링크발송일시 ? '학교서명대기' : '링크보내기');
+    if (st) out.push({ 강좌ID: String(c.강좌ID), 강좌명: c.강좌명, 기관명: c.기관명 || '', 상태: st, 일시: String(r.기관서명일시 || r.제출일시 || '') });
+  });
+  return out.sort((a, b) => String(b.일시).localeCompare(String(a.일시)));
+}
+function markConfirm_(user, courseId, col, on) {
+  const c = confirmCourse_(user, courseId), id = String(c.강좌ID);
+  const t = readTable_(SHEETS.CONFIRMS), ex = t.rows.find(r => String(r.강좌ID) === id);
+  if (!ex || !ex.제출일시) fail_('강사가 아직 확인서를 제출하지 않았습니다.');
+  ex[col] = on === false ? '' : (ex[col] || now_());
+  updateRow_(t, ex);
+  return getConfirmAdmin_(user, id);
+}
+function confirmSaveOne_(user, c, session, content) {
+  const id = String(c.강좌ID), total = Number(c.총회차) || 0, n = Number(session) || 0;
+  if (n < 1 || n > total) fail_('회차를 확인해 주세요.');
+  const t = readTable_(SHEETS.CONFIRMS);
+  let ex = t.rows.find(r => String(r.강좌ID) === id);
+  if (ex && (ex.제출일시 || ex.강사서명 || ex.기관서명)) fail_('확인서를 이미 제출했습니다. 고쳐야 하면 지회 담당자에게 요청해 주세요.');
+  const arr = confirmContents_(ex, total);
+  arr[n - 1] = limitText_(content, 200, n + '회차 교육내용');
+  const obj = { 강좌ID: id, 내용: JSON.stringify(arr), 수정자: user.name || user.id, 수정일시: now_() };
+  if (ex) { Object.keys(obj).forEach(k => { ex[k] = obj[k]; }); updateRow_(t, ex); } else { appendRows_(t, [obj]); }
+}
+function confirmSaveSession_(user, c, session, data) {
+  data = data || {};
+  const info0 = tInfo_(user, c);
+  if (!info0.locked) {
+    if (isHeadcount_(c)) saveHeadcount_(user, c.강좌ID, session, data.count, data.date);
+    else saveAttendance_(user, c.강좌ID, session, Array.isArray(data.present) ? data.present : [], data.date);
+  }
+  if (String(c.확인서필요 || '').trim().toUpperCase() === 'Y' && data.content !== undefined) confirmSaveOne_(user, c, session, data.content);
+}
+function tSaveSession_(user, c, session, data) {
+  confirmSaveSession_(user, c, session, data);
+  log_(user, '회차저장', String(c.강좌ID) + ' ' + session + '회');
+  return { info: tInfo_(user, c), cf: String(c.확인서필요 || '').trim().toUpperCase() === 'Y' ? getConfirm_(user, c.강좌ID) : null };
+}
+function tSubmitConfirm_(user, c, session, data, png) {
+  const id = String(c.강좌ID), total = Number(c.총회차) || 0;
+  if (String(c.확인서필요 || '').trim().toUpperCase() !== 'Y') fail_('이 강좌는 강의확인서가 필요한 강좌가 아닙니다.');
+  if (Number(session) !== total) fail_('마지막 회차(' + total + '회)에서 제출할 수 있습니다.');
+  confirmSaveSession_(user, c, session, data);
+  // 모든 회차 출석·교육내용이 있는지
+  const d = getCourseDetail_(user, id), head = isHeadcount_(c), missA = [], missC = [];
+  const t = readTable_(SHEETS.CONFIRMS), ex = t.rows.find(r => String(r.강좌ID) === id), arr = confirmContents_(ex, total);
+  for (let n = 1; n <= total; n++) {
+    const held = head ? d.headcounts[n] !== undefined : d.participants.some(p => (d.attendance[p.참여자ID] || {})[n] !== undefined);
+    if (!held) missA.push(n);
+    if (!String(arr[n - 1] || '').trim()) missC.push(n);
+  }
+  if (missA.length) fail_('출석을 저장하지 않은 회차가 있습니다: ' + missA.join(', ') + '회');
+  if (missC.length) fail_('교육내용을 쓰지 않은 회차가 있습니다: ' + missC.join(', ') + '회');
+  const tok = (Utilities.getUuid().replace(/-/g, '') + Utilities.getUuid().replace(/-/g, '')).slice(0, 40), ts = now_();
+  ex.강사서명 = pngOk_(png, '강사'); ex.강사서명일시 = ts; ex.제출일시 = ts;
+  ex.학교토큰해시 = schoolHash_(tok); ex.학교토큰 = tok; ex.링크발송일시 = ''; ex.담당확인일시 = '';
+  ex.수정자 = user.name || user.id; ex.수정일시 = ts;
+  updateRow_(t, ex);
+  log_(user, '확인서제출', id);
+  return { info: tInfo_(user, c), cf: getConfirm_(user, id) };
+}
+
+// ---- 학교(기관) 담당자 서명 링크 ----
+function schoolHash_(tok) { return sha256_('school-sign|' + tok); }
+function schoolApi_(linkToken, fn, write) {
+  try {
+    resetMemo_();
+    const run = () => {
+      const tok = String(linkToken == null ? '' : linkToken).trim();
+      const row = /^[0-9a-f]{40}$/.test(tok) ? readTable_(SHEETS.CONFIRMS).rows.find(r => String(r.학교토큰해시) === schoolHash_(tok) && r.제출일시) : null;
+      if (!row) fail_('서명 링크가 올바르지 않거나 닫혔습니다. 담당자에게 문의해 주세요.', 'LINK');
+      const c = readTable_(SHEETS.COURSES).rows.find(r => String(r.강좌ID) === String(row.강좌ID));
+      if (!c || c.상태 === '삭제') fail_('강좌를 찾을 수 없습니다. 담당자에게 문의해 주세요.', 'LINK');
+      return fn({ id: '학교링크', name: '기관 담당자(링크)', chapter: c.지회명, role: ROLE_CHAPTER }, c, row);
+    };
+    return { ok: true, data: write ? withLock_(run) : run() };
+  } catch (e) {
+    return errorResult_(e);
+  }
+}
+function schoolCourseId_(tok) {
+  tok = String(tok == null ? '' : tok).trim();
+  if (!/^[0-9a-f]{40}$/.test(tok)) return '';
+  const row = readTable_(SHEETS.CONFIRMS).rows.find(r => String(r.학교토큰해시) === schoolHash_(tok));
+  return row ? String(row.강좌ID) : '';
+}
+function sInfo_(user, c, row) {
+  const d = getCourseDetail_(user, c.강좌ID), total = Number(c.총회차) || 0, head = isHeadcount_(c), arr = confirmContents_(row, total), rows = [];
+  for (let n = 1; n <= total; n++) {
+    let cnt = '';
+    if (head) { if (d.headcounts[n] !== undefined) cnt = d.headcounts[n]; }
+    else if (d.participants.some(p => (d.attendance[p.참여자ID] || {})[n] !== undefined)) cnt = d.participants.filter(p => (d.attendance[p.참여자ID] || {})[n] === 'O').length;
+    rows.push({ 회차: n, 수업일: d.dates[n] || '', 인원: cnt, 내용: arr[n - 1] || '' });
+  }
+  return { course: { 강좌명: c.강좌명, 지회명: c.지회명, 기관명: c.기관명 || '', 시작일: dateText_(c.시작일), 종료일: dateText_(c.종료일), 총회차: total, 회당시간: Number(c.회당시간) || 0, 강사: c.강사 || '', 보조강사: c.보조강사 || '' },
+    rows: rows, 강사서명: String(row.강사서명 || ''), 강사서명일시: String(row.강사서명일시 || ''),
+    기관소속: String(row.기관소속 || ''), 기관담당자: String(row.기관담당자 || ''), 기관서명: String(row.기관서명 || ''), 기관서명일시: String(row.기관서명일시 || ''), 완료: !!row.기관서명 };
+}
+function sSign_(user, c, row, info) {
+  info = info || {};
+  if (row.기관서명) fail_('이미 서명이 끝난 확인서입니다.');
+  const org = limitText_(info.org, 60, '소속·직위'), name = limitText_(info.name, 30, '성명');
+  if (!name) fail_('성명을 입력해 주세요.');
+  const t = readTable_(SHEETS.CONFIRMS), ex = t.rows.find(r => String(r.강좌ID) === String(row.강좌ID)), ts = now_();
+  ex.기관소속 = org; ex.기관담당자 = name; ex.기관서명 = pngOk_(info.png, '담당자'); ex.기관서명일시 = ts;
+  ex.담당확인일시 = ''; ex.수정자 = '기관 담당자(링크)'; ex.수정일시 = ts;
+  updateRow_(t, ex);
+  const ct = readTable_(SHEETS.COURSES), cr = ct.rows.find(r => String(r.강좌ID) === String(row.강좌ID));
+  if (cr) { cr.확인서수령 = 'Y'; cr.확인서수령일 = today_(); updateRow_(ct, cr); }
+  log_(user, '확인서기관서명', String(row.강좌ID));
+  return sInfo_(user, c, ex);
+}
+
 function getTeacherLink(token, courseId) { return api_(token, user => getTeacherLink_(user, courseId)); }
 function setLinkExpiry(token, courseId, date) { return api_(token, user => setLinkExpiry_(user, courseId, date), true); }
 function createTeacherLink(token, courseId) { return api_(token, user => createTeacherLink_(user, courseId), true); }
 function revokeTeacherLink(token, courseId) { return api_(token, user => revokeTeacherLink_(user, courseId), true); }
 
-function getConfirm(token, courseId) { return api_(token, user => getConfirm_(user, courseId)); }
+function getConfirm(token, courseId) { return api_(token, user => getConfirmAdmin_(user, courseId)); }
+function markConfirmSent(token, courseId, on) { return api_(token, user => markConfirm_(user, courseId, '링크발송일시', on), true); }
+function listConfirmPending(token) { return api_(token, user => listConfirmPending_(user)); }
+function markConfirmSeen(token, courseId) { return api_(token, user => markConfirm_(user, courseId, '담당확인일시', true), true); }
 function resetConfirm(token, courseId) { return api_(token, user => resetConfirmSign_(user, courseId), true); }
 function tGetConfirm(linkToken) { return linkApi_(linkToken, (user, c) => getConfirm_(user, c.강좌ID)); }
 function tSaveConfirm(linkToken, contents) { return linkApi_(linkToken, (user, c) => saveConfirm_(user, c.강좌ID, contents), true); }
 function tSignConfirm(linkToken, who, info) { return linkApi_(linkToken, (user, c) => signConfirm_(user, c.강좌ID, who, info), true); }
 function tResetConfirm(linkToken) { return linkApi_(linkToken, (user, c) => resetConfirmSign_(user, c.강좌ID), true); }
+function tSaveSession(linkToken, session, data) { return linkApi_(linkToken, (user, c) => tSaveSession_(user, c, session, data), true); }
+function tSubmitConfirm(linkToken, session, data, png) { return linkApi_(linkToken, (user, c) => tSubmitConfirm_(user, c, session, data, png), true); }
+function sInfo(linkToken) { return schoolApi_(linkToken, (user, c, row) => sInfo_(user, c, row)); }
+function sSign(linkToken, info) { return schoolApi_(linkToken, (user, c, row) => sSign_(user, c, row, info), true); }
 
 function tInfo(linkToken) { return linkApi_(linkToken, (user, c) => tInfo_(user, c)); }
 function tSaveAttendance(linkToken, session, presentIds, date) { return linkApi_(linkToken, (user, c) => { saveAttendance_(user, c.강좌ID, session, presentIds, date); return tInfo_(user, c); }, true); }

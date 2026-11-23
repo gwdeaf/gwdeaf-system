@@ -30,7 +30,7 @@
   th { background: #f0f4f8; }
   .badge { display: inline-block; padding: 2px 8px; border-radius: 10px; font-size: 12px; background: #e6eaef; }
   .badge.ok { background: #d6f0dc; } .badge.err { background: #f8d7d3; } .badge.wait { background: #fff1c2; }
-  .badge.st-DRAFT { background: #e6eaef; } .badge.st-SUBMITTED { background: #dbe8ff; color: #1f4fa8; } .badge.st-APPROVED { background: #d6f0dc; color: #17643a; } .badge.st-REJECTED { background: #f8d7d3; color: #9b2c22; }
+  .badge.st-DRAFT { background: #e6eaef; } .badge.st-SUBMITTED { background: #dbe8ff; color: #1f4fa8; } .badge.st-APPROVED { background: #d6f0dc; color: #17643a; } .badge.st-REJECTED { background: #f8d7d3; color: #9b2c22; } .badge.st-SELF { background: #fff1d6; color: #8a5a00; }
   .kpis { display: flex; flex-wrap: wrap; gap: 10px; margin: 8px 0; } .kpi { flex: 1 1 120px; border: 1px solid #dde3ea; border-radius: 8px; padding: 10px; background: #f8fafc; }
   .kpi b { display: block; font-size: 20px; } .kpi span { font-size: 12px; color: #667; }
   .reject { background: #fdecea; border: 1px solid #f3b4ad; color: #8a2a20; border-radius: 8px; padding: 10px 12px; margin: 8px 0; }
@@ -168,6 +168,7 @@
     <div class="card"><div class="row">
       <div><label>시작일</label><input type="date" id="from"></div>
       <div><label>종료일</label><input type="date" id="to"></div>
+      <div><label>이름 검색</label><input id="q" placeholder="통역사·상담자·의뢰자 이름" onkeydown="if(event.key==='Enter')loadList()"></div>
       <div style="flex:0 0 auto;align-self:flex-end"><button class="main" onclick="loadList()">조회</button></div></div>
       <div id="listMsg" class="msg"></div></div>
     <div class="card" style="overflow-x:auto"><table><thead id="listHead"></thead><tbody id="listBody"></tbody></table></div>
@@ -298,7 +299,7 @@ async function loadDash() {
 }
 
 // ============ 통계 · 도협회 보고 (센터 → 도협회) ============
-const ST_LABEL = { DRAFT: '미보고', SUBMITTED: '보고 완료', APPROVED: '승인 완료', REJECTED: '보완 요청' };
+const ST_LABEL = { DRAFT: '미보고', SUBMITTED: '보고 완료', APPROVED: '승인 완료', REJECTED: '보완 요청', SELF: '바로 집계' };
 let ST = null, BOARD = null;
 function lastMonth() { const d = new Date(); d.setDate(1); d.setMonth(d.getMonth() - 1); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0'); }
 function ymText(ym) { const [y, m] = String(ym || '').split('-'); return y ? `${y}년 ${Number(m)}월` : ''; }
@@ -360,9 +361,9 @@ function drawYear() {
     <p class="muted">상담지도·취업알선·사후관리·수어교육·기타 연인원은 통역일지에 없는 항목이라 이 표에는 나오지 않습니다.</p>`;
 }
 // 도협회: 도센터(강원도수어통역센터) 자체 통계·보고
-const hqBtn = () => me.can_stats ? `<div class="noprint" style="margin-bottom:10px"><button onclick="loadHqStats()">🏢 도센터 통계 · 도협회 보고</button></div>` : '';
-async function loadHqStats() {
-  msg('stMsg', ''); const ym = $('stYm').value || lastMonth();
+const hqBtn = () => me.can_stats ? `<div class="noprint" style="margin-bottom:10px"><button onclick="loadHqStats()">🏢 도센터 통계</button></div>` : '';
+async function loadHqStats(ym) {
+  msg('stMsg', ''); ym = ym || $('stYm').value || lastMonth();
   const { data, error } = await sb.rpc('interp_stats', { p_ym: ym });
   if (error) return msg('stMsg', errText(error));
   ST = data; drawCenterStats();
@@ -383,7 +384,8 @@ async function loadStats() {
 function drawCenterStats() {
   const d = ST, r = d.report || {}, st = r.status || 'DRAFT', snap = st === 'SUBMITTED' || st === 'APPROVED';
   $('stTitle').textContent = `${d.centerName} · 통역 실적 통계`;
-  const btn = !d.canReport ? '<span class="muted">도협회 보고는 센터 담당자(보고 권한)가 합니다.</span>'
+  const btn = d.isHq ? '<span class="muted">도센터는 도협회에 보고하지 않습니다. 이 통계는 도협회 전체 통계에 바로 들어갑니다.</span>'
+    : !d.canReport ? '<span class="muted">도협회 보고는 센터 담당자(보고 권한)가 합니다.</span>'
     : st === 'DRAFT' ? `<button class="main" onclick="submitReport()">📤 도협회 보고</button>`
     : st === 'REJECTED' ? `<button class="main" onclick="submitReport()">📤 재보고</button>`
     : st === 'SUBMITTED' ? `<button onclick="cancelReport()">보고 취소</button> <span class="muted">보고한 달은 통역일지를 새로 입력할 수 없습니다(잠금). 고칠 내용이 있으면 보고를 취소하세요.</span>`
@@ -419,10 +421,10 @@ function drawBoard() {
   $('stBody').innerHTML = hqBtn() + `<div class="card"><b>${ymText(d.targetYearMonth)}</b> · 승인 ${cnt('APPROVED')} · 검토 대기 ${cnt('SUBMITTED')} · 보완 요청 ${cnt('REJECTED')} · 미보고 ${cnt('DRAFT')} (전체 ${d.rows.length}개 센터)
       <div class="muted" style="font-size:12px;margin-top:4px">검토 대기 줄을 눌러 상세 통계를 보고 승인 또는 보완 요청하세요.</div></div>
     <div class="card" style="overflow-x:auto"><table><thead><tr><th>센터명</th><th>대상 연월</th><th>총 건수</th><th>총 시간</th><th>보고 상태</th><th>보고 일시</th></tr></thead><tbody>
-      ${d.rows.map((r) => `<tr class="${r.status !== 'DRAFT' ? 'click' : ''}" ${r.status !== 'DRAFT' ? `onclick="openDetail(${r.centerId})"` : ''}><td>${esc(r.centerName)}</td><td>${ymText(r.targetYearMonth)}</td>
+      ${d.rows.map((r) => `<tr class="${r.status !== 'DRAFT' ? 'click' : ''}" ${r.status === 'SELF' ? `onclick="loadHqStats('${d.targetYearMonth}')"` : r.status !== 'DRAFT' ? `onclick="openDetail(${r.centerId})"` : ''}><td>${esc(r.centerName)}</td><td>${ymText(r.targetYearMonth)}</td>
         <td>${r.totalCases == null ? '-' : r.totalCases + '건'}</td><td>${r.totalHours == null ? '-' : r.totalHours + '시간'}</td><td>${stBadge(r.status, r.submittedAt)}</td><td>${dtText(r.submittedAt) || '-'}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">센터가 없습니다.</td></tr>'}
     </tbody></table></div>
-    <h3>도협회 전체 통계 (승인된 ${a.centers || 0}개 센터 합산)</h3>${summaryHtml({ totalCases: a.totalCases, totalHours: a.totalHours, uniqueUsersCount: a.uniqueUsersCount, totalUsersCount: a.totalUsersCount, byField: a.byField })}`;
+    <h3>도협회 전체 통계 (승인된 지회 센터 ${a.reports || 0}곳 + 도센터 합산)</h3>${summaryHtml({ totalCases: a.totalCases, totalHours: a.totalHours, uniqueUsersCount: a.uniqueUsersCount, totalUsersCount: a.totalUsersCount, byField: a.byField })}`;
 }
 // 도협회: 여러 달 보고 현황 (센터 × 월)
 let RANGE = null;
@@ -437,13 +439,14 @@ function drawRange() {
   const all = d.rows.flatMap((r) => ms.map((y) => (r.months[y] || {}).status || 'DRAFT')), cnt = (k) => all.filter((x) => x === k).length;
   $('stTitle').textContent = '센터별 통역 실적 보고 현황 (도협회)';
   $('stBody').innerHTML = hqBtn() + `<div class="card"><b>${ymText(d.from)} ~ ${ymText(d.to)}</b> (${ms.length}개월) · 승인 ${cnt('APPROVED')} · 검토 대기 ${cnt('SUBMITTED')} · 보완 요청 ${cnt('REJECTED')} · 미보고 ${cnt('DRAFT')}
-      <div class="muted" style="font-size:12px;margin-top:4px">칸을 누르면 그 달 보고를 보고 승인 또는 보완 요청할 수 있습니다. 합계는 보고 완료·승인된 달만 더합니다.</div></div>
+      <div class="muted" style="font-size:12px;margin-top:4px">칸을 누르면 그 달 보고를 보고 승인 또는 보완 요청할 수 있습니다. 합계는 보고 완료·승인된 달만 더합니다. 도센터는 보고 없이 통역일지로 바로 집계합니다.</div></div>
     <div class="card yr" style="overflow-x:auto"><table><thead><tr><th>센터명</th>${ms.map((y) => `<th>${ms.length > 12 || ms[0].slice(0, 4) !== ms[ms.length - 1].slice(0, 4) ? y.slice(2, 4) + '.' : ''}${mm(y)}</th>`).join('')}<th>건수 합계</th><th>시간 합계</th></tr></thead><tbody>
       ${d.rows.map((r) => `<tr><td style="text-align:left">${esc(r.centerName)}</td>${ms.map((y) => { const x = r.months[y] || {}, st = x.status || 'DRAFT';
+          if (st === 'SELF') return `<td class="click" onclick="loadHqStats('${y}')" title="바로 집계"><span class="badge st-SELF">${x.cases || 0}건</span></td>`;
           return `<td class="${st !== 'DRAFT' ? 'click' : ''}" ${st !== 'DRAFT' ? `onclick="openDetail(${r.centerId},'${y}')"` : ''} title="${ST_LABEL[st]}${x.cases != null ? ' · ' + x.cases + '건' : ''}"><span class="badge st-${st}">${{ DRAFT: '미보고', SUBMITTED: '대기', APPROVED: '승인', REJECTED: '보완' }[st]}</span></td>`; }).join('')}
         <td>${r.cases ? r.cases + '건' : '-'}</td><td>${r.hours ? r.hours + '시간' : '-'}</td></tr>`).join('') || `<tr><td colspan="${ms.length + 3}" class="muted">센터가 없습니다.</td></tr>`}
     </tbody></table></div>
-    <h3>도협회 전체 통계 (기간 안 승인된 보고 ${a.reports || 0}건 합산)</h3>${summaryHtml({ totalCases: a.totalCases, totalHours: a.totalHours, uniqueUsersCount: a.uniqueUsersCount, totalUsersCount: a.totalUsersCount, byField: a.byField })}
+    <h3>도협회 전체 통계 (기간 안 승인된 보고 ${a.reports || 0}건 + 도센터 합산)</h3>${summaryHtml({ totalCases: a.totalCases, totalHours: a.totalHours, uniqueUsersCount: a.uniqueUsersCount, totalUsersCount: a.totalUsersCount, byField: a.byField })}
     <p class="muted" style="font-size:12px">실인원은 달마다 센 수를 더한 값입니다.</p>`;
 }
 async function openDetail(centerId, ym) {
@@ -473,12 +476,19 @@ async function openDetail(centerId, ym) {
   if (wait) { ov.querySelector('#apOk').onclick = () => review(true); ov.querySelector('#apNo').onclick = () => review(false); }
 }
 
+// 이름 검색: 통역사(상담자)·의뢰자 이름에 검색어가 들어간 기록만
+function byName(data, keys) {
+  const q = ($('q').value || '').trim().replace(/\s+/g, ''); if (!q) return data || [];
+  const n = (data || []).filter((r) => keys.some((k) => String(r[k] || '').replace(/\s+/g, '').indexOf(q) >= 0));
+  msg('listMsg', `'${q}' 검색 결과 ${n.length}건`, true); return n;
+}
 async function loadList() {
   msg('listMsg', '');
   if (isC(tab)) return loadCList();
-  const { data, error } = await sb.rpc('interp_list', { p_from: $('from').value || null, p_to: $('to').value || null, p_all: tab === 'all' });
+  let { data, error } = await sb.rpc('interp_list', { p_from: $('from').value || null, p_to: $('to').value || null, p_all: tab === 'all' });
   if (error) return msg('listMsg', errText(error));
   const all = tab === 'all';
+  data = byName(data, ['interpreter_name', 'client']);
   $('listHead').innerHTML = '<tr><th>날짜</th><th>시간</th>' + (all ? '<th>통역사</th>' : '') + '<th>구분</th><th>의뢰자</th><th>장소</th><th>종류</th><th>대상</th><th>인원(농/청)</th><th>내용</th><th>시트</th></tr>';
   const st = { ok: ['ok', '기록됨'], skip: ['wait', '연결 안 됨'], error: ['err', '실패'] };
   $('listBody').innerHTML = (data || []).map((r) => {
@@ -561,8 +571,9 @@ async function submitCounsel() {
 }
 async function loadCList() {
   const all = tab === 'call';
-  const { data, error } = await sb.rpc('counsel_list', { p_from: $('from').value || null, p_to: $('to').value || null, p_all: all });
+  let { data, error } = await sb.rpc('counsel_list', { p_from: $('from').value || null, p_to: $('to').value || null, p_all: all });
   if (error) return msg('listMsg', errText(error));
+  data = byName(data, ['counselor_name', 'client']);
   $('listHead').innerHTML = '<tr><th>날짜</th><th>시간</th>' + (all ? '<th>상담자</th>' : '') + '<th>의뢰자</th><th>상담내용</th><th>장소</th><th>구분</th><th>상담구분</th><th>인원</th><th>종류</th><th>의뢰방법</th><th>대상</th><th>비고</th><th>시트</th></tr>';
   const st = { ok: ['ok', '기록됨'], skip: ['wait', '연결 안 됨'], error: ['err', '실패'] };
   $('listBody').innerHTML = (data || []).map((r) => {

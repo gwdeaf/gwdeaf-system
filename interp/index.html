@@ -43,7 +43,8 @@
   .modal .card { max-width: 720px; width: 100%; max-height: 90vh; overflow: auto; }
   tr.click { cursor: pointer; } tr.click:hover { background: #f3f6fb; }
   .yr table { font-size: 13px; white-space: nowrap; } .yr th, .yr td { text-align: center; padding: 5px 6px; } .yr tr.sum td { background: #eef3ff; font-weight: 700; }
-  @media print { header, nav, .noprint { display: none !important; } .screen:not(.on) { display: none !important; } .yr { break-inside: avoid; } .yr table { font-size: 10px; } }
+  .print-only { display: none; } button.sm { padding: 4px 8px; font-size: 12px; min-height: 0; }
+  @media print { .print-only { display: block !important; } .list table { font-size: 10px; } .list td, .list th { padding: 3px 4px; } header, nav, .noprint, #listMsg { display: none !important; } .screen:not(.on) { display: none !important; } .yr { break-inside: avoid; } .yr table { font-size: 10px; } }
   .msg { margin: 8px 0; font-size: 14px; } .msg .err { color: #b03a2e; } .msg .ok { color: #1e7a3c; }
   .muted { color: #777; font-size: 13px; }
   .fav { display: flex; gap: 6px; flex-wrap: wrap; } .fav button { flex: 1 1 30%; font-size: 13px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -61,11 +62,11 @@
 <nav id="topNav" style="display:none">
   <button class="tab itab on" data-tab="write" onclick="setTab('write')">일지 쓰기</button>
   <button class="tab itab" data-tab="mine" onclick="setTab('mine')">내 기록</button>
-  <button class="tab itab" data-tab="all" id="allBtn" onclick="setTab('all')" style="display:none">센터 전체 기록</button>
-  <button class="tab itab" data-tab="stats" id="statsBtn" onclick="setTab('stats')" style="display:none">통계</button>
-  <button class="tab ctab" data-tab="cwrite" onclick="setTab('cwrite')" style="display:none">상담일지 쓰기</button>
-  <button class="tab ctab" data-tab="cmine" onclick="setTab('cmine')" style="display:none">내 상담 기록</button>
-  <button class="tab ctab" data-tab="call" id="callBtn" onclick="setTab('call')" style="display:none">센터 전체 상담</button>
+  <button class="tab itab" data-tab="all" id="allBtn" onclick="setTab('all')" style="display:none">전체 기록</button>
+  <button class="tab stab" data-tab="stats" id="statsBtn" onclick="setTab('stats')" style="display:none">통계</button>
+  <button class="tab ctab" data-tab="cwrite" onclick="setTab('cwrite')" style="display:none">일지 쓰기</button>
+  <button class="tab ctab" data-tab="cmine" onclick="setTab('cmine')" style="display:none">내 기록</button>
+  <button class="tab ctab" data-tab="call" id="callBtn" onclick="setTab('call')" style="display:none">전체 기록</button>
   <button id="logoutBtn" onclick="logout()">로그아웃</button>
 </nav>
 <main>
@@ -153,24 +154,27 @@
   <section id="screenStats" class="screen">
     <h2 id="stTitle">통역 실적 통계</h2>
     <div class="card noprint"><div class="row">
-      <div style="flex:0 0 auto"><label>보기</label><select id="stMode" onchange="stModeChg()"><option value="m">월별 통계</option><option value="y">연간 실적표</option></select></div>
+      <div style="flex:0 0 auto"><label>보기</label><select id="stMode" onchange="stModeChg()"><option value="m">월별 통계 · 보고</option><option value="b">사업실적</option><option value="y">통역실적</option></select></div>
       <div id="stYmBox"><label id="stYmLab">대상 연월</label><input type="month" id="stYm"></div>
       <div id="stYm2Box" style="display:none"><label>끝 연월</label><input type="month" id="stYm2"></div>
       <div id="stYrBox" style="display:none"><label>연도</label><select id="stYr"></select></div>
+      <div id="stMoBox" style="display:none"><label>기간</label><div style="display:flex;gap:4px;align-items:center"><select id="stM1"></select>~<select id="stM2"></select></div></div>
       <div id="stCtBox" style="display:none"><label>센터</label><select id="stCt"></select></div>
-      <div style="flex:0 0 auto;align-self:flex-end"><button class="main" onclick="loadStats()">조회</button> <button onclick="window.print()">🖨 인쇄</button></div></div>
+      <div style="flex:0 0 auto;align-self:flex-end"><button class="main" onclick="loadStats()">조회</button> <button onclick="window.print()">🖨 인쇄</button> <button onclick="saveExcel()">📊 엑셀로 저장</button></div></div>
       <div id="stMsg" class="msg"></div></div>
     <div id="stBody"></div>
   </section>
 
   <section id="screenList" class="screen list">
-    <h2 id="listTitle">내 기록</h2>
-    <div class="card"><div class="row">
+    <h2 id="listTitle" class="noprint">내 기록</h2>
+    <div class="card noprint"><div class="row">
       <div><label>시작일</label><input type="date" id="from"></div>
       <div><label>종료일</label><input type="date" id="to"></div>
-      <div><label>이름 검색</label><input id="q" placeholder="통역사·상담자·의뢰자 이름" onkeydown="if(event.key==='Enter')loadList()"></div>
-      <div style="flex:0 0 auto;align-self:flex-end"><button class="main" onclick="loadList()">조회</button></div></div>
+      <div id="qBox" style="display:none"><label>이름</label><select id="q" onchange="loadList()"><option value="">전체 직원</option></select></div>
+      <div style="flex:0 0 auto;align-self:flex-end"><button class="main" onclick="loadList()">조회</button></div>
+      <div id="prBox" style="flex:0 0 auto;align-self:flex-end;display:none"><input type="month" id="prYm" style="width:auto"> <button onclick="printMonth()">🖨 월별 출력</button></div></div>
       <div id="listMsg" class="msg"></div></div>
+    <div class="print-only" id="prHead"></div>
     <div class="card" style="overflow-x:auto"><table><thead id="listHead"></thead><tbody id="listBody"></tbody></table></div>
   </section>
 </main>
@@ -182,7 +186,7 @@ const ALLOWED_DOMAIN = 'gwdeaf.or.kr';
 const EMBED = new URLSearchParams(location.search).get('embed') === '1';
 if (EMBED) document.body.classList.add('embed');
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-let me = null, tab = 'write', presets = {}, cpresets = {};
+let me = null, tab = 'write', presets = {}, cpresets = {}, LIST = [], EDIT_I = null, EDIT_C = null;
 const $ = (id) => document.getElementById(id);
 const esc = (t) => String(t ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const errText = (e) => (e && (e.message || e.error_description)) || '알 수 없는 오류가 났습니다.';
@@ -223,9 +227,10 @@ const isC = (t) => t === 'cwrite' || t === 'cmine' || t === 'call';
 function setTab(t) {
   tab = t;
   document.querySelectorAll('[data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === t));
-  const C = isC(t);   // 상담일지 화면이면 상담 탭만, 아니면 통역 탭만 보임
-  document.querySelectorAll('.itab').forEach((b) => b.style.display = C ? 'none' : (b.id === 'allBtn' ? (me.can_view ? '' : 'none') : b.id === 'statsBtn' ? (me.can_stats || me.can_review ? '' : 'none') : ''));
+  const C = isC(t), S = t === 'stats';   // 통역일지 / 상담일지 / 통계 화면마다 그 탭만 보임
+  document.querySelectorAll('.itab').forEach((b) => b.style.display = C || S ? 'none' : (b.id === 'allBtn' ? (me.can_view ? '' : 'none') : ''));
   document.querySelectorAll('.ctab').forEach((b) => b.style.display = !C ? 'none' : (b.id === 'callBtn' ? (me.can_view ? '' : 'none') : ''));
+  document.querySelectorAll('.stab').forEach((b) => b.style.display = S ? '' : 'none');
   subTell(t === 'stats' ? 'stats' : C ? 'counsel' : 'log');
   if (t === 'cwrite') {
     showScreen('screenCWrite');
@@ -244,7 +249,11 @@ function setTab(t) {
     return;
   }
   showScreen('screenList');
-  $('listTitle').textContent = { all: '센터 전체 기록', mine: '내 기록', cmine: '내 상담 기록', call: '센터 전체 상담' }[t] || '내 기록';
+  $('listTitle').textContent = { all: '통역일지 · 전체 기록', mine: '통역일지 · 내 기록', cmine: '상담일지 · 내 기록', call: '상담일지 · 전체 기록' }[t] || '내 기록';
+  const ALL = t === 'all' || t === 'call';
+  $('qBox').style.display = ALL ? '' : 'none'; $('prBox').style.display = ALL ? '' : 'none';
+  if (!$('prYm').value) $('prYm').value = today().slice(0, 7);
+  if (ALL) loadNames();
   if (!$('from').value) { const d = new Date(); d.setDate(1); $('from').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01'; $('to').value = today(); }
   loadList();
 }
@@ -318,47 +327,135 @@ function summaryHtml(sm) {
 // ============ 연간 실적표 (실적보고서 탭과 같은 월별 표) ============
 let YR = null;
 function stModeChg() {
-  const y = $('stMode').value === 'y';
-  $('stYmBox').style.display = y ? 'none' : ''; $('stYm2Box').style.display = !y && me.can_review ? '' : 'none'; $('stYrBox').style.display = y ? '' : 'none'; $('stCtBox').style.display = y && me.can_review ? '' : 'none';
-  if (y && !$('stYr').options.length) { const n = new Date().getFullYear(); for (let v = n; v >= n - 4; v--) $('stYr').add(new Option(v + '년', v)); }
+  const v = $('stMode').value, y = v !== 'm';
+  $('stYmBox').style.display = y ? 'none' : ''; $('stYm2Box').style.display = !y && me.can_review ? '' : 'none';
+  $('stYrBox').style.display = y ? '' : 'none'; $('stMoBox').style.display = v === 'b' ? '' : 'none'; $('stCtBox').style.display = y && me.can_review ? '' : 'none';
+  if (y && !$('stYr').options.length) { const n = new Date().getFullYear(); for (let k = n; k >= n - 4; k--) $('stYr').add(new Option(k + '년', k)); }
+  if (!$('stM1').options.length) { for (let k = 1; k <= 12; k++) { $('stM1').add(new Option(k + '월', k)); $('stM2').add(new Option(k + '월', k)); } $('stM1').value = 1; $('stM2').value = new Date().getMonth() + 1; }
   loadStats();
 }
 async function loadYear() {
   const p = { p_year: Number($('stYr').value) };
   if (me.can_review && $('stCt').value) p.p_center = Number($('stCt').value);
-  const { data, error } = await sb.rpc('interp_year', p);
-  if (error) { $('stBody').innerHTML = ''; return msg('stMsg', errText(error)); }
-  YR = data;
-  if (data.centers && $('stCt').options.length !== data.centers.length + 1) {
-    const cur = $('stCt').value; $('stCt').innerHTML = '<option value="">전체 센터</option>' + data.centers.map((c) => `<option value="${c.id}">${esc(c.name)}</option>`).join(''); $('stCt').value = cur;
+  const [a, c] = await Promise.all([sb.rpc('interp_year', p), sb.rpc('interp_counsel_year', p)]);
+  if (a.error || c.error) { $('stBody').innerHTML = ''; return msg('stMsg', errText(a.error || c.error)); }
+  YR = a.data; YR.c = c.data;
+  if (YR.centers && $('stCt').options.length !== YR.centers.length + 1) {
+    const cur = $('stCt').value; $('stCt').innerHTML = '<option value="">전체 센터</option>' + YR.centers.map((x) => `<option value="${x.id}">${esc(x.name)}</option>`).join(''); $('stCt').value = cur;
   }
-  drawYear();
+  $('stMode').value === 'b' ? drawBiz() : drawYear();
 }
+// 값 꺼내기: 통역(I) · 상담(C) · 직접 입력(E), k = 월 번호 또는 H1/H2/Y
+const KEYS = ['1','2','3','4','5','6','7','8','9','10','11','12','H1','H2','Y'];
+const monthsOf = (k) => k === 'H1' ? [1,2,3,4,5,6] : k === 'H2' ? [7,8,9,10,11,12] : k === 'Y' ? [1,2,3,4,5,6,7,8,9,10,11,12] : [Number(k)];
+function gv(o, path) { for (const x of path) o = o ? o[x] : 0; return Number(o) || 0; }
+const I = (k, path) => gv((YR.rows || {})[k], path), C = (k, path) => gv(((YR.c || {}).rows || {})[k], path);
+const E = (k, f) => monthsOf(k).reduce((a, m) => a + gv(((YR.c || {}).extra || {})[m], [f]), 0);
+const nfmt = (v) => v ? Number(v).toLocaleString() : '-';
+function ytable(title, groups, rowsKeys, valFn, labFn) {
+  const cols = groups.flatMap((g) => g.cols);
+  return `<h3>${title}</h3><div class="card yr" style="overflow-x:auto"><table data-title="${esc(title)}"><thead><tr><th rowspan="2">월</th>${groups.map((g) => `<th colspan="${g.cols.length}">${g.t}</th>`).join('')}</tr>
+    <tr>${cols.map((c) => `<th>${c[0]}</th>`).join('')}</tr></thead><tbody>
+    ${rowsKeys.map((k) => `<tr class="${/^[HY]/.test(k) ? 'sum' : ''}"><td>${labFn(k)}</td>${cols.map((c) => { const v = c[1](k); return `<td>${typeof v === 'string' ? esc(v) : nfmt(v)}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+const BR = (x) => x.replace('영상전화', '영상<br>전화').replace('문맹농인', '문맹<br>농인').replace('일상생활', '일상<br>생활').replace('취업알선', '취업<br>알선').replace('수어음성', '수어<br>음성');
+// 통역실적 (실적보고서 22~91행): 월별 연인원 · 실인원 · 세부실적
 function drawYear() {
-  const d = YR, R = d.rows || {}, keys = ['1','2','3','4','5','6','7','8','9','10','11','12','H1','H2','Y'];
-  const lab = (k) => k === 'H1' ? '상반기' : k === 'H2' ? '하반기' : k === 'Y' ? '소 계' : k + '월';
-  const n = (v) => v ? Number(v).toLocaleString() : '-';
-  const get = (k, path) => { let o = R[k]; for (const x of path) o = o ? o[x] : 0; return o || 0; };
-  const table = (title, groups) => {
-    const cols = groups.flatMap((g) => g.cols);
-    return `<h3>${title}</h3><div class="card yr" style="overflow-x:auto"><table><thead><tr><th rowspan="2">월</th>${groups.map((g) => `<th colspan="${g.cols.length}">${g.t}</th>`).join('')}</tr>
-      <tr>${cols.map((c) => `<th>${c[0]}</th>`).join('')}</tr></thead><tbody>
-      ${keys.map((k) => `<tr class="${/^[HY]/.test(k) ? 'sum' : ''}"><td>${lab(k)}</td>${cols.map((c) => `<td>${n(get(k, c[1]))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+  const d = YR, lab = (k) => k === 'H1' ? '상반기' : k === 'H2' ? '하반기' : k === 'Y' ? '소 계' : k + '월';
+  const grp = (f, ef) => {   // f = ppl / uniq,  ef = 직접 입력 칸 이름
+    const cols = [
+      ...['출장','내방','전화'].map((t) => [t, (k) => I(k, ['type', t, f])]),
+      ...['출장','내방','전화'].map((t) => ['상담 ' + t, (k) => C(k, ['counsel', t, f])]),
+      ['취업<br>알선', (k) => C(k, ['job', f])],
+      ...['출장','내방','전화'].map((t) => ['사후 ' + t, (k) => C(k, ['after', t, f])]),
+      ['수어<br>교육', (k) => E(k, 'edu' + ef)], ['기타', (k) => E(k, 'etc' + ef)]];
+    const sum = ['계', (k) => cols.reduce((a, c) => a + c[1](k), 0)];
+    const note = ['참고사항', (k) => /^\d+$/.test(k) ? String(((d.c.extra || {})[k] || {}).note || '') : ''];
+    return [{ t: '통역', cols: cols.slice(0, 3) }, { t: '상담지도', cols: cols.slice(3, 10) }, { t: '수어교육 · 기타', cols: cols.slice(10) }, { t: '', cols: [sum, note] }];
   };
-  const tp = (f) => ['출장','내방','전화','계'].map((t) => [t, ['type', t, f]]);
-  const obj = (key, list) => list.map((x) => [x.replace('영상전화', '영상<br>전화').replace('문맹농인', '문맹<br>농인').replace('일상생활', '일상<br>생활').replace('취업알선', '취업<br>알선').replace('수어음성', '수어<br>음성'), [key, x]]);
-  $('stTitle').textContent = `${d.centerName} · ${d.year}년 통역 연간 실적표`;
-  $('stBody').innerHTML = `<p class="muted noprint">통역일지 기록으로 자동 계산합니다. 연인원 = 농인+청인 인원, 실인원 = 의뢰자 중복 제외, 시간 = 분을 더해 시간으로(끝수 버림).</p>
-    ${table('통역 연인원', [{ t: '통역', cols: tp('ppl') }])}
-    ${table('통역 실인원', [{ t: '통역', cols: tp('uniq') }])}
-    ${table('세부실적 · 의뢰방법 / 통역시간(시간) / 통역대상', [
-      { t: '통역의뢰방법', cols: obj('method', ['인터넷','문자','영상전화','전화','내방','기타']).concat([['합계', ['cases']]]) },
-      { t: '통역시간', cols: obj('hours', ['새벽','오전','오후','야간','합계']) },
-      { t: '통역대상', cols: obj('target', ['농인','문맹농인','청인','기타']).concat([['합계', ['cases']]]) }])}
-    ${table('세부실적 · 통역방법 / 통역종류', [
-      { t: '통역방법', cols: obj('way', ['수어음성','중계','기타']).concat([['합계', ['cases']]]) },
-      { t: '통역종류', cols: obj('cat', ['행사','법률','교육','의료','방송','관공서','일상생활','취업알선','기타']).concat([['합계', ['cases']]]) }])}
-    <p class="muted">상담지도·취업알선·사후관리·수어교육·기타 연인원은 통역일지에 없는 항목이라 이 표에는 나오지 않습니다.</p>`;
+  $('stTitle').textContent = `${d.centerName} · ${d.year}년 통역실적`;
+  $('stBody').innerHTML = `<p class="muted noprint">통역일지·상담일지로 자동 계산합니다. 수어교육·기타는 직접 입력합니다. 연인원 = 인원 합계, 실인원 = 의뢰자 중복 제외.
+      ${d.c.canEdit ? ' <button class="sm" onclick="openExtra()">✏️ 수어교육 · 기타 · 목표 입력</button>' : ''}</p>
+    ${ytable('연인원', grp('ppl', 'Ppl'), KEYS, null, lab)}
+    ${ytable('실인원', grp('uniq', 'Uniq'), KEYS, null, lab)}
+    ${ytable('세부실적 · 통역의뢰방법 / 통역시간(시간) / 통역대상', [
+      { t: '통역의뢰방법', cols: ['인터넷','문자','영상전화','전화','내방','기타'].map((x) => [BR(x), (k) => I(k, ['method', x])]).concat([['합계', (k) => I(k, ['cases'])]]) },
+      { t: '통역시간', cols: ['새벽','오전','오후','야간','합계'].map((x) => [x, (k) => I(k, ['hours', x])]) },
+      { t: '통역대상', cols: ['농인','문맹농인','청인','기타'].map((x) => [BR(x), (k) => I(k, ['target', x])]).concat([['합계', (k) => I(k, ['cases'])]]) }], KEYS, null, lab)}
+    ${ytable('세부실적 · 통역방법 / 통역종류', [
+      { t: '통역방법', cols: ['수어음성','중계','기타'].map((x) => [BR(x), (k) => I(k, ['way', x])]).concat([['합계', (k) => I(k, ['cases'])]]) },
+      { t: '통역종류', cols: ['행사','법률','교육','의료','방송','관공서','일상생활','취업알선','기타'].map((x) => [BR(x), (k) => I(k, ['cat', x])]).concat([['합계', (k) => I(k, ['cases'])]]) }], KEYS, null, lab)}`;
+}
+// 사업실적 (실적보고서 2~19행): 고른 기간의 합계
+function drawBiz() {
+  const d = YR, m1 = Number($('stM1').value), m2 = Number($('stM2').value);
+  if (m1 > m2) return msg('stMsg', '시작 월이 끝 월보다 늦습니다.');
+  const ms = []; for (let k = m1; k <= m2; k++) ms.push(String(k));
+  const sumI = (path) => ms.reduce((a, k) => a + I(k, path), 0), sumC = (path) => ms.reduce((a, k) => a + C(k, path), 0), sumE = (f) => ms.reduce((a, k) => a + E(k, f), 0);
+  const tgt = (f) => gv((d.c.extra || {})['0'], [f]);
+  const row = (f, ef) => { const v = [...['출장','내방','전화'].map((t) => sumI(['type', t, f])), ...['출장','내방','전화'].map((t) => sumC(['counsel', t, f])), sumC(['job', f]), ...['출장','내방','전화'].map((t) => sumC(['after', t, f])), sumE('edu' + ef), sumE('etc' + ef)]; return v; };
+  const line = (lab, f, ef, tf) => { const v = row(f, ef), tot = v.reduce((a, b) => a + b, 0), t = tgt(tf);
+    return `<tr><th>${lab}</th><td>${nfmt(t)}</td>${v.map((x) => `<td>${nfmt(x)}</td>`).join('')}<td><b>${nfmt(tot)}</b></td><td>${t ? (tot / t * 100).toFixed(2) : '-'}</td></tr>`; };
+  // 분 단위로 더해서 시간으로 (끝수 버림)
+  const mins = (x) => ms.reduce((a, k) => a + I(k, ['mins', x]), 0), hrs = (x) => Math.floor(mins(x) / 60);
+  const hTot = Math.floor(['새벽','오전','오후','야간'].reduce((a, x) => a + mins(x), 0) / 60);
+  const simple = (title, heads, vals) => `<div class="card yr" style="overflow-x:auto"><table data-title="${esc(title)}"><thead><tr>${heads.map((h) => `<th colspan="${h[1]}">${h[0]}</th>`).join('')}</tr>
+      <tr>${heads.flatMap((h) => h[2]).map((x) => `<th>${BR(x)}</th>`).join('')}</tr></thead><tbody><tr>${vals.map((v) => `<td>${nfmt(v)}</td>`).join('')}</tr></tbody></table></div>`;
+  const iM = ['인터넷','문자','영상전화','전화','내방','기타'], iT = ['농인','문맹농인','청인','기타'], iW = ['수어음성','중계','기타'], iC = ['행사','법률','교육','의료','방송','관공서','일상생활','취업알선','기타'];
+  const cM = iM, cT = ['농인','문맹','청인','기타'], cK = ['행사','법률','교육','의료','방송','일상생활','기타'];
+  const tc = sumI(['cases']), cc = sumC(['cases']);
+  $('stTitle').textContent = `${d.centerName} · ${d.year}년 ${m1}월 ~ ${m2}월 사업실적`;
+  $('stBody').innerHTML = `<p class="muted noprint">통역일지·상담일지로 자동 계산합니다. 수어교육·기타·목표는 직접 입력합니다.${d.c.canEdit ? ' <button class="sm" onclick="openExtra()">✏️ 수어교육 · 기타 · 목표 입력</button>' : ''}</p>
+    <h3>1. 사업실적 <span class="muted" style="font-size:12px">(단위: 건, 명)</span></h3>
+    <div class="card yr" style="overflow-x:auto"><table data-title="1. 사업실적"><thead>
+      <tr><th rowspan="3">구분</th><th rowspan="3">목표</th><th colspan="3" rowspan="2">통역</th><th colspan="7">상담지도</th><th rowspan="3">수어교육<br>(센터사업)</th><th rowspan="3">기타</th><th rowspan="3">계</th><th rowspan="3">실적<br>(%)</th></tr>
+      <tr><th colspan="3">상담</th><th rowspan="2">취업<br>알선</th><th colspan="3">사후관리</th></tr>
+      <tr><th>출장</th><th>내방</th><th>전화</th><th>출장</th><th>내방</th><th>전화</th><th>출장</th><th>내방</th><th>전화</th></tr></thead>
+      <tbody>${line('건 수', 'cases', 'Cases', 'targetCases')}${line('연인원', 'ppl', 'Ppl', 'targetPpl')}</tbody></table></div>
+    <h3>2. 통역 세부실적</h3>
+    ${simple('2. 통역 세부실적 (의뢰방법·시간·대상)', [['통역의뢰방법', 7, iM.concat(['합계'])], ['통역시간', 5, ['새벽','오전','오후','야간','합계']], ['통역대상', 5, iT.concat(['합계'])]],
+      [...iM.map((x) => sumI(['method', x])), tc, ...['새벽','오전','오후','야간'].map(hrs), hTot, ...iT.map((x) => sumI(['target', x])), tc])}
+    ${simple('2. 통역 세부실적 (방법·영역)', [['통역방법', 4, iW.concat(['합계'])], ['통역영역', 10, iC.concat(['계'])]], [...iW.map((x) => sumI(['way', x])), tc, ...iC.map((x) => sumI(['cat', x])), tc])}
+    <h3>3. 상담 세부실적</h3>
+    ${simple('3. 상담 세부실적', [['상담의뢰방법', 7, cM.concat(['합계'])], ['상담대상', 5, cT.concat(['합계'])], ['상담영역', 8, cK.concat(['합계'])]],
+      [...cM.map((x) => sumC(['method', x])), cc, ...cT.map((x) => sumC(['target', x])), cc, ...cK.map((x) => sumC(['kind', x])), cc])}`;
+}
+// 수어교육 · 기타 (월별) · 목표 (연간) 직접 입력
+function openExtra() {
+  const ex = YR.c.extra || {}, v = (m, f) => gv(ex[m], [f]) || '';
+  const ov = document.createElement('div'); ov.className = 'modal';
+  ov.innerHTML = `<div class="card" style="max-width:900px;width:96%;max-height:90vh;overflow:auto"><h2 style="margin-top:0">✏️ ${YR.year}년 수어교육 · 기타 · 목표</h2>
+    <div class="row"><div><label>목표 건수</label><input id="ex_tc" inputmode="numeric" value="${v(0, 'targetCases')}"></div><div><label>목표 연인원</label><input id="ex_tp" inputmode="numeric" value="${v(0, 'targetPpl')}"></div></div>
+    <div style="overflow-x:auto"><table class="yr"><thead><tr><th rowspan="2">월</th><th colspan="3">수어교육 (센터사업)</th><th colspan="3">기타</th><th rowspan="2">참고사항</th></tr><tr><th>건수</th><th>실인원</th><th>연인원</th><th>건수</th><th>실인원</th><th>연인원</th></tr></thead><tbody>
+    ${[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => `<tr><td>${m}월</td>${['eduCases','eduUniq','eduPpl','etcCases','etcUniq','etcPpl'].map((f) => `<td><input data-m="${m}" data-f="${f}" inputmode="numeric" style="width:70px" value="${v(m, f)}"></td>`).join('')}
+      <td><input data-m="${m}" data-f="note" style="min-width:160px" value="${esc((ex[m] || {}).note || '')}"></td></tr>`).join('')}</tbody></table></div>
+    <div style="margin-top:10px;display:flex;gap:8px"><button class="main" id="exSave">저장</button><button id="exX">닫기</button></div><div id="exMsg" class="msg"></div></div>`;
+  document.body.appendChild(ov);
+  ov.querySelector('#exX').onclick = () => ov.remove();
+  ov.querySelector('#exSave').onclick = async () => {
+    const y = YR.year, by = {};
+    ov.querySelectorAll('input[data-m]').forEach((i) => { (by[i.dataset.m] = by[i.dataset.m] || {})[i.dataset.f] = i.value; });
+    const jobs = [sb.rpc('interp_extra_save', { p_year: y, p_month: 0, p_data: { targetCases: $('ex_tc').value, targetPpl: $('ex_tp').value } })]
+      .concat(Object.keys(by).map((m) => sb.rpc('interp_extra_save', { p_year: y, p_month: Number(m), p_data: by[m] })));
+    const rs = await Promise.all(jobs), bad = rs.find((r) => r.error);
+    if (bad) return msg('exMsg', errText(bad.error));
+    ov.remove(); msg('stMsg', '저장했습니다.', true); loadYear();
+  };
+}
+// 지금 화면의 표들을 엑셀로 저장 (표마다 한 장)
+async function saveExcel() {
+  const tables = [...$('stBody').querySelectorAll('table')];
+  if (!tables.length) return msg('stMsg', '먼저 조회해 주세요.');
+  if (!window.XLSX) await new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js'; sc.onload = ok; sc.onerror = () => no(new Error('엑셀 도구를 불러오지 못했습니다.')); document.head.appendChild(sc); }).catch((e) => msg('stMsg', e.message));
+  if (!window.XLSX) return;
+  const wb = XLSX.utils.book_new(), used = {};
+  tables.forEach((t, i) => {
+    const c = t.cloneNode(true); c.querySelectorAll('button,input').forEach((x) => x.remove()); c.querySelectorAll('br').forEach((b) => b.replaceWith(' '));
+    let name = (t.dataset.title || (t.closest('.card') && t.closest('.card').previousElementSibling && t.closest('.card').previousElementSibling.textContent) || ('표' + (i + 1))).replace(/[\\/?*\[\]:]/g, ' ').trim().slice(0, 28) || ('표' + (i + 1));
+    while (used[name]) name = name.slice(0, 26) + (i + 1); used[name] = 1;
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.table_to_sheet(c, { raw: false }), name);
+  });
+  XLSX.writeFile(wb, ($('stTitle').textContent || '통역 통계').replace(/[\\/:*?"<>|]/g, ' ') + '.xlsx');
 }
 // 도협회: 도센터(강원도수어통역센터) 자체 통계·보고
 const hqBtn = () => me.can_stats ? `<div class="noprint" style="margin-bottom:10px"><button onclick="loadHqStats()">🏢 도센터 통계</button></div>` : '';
@@ -370,7 +467,7 @@ async function loadHqStats(ym) {
 }
 async function loadStats() {
   msg('stMsg', ''); $('stBody').innerHTML = '<p class="muted">불러오는 중…</p>';
-  if ($('stMode').value === 'y') return loadYear();
+  if ($('stMode').value !== 'm') return loadYear();
   const ym = $('stYm').value; if (!ym) return msg('stMsg', '연월을 고르세요.');
   if (me.can_review) {
     const to = $('stYm2').value || ym;
@@ -417,14 +514,14 @@ async function loadBoard(ym) {
 }
 function drawBoard() {
   const d = BOARD, a = d.approved || {}, cnt = (k) => d.rows.filter((r) => r.status === k).length;
-  $('stTitle').textContent = '센터별 통역 실적 보고 현황 (도협회)';
+  $('stTitle').textContent = '센터별 통역 실적 보고 현황';
   $('stBody').innerHTML = hqBtn() + `<div class="card"><b>${ymText(d.targetYearMonth)}</b> · 승인 ${cnt('APPROVED')} · 검토 대기 ${cnt('SUBMITTED')} · 보완 요청 ${cnt('REJECTED')} · 미보고 ${cnt('DRAFT')} (전체 ${d.rows.length}개 센터)
       <div class="muted" style="font-size:12px;margin-top:4px">검토 대기 줄을 눌러 상세 통계를 보고 승인 또는 보완 요청하세요.</div></div>
     <div class="card" style="overflow-x:auto"><table><thead><tr><th>센터명</th><th>대상 연월</th><th>총 건수</th><th>총 시간</th><th>보고 상태</th><th>보고 일시</th></tr></thead><tbody>
       ${d.rows.map((r) => `<tr class="${r.status !== 'DRAFT' ? 'click' : ''}" ${r.status === 'SELF' ? `onclick="loadHqStats('${d.targetYearMonth}')"` : r.status !== 'DRAFT' ? `onclick="openDetail(${r.centerId})"` : ''}><td>${esc(r.centerName)}</td><td>${ymText(r.targetYearMonth)}</td>
         <td>${r.totalCases == null ? '-' : r.totalCases + '건'}</td><td>${r.totalHours == null ? '-' : r.totalHours + '시간'}</td><td>${stBadge(r.status, r.submittedAt)}</td><td>${dtText(r.submittedAt) || '-'}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">센터가 없습니다.</td></tr>'}
     </tbody></table></div>
-    <h3>도협회 전체 통계 (승인된 지회 센터 ${a.reports || 0}곳 + 도센터 합산)</h3>${summaryHtml({ totalCases: a.totalCases, totalHours: a.totalHours, uniqueUsersCount: a.uniqueUsersCount, totalUsersCount: a.totalUsersCount, byField: a.byField })}`;
+    <h3>전체 통계 (승인된 지회 센터 ${a.reports || 0}곳 + 도센터 합산)</h3>${summaryHtml({ totalCases: a.totalCases, totalHours: a.totalHours, uniqueUsersCount: a.uniqueUsersCount, totalUsersCount: a.totalUsersCount, byField: a.byField })}`;
 }
 // 도협회: 여러 달 보고 현황 (센터 × 월)
 let RANGE = null;
@@ -437,7 +534,7 @@ function drawRange() {
   const d = RANGE, a = d.approved || {}, ms = d.months || [];
   const mm = (ym) => Number(String(ym).slice(5)) + '월';
   const all = d.rows.flatMap((r) => ms.map((y) => (r.months[y] || {}).status || 'DRAFT')), cnt = (k) => all.filter((x) => x === k).length;
-  $('stTitle').textContent = '센터별 통역 실적 보고 현황 (도협회)';
+  $('stTitle').textContent = '센터별 통역 실적 보고 현황';
   $('stBody').innerHTML = hqBtn() + `<div class="card"><b>${ymText(d.from)} ~ ${ymText(d.to)}</b> (${ms.length}개월) · 승인 ${cnt('APPROVED')} · 검토 대기 ${cnt('SUBMITTED')} · 보완 요청 ${cnt('REJECTED')} · 미보고 ${cnt('DRAFT')}
       <div class="muted" style="font-size:12px;margin-top:4px">칸을 누르면 그 달 보고를 보고 승인 또는 보완 요청할 수 있습니다. 합계는 보고 완료·승인된 달만 더합니다. 도센터는 보고 없이 통역일지로 바로 집계합니다.</div></div>
     <div class="card yr" style="overflow-x:auto"><table><thead><tr><th>센터명</th>${ms.map((y) => `<th>${ms.length > 12 || ms[0].slice(0, 4) !== ms[ms.length - 1].slice(0, 4) ? y.slice(2, 4) + '.' : ''}${mm(y)}</th>`).join('')}<th>건수 합계</th><th>시간 합계</th></tr></thead><tbody>
@@ -446,7 +543,7 @@ function drawRange() {
           return `<td class="${st !== 'DRAFT' ? 'click' : ''}" ${st !== 'DRAFT' ? `onclick="openDetail(${r.centerId},'${y}')"` : ''} title="${ST_LABEL[st]}${x.cases != null ? ' · ' + x.cases + '건' : ''}"><span class="badge st-${st}">${{ DRAFT: '미보고', SUBMITTED: '대기', APPROVED: '승인', REJECTED: '보완' }[st]}</span></td>`; }).join('')}
         <td>${r.cases ? r.cases + '건' : '-'}</td><td>${r.hours ? r.hours + '시간' : '-'}</td></tr>`).join('') || `<tr><td colspan="${ms.length + 3}" class="muted">센터가 없습니다.</td></tr>`}
     </tbody></table></div>
-    <h3>도협회 전체 통계 (기간 안 승인된 보고 ${a.reports || 0}건 + 도센터 합산)</h3>${summaryHtml({ totalCases: a.totalCases, totalHours: a.totalHours, uniqueUsersCount: a.uniqueUsersCount, totalUsersCount: a.totalUsersCount, byField: a.byField })}
+    <h3>전체 통계 (기간 안 승인된 보고 ${a.reports || 0}건 + 도센터 합산)</h3>${summaryHtml({ totalCases: a.totalCases, totalHours: a.totalHours, uniqueUsersCount: a.uniqueUsersCount, totalUsersCount: a.totalUsersCount, byField: a.byField })}
     <p class="muted" style="font-size:12px">실인원은 달마다 센 수를 더한 값입니다.</p>`;
 }
 async function openDetail(centerId, ym) {
@@ -476,11 +573,18 @@ async function openDetail(centerId, ym) {
   if (wait) { ov.querySelector('#apOk').onclick = () => review(true); ov.querySelector('#apNo').onclick = () => review(false); }
 }
 
-// 이름 검색: 통역사(상담자)·의뢰자 이름에 검색어가 들어간 기록만
-function byName(data, keys) {
-  const q = ($('q').value || '').trim().replace(/\s+/g, ''); if (!q) return data || [];
-  const n = (data || []).filter((r) => keys.some((k) => String(r[k] || '').replace(/\s+/g, '').indexOf(q) >= 0));
-  msg('listMsg', `'${q}' 검색 결과 ${n.length}건`, true); return n;
+// 전체 기록: 직원 이름 고르기 (센터 직원 목록)
+let NAMES = null;
+async function loadNames() {
+  if (NAMES) return;
+  const { data } = await sb.rpc('interp_staff_names'); NAMES = data || [];
+  $('q').innerHTML = '<option value="">전체 직원</option>' + NAMES.map((n) => `<option>${esc(n)}</option>`).join('');
+}
+function byName(data, key) {
+  const q = (tab === 'all' || tab === 'call') ? $('q').value : '';
+  if (!q) return data || [];
+  const n = (data || []).filter((r) => String(r[key] || '').trim() === q);
+  msg('listMsg', `${q} · ${n.length}건`, true); return n;
 }
 async function loadList() {
   msg('listMsg', '');
@@ -488,13 +592,13 @@ async function loadList() {
   let { data, error } = await sb.rpc('interp_list', { p_from: $('from').value || null, p_to: $('to').value || null, p_all: tab === 'all' });
   if (error) return msg('listMsg', errText(error));
   const all = tab === 'all';
-  data = byName(data, ['interpreter_name', 'client']);
-  $('listHead').innerHTML = '<tr><th>날짜</th><th>시간</th>' + (all ? '<th>통역사</th>' : '') + '<th>구분</th><th>의뢰자</th><th>장소</th><th>종류</th><th>대상</th><th>인원(농/청)</th><th>내용</th><th>시트</th></tr>';
-  const st = { ok: ['ok', '기록됨'], skip: ['wait', '연결 안 됨'], error: ['err', '실패'] };
+  data = byName(data, 'interpreter_name'); LIST = data || [];
+  $('listHead').innerHTML = '<tr><th>날짜</th><th>시간</th>' + (all ? '<th>통역사</th>' : '') + '<th>구분</th><th>의뢰자</th><th>장소</th><th>종류</th><th>대상</th><th>인원(농/청)</th><th>내용</th><th>시트</th>' + (all ? '' : '<th class="noprint">관리</th>') + '</tr>';
+  const st = { ok: ['ok', '기록됨'], skip: ['wait', '연결 안 됨'], error: ['err', '실패'], edited: ['wait', '시스템에서 고침'] };
   $('listBody').innerHTML = (data || []).map((r) => {
     const s = st[r.sheet_status] || ['wait', '대기'];
-    return `<tr><td>${esc(r.log_date)}</td><td>${esc(r.start_time)}~${esc(r.end_time)}</td>${all ? '<td>' + esc(r.interpreter_name) + '</td>' : ''}<td>${esc(r.type)}</td><td>${esc(r.client)}</td><td>${esc(r.location)}</td><td>${esc(r.category)}</td><td>${esc(r.target)}</td><td>${r.deaf_count}/${r.hearing_count}</td><td>${esc(r.content)}</td><td><span class="badge ${s[0]}">${s[1]}</span></td></tr>`;
-  }).join('') || '<tr><td colspan="11" class="muted">기록이 없습니다.</td></tr>';
+    return `<tr><td>${esc(r.log_date)}</td><td>${esc(r.start_time)}~${esc(r.end_time)}</td>${all ? '<td>' + esc(r.interpreter_name) + '</td>' : ''}<td>${esc(r.type)}</td><td>${esc(r.client)}</td><td>${esc(r.location)}</td><td>${esc(r.category)}</td><td>${esc(r.target)}</td><td>${r.deaf_count}/${r.hearing_count}</td><td>${esc(r.content)}</td><td><span class="badge ${s[0]}">${s[1]}</span></td>${all ? '' : `<td class="noprint" style="white-space:nowrap"><button class="sm" onclick="editLog('${r.id}')">수정</button> <button class="sm" onclick="delLog('${r.id}')">삭제</button></td>`}</tr>`;
+  }).join('') || '<tr><td colspan="12" class="muted">기록이 없습니다.</td></tr>';
 }
 
 const FIELDS = ['startTime', 'endTime', 'type', 'method', 'client', 'location', 'category', 'way', 'target', 'deafCount', 'hearingCount', 'content'];
@@ -513,6 +617,12 @@ async function submitLog() {
   if (!okTime(p.endTime.trim())) return msg('writeMsg', '종료시간을 00:00 ~ 23:59 형식으로 입력해 주세요.');
   if (!p.client.trim()) return msg('writeMsg', '의뢰자를 입력해 주세요.');
   $('saveBtn').disabled = true; msg('writeMsg', '저장 중입니다...', true);
+  if (EDIT_I) {
+    const { error } = await sb.rpc('interp_update', { p_id: EDIT_I, p });
+    $('saveBtn').disabled = false;
+    if (error) return msg('writeMsg', errText(error));
+    endEdit(); msg('writeMsg', '고쳤습니다. (구글 시트에 이미 적힌 줄은 그대로이니 필요하면 시트에서도 고쳐 주세요)', true); return;
+  }
   try {
     const { data, error } = await sb.rpc('interp_save', { p });
     if (error) return msg('writeMsg', errText(error));
@@ -555,6 +665,12 @@ async function submitCounsel() {
   if (!p.client.trim()) return msg('cwriteMsg', '의뢰자를 입력해 주세요.');
   if (!p.content.trim()) return msg('cwriteMsg', '상담내용을 입력해 주세요.');
   $('cSaveBtn').disabled = true; msg('cwriteMsg', '저장 중입니다...', true);
+  if (EDIT_C) {
+    const { error } = await sb.rpc('counsel_update', { p_id: EDIT_C, p });
+    $('cSaveBtn').disabled = false;
+    if (error) return msg('cwriteMsg', errText(error));
+    endCEdit(); msg('cwriteMsg', '고쳤습니다. (구글 시트에 이미 적힌 줄은 그대로이니 필요하면 시트에서도 고쳐 주세요)', true); return;
+  }
   try {
     const { data, error } = await sb.rpc('counsel_save', { p });
     if (error) return msg('cwriteMsg', errText(error));
@@ -573,13 +689,13 @@ async function loadCList() {
   const all = tab === 'call';
   let { data, error } = await sb.rpc('counsel_list', { p_from: $('from').value || null, p_to: $('to').value || null, p_all: all });
   if (error) return msg('listMsg', errText(error));
-  data = byName(data, ['counselor_name', 'client']);
-  $('listHead').innerHTML = '<tr><th>날짜</th><th>시간</th>' + (all ? '<th>상담자</th>' : '') + '<th>의뢰자</th><th>상담내용</th><th>장소</th><th>구분</th><th>상담구분</th><th>인원</th><th>종류</th><th>의뢰방법</th><th>대상</th><th>비고</th><th>시트</th></tr>';
-  const st = { ok: ['ok', '기록됨'], skip: ['wait', '연결 안 됨'], error: ['err', '실패'] };
+  data = byName(data, 'counselor_name'); LIST = data || [];
+  $('listHead').innerHTML = '<tr><th>날짜</th><th>시간</th>' + (all ? '<th>상담자</th>' : '') + '<th>의뢰자</th><th>상담내용</th><th>장소</th><th>구분</th><th>상담구분</th><th>인원</th><th>종류</th><th>의뢰방법</th><th>대상</th><th>비고</th><th>시트</th>' + (all ? '' : '<th class="noprint">관리</th>') + '</tr>';
+  const st = { ok: ['ok', '기록됨'], skip: ['wait', '연결 안 됨'], error: ['err', '실패'], edited: ['wait', '시스템에서 고침'] };
   $('listBody').innerHTML = (data || []).map((r) => {
     const s = st[r.sheet_status] || ['wait', '대기'];
-    return `<tr><td>${esc(r.log_date)}</td><td>${esc(r.log_time)}</td>${all ? '<td>' + esc(r.counselor_name) + '</td>' : ''}<td>${esc(r.client)}</td><td style="white-space:normal;min-width:180px">${esc(r.content)}</td><td>${esc(r.place)}</td><td>${esc(r.gubun)}</td><td>${esc(r.ctype)}</td><td>${r.people}</td><td>${esc(r.kind)}</td><td>${esc(r.method)}</td><td>${esc(r.target)}</td><td>${esc(r.note)}</td><td><span class="${s[0]}">${s[1]}</span></td></tr>`;
-  }).join('') || `<tr><td colspan="${all ? 14 : 13}" class="muted">기록이 없습니다.</td></tr>`;
+    return `<tr><td>${esc(r.log_date)}</td><td>${esc(r.log_time)}</td>${all ? '<td>' + esc(r.counselor_name) + '</td>' : ''}<td>${esc(r.client)}</td><td style="white-space:normal;min-width:180px">${esc(r.content)}</td><td>${esc(r.place)}</td><td>${esc(r.gubun)}</td><td>${esc(r.ctype)}</td><td>${r.people}</td><td>${esc(r.kind)}</td><td>${esc(r.method)}</td><td>${esc(r.target)}</td><td>${esc(r.note)}</td><td><span class="${s[0]}">${s[1]}</span></td>${all ? '' : `<td class="noprint" style="white-space:nowrap"><button class="sm" onclick="editCLog('${r.id}')">수정</button> <button class="sm" onclick="delCLog('${r.id}')">삭제</button></td>`}</tr>`;
+  }).join('') || `<tr><td colspan="14" class="muted">기록이 없습니다.</td></tr>`;
 }
 function drawCFav() {
   $('cfavLoad').innerHTML = [1, 2, 3].map((n) => { const d = cpresets[n]; return `<button onclick="loadCPreset(${n})">⭐ ${n}번${d ? ': ' + esc(d.client || d.place || '저장건') : ' (비어 있음)'}</button>`; }).join('');
@@ -596,6 +712,51 @@ async function saveCPreset(n) {
   const { error } = await sb.rpc('counsel_preset_save', { p_num: n, p_data: d });
   if (error) return msg('cfavMsg', errText(error));
   cpresets[n] = d; drawCFav(); msg('cfavMsg', n + '번에 저장했습니다.', true);
+}
+// ============ 내 기록 수정 · 삭제 ============
+function editLog(id) {
+  const r = LIST.find((x) => x.id === id); if (!r) return;
+  setTab('write'); EDIT_I = id;
+  const v = { startTime: r.start_time, endTime: r.end_time, type: r.type, method: r.method, client: r.client, location: r.location, category: r.category, way: r.way, target: r.target, deafCount: r.deaf_count, hearingCount: r.hearing_count, content: r.content };
+  $('date').value = r.log_date; FIELDS.forEach((f) => { if (v[f] != null) $(f).value = v[f]; });
+  $('saveBtn').textContent = '💾 고친 내용 저장';
+  if (!$('cancelEdit')) $('saveBtn').insertAdjacentHTML('afterend', ' <button id="cancelEdit" onclick="endEdit()">고치기 취소</button>');
+  msg('writeMsg', r.log_date + ' 기록을 고치는 중입니다.', true); window.scrollTo(0, 0);
+}
+function endEdit() { EDIT_I = null; $('saveBtn').textContent = '💾 통역일지 저장'; if ($('cancelEdit')) $('cancelEdit').remove(); ['client', 'location', 'content'].forEach((f) => { $(f).value = ''; }); $('date').value = today(); msg('writeMsg', ''); }
+async function delLog(id) {
+  const r = LIST.find((x) => x.id === id); if (!r) return;
+  if (!confirm(`${r.log_date} ${r.client} 통역 기록을 삭제할까요? 되돌릴 수 없습니다.\n(구글 시트에 이미 적힌 줄은 시트에서 따로 지워 주세요)`)) return;
+  const { error } = await sb.rpc('interp_delete', { p_id: id });
+  if (error) return msg('listMsg', errText(error));
+  msg('listMsg', '삭제했습니다.', true); loadList();
+}
+function editCLog(id) {
+  const r = LIST.find((x) => x.id === id); if (!r) return;
+  setTab('cwrite'); EDIT_C = id;
+  const v = { time: r.log_time, client: r.client, place: r.place, gubun: r.gubun, ctype: r.ctype, people: r.people, kind: r.kind, method: r.method, target: r.target, note: r.note, content: r.content };
+  $('c_date').value = r.log_date; CFIELDS.forEach((f) => { if (v[f] != null) $('c_' + f).value = v[f]; });
+  $('cSaveBtn').textContent = '💾 고친 내용 저장';
+  if (!$('cCancelEdit')) $('cSaveBtn').insertAdjacentHTML('afterend', ' <button id="cCancelEdit" onclick="endCEdit()">고치기 취소</button>');
+  msg('cwriteMsg', r.log_date + ' 기록을 고치는 중입니다.', true); window.scrollTo(0, 0);
+}
+function endCEdit() { EDIT_C = null; $('cSaveBtn').textContent = '💾 상담일지 저장'; if ($('cCancelEdit')) $('cCancelEdit').remove(); ['client', 'content', 'note', 'time'].forEach((f) => { $('c_' + f).value = ''; }); $('c_date').value = today(); msg('cwriteMsg', ''); }
+async function delCLog(id) {
+  const r = LIST.find((x) => x.id === id); if (!r) return;
+  if (!confirm(`${r.log_date} ${r.client} 상담 기록을 삭제할까요? 되돌릴 수 없습니다.\n(구글 시트에 이미 적힌 줄은 시트에서 따로 지워 주세요)`)) return;
+  const { error } = await sb.rpc('counsel_delete', { p_id: id });
+  if (error) return msg('listMsg', errText(error));
+  msg('listMsg', '삭제했습니다.', true); loadList();
+}
+// ============ 전체 기록 월별 출력 ============
+async function printMonth() {
+  const ym = $('prYm').value; if (!ym) return msg('listMsg', '출력할 달을 고르세요.');
+  const [y, mo] = ym.split('-').map(Number), last = new Date(y, mo, 0).getDate();
+  $('from').value = ym + '-01'; $('to').value = ym + '-' + String(last).padStart(2, '0');
+  await loadList();
+  const who = $('q').value;
+  $('prHead').innerHTML = `<h2 style="margin:0 0 6px">${esc(me.center_name || me.chapter_name)} ${isC(tab) ? '상담일지' : '통역일지'} · ${y}년 ${mo}월${who ? ' · ' + esc(who) : ''}</h2><div style="font-size:12px;margin-bottom:6px">${LIST.length}건 · 출력일 ${today()}</div>`;
+  setTimeout(() => window.print(), 200);
 }
 boot();
 </script>

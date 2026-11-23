@@ -536,7 +536,7 @@ function drawBiz() {
   const tc = sumI(['cases']), cc = sumC(['cases']);
   $('stTitle').textContent = `${d.centerName} · ${d.year}년 ${m1}월 ~ ${m2}월 사업실적`;
   const tline = (lab, f) => annual(f) ? `${lab} 연간 ${annual(f).toLocaleString()} → 월 ${(annual(f) / 12).toLocaleString(undefined, { maximumFractionDigits: 1 })} → 이 기간(${ms.length}개월) ${tgt(f).toLocaleString()}` : `${lab} 목표 없음`;
-  $('stBody').innerHTML = `<p class="muted noprint">통역일지·상담일지로 자동 계산합니다.${d.c.canEdit ? ' <button class="sm" onclick="openTarget()">🎯 목표 설정</button>' : me.can_review && !$('stCt').value ? ' <button class="sm" onclick="ownEdit(openTarget)">🎯 목표 설정 (도센터)</button>' : ''}</p>
+  $('stBody').innerHTML = `<p class="muted noprint">통역일지·상담일지로 자동 계산합니다.${d.c.canEdit ? ' <button class="sm" onclick="openTarget()">🎯 목표 설정</button>' : me.can_review && !$('stCt').value ? ' <button class="sm" onclick="ownEdit(openTarget)">🎯 목표 설정</button>' : ''}</p>
     <div class="card noprint" style="padding:8px 12px;font-size:13px">🎯 ${tline('건수', 'targetCases')}<br>🎯 ${tline('연인원', 'targetPpl')}</div>
     <h3>1. 사업실적 <span class="muted" style="font-size:12px">(단위: 건, 명)</span></h3>
     <div class="card yr" style="overflow-x:auto"><table data-title="1. 사업실적"><thead>

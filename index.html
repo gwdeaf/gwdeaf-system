@@ -356,6 +356,21 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
   .mlogout{display:none!important}
   .mgr{grid-template-columns:1fr 1fr 1fr}
 }
+/* 바로가기: 위쪽 띠에 늘 보임 */
+.qbar{position:sticky;top:58px;z-index:29;display:flex;align-items:center;gap:8px;padding:6px 24px;background:rgba(245,247,251,.95);border-bottom:1px solid var(--line);overflow-x:auto;scrollbar-width:none}
+.qbar .ql{flex:none;font-size:.8rem;font-weight:800;color:var(--mute)}
+.qbar .qchips{display:flex;flex-wrap:wrap;gap:6px;flex:1;min-width:0}
+.qbar .qchip{flex:none;display:flex;align-items:center;gap:5px;border:1px solid var(--line);background:#fff;border-radius:99px;padding:4px 11px;font-size:.8rem;font-weight:700;color:var(--text);cursor:pointer;white-space:nowrap}
+.qbar .qchip:hover{background:var(--pri-soft);border-color:#d5e0ff}
+.qbar .qed{flex:none;border:0;background:none;color:var(--pri);font-size:.8rem;font-weight:700;cursor:pointer}
+.qbar .empty{font-size:.8rem;padding:0;color:var(--mute)}
+@media(max-width:860px){.qbar{top:0;position:relative;padding:6px 12px}.qbar .qchips{flex-wrap:nowrap}#mhome .mh-sec.mqh,#mquick{display:none}}
+.grid:has(.qcol #mgr-card.hide){grid-template-columns:minmax(0,1.25fr) minmax(0,1fr)}
+.grid:has(.qcol #mgr-card.hide) .qcol{display:none}
+/* 화면 모드: 다크 = 전체 색 뒤집기 (그림·사진·동영상은 원래 색) */
+html.dark{filter:invert(.9) hue-rotate(180deg);background:#111}
+html.dark img,html.dark video,html.dark canvas,html.dark .noinv{filter:invert(1) hue-rotate(180deg)}
+.thm{border:1px solid var(--line);background:#fff;border-radius:10px;padding:6px 9px;font-size:.9rem;cursor:pointer}
 </style>
 <link rel="stylesheet" href="/ui.css?v=1">
 <style>.gbtn2{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 11px;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--text)}.gbtn2:hover{background:var(--pri-soft)}@media(max-width:600px){.gbtn2 .gtx{display:none}}</style>
@@ -410,13 +425,15 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
       <span class="tdate" id="today"></span>
       <span class="pstat hide" id="pstat" onclick="openPunch()" title="출퇴근 기록"></span>
       <button class="pbtn hide" id="pbtn" onclick="openPunch()">📍 출퇴근</button>
+      <button class="thm" id="thm" onclick="cycleTheme()" title="화면 모드"></button>
       <button class="gbtn2" onclick="openGuide(ME, (CUR||'home').split(':')[0])" title="사용 안내">📖<span class="gtx"> 사용 안내</span><span class="gtx2"> 사용설명서</span></button>
       <div class="tuser" onclick="openMy()" title="마이페이지"><div class="av sm" id="tb-av"></div><span id="tb-nm"></span></div>
     </div>
   </div>
+  <div class="qbar" id="qbar"><span class="ql">⭐ 바로가기</span><div id="quick" class="qchips"><span class="empty">불러오는 중…</span></div><button class="qed" onclick="openMy('quick')">편집</button></div>
   <main id="view-home">
     <div id="mhome">
-      <div class="mh-sec">⭐ 즐겨찾기 <a onclick="openMy('quick')">편집</a></div>
+      <div class="mh-sec mqh">⭐ 즐겨찾기 <a onclick="openMy('quick')">편집</a></div>
       <div id="mquick" class="mq"></div>
       <div class="mh-sec">한눈에 보기</div>
       <div id="mtiles" class="mt"></div>
@@ -451,10 +468,6 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
         </div>
       </div>
       <div class="col qcol">
-        <div class="card" style="order:3">
-          <div class="ctitle"><span>⭐ 즐겨찾기</span><button class="btn" onclick="openMy('quick')">편집</button></div>
-          <div id="quick" class="qgrid"><div class="empty">불러오는 중…</div></div>
-        </div>
         <div class="card hide" id="mgr-card" data-mi="🛠" data-ml="시스템 관리" style="order:4">
           <div class="ctitle"><span>🛠 시스템 관리</span><button class="btn" onclick="editMgr()">편집</button></div>
           <div id="mgr" class="qgrid"></div>
@@ -697,6 +710,19 @@ function fromHash(){
   go(m[1], m[3] ? decodeURIComponent(m[3]) : '', !!m[2]); return true;
 }
 /* ── 글씨 크기 (기기마다 저장: 보통 1 · 크게 1.15) ── */
+/* 화면 모드: light / dark / system (이 기기에 저장) */
+var THEME = 'system'; try { THEME = localStorage.getItem('gw-theme') || 'system'; } catch(e){}
+var THEME_MQ = window.matchMedia ? window.matchMedia('(prefers-color-scheme: dark)') : null;
+var THEME_NM = { dark: '다크', light: '라이트', system: '시스템 설정 따라가기' };
+function applyTheme(){
+  var dark = THEME === 'dark' || (THEME === 'system' && THEME_MQ && THEME_MQ.matches);
+  document.documentElement.classList.toggle('dark', !!dark);
+  var b = document.getElementById('thm'); if (b) { b.textContent = THEME === 'dark' ? '🌙' : THEME === 'light' ? '☀️' : '🖥'; b.title = '화면 모드: ' + THEME_NM[THEME] + ' (누르면 바뀜)'; }
+}
+function setTheme(v){ THEME = v; try { localStorage.setItem('gw-theme', v); } catch(e){} applyTheme(); }
+function cycleTheme(){ var next = { light: 'dark', dark: 'system', system: 'light' }[THEME] || 'light'; setTheme(next); toast('화면 모드: ' + THEME_NM[next]); }
+if (THEME_MQ && THEME_MQ.addEventListener) THEME_MQ.addEventListener('change', applyTheme);
+applyTheme();
 var FS = 1; try { FS = parseFloat(localStorage.getItem('gw-fs')) || 1; } catch(e){}
 var FS_LV = [1, 1.15];   // 보통(아이콘 한 줄 4개) · 크게(한 줄 3개)
 if (FS_LV.indexOf(FS) < 0) FS = FS > 1 ? 1.15 : 1;
@@ -896,8 +922,8 @@ async function loadQuick(){
   var ids = quickIds();
   var list = ids.map(function(id){ return byId[id]; }).filter(Boolean);
   box.innerHTML = list.length ? list.map(function(x){
-    return '<button class="qbtn" onclick="quickGo(\'' + esc(x.id) + '\')"><span class="ic">' + esc(x.ic) + '</span>' + esc(x.label) + (x.grp ? '<small>' + esc(x.grp) + '</small>' : '') + '</button>';
-  }).join('') : '<div class="empty" style="grid-column:1/-1">자주 쓰는 메뉴가 없습니다. <b>편집</b>을 눌러 추가하세요.</div>';
+    return '<button class="qchip" onclick="quickGo(\'' + esc(x.id) + '\')" title="' + esc((x.grp ? x.grp + ' › ' : '') + x.label) + '"><span class="ic">' + esc(x.ic) + '</span>' + esc(x.label) + '</button>';
+  }).join('') : '<span class="empty">자주 쓰는 메뉴가 없습니다. 오른쪽 <b>편집</b>을 눌러 추가하세요.</span>';
   var mq = $('mquick');
   if (mq) mq.innerHTML = list.length ? list.map(function(x){ return '<button onclick="quickGo(\'' + esc(x.id) + '\')"><span class="ic">' + esc(x.ic) + '</span>' + esc(x.label) + '</button>'; }).join('')
     : '<div class="empty">편집을 눌러 자주 쓰는 메뉴를 넣으세요.</div>';

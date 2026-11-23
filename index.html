@@ -278,6 +278,25 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .nav .kls{margin:clamp(4px,.8vh,9px) 6px 2px 34px;padding:clamp(3px,.6vh,6px) 10px;font-size:.8rem;font-weight:800;color:var(--pri);background:var(--pri-soft);border-radius:7px;letter-spacing:0}
 /* 대시보드 시스템 관리: 화면 아래쪽 전체 폭 */
 
+/* 휴대폰 홈: 즐겨찾기 맨 위 + 카드는 아이콘 → 누르면 크게 */
+#mhome{display:none}
+@media(max-width:860px){
+  #mhome{display:block;margin-bottom:6px}
+  .mh-sec{display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:.95rem;margin:4px 2px 8px}
+  .mh-sec a{font-size:.82rem;font-weight:700;color:var(--pri);cursor:pointer}
+  .mq,.mt{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:16px}
+  .mq button,.mt button{border:1px solid var(--line);background:#fff;border-radius:14px;padding:10px 4px 8px;display:flex;flex-direction:column;align-items:center;gap:4px;font:inherit;font-size:.74rem;font-weight:700;color:var(--text);line-height:1.25;text-align:center;cursor:pointer;position:relative;min-height:74px;word-break:keep-all}
+  .mq button .ic,.mt button .ic{font-size:1.55rem;line-height:1}
+  .mt button .n{position:absolute;top:5px;right:6px;background:#e5484d;color:#fff;border-radius:99px;font-size:.66rem;padding:0 6px;font-weight:800}
+  .mq .empty{grid-column:1/-1;font-size:.82rem}
+  #view-home .grid .card{display:none}
+  #view-home .grid .card.mopen{display:block;position:fixed;inset:0;z-index:70;margin:0;border-radius:0;overflow-y:auto;padding:0 16px 30px;border:0}
+  .card.mopen .mbar{display:flex}
+  .card.mopen .ctitle>span:first-child{display:none}.card.mopen .ctitle{justify-content:flex-end}.card.mopen .ctitle:empty{display:none}
+  body.mlock{overflow:hidden}
+}
+.mbar{display:none;position:sticky;top:0;z-index:2;background:#fff;align-items:center;gap:8px;padding:12px 0 10px;margin-bottom:6px;border-bottom:1px solid var(--line)}
+.mbar b{flex:1;font-size:1.05rem}.mbar button{border:0;background:#eef0f5;border-radius:10px;padding:8px 14px;font:inherit;font-weight:700;cursor:pointer}
 /* 왼쪽 메뉴 글씨 = 홈 카드 제목(공지사항·오늘의 현황)과 같은 크기 */
 .shell{grid-template-columns:260px minmax(0,1fr)}
 .nav a.top,.nav .grp{font-size:1.02rem}
@@ -365,31 +384,37 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
     </div>
   </div>
   <main id="view-home">
+    <div id="mhome">
+      <div class="mh-sec">⭐ 즐겨찾기 <a onclick="openMy('quick')">편집</a></div>
+      <div id="mquick" class="mq"></div>
+      <div class="mh-sec">한눈에 보기</div>
+      <div id="mtiles" class="mt"></div>
+    </div>
     <div class="grid">
       <div class="col">
-        <div class="card" style="order:1">
+        <div class="card" id="card-notice" data-mi="📢" data-ml="공지사항" style="order:1">
           <div class="ctitle"><span>📢 공지사항</span><button class="btn pri hide" id="notice-add" onclick="openNotice()">+ 공지 쓰기</button></div>
           <div id="notices"><div class="empty">불러오는 중…</div></div>
         </div>
-        <div class="card" style="order:2">
+        <div class="card" id="card-board" data-mi="👥" data-ml="오늘의 현황" style="order:2">
           <div class="ctitle"><span>👥 오늘의 현황</span><span class="mute" id="bd-date"></span></div>
           <div id="board"><div class="empty">불러오는 중…</div></div>
         </div>
-        <div class="card hide" id="newscard" style="order:2">
+        <div class="card hide" id="newscard" data-mi="📺" data-ml="뉴스 통역" style="order:2">
           <div class="ctitle"><span>📺 뉴스 통역 (7일)</span><a class="btn" href="/news/" target="_blank" rel="noopener">배정표 열기 ↗</a></div>
           <div id="newsbox"><div class="empty">불러오는 중…</div></div>
         </div>
       </div>
       <div class="col">
-        <div class="card" id="todaycard" style="order:-1">
+        <div class="card" id="todaycard" data-mi="📌" data-ml="오늘 내 일정" style="order:-1">
           <div class="ctitle"><span>📌 오늘 내 일정</span><button class="btn" id="dg-btn" onclick="toggleDigest()" title="매일 아침(평일 9:00) Slack으로 오늘 일정 받기">🔔 알림 켜짐</button></div>
           <div id="todaybox"><div class="empty">불러오는 중…</div></div>
         </div>
-        <div class="card" style="order:0">
+        <div class="card" id="card-att" data-mi="🗓" data-ml="내 근태" style="order:0">
           <div class="ctitle"><span>🗓 내 근태</span><button class="btn" onclick="go('att','leave')">근태 / 휴가 관리 →</button></div>
           <div id="att"><div class="empty">불러오는 중…</div></div>
         </div>
-        <div class="card" id="calcard" style="order:1">
+        <div class="card" id="calcard" data-mi="📅" data-ml="일정" style="order:1">
           <div class="ctitle"><span>📅 일정</span><span class="mute" id="calname">구글 캘린더</span></div>
           <div id="calbox"><div class="empty">불러오는 중…</div></div>
         </div>
@@ -399,7 +424,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
           <div class="ctitle"><span>⭐ 즐겨찾기</span><button class="btn" onclick="openMy('quick')">편집</button></div>
           <div id="quick" class="qgrid"><div class="empty">불러오는 중…</div></div>
         </div>
-        <div class="card hide" id="mgr-card" style="order:4">
+        <div class="card hide" id="mgr-card" data-mi="🛠" data-ml="시스템 관리" style="order:4">
           <div class="ctitle"><span>🛠 시스템 관리</span><button class="btn" onclick="editMgr()">편집</button></div>
           <div id="mgr" class="qgrid"></div>
         </div>
@@ -795,6 +820,29 @@ async function loadPrefs(){
   try { var r = await sb.rpc('my_prefs_get'); PREFS = (r && !r.error && r.data) || {}; } catch(e) { PREFS = {}; }
   return PREFS;
 }
+/* ── 휴대폰 홈: 카드를 아이콘으로 · 누르면 크게 ── */
+var MCARDS = ['todaycard', 'card-notice', 'card-board', 'card-att', 'calcard', 'newscard', 'mgr-card'];
+function mhCount(id){
+  if (id === 'card-notice') return (NOTICES || []).length;
+  if (id === 'todaycard') { var b = $('todaybox'); return b ? b.querySelectorAll('.sch').length : 0; }
+  return 0;
+}
+function mhRender(){
+  var box = $('mtiles'); if (!box) return;
+  box.innerHTML = MCARDS.map(function(id){ var c = $(id); if (!c || c.classList.contains('hide')) return '';
+    var n = mhCount(id);
+    return '<button onclick="mhOpen(\'' + id + '\')"><span class="ic">' + c.getAttribute('data-mi') + '</span>' + esc(c.getAttribute('data-ml')) + (n ? '<span class="n">' + n + '</span>' : '') + '</button>'; }).join('');
+}
+function mhOpen(id){
+  var c = $(id); if (!c) return;
+  if (!c.querySelector('.mbar')) { var bar = document.createElement('div'); bar.className = 'mbar'; bar.innerHTML = '<b>' + c.getAttribute('data-mi') + ' ' + esc(c.getAttribute('data-ml')) + '</b><button onclick="mhBack()">✕ 닫기</button>'; c.insertBefore(bar, c.firstChild); }
+  mhClose(); c.classList.add('mopen'); document.body.classList.add('mlock'); c.scrollTop = 0;
+  try { history.pushState({ mh: id }, ''); } catch(e){}
+}
+function mhBack(){ if (history.state && history.state.mh) history.back(); else mhClose(); }
+function mhClose(){ document.querySelectorAll('.card.mopen').forEach(function(c){ c.classList.remove('mopen'); }); document.body.classList.remove('mlock'); }
+window.addEventListener('popstate', function(){ if (document.querySelector('.card.mopen')) mhClose(); });   // 휴대폰 '뒤로' = 닫기
+setInterval(function(){ if (window.innerWidth <= 860 && $('mtiles') && !$('view-home').classList.contains('hide')) mhRender(); }, 2000);
 async function loadQuick(){
   var box = $('quick'); if (!box) return;
   await loadPrefs();
@@ -804,6 +852,10 @@ async function loadQuick(){
   box.innerHTML = list.length ? list.map(function(x){
     return '<button class="qbtn" onclick="quickGo(\'' + esc(x.id) + '\')"><span class="ic">' + esc(x.ic) + '</span>' + esc(x.label) + (x.grp ? '<small>' + esc(x.grp) + '</small>' : '') + '</button>';
   }).join('') : '<div class="empty" style="grid-column:1/-1">자주 쓰는 메뉴가 없습니다. <b>편집</b>을 눌러 추가하세요.</div>';
+  var mq = $('mquick');
+  if (mq) mq.innerHTML = list.length ? list.map(function(x){ return '<button onclick="quickGo(\'' + esc(x.id) + '\')"><span class="ic">' + esc(x.ic) + '</span>' + esc(x.label) + '</button>'; }).join('')
+    : '<div class="empty">편집을 눌러 자주 쓰는 메뉴를 넣으세요.</div>';
+  mhRender();
 }
 function quickGo(id){ var a = document.querySelector('#nav [data-id="' + id + '"]'); if (a) a.click(); }
 async function openMy(focus){

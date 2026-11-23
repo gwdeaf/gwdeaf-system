@@ -2529,7 +2529,7 @@ function drawCert(info) {
         <label class="f" for="ctSeal" style="margin:0 0 0 12px">직인</label>
         <select id="ctSeal" style="width:auto"><option value="" ${sealDef === '' ? 'selected' : ''}>넣지 않음 (직접 날인)</option>
           <option value="지회" ${sealDef === '지회' ? 'selected' : ''} ${seals.지회 ? '' : 'disabled'}>${isAdmin() ? '도협회' : '지회'} 직인${seals.지회 ? '' : ' (등록 안 됨)'}</option>
-          ${isAdmin() ? '' : `<option value="센터" ${sealDef === '센터' ? 'selected' : ''} ${seals.센터 ? '' : 'disabled'}>센터 직인${seals.센터 ? '' : ' (등록 안 됨)'}</option>`}</select>
+          <option value="센터" ${sealDef === '센터' ? 'selected' : ''} ${seals.센터 ? '' : 'disabled'}>${isAdmin() ? '도센터' : '센터'} 직인${seals.센터 ? '' : ' (등록 안 됨)'}</option></select>
         <span class="spacer"></span>
         <button class="btn primary" id="ctIssue">선택한 사람 발급 · 인쇄 / PDF</button></div>
       <p class="hint">수료번호는 담당자가 직접 입력합니다. 숫자만 쓰면 위 서식(앞부분-연도-자리수)에 맞춰 붙고(예: 8 → 춘천-2026-008), 한 지회 안에서는 겹칠 수 없습니다. 비워 두면 다음 번호가 자동으로 붙습니다. 대장에는 번호 순서대로 표시됩니다.<br>
@@ -4354,8 +4354,8 @@ async function drawSeals() {
   let seals;
   try { seals = await call('getSeals'); } catch (e) { if (e.code !== 'AUTH') box.textContent = e.message; return; }
   S.seals = seals;
-  const lab = k => isAdmin() && k === '지회' ? '도협회' : k;   // 도협회 계정은 도협회 직인 하나만 (저장은 '지회' 칸)
-  box.innerHTML = (isAdmin() ? ['지회'] : ['지회', '센터']).map(k => `<div style="display:flex;gap:12px;align-items:center;margin:10px 0">
+  const lab = k => isAdmin() ? (k === '지회' ? '도협회' : '도센터') : k;   // 도협회 계정: 도협회 직인('지회' 칸) · 도센터 직인('센터' 칸)
+  box.innerHTML = ['지회', '센터'].map(k => `<div style="display:flex;gap:12px;align-items:center;margin:10px 0">
     <div style="width:84px;height:84px;border:1px dashed var(--line);border-radius:10px;display:grid;place-items:center;background:#fff;flex:none">${seals[k] ? `<img src="${esc(seals[k])}" alt="${lab(k)} 직인" style="max-width:76px;max-height:76px">` : '<span class="hint" style="margin:0">없음</span>'}</div>
     <div><b>${lab(k)} 직인</b><div class="row" style="margin-top:6px;gap:6px"><label class="btn small" style="cursor:pointer">${seals[k] ? '바꾸기' : '이미지 올리기'}<input type="file" accept="image/*" data-seal="${k}" style="display:none"></label>
     ${seals[k] ? `<button type="button" class="btn small danger" data-sealdel="${k}">삭제</button>` : ''}</div></div></div>`).join('');

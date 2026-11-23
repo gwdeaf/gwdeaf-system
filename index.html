@@ -282,7 +282,9 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 #mhome{display:none}
 .mfs{display:flex;align-items:center;gap:6px;margin:0 2px 12px;font-size:.8rem;font-weight:700;color:var(--mute,#6b7280)}
 .mfs span{flex:1}.mfs button{border:1px solid var(--line);background:#fff;border-radius:99px;padding:5px 10px;font:inherit;font-size:.78rem;cursor:pointer;color:var(--text)}
-.mfs button.on{background:var(--pri);border-color:var(--pri);color:#fff}
+.mfs button{min-width:52px;font-weight:800}
+#fs-dots{display:flex;gap:5px;font-style:normal}#fs-dots b{width:22px;height:6px;border-radius:9px;background:#d5dae3}#fs-dots b.on{background:var(--pri)}
+@media(max-width:860px){body.fs-big .mq,body.fs-big .mt{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:860px){
   #mhome{display:block;margin-bottom:6px}
   .mh-sec{display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:.95rem;margin:4px 2px 8px}
@@ -388,7 +390,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
   </div>
   <main id="view-home">
     <div id="mhome">
-      <div class="mfs"><span>글씨 크기</span><button data-fs="0.9" onclick="setFs(0.9)">작게</button><button data-fs="1" onclick="setFs(1)">보통</button><button data-fs="1.15" onclick="setFs(1.15)">크게</button></div>
+      <div class="mfs"><span>글씨 크기</span><button onclick="stepFs(-1)" aria-label="글씨 작게">가 −</button><i id="fs-dots"></i><button onclick="stepFs(1)" aria-label="글씨 크게" style="font-size:.95rem">가 +</button></div>
       <div class="mh-sec">⭐ 즐겨찾기 <a onclick="openMy('quick')">편집</a></div>
       <div id="mquick" class="mq"></div>
       <div class="mh-sec">한눈에 보기</div>
@@ -671,12 +673,16 @@ function fromHash(){
 }
 /* ── 글씨 크기 (기기마다 저장: 작게 0.9 · 보통 1 · 크게 1.15) ── */
 var FS = 1; try { FS = parseFloat(localStorage.getItem('gw-fs')) || 1; } catch(e){}
-if ([0.9, 1, 1.15].indexOf(FS) < 0) FS = FS > 1 ? 1.15 : 1;   // 예전 '아주 크게'는 '크게'로
+var FS_LV = [0.9, 1, 1.15];   // 작게 · 보통 · 크게
+if (FS_LV.indexOf(FS) < 0) FS = FS > 1 ? 1.15 : 1;   // 예전 '아주 크게'는 '크게'로
 function applyFs(){
   document.documentElement.style.fontSize = FS === 1 ? '' : (16 * FS) + 'px';
-  document.querySelectorAll('.mfs button').forEach(function(b){ b.classList.toggle('on', parseFloat(b.getAttribute('data-fs')) === FS); });
+  var lv = FS_LV.indexOf(FS), dots = $('fs-dots');
+  if (dots) dots.innerHTML = FS_LV.map(function(v, i){ return '<b' + (i <= lv ? ' class="on"' : '') + '></b>'; }).join('');
+  document.body.classList.toggle('fs-big', FS > 1);      // 크게: 아이콘 한 줄에 3개
   try { var d = $('frame').contentDocument; if (d && d.body) d.body.style.zoom = FS === 1 ? '' : FS; } catch(e){}   // 안쪽 화면(근태·차량 등)도 같은 비율
 }
+function stepFs(d){ var i = Math.max(0, Math.min(FS_LV.length - 1, FS_LV.indexOf(FS) + d)); setFs(FS_LV[i]); }
 function setFs(v){ FS = v; try { localStorage.setItem('gw-fs', String(v)); } catch(e){} applyFs(); }
 applyFs();
 $('frame').addEventListener('load', applyFs);

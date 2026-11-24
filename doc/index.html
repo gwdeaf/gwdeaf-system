@@ -113,6 +113,7 @@ body.noea .ea{display:none!important}
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 id="homeTitle" style="margin-right:auto">문서 목록</h2>
       <button class="main" id="homeNew" onclick="openWrite(null)">+ 문서 작성</button></div>
     <div class="ltabs" id="kTabs">
+      <button data-k="" onclick="kindTab('')">전체</button>
       <button data-k="공문" onclick="kindTab('공문')">문서</button>
       <button data-k="업무협조전" onclick="kindTab('업무협조전')">업무협조전</button>
       <button data-k="내부결재" onclick="kindTab('내부결재')">내부결재</button>
@@ -248,18 +249,18 @@ body.noea .ea{display:none!important}
       <button data-k="업무협조전" onclick="ledgerTab('업무협조전')">업무협조전</button>
       <button data-k="내부결재" onclick="ledgerTab('내부결재')">내부 결재</button>
     </div>
-    <div class="hint" style="margin-bottom:8px">종류마다 대장이 따로 있습니다. 기안(확정)된 문서와, 시스템 밖에서 만든 문서를 <b>+ 기록 추가</b>로 넣은 것을 함께 봅니다.</div>
+    <div class="hint" style="margin-bottom:8px">종류마다 대장이 따로 있습니다. 기안(확정)된 문서와, 시스템 밖에서 만든 문서(문서 발송·업무협조전)를 <b>+ 기록 추가</b>로 넣은 것을 함께 봅니다.</div>
     <div class="card">
       <div class="row">
         <div class="narrow"><label>연도</label><select id="lYear"></select></div>
         <input type="hidden" id="lKind" value="공문">
       </div>
       <div class="btns"><button class="main" onclick="loadLedger()">불러오기</button>
-        <button onclick="toggleAdd('lAdd')">+ 기록 추가</button>
+        <button id="lAddBtn" onclick="toggleAdd('lAdd')">+ 기록 추가</button>
         <button onclick="downloadLedgerCsv()">엑셀(CSV) 받기</button>
         <button onclick="saveLedgerSheet()">📊 구글 시트로 저장</button></div>
       <div id="lAdd" class="addbox" style="display:none">
-        <div class="row"><div class="narrow"><label>종류</label><select id="laKind"><option value="공문">문서 발송 (공문)</option><option>업무협조전</option><option>내부결재</option></select></div>
+        <div class="row"><div class="narrow"><label>종류</label><select id="laKind"><option value="공문">문서 발송 (공문)</option><option>업무협조전</option></select></div>
           <div class="narrow"><label>시행일자</label><input type="date" id="laDate"></div>
           <div class="narrow"><label>문서번호 (비우면 자동)</label><input id="laNo"></div></div>
         <div class="row"><div><label>수신</label><input id="laTo"></div><div><label>제목</label><input id="laTitle"></div></div>
@@ -477,7 +478,7 @@ function subGo(t) {
   if (t === 'rledger') { openRLedger(); return; }
   if (t === 'recv') { openRecv(); return; }
   if (t === 'sent') { openSent(); return; }
-  if (t === 'write') { KIND = KIND || '공문'; goHome(); return; }   // 왼쪽 메뉴 '문서 작성'
+  if (t === 'write') { goHome(); return; }   // 왼쪽 메뉴 '문서 작성' (처음엔 전체)
   KIND = SUB_KIND[t] || ''; goHome();
 }
 window.addEventListener('message', (e) => {
@@ -500,7 +501,7 @@ const SUB_KIND = { internal: '내부결재', coop: '업무협조전', send: '공
 const KIND_TITLE = { '내부결재': '내부결재', '업무협조전': '업무협조전', '공문': '문서 발송 (공문)' };
 async function loadList() {
   msg('listMsg', '');
-  $('homeTitle').textContent = KIND ? '문서 작성' : '문서 목록';   // 종류는 위 탭으로 구분
+  $('homeTitle').textContent = '문서 목록';   // 제목은 늘 '문서 목록', 종류는 위 탭으로 구분
   $('homeNew').textContent = KIND === '공문' ? '+ 공문 작성' : KIND ? '+ ' + KIND + ' 작성' : '+ 문서 작성';
   document.querySelectorAll('#kTabs button').forEach((b) => b.classList.toggle('on', b.dataset.k === KIND));
   const hq = ($('hQ').value || '').trim().replace(/[,()*%]/g, ' '), hs = $('hStatus').value;   // 문서 목록 안에서 바로 찾기
@@ -1040,7 +1041,9 @@ async function doSearch() {
 // ============ 8) 대장 (완료된 문서를 종류·연도별로 보기) ============
 // 발송 대장: 종류마다 따로 (문서 발송 · 업무협조전 · 내부 결재)
 function ledgerTab(k) {
-  $('lKind').value = k; $('laKind').value = k;
+  $('lKind').value = k; if (k !== '내부결재') $('laKind').value = k;
+  $('lAddBtn').style.display = k === '내부결재' ? 'none' : '';   // 내부결재는 시스템 밖에서 만들 일이 없어 기록 추가 없음
+  if (k === '내부결재') $('lAdd').style.display = 'none';
   document.querySelectorAll('#lTabs button').forEach((b) => b.classList.toggle('on', b.dataset.k === k));
   loadLedger();
 }

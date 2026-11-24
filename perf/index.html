@@ -300,8 +300,9 @@ async function showSessionForm(initial, projectId) { const VT = vtok();
   loading();
   try {
     const [projectsAll, members] = await Promise.all([rpc('perf_projects'), rpc('perf_members')]);
-    const projects = projectsAll.filter((p) => p.source !== 'edu');   // 수어교육 자동 사업은 직접 입력하지 않음
     const ini = initial || {}, editing = !!ini.id;
+    // 수어교육 자동 사업은 직접 입력하지 않음 · 지금 고른 부서의 사업(+부서 없는 공통 사업)만
+    const projects = projectsAll.filter((p) => p.source !== 'edu' && (!DF || (DF === '-' ? !p.dept : (!p.dept || p.dept === DF)) || String(p.id) === String(ini.project_id || projectId || '')));
     SF = { id: ini.id || '', members, projects, sel: new Set((ini.participants || []).filter((x) => x.member_id).map((x) => x.member_id)),
       ext: (ini.participants || []).filter((x) => !x.member_id).map((x) => ({ id: editing ? x.id : '', name: x.name, affiliation: x.external_affiliation || '', phone: x.external_phone || '', note: x.note || '' })),
       extra: Number(ini.extra_count) || 0 };
@@ -313,7 +314,7 @@ async function showSessionForm(initial, projectId) { const VT = vtok();
       `<div class="mtabs noprint"><button data-m="round" onclick="sfMode('round')">회차별 입력</button><button data-m="total" onclick="sfMode('total')">전체 실적 입력</button>
         <span class="muted" id="sfModeHint"></span></div>
       <div class="card"><h3>1. 사업 및 회차 정보</h3><div class="grid">
-        <div class="wide"><label class="f" for="sf_project">사업명</label><select id="sf_project" ${editing ? 'disabled' : ''}><option value="">사업을 선택하세요</option>${projects.map((p) => `<option value="${p.id}" ${p.id == pid ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
+        <div class="wide"><label class="f" for="sf_project">사업명${(ME.depts || []).length && !editing ? ` <span style="font-weight:400">${dfSel('showSessionForm(null)')}</span>` : ''}</label><select id="sf_project" ${editing ? 'disabled' : ''}><option value="">사업을 선택하세요</option>${projects.map((p) => `<option value="${p.id}" ${p.id == pid ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
         <div><label class="f" for="sf_round" id="sf_round_l">실시 회차</label><input id="sf_round" type="number" min="1" value="${ini.round_no && editing ? ini.round_no : ''}"></div>
         <div class="sf-t"><label class="f" for="sf_rounds">실시 횟수 (몇 회분)</label><input id="sf_rounds" type="number" min="1" max="1000" value="${Number(ini.rounds) || ''}" placeholder="예) 12"></div>
         <div><label class="f" for="sf_held" id="sf_held_l">사업 실시일</label><input id="sf_held" type="date" value="${editing ? v('held_on') : today()}"></div>

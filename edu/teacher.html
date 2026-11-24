@@ -52,6 +52,21 @@ table.cf { width:100%; border-collapse:collapse; font-size:14px; }
 table.cf th, table.cf td { border:1px solid var(--line); padding:6px; vertical-align:top; }
 table.cf th { background:var(--pine-soft); }
 table.cf textarea { min-height:56px; border-width:1px; padding:6px 8px; }
+.sum { display:flex; gap:8px; margin:0 0 10px; flex-wrap:wrap; }
+.sum span { background:var(--pine-soft); color:var(--pine); padding:6px 12px; border-radius:999px; font-size:13px; font-weight:700; }
+.tbox { background:#fff; border:1px solid var(--line); border-radius:12px; overflow-x:auto; margin-bottom:12px; }
+table.at { width:100%; border-collapse:collapse; }
+table.at thead th { background:var(--pine); color:#fff; font-size:13px; font-weight:600; padding:11px 12px; text-align:left; white-space:nowrap; }
+table.at tbody td { padding:10px 12px; border-top:1px solid var(--line); font-size:14px; vertical-align:middle; }
+table.at .c { text-align:center; }
+table.at tbody tr.on { background:#eef4f0; }
+table.at td.no { width:48px; color:var(--muted); }
+table.at td.nm { font-size:17px; font-weight:700; white-space:nowrap; }
+table.at input[type=checkbox] { width:24px; height:24px; accent-color:var(--pine); cursor:pointer; padding:0; }
+table.at input[type=number] { width:72px; padding:7px 8px; text-align:center; }
+table.at select { width:auto; padding:7px 8px; font-size:14px; }
+.badge.in { background:var(--pine-soft); color:var(--pine); min-width:52px; text-align:center; }
+.badge.out { background:#f0f1f0; color:var(--muted); min-width:52px; text-align:center; }
 .badge { display:inline-block; padding:2px 9px; border-radius:999px; font-size:12px; font-weight:700; background:var(--pine-soft); color:var(--pine); }
 </style>
 </head>
@@ -134,12 +149,9 @@ function loadDraft() {
 }
 function cfNeed() { return !!(S.info && S.info.course.확인서필요); }
 function cfDone() { return !!(S.cf && S.cf.제출); }
-function cfBox(n, last) {   // 이 회차 교육내용 (강의확인서) + 마지막 회차면 강사 서명
-  if (!cfNeed()) return '';
-  if (cfDone()) return `<div class="card"><b>📝 ${n}회 교육내용</b><p style="margin:6px 0 0">${esc(S.cf.내용[n - 1] || '-').replace(/\n/g, '<br>')}</p></div>`;
-  return `<div class="card"><label class="f" for="cfc" style="margin-top:0">📝 ${n}회 교육내용 <span class="hint">(강의확인서에 들어갑니다)</span></label>
-    <textarea id="cfc" maxlength="200" rows="3" placeholder="예: 인사 표현 익히기">${esc(S.draftContent)}</textarea></div>
-    ${last ? `<div class="card" style="border-color:var(--pine)"><b>✍️ 강사 서명 후 제출</b><p class="hint" style="margin:4px 0 8px">마지막 회차입니다. 서명하고 <b>제출</b>하면 지회 담당자에게 알림이 가고, 학교(기관) 담당자 서명 링크가 만들어집니다. 제출 후에는 고칠 수 없습니다.</p><div id="padT"></div><div class="row" style="margin-top:8px"><button class="btn small" id="padTclr">지우기</button></div></div>` : ''}`;
+function cfBox(n, last) {   // 강의확인서 강좌: 마지막 회차면 강사 서명 (교육내용은 [확인서] 탭의 표에서 적음)
+  if (!cfNeed() || cfDone()) return '';
+  return `${last ? `<div class="card" style="border-color:var(--pine)"><b>✍️ 강사 서명 후 제출</b><p class="hint" style="margin:4px 0 8px">마지막 회차입니다. 서명하고 <b>제출</b>하면 지회 담당자에게 알림이 가고, 학교(기관) 담당자 서명 링크가 만들어집니다. 제출 후에는 고칠 수 없습니다.</p><div id="padT"></div><div class="row" style="margin-top:8px"><button class="btn small" id="padTclr">지우기</button></div></div>` : ''}`;
 }
 function cfStatus() {
   if (!cfNeed() || !cfDone()) return '';
@@ -160,16 +172,20 @@ function renderAtt() {
     $('#hc').oninput = e => { S.draftCount = e.target.value; S.dirty = true; };
   } else {
     body.innerHTML = `${cfStatus()}<div class="card"><b>회차 선택</b>${head}${dateIn}</div>
-      <div class="row" style="margin:6px 0 10px"><b>출석 체크 <span class="hint" id="cnt"></span></b><span class="spacer"></span>
+      <div class="row" style="margin:6px 0 10px"><b>${S.sess}회차 출석 체크</b><span class="spacer"></span>
         <button class="btn small" id="allOn" ${lockAll ? 'disabled' : ''}>전체 출석</button> <button class="btn small" id="allOff" ${lockAll ? 'disabled' : ''}>전체 해제</button></div>
-      <div id="list">${i.participants.length ? i.participants.map(p => `<button class="person ${S.draft.has(p.참여자ID) ? 'on' : ''}" data-p="${esc(p.참여자ID)}" ${lockAll ? 'disabled' : ''}><span class="box">${S.draft.has(p.참여자ID) ? '✓' : ''}</span><span><b>${esc(p.이름)}</b>${pinfo(p) ? `<span class="hint" style="display:block">${esc(pinfo(p))}</span>` : ''}</span></button>`).join('')
-        : '<div class="notice info">등록된 수강생이 없습니다. 지회 담당자에게 명단 등록을 요청하세요.</div>'}</div>${cfBox(S.sess, last)}`;
-    const upd = () => { $('#cnt').textContent = `${S.draft.size}/${i.participants.length}명`; };
+      ${i.participants.length ? `<div class="sum" id="cnt"></div><div class="tbox"><table class="at"><thead><tr><th>번호</th><th>이름</th><th class="c">출석 체크</th><th class="c">출결</th></tr></thead><tbody>
+        ${i.participants.map((p, k) => { const on = S.draft.has(p.참여자ID); return `<tr class="${on ? 'on' : ''}" data-row="${esc(p.참여자ID)}"><td class="no">${k + 1}</td><td class="nm">${esc(p.이름)}</td>
+          <td class="c"><input type="checkbox" data-p="${esc(p.참여자ID)}" aria-label="${esc(p.이름)} 출석" ${on ? 'checked' : ''} ${lockAll ? 'disabled' : ''}></td>
+          <td class="c"><span class="badge ${on ? 'in' : 'out'}">${on ? '출석' : '결석'}</span></td></tr>`; }).join('')}</tbody></table></div>`
+        : '<div class="notice info">등록된 수강생이 없습니다. 지회 담당자에게 명단 등록을 요청하세요.</div>'}${cfBox(S.sess, last)}`;
+    const upd = () => { const n = i.participants.length, on = S.draft.size; if ($('#cnt')) $('#cnt').innerHTML = `<span>전체 ${n}명</span><span>출석 ${on}명</span><span>결석 ${n - on}명</span>`; };
     upd();
     $('#dt').onchange = e => { S.draftDate = e.target.value; S.dirty = true; };
-    document.querySelectorAll('[data-p]').forEach(b => b.onclick = () => {
-      const id = b.dataset.p; S.draft.has(id) ? S.draft.delete(id) : S.draft.add(id); S.dirty = true;
-      b.classList.toggle('on'); b.querySelector('.box').textContent = S.draft.has(id) ? '✓' : ''; upd();
+    document.querySelectorAll('[data-p]').forEach(b => b.onchange = () => {
+      const id = b.dataset.p; b.checked ? S.draft.add(id) : S.draft.delete(id); S.dirty = true;
+      const tr = b.closest('tr'), bd = tr.querySelector('.badge'); tr.classList.toggle('on', b.checked);
+      bd.className = 'badge ' + (b.checked ? 'in' : 'out'); bd.textContent = b.checked ? '출석' : '결석'; upd();
     });
     $('#allOn').onclick = () => { i.participants.forEach(p => S.draft.add(p.참여자ID)); S.dirty = true; renderAtt(); };
     $('#allOff').onclick = () => { S.draft.clear(); S.dirty = true; renderAtt(); };
@@ -180,13 +196,14 @@ function renderAtt() {
   if ($('#padT')) { padT = sigPad($('#padT')); $('#padTclr').onclick = () => padT.clear(); }
   if (cfNeed() && cfDone()) return;            // 제출한 뒤에는 고칠 수 없음 (지회 담당자가 풀어 줘야 함)
   if (cfNeed() && (c.인원만입력 || i.participants.length)) {   // 강의확인서 강좌: 출석 + 교육내용을 함께 [저장], 마지막 회차는 서명하고 [제출]
-    const data = () => ({ present: [...S.draft], count: S.draftCount, date: S.draftDate, content: S.draftContent });
+    const data = () => ({ present: [...S.draft], count: S.draftCount, date: S.draftDate, content: (S.cf && S.cf.내용[S.sess - 1]) || '' });   // 교육내용은 [확인서] 탭에서 저장한 값 그대로
     if (last) {
       savebar(`${S.sess}회차 저장하고 제출`, 'save');
       $('#save').onclick = () => act($('#save'), async () => {
-        if (!String(S.draftContent || '').trim()) throw new Error('교육내용을 적어 주세요.');
+        const empty = S.cf.내용.map((x, k) => String(x || '').trim() ? 0 : k + 1).filter(n => n && n <= c.총회차);
+        if (empty.length) throw new Error('[확인서] 탭에서 교육내용을 먼저 적어 주세요. (비어 있는 회차: ' + empty.join(', ') + '회)');
         if (!padT || padT.empty()) throw new Error('강사 서명란에 서명해 주세요.');
-        if (!confirm('출석과 교육내용을 저장하고 강의확인서를 제출할까요? 제출 후에는 고칠 수 없습니다.')) return;
+        if (!confirm('출석을 저장하고 강의확인서를 제출할까요? 제출 후에는 고칠 수 없습니다.')) return;
         const r = await api('tSubmitConfirm', S.sess, data(), padT.png());
         S.info = r.info; S.cf = r.cf; loadDraft(); renderAtt(); toast('강의확인서를 제출했습니다. 지회 담당자에게 알렸어요.');
       });
@@ -194,7 +211,7 @@ function renderAtt() {
       savebar(`${S.sess}회차 저장`, 'save');
       $('#save').onclick = () => act($('#save'), async () => {
         const r = await api('tSaveSession', S.sess, data());
-        S.info = r.info; S.cf = r.cf || S.cf; loadDraft(); renderAtt(); toast(`${S.sess}회차 출석과 교육내용을 저장했습니다.`);
+        S.info = r.info; S.cf = r.cf || S.cf; loadDraft(); renderAtt(); toast(`${S.sess}회차 출석을 저장했습니다.`);
       });
     }
     return;
@@ -299,27 +316,35 @@ async function renderJournal() {
 /* ---------- 수료 (점수 기록·수료 판정) ---------- */
 const SC_KEYS = ['출석', '발표', '과제', '중간시험', '기말시험', '기타'];
 function scoreOf(p, k) { const v = (p.점수 || {})[k]; return v === undefined || v === null ? '' : v; }
-async function renderComplete() {
+async function renderComplete() {   // 수강생을 표 한 장으로: 출석 · 항목별 점수 · 총점 · 상태 · 수료 여부
   const body = $('#body'), i = S.info, c = i.course, w = c.수료배점;
   const label = k => k === '기타' && c.기타항목명 ? c.기타항목명 : k;
-  const total = c.총회차;
-  const rows = i.participants.map(p => {
+  const total = c.총회차, keys = w ? Object.keys(w).filter(k => k !== '출석') : [];
+  const rows = i.participants.map((p, n) => {
     const chk = String(p.수료확정 || ''), on = !!p.수료;
-    const state = chk === 'Y' ? '수료(확정)' : chk === 'N' ? '미수료(확정)' : on ? '수료 가능' : '수료 기준 미달';
-    const cls = on || chk === 'Y' ? (chk === 'N' ? 'warn' : 'info') : 'warn';
-    const inputs = w ? Object.keys(w).filter(k => k !== '출석').map(k => `<label class="hint" style="display:block;margin-top:6px">${esc(label(k))} (${w[k]}%) 점수 0~100<input type="number" inputmode="decimal" min="0" max="100" data-sc="${esc(p.참여자ID)}" data-k="${esc(k)}" value="${esc(scoreOf(p, k))}" ${i.locked ? 'disabled' : ''}></label>`).join('') : '';
-    return `<div class="card" data-card="${esc(p.참여자ID)}"><div class="row"><b>${esc(p.이름)}</b><span class="hint">${esc(pinfo(p))}</span><span class="spacer"></span><span class="badge" style="${cls === 'warn' ? 'background:var(--amber-soft);color:var(--amber)' : ''}">${state}</span></div>
-      <div class="hint" style="margin-top:4px">출석 ${p.출석횟수 || 0}/${total}회${w ? (w['출석'] ? ` (출석 ${w['출석']}%는 자동 계산)` : '') + ' · 총점 <b>' + (p.총점 == null ? 0 : p.총점) + '</b> / 기준 ' + c.수료기준 + '점' : ' · 수료 기준 출석률 ' + c.수료기준 + '%'}</div>
-      ${inputs}
-      <label class="hint" style="display:block;margin-top:8px">수료 여부<select data-cf="${esc(p.참여자ID)}"><option value="" ${chk === '' ? 'selected' : ''}>기준에 따라 자동${w ? '' : ''}</option><option value="Y" ${chk === 'Y' ? 'selected' : ''}>수료로 확정</option><option value="N" ${chk === 'N' ? 'selected' : ''}>미수료로 확정</option></select></label>
-      ${w && Object.keys(w).some(k => k !== '출석') ? `<div class="row" style="margin-top:8px"><span class="spacer"></span><button class="btn small primary" data-ssave="${esc(p.참여자ID)}" ${i.locked ? 'disabled' : ''}>점수 저장</button></div>` : ''}</div>`;
+    const state = chk === 'Y' ? '수료(확정)' : chk === 'N' ? '미수료(확정)' : on ? '수료 가능' : '기준 미달';
+    const good = chk === 'Y' || (chk === '' && on);
+    return `<tr class="${good ? 'on' : ''}"><td class="no">${n + 1}</td><td class="nm">${esc(p.이름)}</td><td class="c" style="white-space:nowrap">${p.출석횟수 || 0}/${total}</td>
+      ${keys.map(k => `<td class="c"><input type="number" inputmode="decimal" min="0" max="100" data-sc="${esc(p.참여자ID)}" data-k="${esc(k)}" value="${esc(scoreOf(p, k))}" ${i.locked ? 'disabled' : ''}></td>`).join('')}
+      ${w ? `<td class="c"><b>${p.총점 == null ? 0 : p.총점}</b></td>` : ''}
+      <td class="c"><span class="badge ${good ? 'in' : 'out'}" style="${good ? '' : 'background:var(--amber-soft);color:var(--amber)'}">${state}</span></td>
+      <td class="c"><select data-cf="${esc(p.참여자ID)}" ${i.locked ? 'disabled' : ''}><option value="" ${chk === '' ? 'selected' : ''}>자동</option><option value="Y" ${chk === 'Y' ? 'selected' : ''}>수료</option><option value="N" ${chk === 'N' ? 'selected' : ''}>미수료</option></select></td></tr>`;
   }).join('');
-  body.innerHTML = `<div class="notice info">${w ? `항목별 점수를 적으면 총점으로 수료 가능 여부가 계산됩니다. (기준 ${c.수료기준}점 이상)` : `출석률 ${c.수료기준}% 이상이면 수료 가능입니다.`} 최종 수료/미수료는 직접 고를 수 있습니다.</div>${rows || '<div class="notice info">등록된 수강생이 없습니다.</div>'}`;
-  document.querySelectorAll('[data-ssave]').forEach(b => b.onclick = () => act(b, async () => {
-    const pid = b.dataset.ssave, sc = {};
-    document.querySelectorAll(`[data-sc="${pid}"]`).forEach(x => { sc[x.dataset.k] = x.value; });
-    S.info = await api('tSaveScores', pid, sc); renderComplete(); toast('점수를 저장했습니다.');
-  }));
+  const nOk = i.participants.filter(p => String(p.수료확정 || '') === 'Y' || (String(p.수료확정 || '') === '' && p.수료)).length;
+  body.innerHTML = `<div class="notice info">${w ? `항목별 점수(0~100)를 적고 [점수 저장]을 누르면 총점으로 수료 가능 여부가 계산됩니다. (기준 ${c.수료기준}점 이상${w['출석'] ? ` · 출석 ${w['출석']}%는 자동 계산` : ''})` : `출석률 ${c.수료기준}% 이상이면 수료 가능입니다.`} 수료 여부는 직접 고를 수 있습니다.</div>
+    ${rows ? `<div class="sum"><span>전체 ${i.participants.length}명</span><span>수료 ${nOk}명</span><span>미수료 ${i.participants.length - nOk}명</span></div>
+    <div class="tbox"><table class="at"><thead><tr><th>번호</th><th>이름</th><th class="c">출석</th>${keys.map(k => `<th class="c">${esc(label(k))}<br><small style="font-weight:400">${w[k]}%</small></th>`).join('')}${w ? '<th class="c">총점</th>' : ''}<th class="c">상태</th><th class="c">수료 여부</th></tr></thead><tbody>${rows}</tbody></table></div>
+    ${keys.length && !i.locked ? '<div class="row"><span class="spacer"></span><button class="btn primary" id="scSave">점수 저장</button></div>' : ''}` : '<div class="notice info">등록된 수강생이 없습니다.</div>'}`;
+  const changed = new Set();
+  document.querySelectorAll('[data-sc]').forEach(x => x.oninput = () => { changed.add(x.dataset.sc); S.dirty = true; });
+  if ($('#scSave')) $('#scSave').onclick = () => act($('#scSave'), async () => {
+    if (!changed.size) { toast('바뀐 점수가 없습니다.'); return; }
+    for (const pid of changed) {
+      const sc = {}; document.querySelectorAll(`[data-sc="${pid}"]`).forEach(x => { sc[x.dataset.k] = x.value; });
+      S.info = await api('tSaveScores', pid, sc);
+    }
+    const n = changed.size; S.dirty = false; renderComplete(); toast(n + '명의 점수를 저장했습니다.');
+  });
   document.querySelectorAll('[data-cf]').forEach(sel => sel.onchange = () => act(sel, async () => {
     S.info = await api('tSetCompletion', sel.dataset.cf, sel.value); renderComplete(); toast('수료 여부를 저장했습니다.');
   }));
@@ -399,7 +424,7 @@ async function renderConfirm() {
   const rows = Array.from({ length: total }, (_, k) => { const n = k + 1, s = sessionInfo(n); return `<tr><td style="text-align:center;white-space:nowrap">${n}회</td><td style="white-space:nowrap">${esc(s.date) || '<span class="hint">-</span>'}</td><td style="text-align:center">${esc(s.cnt)}</td>
     <td>${done ? esc(d.내용[k]).replace(/\n/g, '<br>') : `<textarea data-c="${k}" maxlength="200" rows="2" placeholder="예: 인사 표현 익히기">${esc(d.내용[k])}</textarea>`}</td></tr>`; }).join('');
   body.innerHTML = `<div class="card"><b>진행 상황</b><div style="margin-top:6px">${step(filled > 0, '① 매회 저장 ' + filled + '/' + total + '회')}${step(done, '② 강사 서명·제출')}${step(done && d.링크발송일시, '③ 학교에 링크 보냄')}${step(!!d.기관서명, '④ 학교 서명')}</div>
-      <p class="hint" style="margin:8px 0 0">${done ? (d.기관서명 ? '학교(기관) 담당자 서명까지 끝났습니다. 지회 담당자가 인쇄합니다.' : '제출했습니다. 지회 담당자가 학교에 서명 링크를 보냅니다.') : '<b>출석</b> 탭에서 회차마다 출석과 교육내용을 저장하고, 마지막 ' + total + '회차에서 서명하고 <b>제출</b>합니다. 지난 회차 내용은 아래 표에서 고칠 수 있습니다.'}</p></div>
+      <p class="hint" style="margin:8px 0 0">${done ? (d.기관서명 ? '학교(기관) 담당자 서명까지 끝났습니다. 지회 담당자가 인쇄합니다.' : '제출했습니다. 지회 담당자가 학교에 서명 링크를 보냅니다.') : '회차마다 <b>출석</b> 탭에서 출석을 저장하고, 교육내용은 아래 표에 적어 [교육내용 저장]을 누르세요. 마지막 ' + total + '회차 <b>출석</b> 탭에서 서명하고 <b>제출</b>합니다.'}</p></div>
     <div class="card" style="padding:8px"><table class="cf"><tr><th style="width:42px">회차</th><th style="width:84px">수업일</th><th style="width:44px">인원</th><th>교육내용</th></tr>${rows}</table>
     ${done ? '' : '<div class="row" style="margin-top:10px"><span class="spacer"></span><button class="btn primary" id="cfSave">교육내용 저장</button></div>'}</div>
     ${d.강사서명 ? `<div class="card"><b>강사 서명</b><img class="sigimg" src="${esc(d.강사서명)}" alt="강사 서명"><div class="hint">${esc(c.강사 || '')} · ${esc(d.강사서명일시)}</div></div>` : ''}

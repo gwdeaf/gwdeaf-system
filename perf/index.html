@@ -292,7 +292,8 @@ async function showSessionForm(initial, projectId) {
     const projects = projectsAll.filter((p) => p.source !== 'edu');   // 수어교육 자동 사업은 직접 입력하지 않음
     const ini = initial || {}, editing = !!ini.id;
     SF = { id: ini.id || '', members, projects, sel: new Set((ini.participants || []).filter((x) => x.member_id).map((x) => x.member_id)),
-      ext: (ini.participants || []).filter((x) => !x.member_id).map((x) => ({ id: editing ? x.id : '', name: x.name, affiliation: x.external_affiliation || '', phone: x.external_phone || '', note: x.note || '' })) };
+      ext: (ini.participants || []).filter((x) => !x.member_id).map((x) => ({ id: editing ? x.id : '', name: x.name, affiliation: x.external_affiliation || '', phone: x.external_phone || '', note: x.note || '' })),
+      extra: Number(ini.extra_count) || 0 };
     const pid = ini.project_id || projectId || (projects.length === 1 ? projects[0].id : '');   // 사업이 하나면 바로 선택
     if (!projects.length) { view(head('사업실적 등록') + `<div class="note warn">먼저 사업을 등록해야 합니다. <button class="link" onclick="go('projects')">사업관리로 이동</button></div>`); return; }
     const v = (k) => esc(ini[k] || '');
@@ -307,15 +308,20 @@ async function showSessionForm(initial, projectId) {
         <div class="wide"><label class="f" for="sf_content">사업 내용</label><textarea id="sf_content">${v('content')}</textarea></div>
         <div><label class="f" for="sf_mgr">담당자</label><input id="sf_mgr" value="${ini.manager_name ? v('manager_name') : esc(ME.name)}"></div>
         <div><label class="f" for="sf_note">특이사항 및 비고</label><input id="sf_note" value="${v('note')}"></div></div></div>
-      <div class="card"><div class="head"><h3>2. 참여자 선택</h3><b id="sfCount"></b></div>
+      <div class="card"><div class="head"><h3>2. 참여자 선택</h3><b id="sfCount"></b>
+          <span style="margin-left:auto;display:flex;gap:6px;align-items:center"><button onclick="xlTemplate()" class="link">양식 받기</button><button class="main" onclick="$('sfXl').click()">📥 엑셀 명단 업로드</button>
+          <input type="file" id="sfXl" accept=".xlsx,.xls,.csv" style="display:none" onchange="xlUpload(this)"></span></div>
         <div class="tools"><input id="sfQ" placeholder="회원 이름 또는 회원번호 검색" oninput="drawMembers()"><button onclick="selAll(true)">검색 결과 전체 선택</button><button onclick="selAll(false)">선택 전체 해제</button>
           <button class="link" onclick="goMember()">회원 추가는 회원관리에서 →</button></div>
         <div class="mlist" id="sfMembers"></div>
         <h3 style="margin-top:14px">회원명단에 없는 참여자 직접 입력</h3>
         <div class="grid"><div><input id="ex_name" placeholder="성명 (필수)"></div><div><input id="ex_aff" placeholder="소속 (선택)"></div><div><input id="ex_phone" placeholder="연락처 (선택)"></div>
-          <div style="display:flex;gap:6px"><input id="ex_note" placeholder="비고"><button class="main" onclick="addExt()">추가</button></div></div>
+          <div style="display:flex;gap:6px"><input id="ex_note" placeholder="비고"><button class="main" style="white-space:nowrap;flex:none" onclick="addExt()">추가</button></div></div>
         <div id="sfExt"></div>
-        <p class="muted">※ 회원명단에 없는 참여자는 이름이 같아도 자동으로 합치지 않고 각각 따로 셉니다.</p></div>
+        <p class="muted">※ 회원명단에 없는 참여자는 이름이 같아도 자동으로 합치지 않고 각각 따로 셉니다.</p>
+        <h3 style="margin-top:14px">인원수 직접 입력</h3>
+        <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><input id="sf_extra" type="number" min="0" max="100000" style="max-width:140px" value="${SF.extra || ''}" placeholder="0" oninput="SF.extra=Math.max(0,parseInt(this.value)||0);drawMembers()"> 명
+          <span class="muted">이름 없이 인원수만 셀 때 (예: 행사 관람객, 홍보 부스 방문자). 위의 명단과 따로 더해집니다.</span></div></div>
       <div class="noprint"><button onclick="${editing ? `showSession(${ini.id})` : "go('list')"}">취소</button><button class="main" id="sfSave">${editing ? '수정 내용 저장' : '실적 저장'}</button></div>`);
     const setRound = async () => { const id = $('sf_project').value; if (!id || editing) return; try { $('sf_round').value = await rpc('perf_next_round', { p_project: Number(id) }); } catch (e) {} };
     $('sf_project').onchange = setRound; setRound();
@@ -328,7 +334,7 @@ function drawMembers() {
   $('sfMembers').innerHTML = list.map((m) => `<label class="mitem ${SF.sel.has(m.id) ? 'on' : ''}"><input type="checkbox" ${SF.sel.has(m.id) ? 'checked' : ''} onchange="togMember(${m.id}, this.checked)">
     <span>${esc(m.name)}</span><span class="muted">${esc(m.member_no || '')}</span>${m.status !== '활동' ? `<span class="badge">${esc(m.status)}</span>` : ''}</label>`).join('')
     || '<p class="muted">표시할 회원이 없습니다. 회원은 [회원관리]에서 등록합니다.</p>';
-  $('sfCount').textContent = `총 ${SF.sel.size + SF.ext.length}명 · 회원 ${SF.sel.size} · 비회원 ${SF.ext.length}`;
+  $('sfCount').textContent = `총 ${SF.sel.size + SF.ext.length + (SF.extra || 0)}명 · 회원 ${SF.sel.size} · 비회원 ${SF.ext.length}${SF.extra ? ' · 인원수만 ' + SF.extra : ''}`;
 }
 function togMember(id, on) { on ? SF.sel.add(id) : SF.sel.delete(id); drawMembers(); }
 function selAll(on) { const q = ($('sfQ').value || '').trim(); if (!on) SF.sel.clear(); else SF.members.filter((m) => !q || m.name.includes(q) || String(m.member_no || '').includes(q)).forEach((m) => SF.sel.add(m.id)); drawMembers(); }
@@ -342,9 +348,43 @@ function drawExt() {
     ${SF.ext.map((x, i) => `<tr><td>${esc(x.name)}</td><td>${esc(x.affiliation)}</td><td>${esc(x.phone)}</td><td>${esc(x.note)}</td><td><button class="link" style="color:#c0392b" onclick="SF.ext.splice(${i},1);drawExt()">삭제</button></td></tr>`).join('')}</tbody></table></div>` : '';
   drawMembers();
 }
+// ── 엑셀 명단 업로드: 성명(이름)·회원번호·소속·연락처·비고 열을 읽어서
+//    회원번호가 맞거나 이름이 같은 회원이 한 명뿐이면 → 회원으로 체크, 아니면 → 회원명단에 없는 참여자로 추가
+const XL_URL = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+function xlLoad() { return window.XLSX ? Promise.resolve() : new Promise((ok, no) => { const sc = document.createElement('script'); sc.src = XL_URL; sc.onload = ok; sc.onerror = () => no(new Error('엑셀 읽기 도구를 불러오지 못했습니다. 인터넷 연결을 확인하세요.')); document.head.appendChild(sc); }); }
+async function xlTemplate() {
+  try { await xlLoad(); } catch (e) { alert(e.message); return; }
+  const ws = XLSX.utils.aoa_to_sheet([['성명', '회원번호', '소속', '연락처', '비고'], ['홍길동', '', '○○복지관', '010-0000-0000', '']]);
+  ws['!cols'] = [{ wch: 12 }, { wch: 10 }, { wch: 20 }, { wch: 16 }, { wch: 20 }];
+  const wb = XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb, ws, '참여자명단'); XLSX.writeFile(wb, '참여자명단_양식.xlsx');
+}
+async function xlUpload(inp) {
+  const f = inp.files && inp.files[0]; inp.value = ''; if (!f) return;
+  try {
+    await xlLoad();
+    const wb = XLSX.read(await f.arrayBuffer(), { type: 'array' });
+    const rows = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], { header: 1, defval: '' }).map((r) => r.map((c) => String(c).trim()));
+    const hi = rows.findIndex((r) => r.some((c) => /^(성명|이름|참여자|참가자)$/.test(c)));
+    if (hi < 0) { alert('첫 줄(제목 줄)에 "성명" 또는 "이름" 열이 있어야 합니다. [양식 받기]로 받은 파일을 쓰면 편해요.'); return; }
+    const h = rows[hi], col = (re) => h.findIndex((c) => re.test(c));
+    const cN = col(/^(성명|이름|참여자|참가자)$/), cNo = col(/회원\s*번호/), cA = col(/소속|기관|단체/), cP = col(/연락처|전화|휴대/), cR = col(/비고|메모/);
+    let mem = 0, ext = 0, dup = 0, skip = 0;
+    rows.slice(hi + 1).forEach((r) => {
+      const name = (r[cN] || '').replace(/\s+/g, ''); if (!name) { if (r.some((c) => c)) skip++; return; }
+      const no = cNo >= 0 ? r[cNo] : '';
+      let m = no ? SF.members.find((x) => String(x.member_no || '') === no) : null;
+      if (!m) { const same = SF.members.filter((x) => x.name.replace(/\s+/g, '') === name); if (same.length === 1) m = same[0]; }
+      if (m) { if (SF.sel.has(m.id)) dup++; else { SF.sel.add(m.id); mem++; } return; }
+      if (SF.ext.some((x) => x.name.replace(/\s+/g, '') === name && x.phone === (cP >= 0 ? r[cP] : ''))) { dup++; return; }
+      SF.ext.push({ id: '', name: r[cN], affiliation: cA >= 0 ? r[cA] : '', phone: cP >= 0 ? r[cP] : '', note: cR >= 0 ? r[cR] : '' }); ext++;
+    });
+    drawExt();
+    flash(`엑셀에서 회원 ${mem}명 체크 · 회원명단에 없는 참여자 ${ext}명 추가${dup ? ` · 이미 있는 ${dup}명 건너뜀` : ''}${skip ? ` · 이름 없는 줄 ${skip}개 건너뜀` : ''}. 확인 후 [실적 저장]을 누르세요.`);
+  } catch (e) { alert('엑셀을 읽지 못했습니다: ' + e.message); }
+}
 async function saveSession() {
   const body = { id: SF.id, project_id: $('sf_project').value, round_no: $('sf_round').value, held_on: $('sf_held').value, start_time: $('sf_st').value, end_time: $('sf_en').value,
-    place: $('sf_place').value, content: $('sf_content').value, manager_name: $('sf_mgr').value, note: $('sf_note').value, members: [...SF.sel], externals: SF.ext };
+    place: $('sf_place').value, content: $('sf_content').value, manager_name: $('sf_mgr').value, note: $('sf_note').value, members: [...SF.sel], externals: SF.ext, extra_count: SF.extra || 0 };
   if (!body.project_id) { alert('사업을 선택해 주세요.'); return; }
   if (!body.held_on) { alert('사업 실시일을 입력해 주세요.'); return; }
   $('sfSave').disabled = true;
@@ -359,7 +399,7 @@ async function showSession(id) {
         (ME.can_write && s.created_by !== '수어교육 자동' ? `<button onclick="copySession(${s.id})">이 회차를 복제</button><button ${s.locked ? 'disabled' : ''} onclick="editSession(${s.id})">수정</button><button class="danger" ${s.locked ? 'disabled' : ''} onclick="delSession(${s.id})">삭제</button>` : '')) +
       (s.created_by === '수어교육 자동' ? '<div class="note warn">수어교육관리 출석에서 자동으로 가져온 회차입니다. 고칠 내용은 수어교육관리에서 고치세요.</div>' : '') +
       (s.locked ? '<div class="note warn">이 실적이 속한 분기 보고가 제출·승인되어 수정·삭제가 잠겨 있습니다.</div>' : '') +
-      `<div class="kpis">${kpi('참여인원 (연인원)', fmt(ps.length) + '명')}${kpi('회원', fmt(ps.filter((p) => p.member_id).length) + '명')}${ps.some((p) => pkind(p) === '수강생') ? kpi('수강생', fmt(ps.filter((p) => pkind(p) === '수강생').length) + '명', '수어교육관리 출석') : ''}${kpi('비회원', fmt(ps.filter((p) => pkind(p) === '비회원').length) + '명', '회원명단에 없는 참여자')}</div>
+      `<div class="kpis">${kpi('참여인원 (연인원)', fmt(ps.length + (s.extra_count || 0)) + '명')}${s.extra_count ? kpi('인원수만 입력', fmt(s.extra_count) + '명', '명단 없이') : ''}${kpi('회원', fmt(ps.filter((p) => p.member_id).length) + '명')}${ps.some((p) => pkind(p) === '수강생') ? kpi('수강생', fmt(ps.filter((p) => pkind(p) === '수강생').length) + '명', '수어교육관리 출석') : ''}${kpi('비회원', fmt(ps.filter((p) => pkind(p) === '비회원').length) + '명', '회원명단에 없는 참여자')}</div>
       <div class="card"><h3>실시 정보</h3><dl class="kv"><dt>실시일</dt><dd>${esc(s.held_on)}</dd><dt>시간</dt><dd>${esc(s.start_time || '-')}${s.end_time ? ' ~ ' + esc(s.end_time) : ''}</dd>
         <dt>장소</dt><dd>${esc(s.place || '-')}</dd><dt>사업 내용</dt><dd>${esc(s.content || '-')}</dd><dt>담당자</dt><dd>${esc(s.manager_name || '-')}</dd><dt>특이사항</dt><dd>${esc(s.note || '-')}</dd></dl></div>
       <h3>참여자 명단</h3><div class="tablewrap"><table><thead><tr><th>구분</th><th>성명</th><th>회원번호 / 소속</th><th>연락처</th><th>비고</th></tr></thead><tbody>

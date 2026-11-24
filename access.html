@@ -63,6 +63,8 @@ const ROLE = {admin:"도협회 관리자", lead:"지회 담당", staff:"직원"}
 const ACT = {chapter_reset:"자료 초기화", dept:"부서", add_staff:"직원 등록", delete_staff:"직원 삭제", update_staff:"직원 정보 수정", enable_staff:"사용 재개", disable_staff:"사용 중지", grant:"권한 부여", revoke:"권한 해제",
              save_approval:"결재라인 저장", delete_approval:"결재라인 삭제", assign_lead:"지회 담당 지정", set_admin:"도협회 관리자 변경"};
 const DEFAULT_AP = ["부장","사무처장","본부장"];
+const VIEW = (new URLSearchParams(location.search).get("view") || "") === "org" ? "org" : "people";   // org = 🏢 기관 설정, people = 직원·권한 관리
+const GO0 = new URLSearchParams(location.search).get("go") || "";
 let me = null, tab = "staff", staff = [], catalog = [], lines = [], chapters = [], logs = [];
 let openId = null, editId = null, drafts = {}, deptKeys = [];
 
@@ -77,9 +79,9 @@ async function boot(){
   try{ me = await rpc("whoami"); }catch(e){ return msgView("불러오지 못했습니다", e.message, true); }
   if(!me.ok) return blockedView();
   catalog = await rpc("get_catalog");
-  tab = me.can_manage ? "staff" : "me";
-  if(me.can_manage) await loadStaff();
-  render();
+  const ts = tabList().map(t=>t[0]);
+  if(VIEW === "org" && !ts.length) return msgView("기관 설정", "기관 설정은 지회 담당자·공동 관리자만 볼 수 있습니다.");
+  await go(ts.indexOf(GO0) >= 0 ? GO0 : (VIEW === "org" ? ts[0] : (me.can_manage ? "staff" : "me")));
 }
 function loginView(){
   $("#app").innerHTML = `<div class="center"><h1>강원특별자치도농아인협회 업무 시스템</h1><p class="muted">업무용 구글 계정으로 로그인하세요.</p>
@@ -101,19 +103,27 @@ function blockedView(){
 }
 
 /* ---------- 화면 ---------- */
+function tabList(){
+  const tabs = [];
+  if(VIEW === "org"){   // 🏢 기관 설정
+    if(me.can_manage) tabs.push(["org","기본 정보"],["depts","부서"],["lines","결재라인"]);
+    if(me.role === "lead") tabs.push(["drive","드라이브·캘린더 연결"]);   // 지회 담당자: 우리 지회 드라이브·캘린더 연결
+    if(me.role === "admin") tabs.push(["chapters","지회 관리"]);           // 도협회: 지회 담당 지정 + 드라이브·캘린더 연결
+    if(me.role === "admin" || me.role === "lead") tabs.push(["reset","자료 초기화"]);
+    return tabs;
+  }
+  if(me.can_manage) tabs.push(["staff","직원·권한"],["log","변경 기록"]);
+  tabs.push(["sign","내 서명"],["me","내 권한"]);
+  return tabs;
+}
 function render(){
-  const tabs = me.can_manage ? [["staff","직원·권한"],["depts","부서"],["lines","결재라인"],["log","변경 기록"]] : [];
-  if(me.role === "admin") tabs.push(["chapters","지회 관리"]);   // 도협회: 지회 담당 지정 + 드라이브·캘린더 연결
-  if(me.can_manage) tabs.push(["org","기관 정보"]);
-  if(me.role === "lead") tabs.push(["drive","지회 설정"]);        // 지회 담당자: 우리 지회 드라이브·캘린더 연결
-  tabs.push(["sign","내 서명"]);
-  tabs.push(["me","내 권한"]);
-  $("#app").innerHTML = `<div class="top"><div><h1>${esc(me.chapter_name)} · ${esc(me.name)}</h1>
+  const tabs = tabList();
+  $("#app").innerHTML = `<div class="top"><div><h1>${VIEW==="org"?"🏢 기관 설정 · ":""}${esc(me.chapter_name)} · ${esc(me.name)}</h1>
       <div class="muted">${esc(me.email)} <span class="badge">${ROLE[me.role]}</span>${me.role==="staff"&&me.can_manage?'<span class="badge o">공동 관리자</span>':""}</div></div>
       <div><a class="btn sub sm" href="/" style="text-decoration:none;display:inline-block">🏠 홈으로</a> <button class="btn sub sm" onclick="logout()">로그아웃</button></div></div>
     <div class="tabs">${tabs.map(t=>`<button class="${tab===t[0]?"on":""}" onclick="go('${t[0]}')">${t[1]}</button>`).join("")}</div>
     <div id="body"></div>`;
-  ({staff:staffView, depts:deptsView, lines:linesView, log:logView, chapters:chaptersView, drive:driveView, org:orgView, sign:signView, me:meView}[tab] || meView)();
+  ({reset:resetView, staff:staffView, depts:deptsView, lines:linesView, log:logView, chapters:chaptersView, drive:driveView, org:orgView, sign:signView, me:meView}[tab] || meView)();
 }
 async function go(t){
   tab = t;
@@ -352,13 +362,14 @@ function orgView(){
       <div><input type="file" accept="image/png,image/jpeg,image/webp" id="o_f_${k}" style="display:none" onchange="orgSeal('${k}',this)">
       <button class="btn sub sm" onclick="$('#o_f_${k}').click()">${org.seals[k]?"바꾸기":"올리기"}</button>
       ${org.seals[k]?`<button class="btn sub sm" onclick="orgSealDel('${k}')">삭제</button>`:""}</div></div>`).join("")}</div>
-    ${me.role==="admin"||me.role==="lead" ? resetCard() : ""}`;
+`;
 }
 /* 자료 초기화 — 체험 지회·시범 운영 뒤 업무 자료만 지움 (설정은 남김) */
 const RESET_CATS = [["acct","회계","품의·결의·출납·첨부 (회계 번호 처음부터)"],["doc","공문","문서·결재·발송·수신·대장 (문서번호 처음부터)"],["cert","증명서 발급","발급대장 (증명서 번호 처음부터)"],
   ["perf","사업실적","실적·참여자·분기 보고"],["perf_proj","사업 목록","사업관리에 등록한 사업"],["interp","통역·상담일지","일지·월 보고"],["car","차량","운행·예약·정비 기록"],
   ["att","근태","휴가·시간외·시수·대체휴무·출퇴근·출장"],["member","회원","회원 명단·회비"],["edu","수어교육","강좌·수강생·출석·교육일지·수납·수료·보고"],["book","교재 주문","주문 내역"],["board","공지·업무일지","우리 지회 공지, 업무일지"]];
 let RST = null;
+function resetView(){ $("#body").innerHTML = (me.role==="admin"||me.role==="lead") ? resetCard() : '<div class="card muted">자료 초기화는 지회 담당자만 할 수 있습니다.</div>'; }
 function resetCard(){
   return `<div class="card" style="border-color:#f3c4c4"><h2>🧹 자료 초기화</h2>
     <div class="muted">체험 지회 교육이 끝났거나, 시범 운영을 마치고 정식으로 쓰기 전에 <b>테스트로 넣은 업무 자료</b>를 지웁니다. 우리 기관(${esc(me.chapter_name)}) 자료만 지워집니다.</div>

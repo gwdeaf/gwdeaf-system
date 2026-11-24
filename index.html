@@ -662,9 +662,17 @@ function renderNav(){
   }
   if (hasPerm('member.')) h += topHtml('member:s:', '👥', '회원관리', "go('member')");
   if (isAttAdmin() || isVehAdmin() || ME.can_manage) h += '<div class="sec">시스템 관리</div>';
+  if (ME.can_manage || isAttAdmin()) {   // 🏢 기관 설정: 기관 정보·부서·결재라인·출퇴근 설정 등을 한곳에
+    h += grpHtml('🏢', '기관 설정');
+    if (ME.can_manage) h += kidHtml('org', false, 'org', '기본 정보') + kidHtml('org', false, 'depts', '부서') + kidHtml('org', false, 'lines', '결재라인');
+    if (isAttAdmin()) h += kidHtml('att', true, 'settings', '출퇴근·근무지·알림');
+    if (ME.role === 'lead') h += kidHtml('org', false, 'drive', '드라이브·캘린더 연결');
+    if (ME.role === 'admin') h += kidHtml('org', false, 'chapters', '지회 관리');
+    if (ME.role === 'admin' || ME.role === 'lead') h += kidHtml('org', false, 'reset', '자료 초기화');
+  }
   if (isAttAdmin()) {   // 도협회·지회·센터 전 직원 근태 운영 (직원 등록·정보는 직원·권한 관리에서)
     h += grpHtml('🛠', '근태 관리');
-    [['dashboard','대시보드'],['approval','신청 현황'],['attend','출퇴근 관리'],['annual','연차 관리'],['comp','대체휴무'],['promo','연가 촉진'],['settings','기관 설정']].forEach(function(k){ h += kidHtml('att', true, k[0], k[1]); });
+    [['dashboard','대시보드'],['approval','신청 현황'],['attend','출퇴근 관리'],['annual','연차 관리'],['comp','대체휴무'],['promo','연가 촉진']].forEach(function(k){ h += kidHtml('att', true, k[0], k[1]); });
   }
   if (isVehAdmin()) h += topHtml('car:a:', '🔧', '차량 관리', "go('car','',true)");
   if (ME.can_manage) h += topHtml('access:s:', '🔑', '직원·권한 관리', "go('access')");
@@ -754,12 +762,12 @@ function go(kind, tab, adm){
     FR.tab = tab; if (FR.ready && tab) fr.contentWindow.postMessage({ type:'edu-go', tab:tab }, location.origin);
   } else if (SUBAPP[kind] && FR.key === key) {   // 공문·통역·업무일지·회계·증서: 같은 화면 안에서 하위 메뉴로 이동
     FR.tab = tab; if (FR.ready) fr.contentWindow.postMessage({ type:'sub-go', tab:tab }, location.origin);
-  } else if (FR.key === key && kind !== 'att') {
+  } else if (FR.key === key && kind !== 'att' && kind !== 'org') {
     /* 같은 화면: 그대로 보여 줌 */
   } else {
     var url = SUBAPP[kind] ? SUBAPP[kind] + '?embed=1&go=' + encodeURIComponent(tab)
       : kind === 'att' ? '/att/?embed=1&mode=' + (adm ? 'admin' : 'staff') + '&go=' + encodeURIComponent(tab)
-      : kind === 'car' ? '/car/?embed=1' + (adm ? '&admin=1' : '') : kind === 'edu' ? '/edu/?embed=1' : kind === 'doc' ? '/doc/?embed=1' : kind === 'interp' ? '/interp/?embed=1' : kind === 'worklog' ? '/worklog/?embed=1' : kind === 'acct' ? '/acct/?embed=1' : kind === 'cert' ? '/cert/?embed=1' : kind === 'member' ? '/member/?embed=1' : '/access.html?embed=1';
+      : kind === 'car' ? '/car/?embed=1' + (adm ? '&admin=1' : '') : kind === 'edu' ? '/edu/?embed=1' : kind === 'doc' ? '/doc/?embed=1' : kind === 'interp' ? '/interp/?embed=1' : kind === 'worklog' ? '/worklog/?embed=1' : kind === 'acct' ? '/acct/?embed=1' : kind === 'cert' ? '/cert/?embed=1' : kind === 'member' ? '/member/?embed=1' : kind === 'org' ? '/access.html?embed=1&view=org&go=' + encodeURIComponent(tab || 'org') : '/access.html?embed=1';
     FR = { key:key, ready:false, tab:tab, loadedGo:tab };
     $('floading').classList.remove('hide'); fr.src = url;
   }
@@ -832,7 +840,7 @@ function pvEnd(){
 function pvShow(kind, tab, adm){
   CUR = mid(kind, adm, tab);
   ['view-home','view-frame','view-inq','view-attall'].forEach(function(id){ var e = $(id); if (e) e.classList.add('hide'); });
-  var sec = /^senior:/.test(tab) ? 'senior' : (kind === 'att' && adm) ? 'attadmin' : kind === 'access' ? 'manager' : kind === 'car' ? 'car' : kind === 'inq' ? 'inq' : kind;
+  var sec = /^senior:/.test(tab) ? 'senior' : (kind === 'att' && adm) ? 'attadmin' : (kind === 'access' || kind === 'org') ? 'manager' : kind === 'car' ? 'car' : kind === 'inq' ? 'inq' : kind;
   var g = window.guideSection ? guideSection(sec) : null, a = document.querySelector('#nav [data-id="' + CUR + '"]');
   var label = a ? a.getAttribute('data-lb') : (g ? g.t : kind);
   $('view-pv').innerHTML = '<h2 style="margin:4px 0 12px">' + esc(label) + '</h2>'
@@ -972,7 +980,7 @@ async function loadCal(){
     if (!j || !j.ok) {   // 캘린더가 연결되지 않은 지회: 안내만 표시
       $('calname').textContent = '구글 캘린더';
       $('calbox').innerHTML = '<div class="empty" style="padding:14px 6px">아직 우리 지회 구글 캘린더가 연결되지 않았습니다.'
-        + (ME.role === 'admin' || ME.role === 'lead' ? '<br><a href="#" onclick="go(\'access\');return false">직원·권한 관리 → 지회 설정(도협회: 지회 관리)</a>에서 캘린더를 연결하세요.' : '<br>지회 담당자에게 연결을 요청하세요.') + '</div>';
+        + (ME.role === 'admin' || ME.role === 'lead' ? '<br><a href="#" onclick="go(\'org\',\'' + (ME.role === 'admin' ? 'chapters' : 'drive') + '\');return false">기관 설정 → ' + (ME.role === 'admin' ? '지회 관리' : '드라이브·캘린더 연결') + '</a>에서 캘린더를 연결하세요.' : '<br>지회 담당자에게 연결을 요청하세요.') + '</div>';
       return;
     }
     card.classList.remove('hide'); $('calname').textContent = j.calendar_name || '구글 캘린더';
@@ -1577,7 +1585,7 @@ function mgrCatalog(){
   var hqAtt = ME.role === 'admin' || (ME.is_hq && (ME.role === 'lead' || hasPerm('att.chapter_manage')));
   return [
     { id:'staff', ic:'👥', l:'직원·권한 관리', ok: ME.can_manage, go: function(){ go('access'); } },
-    { id:'approval', ic:'✍️', l:'결재라인', ok: ME.can_manage, go: function(){ go('access'); } },
+    { id:'approval', ic:'✍️', l:'결재라인', ok: ME.can_manage, go: function(){ go('org', 'lines'); } },
     { id:'log', ic:'📜', l:'권한 변경 기록', ok: ME.can_manage, go: function(){ go('access'); } },
     { id:'att', ic:'🏖', l:'근태 관리', ok: isAttAdmin(), go: function(){ go('att', 'dashboard', true); } },
     { id:'attend', ic:'🕘', l:'출퇴근 관리', ok: isAttAdmin(), go: function(){ go('att', 'attend', true); } },

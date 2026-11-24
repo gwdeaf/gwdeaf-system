@@ -1040,13 +1040,12 @@ function render(){
   $('brand-tx').innerHTML = ORG + '<br>' + (cl ? esc(cl) + ' ' : '') + '업무 시스템';
   document.title = ORG + (cl ? cl : '') + ' 업무 시스템';   // 기관명과 지회명은 띄어 쓰지 않음 (강원특별자치도농아인협회춘천시지회)
   var name = ME.name || (ME.email || '').split('@')[0];
-  $('hello').innerHTML = '<span class="hi">안녕하세요, </span>' + esc(name) + ' 님';   // 휴대폰에서는 '김유진 님'만
+  $('hello').innerHTML = esc(name) + ' <span style="color:var(--pri,#3b5bdb)">' + esc(ME.chapter_name || '') + '</span>';   // 예: 김유진 도협회 (부서는 옆 드롭다운)
   $('today').textContent = new Date().toLocaleDateString('ko-KR', { timeZone:'Asia/Seoul', year:'numeric', month:'long', day:'numeric', weekday:'long' });
   $('me-av').textContent = name.charAt(0);
   $('me-nm').textContent = name;
   $('me-sub').textContent = ME.chapter_name + (ME.position ? ' · ' + ME.position : '');
-  var roleTxt = ME.role === 'admin' ? '도협회 관리자' : ME.role === 'lead' ? '지회 담당자' : (ME.can_manage ? '공동 관리자' : '');
-  $('chips').innerHTML = '<span class="chip pri">' + esc(ME.chapter_name) + '</span>' + (roleTxt ? '<span class="chip">' + roleTxt + '</span>' : '') + (ME.dept ? '<span class="chip">' + esc(ME.dept) + '</span>' : '');
+  $('chips').innerHTML = '';
   deptSel();
   $('tb-av').textContent = name.charAt(0); $('tb-nm').textContent = name;
   renderNav();

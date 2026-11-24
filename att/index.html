@@ -1177,6 +1177,11 @@
       <label>비고</label>
       <input type="text" id="trq-note" placeholder="기타 사항" style="width:100%">
     </div>
+    <div class="form-group" id="trq-also-wrap" style="margin-top:0.8rem;display:none;">
+      <label>다른 부서 대장에도 기록</label>
+      <div id="trq-also" style="display:flex;flex-direction:column;gap:6px;"></div>
+      <div class="hint">같은 출장을 다른 부서에도 올려야 할 때 체크하세요. 그 부서 번호로 대장에 한 줄 더 생기고, 신청서도 그 부서 결재란으로 따로 출력됩니다. 그 부서에서 쓰는 직위(예: 센터장)는 한 번 적으면 기억합니다.</div>
+    </div>
     <div class="btn-group" style="margin-top:1rem;">
       <button class="btn btn-primary" id="trq-submit-btn" onclick="submitTrip()">📤 신청</button>
       <button class="btn btn-outline" onclick="closeTripForm()">취소</button>
@@ -1236,7 +1241,9 @@
     </div>
     <div class="page-tools no-print">
       <select id="adm-trip-year" onchange="loadAdminTrip()"></select>
+      <select id="adm-trip-dept" onchange="renderAdminTrip()" title="부서별 대장"><option value="">전체 부서</option></select>
       <input type="date" id="adm-trip-from" title="시작일(비우면 전체)" style="width:auto"> ~ <input type="date" id="adm-trip-to" title="종료일(비우면 전체)" style="width:auto">
+      <button class="btn btn-outline btn-sm" onclick="printTripLedger()">🖨️ 출장대장 인쇄</button>
       <button class="btn btn-outline btn-sm" onclick="downloadTripLedger()">📥 출장대장 엑셀</button>
       <button class="btn btn-outline btn-sm" onclick="saveTripLedgerGSheet()">📊 시트로 저장</button>
       <button class="btn btn-outline btn-sm" onclick="loadAdminTrip()">🔄 새로고침</button>
@@ -1728,12 +1735,14 @@
       <input type="text" id="dash-search" placeholder="이름·부서 검색" oninput="renderAdminDashboard()" style="width:150px;">
       <select id="dash-year-select" onchange="loadAdminDashboard()"></select>
       <button class="btn btn-outline btn-sm" onclick="loadAdminDashboard()">🔄 새로고침</button>
+      <button class="btn btn-primary btn-sm" onclick="openLeaveStatus()">📋 연가 사용 현황</button>
       <button class="btn btn-primary btn-sm" onclick="downloadAdminExcel()">⬇ 엑셀 다운로드</button>
       <button class="btn btn-primary btn-sm" onclick="saveReportGSheet()">📊 시트로 저장</button>
       <button class="btn btn-accent btn-sm" onclick="printAdminReport()">🖨️ 인쇄</button>
     </div>
   </div>
   <div id="alert-area-adm-dashboard"></div>
+  <div class="card no-print" id="lv-status-box" style="display:none;margin-bottom:1rem;"></div>
   <div class="kpi-grid" id="dash-kpis"></div>
   <div class="card" style="padding:0;overflow:hidden;">
     <div id="dashboard-body" style="overflow-x:auto;">
@@ -5809,7 +5818,7 @@ function filterLeaveMgr(type) {
   gasRun(fnName, argStr, function(list) {
     if (currentLeaveMgrMode !== type) return;   // 그 사이 다른 종류를 눌렀으면 무시
     leaveMgrData = Array.isArray(list) ? list : [];
-    if (type==='출장 신청') leaveMgrData.forEach(function(x){ x.detail = tripMgrDetail(x); });
+    if (type==='출장 신청') { leaveMgrData = leaveMgrData.filter(function(x){ return !x.linked; }); leaveMgrData.forEach(function(x){ x.detail = tripMgrDetail(x); }); }   // 다른 부서 대장 사본은 한 번만
     renderLeaveMgrTable();
     if (type==='출장 신청') loadTripUnappliedMgr(); else { var ub = document.getElementById('lm-trip-unapplied'); if (ub) ub.style.display = 'none'; }
   }, function(m) {
@@ -5899,7 +5908,7 @@ function tripAlert(msg, type) { showLeaveAlert(msg, type || 'info', 'alert-area-
 function tripLoadCfg(cb) {
   if (tripCfgLoaded) { cb(); return; }
   var left = 2; function done() { if (--left === 0) { tripCfgLoaded = true; cb(); } }
-  gasRun('getTripFormConfig', null, function(r) { if (r && r.ok) tripCfg = r; done(); }, function() { done(); });
+  gasRun('getTripFormConfig', JSON.stringify({ auth: myAuth() }), function(r) { if (r && r.ok) tripCfg = r; done(); }, function() { done(); });
   gasRun('getStaffNames', null, function(l) { tripStaffNames = Array.isArray(l) ? l : []; done(); }, function() { done(); });
 }
 // 출장 신청 / 출장 내역 화면 (왼쪽 메뉴에서 따로 들어옴)
@@ -5940,6 +5949,12 @@ function renderTripMine() {
   var tb = document.getElementById('trip-mine-body');
   if (!tripMine.length) { tb.innerHTML = '<tr><td colspan="5" class="empty">출장 신청 내역이 없습니다. [새 출장 신청]을 눌러 작성하세요.</td></tr>'; return; }
   tb.innerHTML = tripMine.map(function(it) {
+    if (it.linked) {                       // 다른 부서 대장에 함께 기록된 줄: 원래 신청을 고치면 같이 바뀜
+      var org = tripMine.filter(function(x) { return x.id === it.group; })[0];
+      return '<tr><td><b>' + esc(it.docNo) + '</b><div class="hint">📎 ' + esc(it.dept) + ' 대장</div></td><td>' + esc(tripPeriod(it)) + ' <span class="hint">(' + it.days + '일)</span></td>'
+        + '<td class="l">' + esc(it.to) + '<div class="hint">' + esc(it.purpose) + '</div></td><td><span class="leave-badge lb-wait">함께 기록</span><div class="hint">원래 신청 ' + esc(org ? org.docNo : '') + '</div></td>'
+        + '<td style="white-space:nowrap"><button class="row-btn plain" onclick="printTripFrom(tripMine,' + it.row + ')">🖨️ 인쇄</button>' + (it.rep ? ' <button class="row-btn plain" onclick="printTripReportFrom(tripMine,' + it.row + ')">🖨️ 복명서</button>' : '') + '</td></tr>';
+    }
     var canEdit = !it.rep;                 // 복명서를 쓰기 전까지는 고치거나 취소할 수 있음
     var btns = '<button class="row-btn plain" onclick="printTripFrom(tripMine,' + it.row + ')">🖨️ 인쇄</button> '
       + (canEdit ? '<button class="row-btn plain" onclick="editTrip(' + it.row + ')">✏️ 수정</button> <button class="row-btn no" onclick="cancelTrip(' + it.row + ')">취소</button>' : '')
@@ -5979,9 +5994,30 @@ function openTripForm(it) {
     document.getElementById('trq-to').value = it ? it.to : '';
     document.getElementById('trq-transport').value = it ? it.transport : '';
     document.getElementById('trq-note').value = it ? it.note : '';
-    tripRenderPassengers(); tripCalcDays();
+    tripRenderPassengers(); tripCalcDays(); tripRenderAlso(it);
     document.getElementById('trip-form-card').scrollIntoView({ behavior: 'smooth', block: 'start' });
   });
+}
+// 다른 부서 대장에도 기록 (부서마다 체크 + 그 부서에서 쓰는 직위)
+function tripRenderAlso(it) {
+  var wrap = document.getElementById('trq-also-wrap'), box = document.getElementById('trq-also');
+  var my = String(leaveUser.dept || '').trim();
+  var depts = (tripCfg.depts || []).filter(function(d) { return d && d !== my; });
+  if (!depts.length) { wrap.style.display = 'none'; box.innerHTML = ''; return; }
+  var cur = {};
+  if (it) tripMine.forEach(function(x) { if (x.linked && x.group === it.id) cur[x.dept] = x.position; });
+  wrap.style.display = '';
+  box.innerHTML = depts.map(function(d, i) {
+    var on = cur[d] !== undefined, pos = on ? cur[d] : ((tripCfg.myPos || {})[d] || leaveUser.position || '');
+    return '<label style="display:flex;align-items:center;gap:8px;font-weight:400;margin:0;">'
+      + '<input type="checkbox" class="trq-also-chk" data-dept="' + esc(d) + '"' + (on ? ' checked' : '') + ' onchange="this.parentNode.querySelector(\'input[type=text]\').disabled=!this.checked" style="width:auto">'
+      + '<b style="min-width:6em">' + esc(d) + '</b> 대장 · 직위 <input type="text" value="' + esc(pos) + '" placeholder="직위"' + (on ? '' : ' disabled') + ' style="width:9em"></label>';
+  }).join('');
+}
+function tripAlsoValue() {
+  if (document.getElementById('trq-also-wrap').style.display === 'none') return undefined;
+  return Array.prototype.filter.call(document.querySelectorAll('.trq-also-chk'), function(c) { return c.checked; })
+    .map(function(c) { return { dept: c.getAttribute('data-dept'), position: c.parentNode.querySelector('input[type=text]').value.trim() }; });
 }
 function closeTripForm() { var c = document.getElementById('trip-form-card'); if (c) c.style.display = 'none'; tripEditRow = 0; }
 function editTrip(row) { var it = tripMine.filter(function(x) { return x.row === row; })[0]; if (it) openTripForm(it); }
@@ -6011,7 +6047,7 @@ function submitTrip() {
     passengers: tripPassengers, purpose: document.getElementById('trq-purpose').value.trim(),
     start: document.getElementById('trq-start').value, end: document.getElementById('trq-end').value,
     to: document.getElementById('trq-to').value.trim(), transport: document.getElementById('trq-transport').value,
-    deputy: document.getElementById('trq-deputy').value, payment: pay, note: document.getElementById('trq-note').value.trim() };
+    deputy: document.getElementById('trq-deputy').value, payment: pay, note: document.getElementById('trq-note').value.trim(), also: tripAlsoValue() };
   gasRun('submitTripRequest', JSON.stringify(payload), function(res) {
     btn.disabled = false;
     if (res && res.ok) {
@@ -6024,7 +6060,8 @@ function submitTrip() {
 }
 function cancelTrip(row) {
   var it = tripMine.filter(function(x) { return x.row === row; })[0];
-  if (!it || !confirm(it.docNo + ' 출장 신청을 취소할까요?')) return;
+  var lk = it ? tripMine.filter(function(x) { return x.linked && x.group === it.id; }) : [];
+  if (!it || !confirm(it.docNo + ' 출장 신청을 취소할까요?' + (lk.length ? '\n(' + lk.map(function(x){ return x.dept + ' 대장 ' + x.docNo; }).join(', ') + ' 도 함께 지워집니다)' : ''))) return;
   gasRun('deleteTripRequest', JSON.stringify({ auth: myAuth(), row: row }), function(res) {
     if (res && res.ok) { calCall({ action: 'calDelete', key: 'trip|' + it.docNo }); tripAlert('취소했습니다.', 'success'); refreshTripList(); }
     else tripAlert('취소하지 못했습니다: ' + esc(res && res.msg || ''), 'warn');
@@ -6035,7 +6072,8 @@ function cancelTrip(row) {
 function printTripFrom(arr, row) { var it = arr.filter(function(x) { return x.row === row; })[0]; if (it) printTripReq(it); }
 function tripKDate(s) { var m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? Number(m[2]) + '월 ' + Number(m[3]) + '일' : ''; }
 function printTripReq(it) {
-  var org = window._orgName || '';
+  var dm = (APPROVAL_CONFIG || []).filter(function(c) { return c.dept === it.dept && c.addressee; })[0];
+  var org = dm ? dm.addressee : (window._orgName || '');   // 부서 결재라인에 받는 사람(예: ○○센터장 귀하)이 있으면 그 부서 이름으로
   var period = it.start === it.end ? tripKDate(it.start) + ' ( 1 일 )' : tripKDate(it.start) + ' ~ ' + tripKDate(it.end) + ' ( ' + it.days + ' 일 )';
   var ap = '';
   var applyD = it.date ? it.date.replace(/^(\d{4})-(\d{2})-(\d{2})$/, function(a, y, m, d) { return y + '년 ' + Number(m) + '월 ' + Number(d) + '일'; }) : '';
@@ -6078,15 +6116,24 @@ function loadAdminTrip() {
   tb.innerHTML = '<tr><td colspan="8" class="empty">불러오는 중...</td></tr>';
   gasRun('getAdminTripRequests', JSON.stringify({ year: ys.value }), function(list) {
     admTripData = Array.isArray(list) ? list : [];
-    if (!admTripData.length) { tb.innerHTML = '<tr><td colspan="8" class="empty">이 해의 출장 신청이 없습니다.</td></tr>'; }
-    else tb.innerHTML = admTripData.map(function(it) {
-      return '<tr><td><b>' + esc(it.docNo) + '</b></td><td>' + esc(it.date) + '</td><td>' + esc(it.name) + '<div class="hint">' + esc(it.dept) + '</div></td>'
+    var ds = document.getElementById('adm-trip-dept'), cur = ds.value, depts = {};
+    admTripData.forEach(function(x) { if (x.dept) depts[x.dept] = 1; });
+    ds.innerHTML = '<option value="">전체 부서</option>' + Object.keys(depts).sort().map(function(d) { return '<option' + (d === cur ? ' selected' : '') + '>' + esc(d) + '</option>'; }).join('');
+    renderAdminTrip();
+  }, function(m) { tb.innerHTML = '<tr><td colspan="8" class="empty danger-text">불러오기 오류: ' + esc(m) + '</td></tr>'; });
+  loadTripCfgAdmin(); loadTripUnappliedMgr('adm-trip-unapplied');
+}
+function admTripDept() { var el = document.getElementById('adm-trip-dept'); return el ? el.value : ''; }
+function renderAdminTrip() {
+    var tb = document.getElementById('adm-trip-body'), dp = admTripDept();
+    var view = admTripData.filter(function(x) { return !dp || x.dept === dp; });
+    if (!view.length) { tb.innerHTML = '<tr><td colspan="8" class="empty">이 해의 출장 신청이 없습니다.</td></tr>'; }
+    else tb.innerHTML = view.map(function(it) {
+      return '<tr><td><b>' + esc(it.docNo) + '</b>' + (it.group ? '<div class="hint">📎 ' + (it.linked ? '함께 기록' : '다른 부서에도 기록') + '</div>' : '') + '</td><td>' + esc(it.date) + '</td><td>' + esc(it.name) + '<div class="hint">' + esc(it.dept) + '</div></td>'
         + '<td>' + esc(tripPeriod(it)) + '</td><td class="l">' + esc(it.to) + '<div class="hint">' + esc(it.purpose) + '</div></td><td>' + tripStatusHTML(it) + '</td>'
         + '<td>' + (it.rep ? '<span class="leave-badge lb-ok">제출</span><div class="hint">' + esc(it.rep.submitDate) + (it.rep.total ? ' · ' + tripWon(it.rep.total) + '원' : '') + '</div>' : '<span class="muted">-</span>') + '</td>'
         + '<td style="white-space:nowrap;"><button class="row-btn plain" title="신청서 인쇄" onclick="printTripFrom(admTripData,' + it.row + ')">🖨️ 신청서</button>' + (it.rep ? ' <button class="row-btn plain" title="복명서 인쇄" onclick="printTripReportFrom(admTripData,' + it.row + ')">🖨️ 복명서</button>' : '') + ' <button class="row-btn no" onclick="admDeleteTrip(' + it.row + ')">삭제</button></td></tr>';
     }).join('');
-  }, function(m) { tb.innerHTML = '<tr><td colspan="8" class="empty danger-text">불러오기 오류: ' + esc(m) + '</td></tr>'; });
-  loadTripCfgAdmin(); loadTripUnappliedMgr('adm-trip-unapplied');
 }
 function admDeleteTrip(row) {
   var it = admTripData.filter(function(x) { return x.row === row; })[0];
@@ -6300,7 +6347,9 @@ function loadTripUnappliedMgr(boxId) {
 function tripLedgerSheets() {
   var from = (document.getElementById('adm-trip-from') || {}).value || '';
   var to = (document.getElementById('adm-trip-to') || {}).value || '';
+  var dp = admTripDept();
   var list = admTripData.slice().reverse().filter(function(it) {
+    if (dp && it.dept !== dp) return false;
     if (from && String(it.start) < from) return false;
     if (to && String(it.start) > to) return false;
     return true;
@@ -6317,7 +6366,21 @@ function tripLedgerSheets() {
 function _tripLabel() {
   var y = document.getElementById('adm-trip-year').value;
   var from = (document.getElementById('adm-trip-from') || {}).value || '', to = (document.getElementById('adm-trip-to') || {}).value || '';
-  return from || to ? (from || y + '-01-01') + '~' + (to || y + '-12-31') : y + '년';
+  return (admTripDept() ? admTripDept() + '_' : '') + (from || to ? (from || y + '-01-01') + '~' + (to || y + '-12-31') : y + '년');
+}
+// 출장대장 인쇄 (부서를 고르면 그 부서 대장만)
+function printTripLedger() {
+  var sh = tripLedgerSheets(); if (!sh) return;
+  var rows = sh[0].rows, keep = [0, 1, 2, 4, 6, 7, 8, 9, 10, 12, 15];   // 문서번호·신청일·출장인·직위·기간·일수·출장지·목적·지급출처·복명서
+  var dp = admTripDept(), period = _tripLabel(); if (dp) period = period.slice(dp.length + 1);
+  var w = window.open('', '_blank', 'width=1100,height=800');
+  if (!w) { alert('팝업이 차단되었습니다. 팝업을 허용해 주세요.'); return; }
+  var th = keep.map(function(i) { return '<th>' + esc(rows[0][i]) + '</th>'; }).join('');
+  var body = rows.slice(1).map(function(r) { return '<tr>' + keep.map(function(i) { return '<td>' + esc(r[i] == null ? '' : r[i]) + '</td>'; }).join('') + '</tr>'; }).join('');
+  w.document.write('<html><head><meta charset="UTF-8"><title>출장대장</title><style>@page{size:A4 landscape;margin:12mm}body{font-family:"맑은 고딕",sans-serif}h2{text-align:center;letter-spacing:6px;margin:0 0 4px}.sub{text-align:center;color:#555;margin-bottom:10px;font-size:11pt}table{width:100%;border-collapse:collapse;font-size:9.5pt}th,td{border:1px solid #444;padding:4px 5px;text-align:center}th{background:#eee}td:nth-child(8),td:nth-child(9){text-align:left}</style></head><body>'
+    + '<h2>출 장 대 장</h2><div class="sub">' + esc((window._orgName || '') + (dp ? ' · ' + dp : '') + ' · ' + period) + '</div>'
+    + '<table><thead><tr>' + th + '</tr></thead><tbody>' + body + '</tbody></table></body></html>');
+  w.document.close(); w.focus(); setTimeout(function() { w.print(); }, 500);
 }
 function downloadTripLedger() {
   var sh = tripLedgerSheets(); if (!sh) return;
@@ -6783,6 +6846,215 @@ function _loadReportData(cb) {
     if (!res || !res.ok) { alert('데이터를 불러오지 못했습니다.'); return; }
     admDash = res; fin(res);
   }, function(m){ alert('오류: '+m); });
+}
+// ============================================================
+// 연가 사용 현황 (엑셀 한 파일: 연가 · 병가/공가/특별휴가 · 대체휴무)
+//   부서 묶음별로 받음 — 이름에 '문화원'이 들어간 부서는 따로, 나머지(법인·센터 등)는 하나로
+// ============================================================
+function leaveStatusGroups(D) {
+  var all = {}, sep = [];
+  D.forEach(function(d) { all[d.dept || ''] = 1; });
+  var depts = Object.keys(all);
+  depts.forEach(function(d) { if (d.indexOf('문화원') >= 0) sep.push(d); });
+  var rest = depts.filter(function(d) { return sep.indexOf(d) < 0; });
+  var g = [];
+  if (rest.length) g.push({ label: rest.filter(Boolean).join('·') || '전체', depts: rest });
+  sep.forEach(function(d) { g.push({ label: d, depts: [d] }); });
+  return g;
+}
+function openLeaveStatus() {
+  var box = document.getElementById('lv-status-box');
+  box.style.display = ''; box.innerHTML = '<div class="hint">불러오는 중...</div>';
+  _loadReportData(function(dash) {
+    var D = dash.dashboard || [], G = leaveStatusGroups(D);
+    window._lvGroups = G; window._lvDash = dash;
+    box.innerHTML = '<div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;"><b>📋 ' + dash.year + '년 연가 사용 현황 (엑셀)</b>'
+      + G.map(function(g, i) { return '<button class="btn btn-outline btn-sm" onclick="downloadLeaveStatus(' + i + ')">⬇ ' + esc(g.label) + '</button>'; }).join('')
+      + (G.length > 1 ? '<button class="btn btn-outline btn-sm" onclick="downloadLeaveStatus(-1)">⬇ 전체</button>' : '')
+      + '<span style="flex:1"></span><a href="#" onclick="document.getElementById(\'lv-status-box\').style.display=\'none\';return false">닫기</a></div>'
+      + '<div class="hint" style="margin-top:6px">파일 하나에 직원별 연가(날짜·시수·남은 일수), 병가·공가·특별휴가, 대체휴무 사용일이 들어갑니다. 문화원은 따로, 나머지 부서는 함께 나옵니다. 연도는 위쪽 연도 선택을 따릅니다.</div>';
+  });
+}
+function _lvMD(ymd) { var m = String(ymd || '').match(/^\d{4}-(\d{2})-(\d{2})/); return m ? Number(m[1]) + '/' + Number(m[2]) : String(ymd || ''); }
+function _lvNum(n) { return String(Math.round(n * 100) / 100); }
+function _lvRange(a, b) {
+  if (!b || a === b) return _lvMD(a);
+  return a.slice(0, 7) === b.slice(0, 7) ? _lvMD(a) + '~' + Number(b.slice(8, 10)) : _lvMD(a) + '~' + _lvMD(b);
+}
+function _lvAnnualCells(d) {
+  var ev = [];
+  (d.leave.list || []).forEach(function(x) {
+    if (x.status !== '승인' || !(x.type === '' || String(x.type).indexOf('연차') === 0)) return;
+    var n = Math.floor(x.days + 1e-9), half = x.days - n >= 0.49;
+    var cur = new Date(x.start + 'T00:00:00'), end = new Date((x.end || x.start) + 'T00:00:00'), k = 0, guard = 0;
+    while (k < n && guard++ < 62) {
+      var dw = cur.getDay();
+      if ((dw !== 0 && dw !== 6) || cur > end) { var ymd = localDateStr(cur); ev.push({ key: ymd, t: _lvMD(ymd), k: 'd' }); k++; }
+      cur.setDate(cur.getDate() + 1);
+    }
+    if (half) ev.push({ key: (x.end || x.start), t: _lvMD(x.end || x.start) + '(반)', k: 'h' });
+  });
+  var sis = (d.sisuje.list || []).filter(function(x) { return x.confirmed; })
+    .sort(function(a, b) { return (a.month - b.month) || (a.day - b.day) || (Number(a.start) - Number(b.start)); });
+  var y = String((window._lvDash || {}).year || new Date().getFullYear());
+  var p2 = function(n) { return (n < 10 ? '0' : '') + n; };
+  for (var i = 7, c = 1; i < sis.length; i += 8, c++) ev.push({ key: y + '-' + p2(sis[i].month) + '-' + p2(sis[i].day), t: '시수(' + c + ')', k: 's' });
+  var left = sis.length % 8;
+  if (left) { var l = sis[sis.length - 1]; ev.push({ key: y + '-' + p2(l.month) + '-' + p2(l.day) + 'z', t: '시수 ' + left + '/8', k: 'h' }); }
+  ev.sort(function(a, b) { return a.key < b.key ? -1 : a.key > b.key ? 1 : 0; });
+  var cells = ev.map(function(e) { return { v: e.t, k: e.k }; });
+  var R = Math.round(d.annual.remaining * 1000) / 1000, whole = Math.floor(R + 1e-9), frac = R - whole;
+  for (var r = whole; r >= 1; r--) cells.push({ v: String(r), k: 'r' });      // 남은 일수 (빨간 숫자, 하루에 한 칸)
+  if (frac > 0.001) cells.push({ v: _lvNum(frac), k: 'r' });                  // 반차·시수로 남은 조각
+  return cells;
+}
+function _lvSpecial(d) {
+  var ev = [];
+  (d.leave.list || []).forEach(function(x) {
+    if (x.status !== '승인' || x.type === '' || String(x.type).indexOf('연차') === 0) return;
+    var ty = String(x.type).replace(/휴가$/, '') || x.type;
+    ev.push({ key: x.start, use: _lvRange(x.start, x.end) + (x.days && x.days < 1 ? '(반)' : '') + '(' + ty + ')', rel: x.reason || '' });
+  });
+  var y = String((window._lvDash || {}).year || ''), byDay = {};
+  (d.sick || []).forEach(function(x) { var k = x.month * 100 + x.day; byDay[k] = (byDay[k] || 0) + 1; });
+  Object.keys(byDay).forEach(function(k) { var m = Math.floor(k / 100), dd = k % 100; ev.push({ key: y + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd, use: m + '/' + dd + '(병가 ' + byDay[k] + '시간)', rel: '' }); });
+  return ev.sort(function(a, b) { return a.key < b.key ? -1 : 1; });
+}
+function _lvComp(d) {
+  return (d.comp.list || []).filter(function(x) { return x.kind === '사용' && x.status !== '반려'; })
+    .map(function(x) { return { key: x.date, use: _lvMD(x.date) + (x.days && x.days < 1 ? '(반)' : ''), rel: x.reason || '' }; })
+    .sort(function(a, b) { return a.key < b.key ? -1 : 1; });
+}
+// 엑셀 칸 모양 (번호로 고름)
+var LV_ST = [
+  null,
+  { sz: 16, b: 1, color: '1F3864', al: 'left' },                                   // 1 큰 제목
+  { sz: 10, color: '595959', al: 'left' },                                          // 2 부제목
+  { sz: 10, color: '595959', al: 'right' },                                         // 3 오른쪽 작은 글
+  { sz: 11, b: 1, color: 'FFFFFF', fill: '1F3864', al: 'left', pad: 1 },            // 4 구역 띠 (남색)
+  { sz: 10, b: 1, color: '1F3864', fill: 'DCE6F1', bd: 1 },                         // 5 표 머리
+  { sz: 10, color: '262626', fill: 'F7F9FC', bd: 1 },                               // 6 인적사항
+  { sz: 10, b: 1, color: '262626', fill: 'F7F9FC', bd: 1 },                         // 7 이름
+  { sz: 10, color: '1F4E79', fill: 'EAF2FB', bd: 1 },                               // 8 연차 날짜
+  { sz: 10, b: 1, color: '375623', fill: 'E2EFDA', bd: 1 },                         // 9 시수
+  { sz: 10, color: '7F6000', fill: 'FFF2CC', bd: 1 },                               // 10 반차·시수 조각
+  { sz: 10, b: 1, color: 'C00000', fill: 'FFF5F5', bd: 1 },                         // 11 남은 일수
+  { sz: 10, bd: 1 },                                                                // 12 빈 칸
+  { sz: 10, b: 1, color: '1F3864', bd: 1 },                                         // 13 숫자 (부여)
+  { sz: 10, b: 1, color: 'C00000', bd: 1 },                                         // 14 숫자 (잔여)
+  { sz: 10, color: '262626', bd: 1 },                                               // 15 사용일
+  { sz: 8, color: '7F7F7F', bd: 1 },                                                // 16 관련일 (작은 회색)
+  { sz: 9, color: '595959', fill: 'F2F2F2', bd: 1 },                                // 17 구분(사용일/관련일)
+  { sz: 9, color: '7F7F7F', al: 'left' },                                           // 18 범례
+  { sz: 9, b: 1, color: '1F4E79', fill: 'EAF2FB', bd: 1 },                          // 19 범례 견본: 날짜
+  { sz: 9, b: 1, color: '375623', fill: 'E2EFDA', bd: 1 },                          // 20 범례 견본: 시수
+  { sz: 9, b: 1, color: '7F6000', fill: 'FFF2CC', bd: 1 },                          // 21 범례 견본: 반차
+  { sz: 9, b: 1, color: 'C00000', fill: 'FFF5F5', bd: 1 }                           // 22 범례 견본: 남은 일수
+];
+function buildLeaveStatusSheet(D, year, title) {
+  var R = [], M = [], H = [], put = function(r, c, v, st) { (R[r] = R[r] || [])[c] = { v: v, s: st }; };
+  var mg = function(r1, c1, r2, c2) { if (r1 !== r2 || c1 !== c2) M.push(_colName(c1) + (r1 + 1) + ':' + _colName(c2) + (r2 + 1)); };
+  var band = function(r, c1, c2, txt) { put(r, c1, txt, 4); for (var c = c1 + 1; c <= c2; c++) put(r, c, '', 4); mg(r, c1, r, c2); H[r] = 22; };
+  var KS = { d: 8, s: 9, h: 10, r: 11 };
+  var rows = D.map(function(d) {
+    var hire = d.hire || '', hy = Number(hire.slice(0, 4));
+    return { d: d, ann: _lvAnnualCells(d), sp: _lvSpecial(d), cp: _lvComp(d),
+      hire: hire ? hy + '. ' + Number(hire.slice(5, 7)) + '.' : '', yrs: hy ? (Number(year) - hy + 1) + '년차' : '' };
+  });
+  var F = 7;   // 앞쪽 칸: 직위·성명·입사일·근속·부여·사용·잔여
+  var N = Math.max(15, Math.max.apply(null, rows.map(function(x) { return x.ann.length; }).concat([0])));
+  var K = Math.max(10, Math.max.apply(null, rows.map(function(x) { return x.sp.length; }).concat([0])));
+  var K2 = Math.max(10, Math.max.apply(null, rows.map(function(x) { return x.cp.length; }).concat([0])));
+  var o = 3 + K + 1, last = Math.max(F + N, o + 3 + K2) - 1;
+  var r = 0;
+  // 제목
+  put(r, 0, year + '년 연가 사용 현황', 1); mg(r, 0, r, 12); H[r] = 30; r++;
+  put(r, 0, ((window._lvDash || {}).orgName || '') + (title ? '  ·  ' + title : ''), 2); mg(r, 0, r, 12);
+  put(r, last - 5, '작성일 ' + localDateStr(new Date()), 3); mg(r, last - 5, r, last); H[r] = 18; r++;
+  r++;
+  // ① 연가
+  band(r, 0, F + N - 1, '  ①  연가 사용 현황'); r++;
+  ['직위', '성명', '입사일', '근속', '부여', '사용', '잔여'].forEach(function(t, c) { put(r, c, t, 5); });
+  put(r, F, '사용한 날짜  →  남은 일수', 5); for (var c = F + 1; c < F + N; c++) put(r, c, '', 5); mg(r, F, r, F + N - 1); H[r] = 22; r++;
+  rows.forEach(function(x) {
+    var a = x.d.annual;
+    put(r, 0, x.d.position, 6); put(r, 1, x.d.name, 7); put(r, 2, x.hire, 6); put(r, 3, x.yrs, 6);
+    put(r, 4, _lvNum(a.granted), 13); put(r, 5, _lvNum(a.used || (a.granted - a.remaining)), 13); put(r, 6, _lvNum(a.remaining), 14);
+    for (var c = 0; c < N; c++) { var e = x.ann[c]; put(r, F + c, e ? e.v : '', e ? KS[e.k] || 12 : 12); }
+    H[r] = 24; r++;
+  });
+  // 범례
+  put(r, 0, '보기', 18); put(r, 1, '1/30', 19); put(r, 2, '연차 날짜', 18); put(r, 3, '시수(1)', 20); put(r, 4, '8차시=1일', 18); mg(r, 4, r, 5);
+  put(r, 6, '1/30(반)', 21); put(r, 7, '반차·남은 시수', 18); mg(r, 7, r, 8); put(r, 9, '18', 22); put(r, 10, '남은 일수', 18); mg(r, 10, r, 11); H[r] = 18; r++;
+  r++;
+  // ② 병가·공가·특별휴가 / ③ 대체휴무 (나란히)
+  band(r, 0, 2 + K, '  ②  병가 · 공가 · 특별휴가'); band(r, o, o + 2 + K2, '  ③  대체휴무 사용일 (관련일)'); r++;
+  [[0, K], [o, K2]].forEach(function(b) {
+    ['직위', '성명', '구분'].forEach(function(t, c) { put(r, b[0] + c, t, 5); });
+    for (var i = 0; i < b[1]; i++) put(r, b[0] + 3 + i, (i + 1) + '회', 5);
+  });
+  H[r] = 20; r++;
+  rows.forEach(function(x) {
+    [[0, K, x.sp], [o, K2, x.cp]].forEach(function(b) {
+      put(r, b[0], x.d.position, 6); put(r + 1, b[0], '', 6); mg(r, b[0], r + 1, b[0]);
+      put(r, b[0] + 1, x.d.name, 7); put(r + 1, b[0] + 1, '', 7); mg(r, b[0] + 1, r + 1, b[0] + 1);
+      put(r, b[0] + 2, '사용일', 17); put(r + 1, b[0] + 2, '관련일', 17);
+      for (var i = 0; i < b[1]; i++) { var e = b[2][i]; put(r, b[0] + 3 + i, e ? e.use : '', 15); put(r + 1, b[0] + 3 + i, e ? e.rel : '', 16); }
+    });
+    H[r] = 28; H[r + 1] = 20; r += 2;
+  });
+  var W = [7, 8, 9, 9, 9, 9, 9];   // 아래 표의 1~3회 칸과 같은 열이라 너무 좁히지 않음
+  while (W.length <= last) W.push(9);
+  W[o - 1] = Math.max(W[o - 1], 8.5);
+  return { name: '연가 사용 현황', cells: R, merges: M, heights: H, widths: W, styles: LV_ST };
+}
+// 칸 모양(글꼴·색·테두리·합친 칸)이 들어가는 엑셀 한 장 — sh.styles: [null, {sz,b,color,fill,bd,al}, ...]
+function buildStyledXlsx(sh) {
+  var files = [];
+  files.push({name:'[Content_Types].xml', text:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/xl/workbook.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet.main+xml"/><Override PartName="/xl/worksheets/sheet1.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.worksheet+xml"/><Override PartName="/xl/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.spreadsheetml.styles+xml"/></Types>'});
+  files.push({name:'_rels/.rels', text:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="xl/workbook.xml"/></Relationships>'});
+  files.push({name:'xl/workbook.xml', text:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><workbook xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main" xmlns:r="http://schemas.openxmlformats.org/officeDocument/2006/relationships"><sheets><sheet name="' + _xmlEsc(sh.name) + '" sheetId="1" r:id="rId1"/></sheets></workbook>'});
+  files.push({name:'xl/_rels/workbook.xml.rels', text:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/worksheet" Target="worksheets/sheet1.xml"/><Relationship Id="rId2" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/></Relationships>'});
+  var fonts = ['<font><sz val="10"/><name val="맑은 고딕"/></font>'], fills = ['<fill><patternFill patternType="none"/></fill>', '<fill><patternFill patternType="gray125"/></fill>'];
+  var BC = 'FFBFC9D6', borders = ['<border><left/><right/><top/><bottom/><diagonal/></border>',
+    '<border><left style="thin"><color rgb="' + BC + '"/></left><right style="thin"><color rgb="' + BC + '"/></right><top style="thin"><color rgb="' + BC + '"/></top><bottom style="thin"><color rgb="' + BC + '"/></bottom><diagonal/></border>'];
+  var idx = function(arr, x) { var i = arr.indexOf(x); if (i < 0) { arr.push(x); i = arr.length - 1; } return i; };
+  var xfs = ['<xf numFmtId="0" fontId="0" fillId="0" borderId="0" xfId="0"/>'];
+  (sh.styles || []).forEach(function(t, n) {
+    if (!n) return;
+    var f = idx(fonts, '<font>' + (t.b ? '<b/>' : '') + '<sz val="' + (t.sz || 10) + '"/>' + (t.color ? '<color rgb="FF' + t.color + '"/>' : '') + '<name val="맑은 고딕"/></font>');
+    var fl = t.fill ? idx(fills, '<fill><patternFill patternType="solid"><fgColor rgb="FF' + t.fill + '"/><bgColor indexed="64"/></patternFill></fill>') : 0;
+    xfs.push('<xf numFmtId="0" fontId="' + f + '" fillId="' + fl + '" borderId="' + (t.bd ? 1 : 0) + '" xfId="0" applyFont="1" applyFill="1" applyBorder="1" applyAlignment="1"><alignment horizontal="' + (t.al || 'center') + '" vertical="center" wrapText="' + (t.al ? 0 : 1) + '"' + (t.pad ? ' indent="1"' : '') + '/></xf>');
+  });
+  files.push({name:'xl/styles.xml', text:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><styleSheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main">'
+    + '<fonts count="' + fonts.length + '">' + fonts.join('') + '</fonts><fills count="' + fills.length + '">' + fills.join('') + '</fills><borders count="2">' + borders.join('') + '</borders>'
+    + '<cellStyleXfs count="1"><xf numFmtId="0" fontId="0" fillId="0" borderId="0"/></cellStyleXfs><cellXfs count="' + xfs.length + '">' + xfs.join('') + '</cellXfs>'
+    + '<cellStyles count="1"><cellStyle name="Normal" xfId="0" builtinId="0"/></cellStyles></styleSheet>'});
+  var rowsXml = '';
+  for (var r = 0; r < sh.cells.length; r++) {
+    var row = sh.cells[r] || [], cx = '';
+    for (var c = 0; c < row.length; c++) {
+      var e = row[c]; if (!e) continue;
+      var ref = _colName(c) + (r + 1), st = e.s || 0;
+      cx += (e.v === '' || e.v == null) ? '<c r="' + ref + '" s="' + st + '"/>' : '<c r="' + ref + '" s="' + st + '" t="inlineStr"><is><t xml:space="preserve">' + _xmlEsc(e.v) + '</t></is></c>';
+    }
+    var h = sh.heights && sh.heights[r];
+    rowsXml += '<row r="' + (r + 1) + '"' + (h ? ' ht="' + h + '" customHeight="1"' : '') + '>' + cx + '</row>';
+  }
+  var cols = (sh.widths || []).map(function(w, i) { return '<col min="' + (i + 1) + '" max="' + (i + 1) + '" width="' + w + '" customWidth="1"/>'; }).join('');
+  files.push({name:'xl/worksheets/sheet1.xml', text:'<?xml version="1.0" encoding="UTF-8" standalone="yes"?><worksheet xmlns="http://schemas.openxmlformats.org/spreadsheetml/2006/main"><sheetPr><pageSetUpPr fitToPage="1"/></sheetPr><sheetViews><sheetView workbookViewId="0" showGridLines="0" zoomScale="100"/></sheetViews>'
+    + (cols ? '<cols>' + cols + '</cols>' : '') + '<sheetData>' + rowsXml + '</sheetData>'
+    + (sh.merges && sh.merges.length ? '<mergeCells count="' + sh.merges.length + '">' + sh.merges.map(function(m) { return '<mergeCell ref="' + m + '"/>'; }).join('') + '</mergeCells>' : '')
+    + '<pageMargins left="0.3" right="0.3" top="0.4" bottom="0.4" header="0.2" footer="0.2"/><pageSetup paperSize="9" orientation="landscape" fitToWidth="1" fitToHeight="0"/></worksheet>'});
+  return _zipStore(files);
+}
+function downloadLeaveStatus(i) {
+  var dash = window._lvDash, G = window._lvGroups || []; if (!dash) return;
+  var g = i >= 0 ? G[i] : null;
+  var D = (dash.dashboard || []).filter(function(d) { return !g || g.depts.indexOf(d.dept || '') >= 0; });
+  if (!D.length) { alert('해당 부서 직원이 없습니다.'); return; }
+  var title = g ? g.label : '';
+  saveBlobAs(buildStyledXlsx(buildLeaveStatusSheet(D, dash.year, title)), (dash.orgName || '') + '_' + dash.year + '년_연가사용현황' + (title ? '_' + title : '') + '.xlsx');
 }
 function downloadAdminExcel() {
   _loadReportData(function(dash, promo) {

@@ -79,10 +79,9 @@ body.noea .ea{display:none!important}
 
 <nav id="topNav" style="display:none">
   <button onclick="goHomeAll()">홈(문서 목록)</button>
-  <button onclick="openWrite(null)">새 문서 작성</button>
-  <button onclick="openSearch()">검색</button>
-  <button onclick="openRecv()">📥 받은 문서 <span id="recvCnt" class="badge wait" style="display:none"></span></button>
-  <button onclick="openSent()">📤 보낸 문서</button>
+  <button onclick="openWrite(null)">문서 작성</button>
+  <button onclick="openRecv()">📥 받은 문서 (도↔지회) <span id="recvCnt" class="badge wait" style="display:none"></span></button>
+  <button onclick="openSent()">📤 보낸 문서 (도↔지회)</button>
   <button onclick="openLedger()">발송 대장</button>
   <button onclick="openRLedger()">수신 대장</button>
   <button id="staffBtn" onclick="openSettings()" style="display:none">공문 설정</button>
@@ -112,8 +111,18 @@ body.noea .ea{display:none!important}
   <!-- 홈: 문서 목록 -->
   <section id="screenHome" class="screen">
     <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap"><h2 id="homeTitle" style="margin-right:auto">문서 목록</h2>
-      <button class="main" id="homeNew" onclick="openWrite(null)">+ 새 문서 작성</button></div>
+      <button class="main" id="homeNew" onclick="openWrite(null)">+ 문서 작성</button></div>
+    <div class="ltabs" id="kTabs">
+      <button data-k="공문" onclick="kindTab('공문')">문서</button>
+      <button data-k="업무협조전" onclick="kindTab('업무협조전')">업무협조전</button>
+      <button data-k="내부결재" onclick="kindTab('내부결재')">내부결재</button>
+    </div>
     <div class="card">
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:10px">
+        <input id="hQ" placeholder="🔎 제목·수신·본문·번호로 찾기" style="flex:1;min-width:200px" onkeydown="if(event.key==='Enter')loadList()">
+        <select id="hStatus" onchange="loadList()" style="width:auto"><option value="">상태 전체</option><option>작성중</option><option value="완료">확정</option></select>
+        <button onclick="loadList()">찾기</button><button onclick="$('hQ').value='';$('hStatus').value='';loadList()">지우기</button>
+      </div>
       <button class="tab on ea" data-tab="inbox" onclick="setTab('inbox')">결재할 문서</button>
       <button class="tab" data-tab="mine" onclick="setTab('mine')">내가 쓴 문서</button>
       <button class="tab" data-tab="all" onclick="setTab('all')">전체 문서</button>
@@ -127,7 +136,7 @@ body.noea .ea{display:none!important}
 
   <!-- 작성 / 수정 -->
   <section id="screenWrite" class="screen">
-    <h2 id="writeTitle">새 문서 작성</h2>
+    <h2 id="writeTitle">문서 작성</h2>
     <div class="card">
       <div class="row">
         <div class="narrow"><label>문서 종류</label>
@@ -468,6 +477,7 @@ function subGo(t) {
   if (t === 'rledger') { openRLedger(); return; }
   if (t === 'recv') { openRecv(); return; }
   if (t === 'sent') { openSent(); return; }
+  if (t === 'write') { KIND = KIND || '공문'; goHome(); return; }   // 왼쪽 메뉴 '문서 작성'
   KIND = SUB_KIND[t] || ''; goHome();
 }
 window.addEventListener('message', (e) => {
@@ -490,8 +500,10 @@ const SUB_KIND = { internal: '내부결재', coop: '업무협조전', send: '공
 const KIND_TITLE = { '내부결재': '내부결재', '업무협조전': '업무협조전', '공문': '문서 발송 (공문)' };
 async function loadList() {
   msg('listMsg', '');
-  $('homeTitle').textContent = KIND ? KIND_TITLE[KIND] : '문서 목록';
-  $('homeNew').textContent = KIND === '공문' ? '+ 새 공문 작성' : KIND ? '+ 새 ' + KIND + ' 작성' : '+ 새 문서 작성';
+  $('homeTitle').textContent = KIND ? '문서 작성' : '문서 목록';   // 종류는 위 탭으로 구분
+  $('homeNew').textContent = KIND === '공문' ? '+ 공문 작성' : KIND ? '+ ' + KIND + ' 작성' : '+ 문서 작성';
+  document.querySelectorAll('#kTabs button').forEach((b) => b.classList.toggle('on', b.dataset.k === KIND));
+  const hq = ($('hQ').value || '').trim().replace(/[,()*%]/g, ' '), hs = $('hStatus').value;   // 문서 목록 안에서 바로 찾기
   let rows = [];
   if (tab === 'inbox') {
     // 대기 중인 결재 줄 중 각 문서의 첫 줄이 나에게 온 것만 모음
@@ -509,14 +521,20 @@ async function loadList() {
     let q = sb.from('doc_documents').select('*').eq('deleted', false).order('updated_at', { ascending: false }).limit(200);
     if (tab === 'mine') q = q.eq('drafter_email', me.email);
     if (KIND) q = q.eq('kind', KIND);
+    if (hq) q = q.or(`title.ilike.%${hq}%,search_text.ilike.%${hq}%,number.ilike.%${hq}%`);
+    if (hs) q = q.eq('status', hs);
     const { data, error } = await q;
     if (error) return msg('listMsg', errText(error));
     rows = data;
   }
   if (KIND && tab === 'inbox') rows = rows.filter((d) => d.kind === KIND);
+  if (tab === 'inbox' && hq) rows = rows.filter((d) => ((d.title || '') + ' ' + (d.search_text || '') + ' ' + (d.number || '')).indexOf(hq) >= 0);
+  if (tab === 'inbox' && hs) rows = rows.filter((d) => d.status === hs);
   $('listBody').innerHTML = rows.length ? rows.map(rowHtml).join('')
-    : '<tr><td colspan="6" class="muted">문서가 없습니다.</td></tr>';
+    : '<tr><td colspan="6" class="muted">' + (hq || hs ? '찾는 문서가 없습니다.' : '문서가 없습니다.') + '</td></tr>';
 }
+// 문서 작성: 위 탭 (문서 | 업무협조전 | 내부결재)
+function kindTab(k) { KIND = k; subTell('write'); loadList(); }
 
 // ============ 5) 작성 / 수정 ============
 function bodyToText(items) {
@@ -636,7 +654,7 @@ async function openWrite(id) {
   currentSteps = [];
   if (!id) {
     current = null;
-    $('writeTitle').textContent = '새 문서 작성';
+    $('writeTitle').textContent = '문서 작성';
     $('fKind').value = KIND || '공문'; $('fDate').value = new Date().toISOString().slice(0, 10); $('fSeal').value = $('fSeal').querySelector('option[value="부서"]') ? '부서' : '지회';
     $('fRecipient').value = ''; $('fTitle').value = ''; $('fBody').value = ''; $('fAttach').value = '';
     $('fVia').value = ''; $('fCoop').value = ''; $('fOpen').value = '공개'; $('fChain').value = ''; $('fChief').value = ''; $('fPages').value = '1';

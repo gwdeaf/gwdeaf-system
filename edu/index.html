@@ -774,7 +774,7 @@ function drawNotices(list, editId) {
   const edit = editId ? list.find(x => x.공지ID === editId) : null, all = S.init.chapters || [], sel = edit && edit.대상 !== '전체' ? edit.대상.split(',') : [];
   const badge = st => `<span class="badge ${st === '게시중' ? 'b-진행중' : ''}">${esc(st)}</span>`;
   view().innerHTML = `<h2>공지사항</h2><p class="sub">올린 공지는 대상 지회 화면 맨 위에 계속 표시됩니다. 지회에서는 닫을 수 없고, 여기서 <b>내리기</b>를 하거나 게시 기간이 끝나면 사라집니다.</p>
-    <form class="panel" id="ntForm"><h3 style="margin-top:0">${edit ? '공지 수정' : '새 공지'}</h3><div class="grid2">
+    <form class="panel" id="ntForm"><h3 style="margin-top:0">${edit ? '공지 수정' : '공지 작성'}</h3><div class="grid2">
       <div class="full"><label class="f" for="ntT">제목</label><input id="ntT" maxlength="100" required value="${esc(edit ? edit.제목 : '')}" placeholder="예: 12월 5일까지 상반기 보고를 제출해 주세요"></div>
       <div class="full"><label class="f" for="ntB">내용</label><textarea id="ntB" maxlength="2000" required style="min-height:90px">${esc(edit ? edit.내용 : '')}</textarea></div>
       <div><label class="f" for="ntA">게시 시작일 (선택)</label><input type="date" id="ntA" value="${esc(edit ? edit.시작일 : '')}"></div>
@@ -859,7 +859,7 @@ function drawInquiry() {
   const cmp = P.compose;
   view().innerHTML = `<div class="row" style="margin-bottom:6px"><h2>문의</h2><span class="spacer"></span>${adm ? '' : '<button class="btn primary" id="iqNew">도협회에 문의하기</button>'}</div>
     <p class="sub">${adm ? '지회에서 온 문의입니다. 답변하면 지회 화면에 알림이 뜨고, 지회가 읽으면 “지회 확인함”으로 표시됩니다.' : '궁금한 점을 도협회에 남기세요. 도협회가 열어 보면 “도협회 확인함”, 답변이 오면 상단 💬에 알림 숫자가 뜹니다. 문의는 우리 지회와 도협회만 볼 수 있습니다.'}</p>
-    ${cmp ? `<form class="panel" id="iqF"><b>새 문의</b>${cmp.파견ID ? '<p class="hint">파견 교육 요청과 연결된 문의입니다.</p>' : ''}
+    ${cmp ? `<form class="panel" id="iqF"><b>문의하기</b>${cmp.파견ID ? '<p class="hint">파견 교육 요청과 연결된 문의입니다.</p>' : ''}
       <label class="f" for="iqC">관련 강좌 (선택)</label><select id="iqC"><option value="">선택 안 함</option></select>
       <label class="f" for="iqT">제목 (선택)</label><input id="iqT" maxlength="100" placeholder="비워 두면 내용 첫 줄이 제목이 됩니다" value="${esc(cmp.제목 || '')}">
       <label class="f" for="iqB">내용</label><textarea id="iqB" rows="4" maxlength="1000" required style="width:100%">${esc(cmp.내용 || '')}</textarea>
@@ -941,7 +941,7 @@ function drawDispatch() {
       ${!adm ? `<p class="hint">강사비는 도협회에서 지급합니다. 강사 서명·계좌 입력은 도협회가 링크로 받습니다. 여기서는 진행 상태만 볼 수 있습니다.</p>` : ''}
       <div class="row" style="margin-top:8px;flex-wrap:wrap">${act}</div><div id="rp_${esc(x.파견ID)}"></div></details>`;
   };
-  view().innerHTML = crsSwitchHtml('dispatch') + `<div class="row" style="margin-bottom:6px"><h2>파견 교육</h2><span class="spacer"></span>${adm ? '<button class="btn" id="dpBulk">여러 건 한꺼번에</button><button class="btn primary" id="dpNew">새 파견 요청</button>' : ''}</div>
+  view().innerHTML = crsSwitchHtml('dispatch') + `<div class="row" style="margin-bottom:6px"><h2>파견 교육</h2><span class="spacer"></span>${adm ? '<button class="btn" id="dpBulk">여러 건 한꺼번에</button><button class="btn primary" id="dpNew">파견 요청</button>' : ''}</div>
     <p class="sub">${adm ? '학교별 파견 요청을 지회에 보냅니다. 지회가 “가능”으로 회신하면 해당 지회에 강좌가 자동으로 만들어집니다. 일정 조율은 최대 2차까지 가능합니다.' : '도협회에서 보낸 학교 강사 파견 요청입니다. 가능하면 강사를 적어 회신하고, 어려우면 “조정 필요”로 날짜·사유를 알려 주세요. (조율은 최대 2차까지)'}</p>
     <div class="row no-print" style="margin:0 0 12px;flex-wrap:wrap">${adm ? `<select id="dpfc" style="width:auto">${chapterOptions(f.지회, '전체 지회')}</select>` : ''}
       <select id="dpfs" style="width:auto"><option value="">모든 상태</option>${Object.keys(DP_ST).map(k => `<option value="${k}" ${f.상태 === k ? 'selected' : ''}>${DP_ST[k]}</option>`).join('')}</select>
@@ -1101,7 +1101,7 @@ function drawDispatchBulk() {
 
 function drawDispatchForm() {
   const P = S.dp, e = P.edit, isNew = !e.파견ID, re = e.상태 === '조정필요';
-  view().innerHTML = crsSwitchHtml('dispatch') + `<h2>${isNew ? '새 파견 요청' : re ? '일정 고쳐 다시 요청' : '파견 요청 수정'}</h2>
+  view().innerHTML = crsSwitchHtml('dispatch') + `<h2>${isNew ? '파견 요청' : re ? '일정 고쳐 다시 요청' : '파견 요청 수정'}</h2>
     ${re ? `<div class="notice info">지회 회신: ${(e.회신 || []).slice(-1).map(r => esc([r.희망일 && '희망 ' + r.희망일, r.사유 && '사유 ' + r.사유].filter(x => x).join(' / '))).join('')}<br>일정을 고치고 “다시 요청”을 누르면 ${e.차수 + 1}차 요청으로 지회에 다시 보냅니다.</div>` : ''}
     <form class="panel" id="dpF"><div class="grid2">
       <div><label class="f" for="dsN">학교명</label><input id="dsN" maxlength="100" required value="${esc(e.학교명)}"></div>
@@ -1175,7 +1175,7 @@ async function renderCourses() {
   view().innerHTML = crsSwitchHtml('courses') + `
     <div class="row" style="margin-bottom:6px">
       <h2>강좌</h2><span class="spacer"></span>
-      <button class="btn primary" id="newCourse">새 강좌 등록</button>
+      <button class="btn primary" id="newCourse">강좌 등록</button>
     </div>
     <div class="row" style="margin:12px 0 16px">
       <select id="fy" style="width:auto">${yearOptions(S.filter.연도, true)}</select>
@@ -1249,7 +1249,7 @@ function drawList() {
   S.listRows = rows;
   if (!rows.length) {
     $('#list').innerHTML = q ? '<div class="panel empty"><p>걸러낸 결과가 없습니다. 검색어를 지우거나 바꿔 보세요.</p></div>' : `<div class="panel empty"><p>이 기간에 등록된 강좌가 없습니다.</p>
-      <button class="btn primary" id="emptyNew">새 강좌 등록</button></div>`;
+      <button class="btn primary" id="emptyNew">강좌 등록</button></div>`;
     if ($('#emptyNew')) $('#emptyNew').onclick = () => renderCourseForm(null);
     return;
   }
@@ -1377,7 +1377,7 @@ function renderCourseForm(c, copyFrom) {
     </form>`;
 
   if (isNew) {
-    view().innerHTML = `<button class="link" id="back">← 강좌 목록</button><h2>${copyFrom ? '강좌 복사' : '새 강좌 등록'}</h2>${copyHint}
+    view().innerHTML = `<button class="link" id="back">← 강좌 목록</button><h2>${copyFrom ? '강좌 복사' : '강좌 등록'}</h2>${copyHint}
       <p class="sub">등록한 뒤 참여자 명단을 넣으면 출석 체크를 시작할 수 있습니다.</p>${html}`;
     $('#back').onclick = () => go('courses');
     $('#cCancel').onclick = () => go('courses');
@@ -4182,19 +4182,19 @@ async function renderFiles() {
   try { d = await call('listRequests'); } catch (e) { if (e.code !== 'AUTH') view().innerHTML = `<div class="notice err">${esc(e.message)}</div>`; return; }
   if (S.tab !== 'files') return;
   const admin = isAdmin();
-  view().innerHTML = `<div class="row" style="margin-bottom:10px"><h2 style="margin:0">자료 요청</h2><span class="spacer"></span>${admin ? '<button class="btn primary" id="rqNew">+ 새 요청</button>' : ''}</div>
+  view().innerHTML = `<div class="row" style="margin-bottom:10px"><h2 style="margin:0">자료 요청</h2><span class="spacer"></span>${admin ? '<button class="btn primary" id="rqNew">+ 요청</button>' : ''}</div>
     <p class="hint" style="margin-top:0">${admin ? '지회에 받을 자료를 요청하고, 지회가 올린 파일을 확인한 뒤 삭제할 수 있습니다.' : '도협회가 요청한 자료입니다. 양식을 내려받아 작성한 뒤 파일을 올리고 제출하세요.'}</p>
     ${d.requests.length ? d.requests.map(r => `<button class="course" data-rq="${esc(r.요청ID)}"><div class="row"><b>${esc(r.제목)}</b><span class="spacer"></span>
       ${r.상태 === '종료' ? '<span class="badge">종료</span>' : admin ? `<span class="badge ${r.제출수 === r.대상수 ? 'b-진행중' : ''}">제출 ${r.제출수}/${r.대상수}</span>` : replyBadge(r.내상태, r.확인일시 && r.내상태 === '제출')}</div>
       <div class="hint" style="margin:4px 0 0">${r.마감일 ? '마감 ' + esc(r.마감일) + (r.마감지남 && (admin ? r.미제출.length : r.내상태 !== '제출') ? ' <b style="color:var(--red)">· 마감 지남</b>' : '') : '마감 없음'}${admin && r.미제출.length ? ' · 미제출: ' + esc(r.미제출.slice(0, 5).join(', ')) + (r.미제출.length > 5 ? ' 외 ' + (r.미제출.length - 5) + '곳' : '') : ''}</div></button>`).join('')
-      : `<div class="notice info">${admin ? '아직 만든 요청이 없습니다. 오른쪽 위 새 요청을 눌러 만드세요.' : '도협회가 보낸 자료 요청이 없습니다.'}</div>`}`;
+      : `<div class="notice info">${admin ? '아직 만든 요청이 없습니다. 오른쪽 위 + 요청을 눌러 만드세요.' : '도협회가 보낸 자료 요청이 없습니다.'}</div>`}`;
   document.querySelectorAll('[data-rq]').forEach(b => b.onclick = () => renderRequest(b.dataset.rq));
   if (admin) $('#rqNew').onclick = () => renderRequestForm(null);
 }
 function renderRequestForm(r) {
   const edit = !!r, all = S.init.chapters || [], sel = edit && r.대상 !== '전체' ? r.대상.split(',') : [];
   view().innerHTML = `<button class="link" id="rqBack">← ${edit ? '요청으로' : '목록으로'}</button>
-    <h2>${edit ? '요청 수정' : '새 자료 요청'}</h2>
+    <h2>${edit ? '요청 수정' : '자료 요청'}</h2>
     <form class="panel" id="rqForm"><div class="grid2">
       <div class="full"><label class="f" for="rqT">제목</label><input id="rqT" maxlength="100" required value="${esc(edit ? r.제목 : '')}" placeholder="예: 2026년 하반기 교육 현황 조사"></div>
       <div class="full"><label class="f" for="rqD">설명</label><textarea id="rqD" maxlength="2000" style="min-height:100px" placeholder="작성 방법, 제출 방법 등">${esc(edit ? r.설명 : '')}</textarea></div>
@@ -4469,7 +4469,7 @@ const HELP = [
     '</ul>' ] },
   { t: '강좌 만들기', f: 'chapter', b: [
     '<ol>',
-    '<li><b>강좌</b> → <b>새 강좌 등록</b>을 누릅니다.</li>',
+    '<li><b>강좌</b> → <b>강좌 등록</b>을 누릅니다.</li>',
     '<li>강좌 이름, 시작일·종료일, 총 회차, 1회 강의시간을 적습니다.</li>',
     '<li><b>교육 구분</b>을 고릅니다. 지회에서 직접 모집해 하면 <b>내부</b>, 학교·기관에 나가서 하면 <b>외부</b>입니다.</li>',
     '<li><b>수준</b>을 고릅니다: 초급, 중급, 고급, 특강. 해당 없으면 구분 없음.</li>',
@@ -4609,7 +4609,7 @@ const HELP = [
   { t: '도협회: 파견 교육 요청 보내기', f: 'admin', b: [
     '<ol>',
     '<li><b>강좌</b> → 위쪽 <b>파견 교육</b>을 누릅니다.</li>',
-    '<li>학교 한 곳은 <b>새 요청</b>, 여러 곳은 <b>여러 건 한꺼번에</b>를 누릅니다.</li>',
+    '<li>학교 한 곳은 <b>요청</b>, 여러 곳은 <b>여러 건 한꺼번에</b>를 누릅니다.</li>',
     '<li>여러 건 입력: 맨 위 <b>공통 내용</b>(회당 시간·강사비 기준·강사 단가·보조강사 단가)을 한 번 적고, 학교마다 카드를 채웁니다. 카드 항목은 학교명, 담당 지회, 담당 선생님, 연락처, 교육 날짜, 장소, 시간대, 수준, 출석 방식, 비고입니다.</li>',
     '<li><b>+ 줄 추가</b>로 카드를 늘리고, 엑셀에서 복사해 <b>붙여넣기</b>로 한 번에 채울 수도 있습니다.</li>',
     '<li>교육 날짜는 쉼표로 적습니다. 예: <b>12/4, 12/11, 12/18</b> (입력하면 몇 회인지 바로 아래에 나옵니다)</li>',
@@ -4757,7 +4757,7 @@ const HELP = [
     '<p class="golinks">바로가기: <a href="#" data-go="report">보고 현황</a></p>' ] },
   { t: '도협회: 우리 이름으로 강좌 만들기', f: 'admin', b: [
     '<ol>',
-    '<li><b>강좌</b> → <b>새 강좌 등록</b>에서 지회 칸에 <b>도협회</b>를 고릅니다.</li>',
+    '<li><b>강좌</b> → <b>강좌 등록</b>에서 지회 칸에 <b>도협회</b>를 고릅니다.</li>',
     '<li>이름으로 출석 체크하는 강좌를 만들면 수강생 이름·연락처가 도협회에서도 보이고 수료도 집계됩니다.</li>',
     '</ol>',
     '<p class="hint">도협회 강좌는 통계에 들어가고, 지회 보고 현황에는 들어가지 않습니다.</p>',

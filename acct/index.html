@@ -59,9 +59,9 @@
 </header>
 <nav id="topNav" style="display:none" onclick="if(event.target.closest('button')&&event.target.closest('button').id!=='logoutBtn'){this.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===event.target.closest('button')))}">
   <button class="on" onclick="showList()">품의 목록</button>
-  <button id="btnNew" onclick="showForm()">새 품의</button>
+  <button id="btnNew" onclick="showForm()">품의 작성</button>
   <button onclick="showResList()">결의 목록</button>
-  <button id="btnNewRes" onclick="showResForm()">새 결의</button>
+  <button id="btnNewRes" onclick="showResForm()">결의 작성</button>
   <button onclick="showLedger()">출납부</button>
   <button onclick="showGL()">원장</button>
   <button onclick="showBank()">통장 내역</button>
@@ -308,7 +308,7 @@ async function showForm(no) { const VT = vtok();
 
   await loadPick();
   vw(VT).innerHTML = `
-    <h2>${no ? '품의 수정 ' + esc(no) : '새 품의 작성'}</h2>
+    <h2>${no ? '품의 수정 ' + esc(no) : '품의 작성'}</h2>
     <input type="hidden" id="f_no" value="${esc(no || '')}">
     <label>사업명</label>
     <input id="f_name" value="${esc(p['사업명'] || '')}">
@@ -489,7 +489,7 @@ async function showResForm(no, presetKind, presetProp) { const VT = vtok();
   let cfg = {}; try { cfg = await printCfg(); } catch (e) {}
 
   vw(VT).innerHTML = `
-    <h2>${isEdit ? '결의 수정 ' + esc(no) : '새 결의 작성'}</h2>
+    <h2>${isEdit ? '결의 수정 ' + esc(no) : '결의 작성'}</h2>
     <input type="hidden" id="r_no" value="${esc(no || '')}">
     <label>결의 구분</label>
     <select id="r_kind" onchange="toggleKind()" ${isEdit ? 'disabled' : ''}>
@@ -836,7 +836,7 @@ let BZ = null, BITEMS = [];
 function bizForm(b) {
   b = b || {};
   return `<div class="card" style="cursor:default" id="bizForm">
-    <b>${b.id ? '사업 정보 고치기' : '새 사업 만들기'}</b>
+    <b>${b.id ? '사업 정보 고치기' : '사업 만들기'}</b>
     <label>사업 이름</label><input id="bz_name" value="${esc(b['이름'] || '')}" placeholder="예: 2026 수어교실 운영 지원사업">
     <label>재원 (자금원천)</label><select id="bz_src"><option value="">선택하세요</option>${optHtml(OPTS['자금원천'], b['자금원천코드'])}</select>
     <div style="color:#777;font-size:13px;margin-top:4px">재원 목록은 설정 → 자금원천에서 추가합니다. 출납부·통장 잔고는 재원 기준으로 쌓여요.</div>
@@ -853,7 +853,7 @@ async function showBudgetEdit() { const VT = vtok();
     const T = 'padding:7px 5px;border-bottom:1px solid #ddd;font-size:14px';
     vw(VT).innerHTML = `<h2>예산 편성 (${esc(OPTS.year)}회계연도)</h2>
       <p style="color:#555;font-size:14px">보조금 사업마다 예산을 따로 관리합니다. 사업을 만들고, 그 안에 <b>관 › 항 › 목 › 세목</b> 과목과 금액을 넣으세요. 과목 이름은 우리 지회에 맞게 자유롭게 정합니다.</p>
-      ${ME.can_write ? '<div class="actions" style="margin-top:0"><button onclick="newBiz()">+ 새 사업</button></div>' : ''}
+      ${ME.can_write ? '<div class="actions" style="margin-top:0"><button onclick="newBiz()">+ 사업 추가</button></div>' : ''}
       <div id="bizFormBox"></div>
       ${list.length ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;background:#fff;margin-top:10px"><tr><th style="${T};text-align:left">사업</th><th style="${T}">재원</th><th style="${T};text-align:right">세출 예산</th><th style="${T};text-align:right">세입 예산</th></tr>
         ${list.map(b => `<tr style="cursor:pointer" onclick="openBiz(${b.id})"><td style="${T}"><b>${esc(b['이름'])}</b>${b['사용'] ? '' : ' <span class="badge cancel">사용 안 함</span>'}</td>

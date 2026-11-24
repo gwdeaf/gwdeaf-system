@@ -54,6 +54,10 @@
   body.embed header, body.embed #logoutBtn { display: none; }
   @media print { header, nav, .noprint { display: none !important; } main { max-width: none; padding: 0; } .card, .tablewrap { border: 1px solid #999; } }
   @media (max-width: 640px) { main { padding: 10px; } .card { padding: 12px; } button, select, input { min-height: 42px; } .bars .bar { grid-template-columns: 70px 1fr 50px; } dl.kv { grid-template-columns: 90px 1fr; } }
+  .mtabs { display:flex; gap:2px; align-items:center; border-bottom:1px solid #e3e6ee; margin:0 0 12px; flex-wrap:wrap; }
+  .mtabs button { background:none; border:none; border-bottom:3px solid transparent; border-radius:0; margin:0 0 -1px; padding:9px 14px; font-size:0.95rem; color:#666; cursor:pointer; box-shadow:none; }
+  .mtabs button.on { color:#2f5bd6; border-bottom-color:#2f5bd6; font-weight:700; background:none; }
+  .mtabs .muted { margin-left:10px; font-size:0.85rem; }
 </style>
 <link rel="stylesheet" href="/ui.css?v=1">
 </head>
@@ -116,7 +120,12 @@ function csv(name, rows) {
   const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
 }
 // 집계: 실시 횟수 / 연인원(회차별 참여자 합) / 실인원(중복 제외 — 회원은 회원 번호, 비회원은 한 줄이 한 사람)
-function summarize(rows) { const set = new Set(); let tot = 0; rows.forEach((r) => { (r.keys || []).forEach((k) => set.add(k)); tot += (r.keys || []).length; }); return { cnt: rows.length, tot, uniq: set.size }; }
+function summarize(rows) { const set = new Set(); let tot = 0; rows.forEach((r) => { (r.keys || []).forEach((k) => set.add(k)); tot += (r.keys || []).length; }); return { cnt: rows.reduce((n, r) => n + (Number(r.rounds) || 1), 0), tot, uniq: set.size }; }
+// 회차 표시: 전체 실적은 '1~12회', 기간은 '시작~끝'
+function rLabel(s) { const n = Number(s.rounds) || 1; return n > 1 ? `${s.round_no}~${s.round_no + n - 1}회` : `${s.round_no}회`; }
+function dLabel(s) { return s.end_on && s.end_on !== s.held_on ? `${s.held_on} ~ ${s.end_on}` : s.held_on; }
+// 회원은 지회에만 있는 개념: 도협회·센터·문화원 사업은 회원을 연결하지 않음
+function noMemberProject(p) { return !!(ME.is_hq || (p && /센터|문화원/.test(p.dept || ''))); }
 function groupSum(rows, keyFn, nameFn) { const m = new Map(); rows.forEach((r) => { const k = keyFn(r); if (!m.has(k)) m.set(k, []); m.get(k).push(r); }); return [...m.entries()].map(([k, l]) => ({ key: k, name: nameFn(l[0]), list: l, ...summarize(l) })); }
 function bars(items, unit) {
   const max = Math.max(1, ...items.map((i) => i.value));
@@ -222,7 +231,7 @@ async function showProjects(kw) { const VT = vtok();
     PROJ = await rpc('perf_projects');
     kw = kw || '';
     const list = PROJ.filter((p) => dfOk(p.dept) && (!kw || p.name.includes(kw) || (p.manager_name || '').includes(kw)));
-    vview(VT, head('사업관리', '사업의 기본정보를 등록합니다. 같은 사업을 여러 번 하면 실적(회차)만 추가합니다.', ME.can_manage ? `<button class="main" onclick="projectForm()">+ 새 사업 등록</button>` : '') +
+    vview(VT, head('사업관리', '사업의 기본정보를 등록합니다. 같은 사업을 여러 번 하면 실적(회차)만 추가합니다.', ME.can_manage ? `<button class="main" onclick="projectForm()">+ 사업 등록</button>` : '') +
       `<div id="pform"></div>
       <div class="tools">${dfSel("showProjects(document.getElementById('pkw').value)")}<input id="pkw" placeholder="사업명 또는 담당자 검색" value="${esc(kw)}" onchange="showProjects(this.value)"><span class="muted">총 ${fmt(list.length)}개</span></div>
       <div class="tablewrap"><table><thead><tr><th>사업명</th><th>분류</th><th>담당자</th><th>기간</th><th class="n">계획 횟수</th><th class="n">실시 횟수</th><th></th></tr></thead><tbody>
@@ -237,7 +246,7 @@ function projectForm(p, back) {
   p = p || {};
   const box = $('pform'); if (!box) return;
   const f = (k, l, type, wide, extra) => `<div class="${wide ? 'wide' : ''}"><label class="f" for="pf_${k}">${l}</label>${type === 'ta' ? `<textarea id="pf_${k}">${esc(p[k] || '')}</textarea>` : `<input id="pf_${k}" type="${type || 'text'}" value="${esc(p[k] ?? (type === 'number' ? 0 : ''))}" ${extra || ''}>`}</div>`;
-  box.innerHTML = `<div class="card"><h3>${p.id ? '사업 정보 수정' : '새 사업 등록'}</h3><div class="grid">
+  box.innerHTML = `<div class="card"><h3>${p.id ? '사업 정보 수정' : '사업 등록'}</h3><div class="grid">
     ${f('name', '사업명', 'text', true, 'placeholder="예) 수어 기초 교육 과정"')}
     ${(ME.depts || []).length ? `<div><label class="f" for="pf_dept">부서</label><select id="pf_dept"><option value="">공통 (부서 없음)</option>${ME.depts.map((d) => `<option ${d === (p.id ? p.dept : ME.cur_dept) ? 'selected' : ''}>${esc(d)}</option>`).join('')}</select></div>` : ''}
     <div><label class="f" for="pf_category_id">사업 분류</label><select id="pf_category_id"><option value="">선택 안 함</option>${ME.categories.map((c) => `<option value="${c.id}" ${c.id === p.category_id ? 'selected' : ''}>${esc(c.name)}</option>`).join('')}</select></div>
@@ -277,7 +286,7 @@ async function showProject(id) { const VT = vtok();
         <dt>담당자</dt><dd>${esc(p.manager_name || '-')}</dd><dt>사업 기간</dt><dd>${esc(p.start_date || '?')} ~ ${esc(p.end_date || '?')}</dd>
         <dt>계획 인원</dt><dd>${fmt(p.plan_people)}명</dd><dt>사업 내용</dt><dd>${esc(p.content || '-')}</dd><dt>비고</dt><dd>${esc(p.note || '-')}</dd></dl></div>
       <h3>실시 회차</h3><div class="tablewrap"><table><thead><tr><th>회차</th><th>실시일</th><th>시간</th><th>장소</th><th class="n">참여인원</th><th>담당자</th></tr></thead><tbody>
-      ${ss.map((s) => `<tr class="click" onclick="showSession(${s.id})"><td><b>${s.round_no}회차</b></td><td>${esc(s.held_on)}</td><td class="muted">${esc(s.start_time)}${s.end_time ? ' ~ ' + esc(s.end_time) : ''}</td>
+      ${ss.map((s) => `<tr class="click" onclick="showSession(${s.id})"><td><b>${rLabel(s)}차</b>${(Number(s.rounds) || 1) > 1 ? ' <small class="muted">전체 실적</small>' : ''}</td><td>${esc(dLabel(s))}</td><td class="muted">${esc(s.start_time)}${s.end_time ? ' ~ ' + esc(s.end_time) : ''}</td>
         <td>${esc(s.place || '-')}</td><td class="n">${fmt(s.keys.length)}</td><td>${esc(s.manager_name || '-')}</td></tr>`).join('') || '<tr><td colspan="6" class="muted">아직 등록된 회차가 없습니다.</td></tr>'}
       </tbody></table></div>`);
     if ($('peBtn')) $('peBtn').onclick = () => projectForm(p, true);
@@ -299,13 +308,18 @@ async function showSessionForm(initial, projectId) { const VT = vtok();
     const pid = ini.project_id || projectId || (projects.length === 1 ? projects[0].id : '');   // 사업이 하나면 바로 선택
     if (!projects.length) { vview(VT, head('사업실적 등록') + `<div class="note warn">먼저 사업을 등록해야 합니다. <button class="link" onclick="go('projects')">사업관리로 이동</button></div>`); return; }
     const v = (k) => esc(ini[k] || '');
-    vview(VT, head(editing ? `${ini.project_name} · ${ini.round_no}회차 수정` : '사업실적 등록', editing ? '고치면 참여 이력과 통계가 함께 바뀝니다.' : '사업을 고르고 실시일·참여자를 입력합니다. 같은 사업은 회차만 늘려 가며 등록합니다.') +
-      `<div class="card"><h3>1. 사업 및 회차 정보</h3><div class="grid">
+    SF.mode = (Number(ini.rounds) || 1) > 1 || ini.end_on ? 'total' : 'round';
+    vview(VT, head(editing ? `${ini.project_name} · ${rLabel(ini)}차 수정` : '사업실적 등록', editing ? '고치면 참여 이력과 통계가 함께 바뀝니다.' : '사업을 고르고 실시일·참여자를 입력합니다. 같은 사업은 회차만 늘려 가며 등록합니다.') +
+      `<div class="mtabs noprint"><button data-m="round" onclick="sfMode('round')">회차별 입력</button><button data-m="total" onclick="sfMode('total')">전체 실적 입력</button>
+        <span class="muted" id="sfModeHint"></span></div>
+      <div class="card"><h3>1. 사업 및 회차 정보</h3><div class="grid">
         <div class="wide"><label class="f" for="sf_project">사업명</label><select id="sf_project" ${editing ? 'disabled' : ''}><option value="">사업을 선택하세요</option>${projects.map((p) => `<option value="${p.id}" ${p.id == pid ? 'selected' : ''}>${esc(p.name)}</option>`).join('')}</select></div>
-        <div><label class="f" for="sf_round">실시 회차</label><input id="sf_round" type="number" min="1" value="${ini.round_no && editing ? ini.round_no : ''}"></div>
-        <div><label class="f" for="sf_held">사업 실시일</label><input id="sf_held" type="date" value="${editing ? v('held_on') : today()}"></div>
-        <div><label class="f" for="sf_st">시작 시간</label><input id="sf_st" type="time" value="${v('start_time')}"></div>
-        <div><label class="f" for="sf_en">종료 시간</label><input id="sf_en" type="time" value="${v('end_time')}"></div>
+        <div><label class="f" for="sf_round" id="sf_round_l">실시 회차</label><input id="sf_round" type="number" min="1" value="${ini.round_no && editing ? ini.round_no : ''}"></div>
+        <div class="sf-t"><label class="f" for="sf_rounds">실시 횟수 (몇 회분)</label><input id="sf_rounds" type="number" min="1" max="1000" value="${Number(ini.rounds) || ''}" placeholder="예) 12"></div>
+        <div><label class="f" for="sf_held" id="sf_held_l">사업 실시일</label><input id="sf_held" type="date" value="${editing ? v('held_on') : today()}"></div>
+        <div class="sf-t"><label class="f" for="sf_end">기간 끝</label><input id="sf_end" type="date" value="${v('end_on')}"></div>
+        <div class="sf-r"><label class="f" for="sf_st">시작 시간</label><input id="sf_st" type="time" value="${v('start_time')}"></div>
+        <div class="sf-r"><label class="f" for="sf_en">종료 시간</label><input id="sf_en" type="time" value="${v('end_time')}"></div>
         <div class="wide"><label class="f" for="sf_place">실시 장소</label><input id="sf_place" value="${v('place')}"></div>
         <div class="wide"><label class="f" for="sf_content">사업 내용</label><textarea id="sf_content">${v('content')}</textarea></div>
         <div><label class="f" for="sf_mgr">담당자</label><input id="sf_mgr" value="${ini.manager_name ? v('manager_name') : esc(ME.name)}"></div>
@@ -313,10 +327,11 @@ async function showSessionForm(initial, projectId) { const VT = vtok();
       <div class="card"><div class="head"><h3>2. 참여자 선택</h3><b id="sfCount"></b>
           <span style="margin-left:auto;display:flex;gap:6px;align-items:center"><button onclick="xlTemplate()" class="link">양식 받기</button><button class="main" onclick="$('sfXl').click()">📥 엑셀 명단 업로드</button>
           <input type="file" id="sfXl" accept=".xlsx,.xls,.csv" style="display:none" onchange="xlUpload(this)"></span></div>
-        <div class="tools"><input id="sfQ" placeholder="회원 이름 또는 회원번호 검색" oninput="drawMembers()"><button onclick="selAll(true)">검색 결과 전체 선택</button><button onclick="selAll(false)">선택 전체 해제</button>
+        <div id="sfMemBox"><div class="tools"><input id="sfQ" placeholder="회원 이름 또는 회원번호 검색" oninput="drawMembers()"><button onclick="selAll(true)">검색 결과 전체 선택</button><button onclick="selAll(false)">선택 전체 해제</button>
           <button class="link" onclick="goMember()">회원 추가는 회원관리에서 →</button></div>
-        <div class="mlist" id="sfMembers"></div>
-        <h3 style="margin-top:14px">회원명단에 없는 참여자 직접 입력</h3>
+        <div class="mlist" id="sfMembers"></div></div>
+        <p class="muted" id="sfNoMem" style="display:none">이 사업은 회원명단과 연결하지 않습니다. (회원은 지회에만 있어요) 참여자는 아래에 직접 입력하거나 인원수만 입력하세요.</p>
+        <h3 style="margin-top:14px" id="sfExtH">회원명단에 없는 참여자 직접 입력</h3>
         <div class="grid"><div><input id="ex_name" placeholder="성명 (필수)"></div><div><input id="ex_aff" placeholder="소속 (선택)"></div><div><input id="ex_phone" placeholder="연락처 (선택)"></div>
           <div style="display:flex;gap:6px"><input id="ex_note" placeholder="비고"><button class="main" style="white-space:nowrap;flex:none" onclick="addExt()">추가</button></div></div>
         <div id="sfExt"></div>
@@ -326,10 +341,28 @@ async function showSessionForm(initial, projectId) { const VT = vtok();
           <span class="muted">이름 없이 인원수만 셀 때 (예: 행사 관람객, 홍보 부스 방문자). 위의 명단과 따로 더해집니다.</span></div></div>
       <div class="noprint"><button onclick="${editing ? `showSession(${ini.id})` : "go('list')"}">취소</button><button class="main" id="sfSave">${editing ? '수정 내용 저장' : '실적 저장'}</button></div>`);
     const setRound = async () => { const id = $('sf_project').value; if (!id || editing) return; try { $('sf_round').value = await rpc('perf_next_round', { p_project: Number(id) }); } catch (e) {} };
-    $('sf_project').onchange = setRound; setRound();
-    drawMembers(); drawExt();
+    $('sf_project').onchange = () => { setRound(); sfMemberRule(); }; setRound();
+    drawMembers(); drawExt(); sfMode(SF.mode); sfMemberRule();
     $('sfSave').onclick = saveSession;
   } catch (e) { vview(VT, `<div class="note err">${esc(e.message)}</div>`); }
+}
+// 입력 방식: 회차별 / 전체 실적 (기간·실시 횟수를 한 번에)
+function sfMode(m) {
+  SF.mode = m;
+  document.querySelectorAll('.mtabs button').forEach((b) => b.classList.toggle('on', b.dataset.m === m));
+  document.querySelectorAll('.sf-t').forEach((e) => { e.style.display = m === 'total' ? '' : 'none'; });
+  document.querySelectorAll('.sf-r').forEach((e) => { e.style.display = m === 'total' ? 'none' : ''; });
+  $('sf_round_l').textContent = m === 'total' ? '시작 회차' : '실시 회차';
+  $('sf_held_l').textContent = m === 'total' ? '기간 시작' : '사업 실시일';
+  $('sfModeHint').textContent = m === 'total' ? '여러 회를 한 번에: 기간과 실시 횟수, 전체 참여 인원을 적습니다.' : '한 번 실시할 때마다 한 줄씩 입력합니다.';
+}
+// 도협회·센터·문화원 사업은 회원 연결 없음
+function sfMemberRule() {
+  const p = SF.projects.find((x) => String(x.id) === String($('sf_project').value));
+  const no = noMemberProject(p);
+  $('sfMemBox').style.display = no ? 'none' : ''; $('sfNoMem').style.display = no ? '' : 'none';
+  $('sfExtH').textContent = no ? '참여자 직접 입력' : '회원명단에 없는 참여자 직접 입력';
+  if (no && SF.sel.size) { SF.sel.clear(); drawMembers(); }
 }
 function drawMembers() {
   const q = ($('sfQ').value || '').trim(), list = SF.members.filter((m) => !q || m.name.includes(q) || String(m.member_no || '').includes(q));
@@ -374,8 +407,9 @@ async function xlUpload(inp) {
     rows.slice(hi + 1).forEach((r) => {
       const name = (r[cN] || '').replace(/\s+/g, ''); if (!name) { if (r.some((c) => c)) skip++; return; }
       const no = cNo >= 0 ? r[cNo] : '';
-      let m = no ? SF.members.find((x) => String(x.member_no || '') === no) : null;
-      if (!m) { const same = SF.members.filter((x) => x.name.replace(/\s+/g, '') === name); if (same.length === 1) m = same[0]; }
+      const noMem = noMemberProject(SF.projects.find((x) => String(x.id) === String($('sf_project').value)));   // 회원 연결 없는 사업이면 모두 직접 입력으로
+      let m = no && !noMem ? SF.members.find((x) => String(x.member_no || '') === no) : null;
+      if (!m && !noMem) { const same = SF.members.filter((x) => x.name.replace(/\s+/g, '') === name); if (same.length === 1) m = same[0]; }
       if (m) { if (SF.sel.has(m.id)) dup++; else { SF.sel.add(m.id); mem++; } return; }
       if (SF.ext.some((x) => x.name.replace(/\s+/g, '') === name && x.phone === (cP >= 0 ? r[cP] : ''))) { dup++; return; }
       SF.ext.push({ id: '', name: r[cN], affiliation: cA >= 0 ? r[cA] : '', phone: cP >= 0 ? r[cP] : '', note: cR >= 0 ? r[cR] : '' }); ext++;
@@ -386,7 +420,9 @@ async function xlUpload(inp) {
 }
 async function saveSession() {
   const body = { id: SF.id, project_id: $('sf_project').value, round_no: $('sf_round').value, held_on: $('sf_held').value, start_time: $('sf_st').value, end_time: $('sf_en').value,
-    place: $('sf_place').value, content: $('sf_content').value, manager_name: $('sf_mgr').value, note: $('sf_note').value, members: [...SF.sel], externals: SF.ext, extra_count: SF.extra || 0 };
+    place: $('sf_place').value, content: $('sf_content').value, manager_name: $('sf_mgr').value, note: $('sf_note').value, members: [...SF.sel], externals: SF.ext, extra_count: SF.extra || 0,
+    rounds: SF.mode === 'total' ? ($('sf_rounds').value || 1) : 1, end_on: SF.mode === 'total' ? $('sf_end').value : '' };
+  if (SF.mode === 'total') { body.start_time = ''; body.end_time = ''; if (!$('sf_rounds').value) return flash('실시 횟수를 입력해 주세요.', 'err'); }
   if (!body.project_id) { alert('사업을 선택해 주세요.'); return; }
   if (!body.held_on) { alert('사업 실시일을 입력해 주세요.'); return; }
   $('sfSave').disabled = true;
@@ -397,7 +433,7 @@ async function showSession(id) { const VT = vtok();
   loading();
   try {
     const s = await rpc('perf_session_get', { p_id: id }), ps = s.participants || [];
-    vview(VT, head(`${s.project_name} · ${s.round_no}회차`, esc(s.held_on), `<button onclick="showProject(${s.project_id})">← 사업 상세</button>` +
+    vview(VT, head(`${s.project_name} · ${rLabel(s)}차`, esc(dLabel(s)), `<button onclick="showProject(${s.project_id})">← 사업 상세</button>` +
         (ME.can_write && s.created_by !== '수어교육 자동' ? `<button onclick="copySession(${s.id})">이 회차를 복제</button><button ${s.locked ? 'disabled' : ''} onclick="editSession(${s.id})">수정</button><button class="danger" ${s.locked ? 'disabled' : ''} onclick="delSession(${s.id})">삭제</button>` : '')) +
       (s.created_by === '수어교육 자동' ? '<div class="note warn">수어교육관리 출석에서 자동으로 가져온 회차입니다. 고칠 내용은 수어교육관리에서 고치세요.</div>' : '') +
       (s.locked ? '<div class="note warn">이 실적이 속한 분기 보고가 제출·승인되어 수정·삭제가 잠겨 있습니다.</div>' : '') +
@@ -439,7 +475,7 @@ function drawList() {
       <input placeholder="사업명 또는 내용 검색" value="${esc(LST.kw)}" onchange="LST.kw=this.value;drawList()"><span class="muted">총 ${fmt(list.length)}건</span></div>
     <div class="tablewrap"><table><thead><tr><th>선택</th><th>번호</th><th>사업명</th><th>실시일</th><th>회차</th><th class="n">참여인원</th><th>사업 내용</th><th>담당자</th><th>최종 수정일</th></tr></thead><tbody>
     ${list.map((r, i) => `<tr class="click" onclick="if(event.target.type!=='checkbox')showSession(${r.id})"><td><input type="checkbox" style="width:auto" ${LST.chk.has(r.id) ? 'checked' : ''} onchange="this.checked?LST.chk.add(${r.id}):LST.chk.delete(${r.id})"></td>
-      <td>${list.length - i}</td><td><b>${esc(r.project_name)}</b>${deptBadge(r.dept)}${r.locked ? ' 🔒' : ''}</td><td>${esc(r.held_on)}</td><td>${r.round_no}회</td><td class="n">${fmt(r.participants)}</td>
+      <td>${list.length - i}</td><td><b>${esc(r.project_name)}</b>${deptBadge(r.dept)}${r.locked ? ' 🔒' : ''}</td><td>${esc(dLabel(r))}</td><td>${rLabel(r)}</td><td class="n">${fmt(r.participants)}</td>
       <td class="muted" style="max-width:260px">${esc(r.content || '-')}</td><td>${esc(r.manager_name || '-')}</td><td class="muted">${dText(r.updated_at)}</td></tr>`).join('') || '<tr><td colspan="9" class="muted">해당 기간에 등록된 실적이 없습니다.</td></tr>'}
     </tbody></table></div><p class="muted">🔒 = 분기 보고가 제출·승인되어 잠긴 실적</p>`);
 }
@@ -509,7 +545,7 @@ function reportTables(sh) {
     ${(sh.projects || []).map((p) => `<tr><td><b>${esc(p.name)}</b></td><td class="n">${fmt(p.sessionCount)}</td><td class="n">${fmt(p.totalParticipants)}</td><td class="n">${fmt(p.uniquePeople)}</td></tr>`).join('') || '<tr><td colspan="4" class="muted">이 분기에 실시한 사업이 없습니다.</td></tr>'}
     ${(sh.projects || []).length ? `<tr class="total"><td>분기 전체 합계</td><td class="n">${fmt(T.sessionCount)}</td><td class="n">${fmt(T.totalParticipants)}</td><td class="n">${fmt(T.uniquePeople)}</td></tr>` : ''}</tbody></table></div>
     <h3>사업 실시일 상세</h3><div class="tablewrap"><table><thead><tr><th>사업명</th><th>실시일</th><th>회차</th><th>장소</th><th>사업 내용</th><th class="n">참여인원</th></tr></thead><tbody>
-    ${(sh.projects || []).flatMap((p) => (p.sessions || []).map((s) => `<tr><td>${esc(p.name)}</td><td>${esc(s.held_on)}</td><td>${s.round_no}회</td><td>${esc(s.place || '-')}</td><td class="muted">${esc(s.content || '-')}</td><td class="n">${fmt(s.participants)}</td></tr>`)).join('') || '<tr><td colspan="6" class="muted">내용이 없습니다.</td></tr>'}</tbody></table></div>`;
+    ${(sh.projects || []).flatMap((p) => (p.sessions || []).map((s) => `<tr><td>${esc(p.name)}</td><td>${esc(dLabel(s))}</td><td>${rLabel(s)}</td><td>${esc(s.place || '-')}</td><td class="muted">${esc(s.content || '-')}</td><td class="n">${fmt(s.participants)}</td></tr>`)).join('') || '<tr><td colspan="6" class="muted">내용이 없습니다.</td></tr>'}</tbody></table></div>`;
 }
 let RPT = null;
 function drawChapterReport(tools, d) {

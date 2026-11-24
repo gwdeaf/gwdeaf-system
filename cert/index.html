@@ -266,10 +266,10 @@ async function showSettings() {
       <b>🔢 번호 묶음</b><div class="hint">같은 묶음을 고른 증명서끼리는 번호가 <b>이어서</b> 붙고(예: 재직 16 → 수료 17 → 재직 18), 증명서마다 다른 묶음을 고르면 <b>각각 1번부터</b> 셉니다. 부서를 정하면 그 부서 증명서만 이 묶음을 쓸 수 있습니다. 번호는 해마다 1번부터 다시 셉니다.</div>
       <div style="overflow-x:auto"><table class="t" style="margin-top:8px"><thead><tr><th>묶음</th><th>부서</th><th>다음 번호</th><th>쓰는 증명서</th></tr></thead><tbody>${
         groups.map(g => `<tr class="click" onclick='editGroup(${g.id})'><td>${esc(g.name)}</td><td>${esc(g.dept || '모든 부서')}</td><td><b>${esc(g.example)}</b></td><td>${g.types.length ? g.types.map(esc).join(', ') : '<span class="hint">없음</span>'}</td></tr>`).join('') || '<tr><td colspan="4" class="hint">아직 없습니다. 증명서를 저장하면 “기본 번호” 묶음이 생깁니다.</td></tr>'}</tbody></table></div>
-      <div class="actions"><button onclick="editGroup()">+ 새 번호 묶음</button></div></div>
+      <div class="actions"><button onclick="editGroup()">+ 번호 묶음 추가</button></div></div>
       <div class="card" style="cursor:default">
       <b>부서별 증명서 종류</b><div class="hint">부서를 비워 두면 모든 부서가 발급할 수 있습니다. 부서를 정하면 그 부서 직원(과 지회 담당자)만 발급합니다. 부서 이름은 [직원·권한 관리]의 부서와 같게 적어 주세요.</div>
-      <div class="actions"><button onclick="editType()">+ 새 증명서</button></div></div>
+      <div class="actions"><button onclick="editType()">+ 증명서 추가</button></div></div>
       ${!list.length ? '<p>아직 만든 증명서가 없습니다.</p>' : `<div style="overflow-x:auto"><table class="t"><thead><tr><th>순서</th><th>증명서</th><th>부서</th><th>대상</th><th>번호 묶음</th><th>사용</th></tr></thead><tbody>${
         list.map(t => `<tr class="click" onclick='editType(${JSON.stringify(t.id)})'><td>${t.sort}</td><td>${esc(t.name)}</td><td>${esc(t.dept || '모든 부서')}</td><td>${esc(t.target)}</td><td>${esc((groups.find(g => g.id === t.group_id) || {}).name || '기본 번호')}</td><td>${t.active ? '사용' : '<span class="badge cancel">중지</span>'}</td></tr>`).join('')}</tbody></table></div>`}`;
     window._TYPES_ALL = list;
@@ -278,7 +278,7 @@ async function showSettings() {
 function editType(id) {
   const t = (window._TYPES_ALL || []).find(x => x.id === id) || { name: '', target: '직원', dept: '', body: '', active: true, sort: 0 };
   $('view').innerHTML = `<div class="card" style="cursor:default">
-    <b>${id ? '증명서 수정' : '새 증명서'}</b>
+    <b>${id ? '증명서 수정' : '증명서 추가'}</b>
     ${id ? '' : `<div class="hint" style="margin-top:8px">예시 양식 불러오기: ${Object.keys(SAMPLES).map(k => `<span class="chip" onclick="useSample('${k}')">${k}</span>`).join('')}</div>`}
     <div class="grid2">
       <div><label>증명서 이름</label><input id="tName" value="${esc(t.name)}" placeholder="예) 재직증명서"></div>
@@ -316,7 +316,7 @@ async function saveType(id) {
 function editGroup(id) {
   const g = (window._GROUPS || []).find(x => x.id === id) || { name: '', dept: '', prefix: '제', year_style: '4', sep: '-', digits: 4, suffix: '호', last: 0, types: [] };
   $('view').innerHTML = `<div class="card" style="cursor:default">
-    <b>${id ? '번호 묶음 수정' : '새 번호 묶음'}</b>
+    <b>${id ? '번호 묶음 수정' : '번호 묶음 추가'}</b>
     <div class="grid2">
       <div><label>묶음 이름</label><input id="gName" value="${esc(g.name)}" placeholder="예) 교육팀 증명서"></div>
       <div><label>부서 (비우면 모든 부서)</label><input id="gDept" list="deptList2" value="${esc(g.dept)}" placeholder="예) 교육팀"><datalist id="deptList2">${(ME.depts || []).map(d => `<option value="${esc(d)}">`).join('')}</datalist></div>

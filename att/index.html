@@ -316,6 +316,12 @@
   .detail-item .d-right{white-space:nowrap;text-align:right;}
   .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:1rem;align-items:start;}
   .settings-grid .card{margin-bottom:0;}
+  .set-col{display:flex;flex-direction:column;gap:1rem;}
+  .f2{display:grid;grid-template-columns:1fr 1fr;gap:0.2rem 0.8rem;margin-bottom:0.4rem;}   /* 기본 정보: 한 줄에 두 칸 */
+  .f2 label{display:block;font-size:0.82rem;color:var(--text-muted);margin-bottom:2px;} .f2 > div{margin-bottom:0.5rem;}
+  .f2 input{width:100%;max-width:none;box-sizing:border-box;}
+  #policy-card .field-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;} #policy-card .field-row label{width:110px;flex:none;}
+  #policy-card .field-row .hint{flex-basis:100%;margin:0 0 0 120px !important;}
   .field-row{display:grid;grid-template-columns:130px 1fr;gap:0.6rem;align-items:center;margin-bottom:0.6rem;font-size:0.88rem;}
   .notice-card{border:1px solid #c2d8f0;background:#eef4fb;border-left:4px solid var(--primary-light);border-radius:8px;padding:0.7rem 1rem;margin-bottom:0.7rem;}
   .notice-card.notice-important{background:#fff4f2;border-color:#f0b9b0;border-left-color:#c0392b;}
@@ -1949,12 +1955,15 @@
   </div>
   <div id="admin-alert"></div>
   <div class="settings-grid">
+    <div class="set-col" id="set-left">
     <div class="card">
       <div class="card-title">기본 정보</div>
-      <div class="field-row"><label>기관명</label><input type="text" id="cfg-org-name" placeholder="예) ○○시지회"></div>
-      <div class="field-row"><label>연차 기본일수</label><input type="number" id="cfg-annual" min="0" step="1"></div>
-      <div class="field-row"><label>1일 기준 근무시간</label><input type="number" id="cfg-work-hours" min="1" max="12" step="0.5"></div>
-      <div class="field-row"><label>시수 입력 시간대</label><input type="text" id="cfg-sisu-range" placeholder="9-18"></div>
+      <div class="f2">
+        <div><label for="cfg-org-name">기관명</label><input type="text" id="cfg-org-name" placeholder="예) ○○시지회"></div>
+        <div><label for="cfg-annual">연차 기본일수</label><input type="number" id="cfg-annual" min="0" step="1"></div>
+        <div><label for="cfg-work-hours">1일 기준 근무시간</label><input type="number" id="cfg-work-hours" min="1" max="12" step="0.5"></div>
+        <div><label for="cfg-sisu-range">시수 입력 시간대</label><input type="text" id="cfg-sisu-range" placeholder="9-18"></div>
+      </div>
       <div class="field-row"><label>추가 휴일</label><input type="text" id="cfg-extra-holidays" placeholder="예: 2026-12-31, 2027-01-02 (임시공휴일·지회 휴일)"></div>
       <div class="hint" style="margin:-0.2rem 0 0.6rem;">관공서 공휴일·대체공휴일·선거일은 저절로 빠져요(2026·2027년). 임시공휴일이나 지회 자체 휴일만 쉼표로 넣으세요.</div>
       <div class="hint" style="margin-bottom:0.8rem;">시수 입력 시간대는 '시작-끝' 형식입니다. 예) 9-18 → 9시~18시 사이에서 선택</div>
@@ -1972,8 +1981,9 @@
       <div class="card-title">버전</div>
       <div class="hint" id="cfg-version"></div>
     </div>
+    </div>
 
-    <div class="card" id="policy-card" style="grid-column:1/-1;display:none;">
+    <div class="card" id="policy-card" style="display:none;">
       <div class="card-title">🏛 도협회: 근태 공통 설정 (모든 지회 동일 적용)</div>
       <div class="hint" style="margin-bottom:0.8rem;">값을 입력하면 <b>모든 지회에 똑같이 적용</b>되고 지회 화면에서는 수정할 수 없습니다. <b>비워 두면</b> 지회가 각자 정한 값을 씁니다.</div>
       <div class="field-row"><label>허용 반경 (m)</label><input type="number" id="pol-radius" min="30" max="5000" step="10" style="max-width:150px;" placeholder="비움=지회별"></div>
@@ -7313,8 +7323,9 @@ function saveAttendSettings() {
 function polMsg(t, ok) { var el = document.getElementById('pol-msg'); if (el) { el.style.color = ok ? 'var(--success)' : 'var(--danger)'; el.textContent = t; } }
 function loadPolicyCard() {
   var c = document.getElementById('policy-card'); if (!c) return;
-  if (!(ME && ME.isProvince)) { c.style.display = 'none'; return; }
-  c.style.display = '';
+  var left = document.getElementById('set-left');
+  if (!(ME && ME.isProvince)) { c.style.display = 'none'; if (left) left.style.gridColumn = '1/-1'; return; }   // 지회는 오른쪽 칸이 없으니 넓게
+  c.style.display = ''; if (left) left.style.gridColumn = '';
   gasRun('provincePolicyGet', null, function(r) {
     var p = (r && r.ok && r.policy) || {};
     var set = function(id, v) { document.getElementById(id).value = v == null ? '' : v; };

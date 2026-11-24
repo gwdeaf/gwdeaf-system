@@ -43,6 +43,7 @@
   .modal .card { max-width: 720px; width: 100%; max-height: 90vh; overflow: auto; }
   tr.click { cursor: pointer; } tr.click:hover { background: #f3f6fb; }
   .yr table { font-size: 13px; white-space: nowrap; border-collapse: collapse; } .yr th, .yr td { text-align: center; padding: 5px 6px; border: 1px solid #9aa4b2; } .yr th { background: #f1f4f9; } .yr tr.sum td { background: #eef3ff; font-weight: 700; }
+  .src { display: block; font-size: 10px; color: #8a94a6; font-weight: 400; line-height: 1.2; } @media print { .src { display: none; } }
   .print-only { display: none; }
   table.sheet { border-collapse: collapse; font-size: 13px; } table.sheet th { background: #f1f4f9; white-space: nowrap; padding: 5px; border: 1px solid #c9d1dc; }
   table.sheet td { border: 1px solid #c9d1dc; padding: 0; } table.sheet td.n { text-align: center; color: #888; padding: 0 4px; font-size: 12px; }
@@ -438,12 +439,20 @@ function gv(o, path) { for (const x of path) o = o ? o[x] : 0; return Number(o) 
 const I = (k, path) => k === 'R' ? RANGE_M.reduce((a, m) => a + gv((YR.rows || {})[m], path), 0) : gv((YR.rows || {})[k], path);
 const C = (k, path) => k === 'R' ? RANGE_M.reduce((a, m) => a + gv(((YR.c || {}).rows || {})[m], path), 0) : gv(((YR.c || {}).rows || {})[k], path);
 const E = (k, f) => monthsOf(k).reduce((a, m) => a + gv(((YR.c || {}).extra || {})[m], [f]), 0);
+// 수어교육 자동: 수어교육관리의 '센터 주관' 강좌 출석 (월·상반기·하반기·연간은 정확히, 고른 기간 합계는 달마다 더함)
+const EA = (k, f) => k === 'R' ? RANGE_M.reduce((a, m) => a + gv(((YR.c || {}).eduAuto || {})[m], [f]), 0) : gv(((YR.c || {}).eduAuto || {})[k], [f]);
+// 기타 자동: 센터 부서에서 등록한 사업실적 (사업명은 참고사항에)
+const XA = (k, f) => k === 'R' ? RANGE_M.reduce((a, m) => a + gv(((YR.c || {}).etcAuto || {})[m], [f]), 0) : gv(((YR.c || {}).etcAuto || {})[k], [f]);
+const XN = (k) => { const ms = k === 'R' ? RANGE_M : monthsOf(k), set = new Set(); (k === 'R' ? ms : [k]).forEach((m) => String((((YR.c || {}).etcAuto || {})[m] || {}).note || '').split(', ').filter(Boolean).forEach((x) => set.add(x))); return [...set].join(', '); };
+const joinNote = (...a) => a.filter((x) => String(x || '').trim()).join(' / ');
+// 숫자 아래에 어디서 온 숫자인지 (자동 · 직접 입력)
+const srcHtml = (a, d) => { const t = a + d; if (!t) return '-'; return `${t.toLocaleString()}<small class="src">${a && d ? `자동 ${a.toLocaleString()} + 직접 ${d.toLocaleString()}` : a ? '자동' : '직접 입력'}</small>`; };
 const nfmt = (v) => v ? Number(v).toLocaleString() : '-';
 function ytable(title, groups, rowsKeys, valFn, labFn) {
   const cols = groups.flatMap((g) => g.cols);
   return `<h3>${title}</h3><div class="card yr" style="overflow-x:auto"><table data-title="${esc(title)}"><thead><tr><th rowspan="2">월</th>${groups.map((g) => `<th colspan="${g.cols.length}">${g.t}</th>`).join('')}</tr>
     <tr>${cols.map((c) => `<th>${c[0]}</th>`).join('')}</tr></thead><tbody>
-    ${rowsKeys.map((k) => `<tr class="${/^[HY]/.test(k) ? 'sum' : ''}"><td>${labFn(k)}</td>${cols.map((c) => { const v = c[1](k); return `<td>${typeof v === 'string' ? esc(v) : nfmt(v)}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>`;
+    ${rowsKeys.map((k) => `<tr class="${/^[HY]/.test(k) ? 'sum' : ''}"><td>${labFn(k)}</td>${cols.map((c) => { if (c[2]) return `<td>${c[2](k)}</td>`; const v = c[1](k); return `<td>${typeof v === 'string' ? esc(v) : nfmt(v)}</td>`; }).join('')}</tr>`).join('')}</tbody></table></div>`;
 }
 const BR = (x) => x.replace('영상전화', '영상<br>전화').replace('문맹농인', '문맹<br>농인').replace('일상생활', '일상<br>생활').replace('취업알선', '취업<br>알선').replace('수어음성', '수어<br>음성');
 // 통역실적 (실적보고서 22~91행): 월별 연인원 · 실인원 · 세부실적
@@ -463,13 +472,13 @@ function drawYear() {
       ...['출장','내방','전화'].map((t) => ['상담 ' + t, (k) => C(k, ['counsel', t, f])]),
       ['취업<br>알선', (k) => C(k, ['job', f])],
       ...['출장','내방','전화'].map((t) => ['사후 ' + t, (k) => C(k, ['after', t, f])]),
-      ['수어<br>교육', (k) => E(k, 'edu' + ef)], ['기타', (k) => E(k, 'etc' + ef)]];
+      ['수어<br>교육', (k) => EA(k, 'edu' + ef) + E(k, 'edu' + ef), (k) => srcHtml(EA(k, 'edu' + ef), E(k, 'edu' + ef))], ['기타', (k) => XA(k, 'etc' + ef) + E(k, 'etc' + ef), (k) => srcHtml(XA(k, 'etc' + ef), E(k, 'etc' + ef))]];
     const sum = ['계', (k) => cols.reduce((a, c) => a + c[1](k), 0)];
-    const note = ['참고사항', (k) => /^\d+$/.test(k) ? String(((d.c.extra || {})[k] || {}).note || '') : ''];
+    const note = ['참고사항', (k) => joinNote(XN(k), /^\d+$/.test(k) ? String(((d.c.extra || {})[k] || {}).note || '') : '')];
     return [{ t: '통역', cols: cols.slice(0, 3) }, { t: '상담지도', cols: cols.slice(3, 10) }, { t: '수어교육 · 기타', cols: cols.slice(10) }, { t: '', cols: [sum, note] }];
   };
   $('stTitle').textContent = `${d.centerName} · ${d.year}년 ${m1}월 ~ ${m2}월 통역실적`;
-  $('stBody').innerHTML = `<p class="muted noprint">통역일지·상담일지로 자동 계산합니다. 수어교육·기타는 직접 입력합니다. 연인원 = 인원 합계, 실인원 = 의뢰자 중복 제외.${rangeNote}
+  $('stBody').innerHTML = `<p class="muted noprint">통역일지·상담일지로 자동 계산합니다. <b>수어교육</b>은 수어교육관리의 <b>센터 주관</b> 강좌 출석으로 자동 계산하고, 직접 입력한 숫자를 더합니다(숫자 아래 '자동 · 직접'). <b>기타</b>는 사업실적에서 <b>센터 부서</b>로 등록한 사업이 자동으로 들어가고(사업명은 참고사항에), 직접 입력을 더합니다. 연인원 = 인원 합계, 실인원 = 의뢰자 중복 제외.${rangeNote}
       ${d.c.canEdit ? ' <button class="sm" onclick="openExtra()">✏️ 수어교육 · 기타 · 목표 입력</button>' : ''}</p>
     ${ytable('연인원', grp('ppl', 'Ppl'), keys, null, lab)}
     ${ytable('실인원', grp('uniq', 'Uniq'), keys, null, lab)}
@@ -502,14 +511,16 @@ function drawCenterTable() {
     ...['출장','내방','전화'].map((t) => (r) => g(r.c, ['counsel', t, f])),
     (r) => g(r.c, ['job', f]),
     ...['출장','내방','전화'].map((t) => (r) => g(r.c, ['after', t, f])),
-    (r) => g(r.e, [f === 'ppl' ? 'eduPpl' : 'eduUniq']), (r) => g(r.e, [f === 'ppl' ? 'etcPpl' : 'etcUniq'])];
+    (r) => g(r.ea, [f === 'ppl' ? 'eduPpl' : 'eduUniq']) + g(r.e, [f === 'ppl' ? 'eduPpl' : 'eduUniq']), (r) => g(r.xa, [f === 'ppl' ? 'etcPpl' : 'etcUniq']) + g(r.e, [f === 'ppl' ? 'etcPpl' : 'etcUniq'])];
+  const etcSrc = (r, f) => srcHtml(g(r.xa, [f === 'ppl' ? 'etcPpl' : 'etcUniq']), g(r.e, [f === 'ppl' ? 'etcPpl' : 'etcUniq']));
+  const eduSrc = (r, f) => srcHtml(g(r.ea, [f === 'ppl' ? 'eduPpl' : 'eduUniq']), g(r.e, [f === 'ppl' ? 'eduPpl' : 'eduUniq']));
   const head1 = (note) => `<tr><th rowspan="3">연번</th><th rowspan="3">지역</th><th rowspan="3">센터명</th><th colspan="3" rowspan="2">통역</th><th colspan="7">상담지도</th><th rowspan="3">수어<br>교육</th><th rowspan="3">기타</th><th rowspan="3">계</th><th rowspan="3">${note}</th></tr>
     <tr><th colspan="3">상담</th><th rowspan="2">취업<br>알선</th><th colspan="3">사후관리</th></tr>
     <tr><th>출장</th><th>내방</th><th>전화</th><th>출장</th><th>내방</th><th>전화</th><th>출장</th><th>내방</th><th>전화</th></tr>`;
-  const body = (cols, withNote) => {
+  const body = (cols, withNote, f) => {
     const tot = cols.map(() => 0); let all = 0;
     const tr = rows.map((r, i) => { const v = cols.map((c) => c(r)); v.forEach((x, k) => { tot[k] += x; }); const s = v.reduce((a, b) => a + b, 0); all += s;
-      return `<tr><td>${i + 1}</td><td>${i === 0 ? '강원' : ''}</td><td style="text-align:left">${esc(r.name)}</td>${v.map((x) => `<td>${nf(x)}</td>`).join('')}<td><b>${nf(s)}</b></td>${withNote ? `<td style="text-align:left;white-space:normal">${esc((r.e || {}).note || '')}</td>` : ''}</tr>`; }).join('');
+      return `<tr><td>${i + 1}</td><td>${i === 0 ? '강원' : ''}</td><td style="text-align:left">${esc(r.name)}</td>${v.map((x, k) => `<td>${k === 10 && x ? eduSrc(r, f) : k === 11 && x ? etcSrc(r, f) : nf(x)}</td>`).join('')}<td><b>${nf(s)}</b></td>${withNote ? `<td style="text-align:left;white-space:normal">${esc(joinNote((r.xa || {}).note, (r.e || {}).note))}</td>` : ''}</tr>`; }).join('');
     return tr + `<tr class="sum"><td colspan="3">소 계</td>${tot.map((x) => `<td>${nf(x) || 0}</td>`).join('')}<td>${nf(all) || 0}</td>${withNote ? '<td></td>' : ''}</tr>`;
   };
   const sumRow = (vals) => `<tr class="sum"><td colspan="3">소 계</td>${vals.map((x) => `<td>${nf(x) || 0}</td>`).join('')}</tr>`;
@@ -520,12 +531,12 @@ function drawCenterTable() {
   const t21 = sumOf(c21); t21[11] = Math.floor(rows.reduce((a, r) => a + ['새벽','오전','오후','야간'].reduce((b, x) => b + g(r.i, ['mins', x]), 0), 0) / 60);
   const ttl = `${d.year}년도 ${per} 수어통역센터`;
   $('stTitle').textContent = `${ttl} 실적`;
-  $('stBody').innerHTML = `<p class="muted noprint">통역일지·상담일지로 자동 계산합니다. 수어교육·기타·참고사항은 직접 입력합니다. 연인원 = 인원 합계, 실인원 = 의뢰자 중복 제외 (그 기간 안에서).
+  $('stBody').innerHTML = `<p class="muted noprint">통역일지·상담일지로 자동 계산합니다. <b>수어교육</b>은 수어교육관리의 <b>센터 주관</b> 강좌 출석(자동) + 직접 입력, <b>기타</b>는 센터 부서 사업실적(자동, 사업명은 참고사항) + 직접 입력입니다. 연인원 = 인원 합계, 실인원 = 의뢰자 중복 제외 (그 기간 안에서).
       ${YR && YR.c && YR.c.canEdit && !d.all ? ' <button class="sm" onclick="openExtra()">✏️ 수어교육 · 기타 입력</button>' : ''}</p>
     <h3>1. 연인원 실적 <span class="muted" style="font-size:12px">${ttl} 실적(연인원)</span></h3>
-    <div class="card yr" style="overflow-x:auto"><table data-title="1. 연인원 실적 — ${ttl} 실적(연인원)"><thead>${head1('기타 연인원<br>참고사항')}</thead><tbody>${body(pcols('ppl'), true)}</tbody></table></div>
+    <div class="card yr" style="overflow-x:auto"><table data-title="1. 연인원 실적 — ${ttl} 실적(연인원)"><thead>${head1('기타 연인원<br>참고사항')}</thead><tbody>${body(pcols('ppl'), true, 'ppl')}</tbody></table></div>
     <h3>2. 실인원 실적 <span class="muted" style="font-size:12px">${ttl} 실적(실인원)</span></h3>
-    <div class="card yr" style="overflow-x:auto"><table data-title="2. 실인원 실적 — ${ttl} 실적(실인원)"><thead>${head1('실인원<br>참고사항')}</thead><tbody>${body(pcols('uniq'), true)}</tbody></table></div>
+    <div class="card yr" style="overflow-x:auto"><table data-title="2. 실인원 실적 — ${ttl} 실적(실인원)"><thead>${head1('실인원<br>참고사항')}</thead><tbody>${body(pcols('uniq'), true, 'uniq')}</tbody></table></div>
     <h3>3. 세부 실적 <span class="muted" style="font-size:12px">${ttl} 세부실적(2-1)</span></h3>
     <div class="card yr" style="overflow-x:auto"><table data-title="3. 세부 실적 — ${ttl} 세부실적(2-1)"><thead>
       <tr><th rowspan="2">연번</th><th rowspan="2">지역</th><th rowspan="2">센터명</th><th colspan="7">통역의뢰방법</th><th colspan="5">통역시간 (단위: 시간)</th><th colspan="5">통역대상 (인원)</th></tr>
@@ -543,12 +554,12 @@ function drawBiz() {
   const d = YR, m1 = Number($('stM1').value), m2 = Number($('stM2').value);
   if (m1 > m2) return msg('stMsg', '시작 월이 끝 월보다 늦습니다.');
   const ms = []; for (let k = m1; k <= m2; k++) ms.push(String(k));
-  const sumI = (path) => ms.reduce((a, k) => a + I(k, path), 0), sumC = (path) => ms.reduce((a, k) => a + C(k, path), 0), sumE = (f) => ms.reduce((a, k) => a + E(k, f), 0);
+  const sumI = (path) => ms.reduce((a, k) => a + I(k, path), 0), sumC = (path) => ms.reduce((a, k) => a + C(k, path), 0), sumE = (f) => ms.reduce((a, k) => a + E(k, f), 0), sumEA = (f) => ms.reduce((a, k) => a + EA(k, f), 0), sumXA = (f) => ms.reduce((a, k) => a + XA(k, f), 0);
   const annual = (f) => gv((d.c.extra || {})['0'], [f]);
   const tgt = (f) => Math.round(annual(f) * ms.length / 12);   // 연간 목표 ÷ 12 × 고른 달 수
-  const row = (f, ef) => { const v = [...['출장','내방','전화'].map((t) => sumI(['type', t, f])), ...['출장','내방','전화'].map((t) => sumC(['counsel', t, f])), sumC(['job', f]), ...['출장','내방','전화'].map((t) => sumC(['after', t, f])), sumE('edu' + ef), sumE('etc' + ef)]; return v; };
+  const row = (f, ef) => { const v = [...['출장','내방','전화'].map((t) => sumI(['type', t, f])), ...['출장','내방','전화'].map((t) => sumC(['counsel', t, f])), sumC(['job', f]), ...['출장','내방','전화'].map((t) => sumC(['after', t, f])), sumEA('edu' + ef) + sumE('edu' + ef), sumXA('etc' + ef) + sumE('etc' + ef)]; return v; };
   const line = (lab, f, ef, tf) => { const v = row(f, ef), tot = v.reduce((a, b) => a + b, 0), t = tgt(tf);
-    return `<tr><th>${lab}</th><td>${nfmt(t)}</td>${v.map((x) => `<td>${nfmt(x)}</td>`).join('')}<td><b>${nfmt(tot)}</b></td><td>${t ? (tot / t * 100).toFixed(2) : '-'}</td></tr>`; };
+    return `<tr><th>${lab}</th><td>${nfmt(t)}</td>${v.map((x, k) => `<td>${k === 10 && x ? srcHtml(sumEA('edu' + ef), sumE('edu' + ef)) : k === 11 && x ? srcHtml(sumXA('etc' + ef), sumE('etc' + ef)) : nfmt(x)}</td>`).join('')}<td><b>${nfmt(tot)}</b></td><td>${t ? (tot / t * 100).toFixed(2) : '-'}</td></tr>`; };
   // 분 단위로 더해서 시간으로 (끝수 버림)
   const mins = (x) => ms.reduce((a, k) => a + I(k, ['mins', x]), 0), hrs = (x) => Math.floor(mins(x) / 60);
   const hTot = Math.floor(['새벽','오전','오후','야간'].reduce((a, x) => a + mins(x), 0) / 60);
@@ -559,7 +570,7 @@ function drawBiz() {
   const tc = sumI(['cases']), cc = sumC(['cases']);
   $('stTitle').textContent = `${d.centerName} · ${d.year}년 ${m1}월 ~ ${m2}월 사업실적`;
   const tline = (lab, f) => annual(f) ? `${lab} 연간 ${annual(f).toLocaleString()} → 월 ${(annual(f) / 12).toLocaleString(undefined, { maximumFractionDigits: 1 })} → 이 기간(${ms.length}개월) ${tgt(f).toLocaleString()}` : `${lab} 목표 없음`;
-  $('stBody').innerHTML = `<p class="muted noprint">통역일지·상담일지로 자동 계산합니다.${d.c.canEdit ? ' <button class="sm" onclick="openTarget()">🎯 목표 설정</button>' : me.can_review && !$('stCt').value ? ' <button class="sm" onclick="ownEdit(openTarget)">🎯 목표 설정</button>' : ''}</p>
+  $('stBody').innerHTML = `<p class="muted noprint">통역일지·상담일지로 자동 계산합니다. 수어교육(센터사업)은 센터 주관 강좌 출석(자동), 기타는 센터 부서 사업실적(자동)에 직접 입력을 더합니다.${d.c.canEdit ? ' <button class="sm" onclick="openTarget()">🎯 목표 설정</button>' : me.can_review && !$('stCt').value ? ' <button class="sm" onclick="ownEdit(openTarget)">🎯 목표 설정</button>' : ''}</p>
     <div class="card noprint" style="padding:8px 12px;font-size:13px">🎯 ${tline('건수', 'targetCases')}<br>🎯 ${tline('연인원', 'targetPpl')}</div>
     <h3>1. 사업실적 <span class="muted" style="font-size:12px">(단위: 건, 명)</span></h3>
     <div class="card yr" style="overflow-x:auto"><table data-title="1. 사업실적"><thead>
@@ -601,9 +612,10 @@ function openExtra() {
   const ex = YR.c.extra || {}, v = (m, f) => gv(ex[m], [f]) || '';
   const ov = document.createElement('div'); ov.className = 'modal';
   ov.innerHTML = `<div class="card" style="max-width:900px;width:96%;max-height:90vh;overflow:auto"><h2 style="margin-top:0">✏️ ${YR.year}년 수어교육 · 기타 · 목표</h2>
+    <p class="muted" style="margin-top:0">수어교육은 수어교육관리의 <b>센터 주관</b> 강좌 출석이 자동으로 들어갑니다(자동 칸). 수어교육관리 밖에서 한 센터 교육만 직접 입력하세요. <b>기타</b>는 사업실적에서 <b>센터 부서</b>로 등록한 사업이 자동으로 들어갑니다(사업명은 참고사항에). 통계에는 자동과 직접 입력이 더해집니다.</p>
     <div class="row"><div><label>목표 건수</label><input id="ex_tc" inputmode="numeric" value="${v(0, 'targetCases')}"></div><div><label>목표 연인원</label><input id="ex_tp" inputmode="numeric" value="${v(0, 'targetPpl')}"></div></div>
-    <div style="overflow-x:auto"><table class="yr"><thead><tr><th rowspan="2">월</th><th colspan="3">수어교육 (센터사업)</th><th colspan="3">기타</th><th rowspan="2">참고사항</th></tr><tr><th>건수</th><th>실인원</th><th>연인원</th><th>건수</th><th>실인원</th><th>연인원</th></tr></thead><tbody>
-    ${[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => `<tr><td>${m}월</td>${['eduCases','eduUniq','eduPpl','etcCases','etcUniq','etcPpl'].map((f) => `<td><input data-m="${m}" data-f="${f}" inputmode="numeric" style="width:70px" value="${v(m, f)}"></td>`).join('')}
+    <div style="overflow-x:auto"><table class="yr"><thead><tr><th rowspan="2">월</th><th rowspan="2">자동<br><small style="font-weight:400">센터 주관 강좌</small></th><th colspan="3">수어교육 (센터사업) 직접 입력</th><th rowspan="2">자동<br><small style="font-weight:400">센터 부서 사업</small></th><th colspan="3">기타 직접 입력</th><th rowspan="2">참고사항</th></tr><tr><th>건수</th><th>실인원</th><th>연인원</th><th>건수</th><th>실인원</th><th>연인원</th></tr></thead><tbody>
+    ${[1,2,3,4,5,6,7,8,9,10,11,12].map((m) => `<tr><td>${m}월</td><td class="muted" style="white-space:nowrap;font-size:12px">${(() => { const a = (YR.c.eduAuto || {})[m]; return a ? `${a.eduCases}건 · 실 ${a.eduUniq} · 연 ${a.eduPpl}` : '-'; })()}</td>${['eduCases','eduUniq','eduPpl'].map((f) => `<td><input data-m="${m}" data-f="${f}" inputmode="numeric" style="width:70px" value="${v(m, f)}"></td>`).join('')}<td class="muted" style="font-size:12px;max-width:180px;white-space:normal">${(() => { const a = (YR.c.etcAuto || {})[m]; return a ? `${a.etcCases}건 · 실 ${a.etcUniq} · 연 ${a.etcPpl}<br>${esc(a.note || '')}` : '-'; })()}</td>${['etcCases','etcUniq','etcPpl'].map((f) => `<td><input data-m="${m}" data-f="${f}" inputmode="numeric" style="width:70px" value="${v(m, f)}"></td>`).join('')}
       <td><input data-m="${m}" data-f="note" style="min-width:160px" value="${esc((ex[m] || {}).note || '')}"></td></tr>`).join('')}</tbody></table></div>
     <div style="margin-top:10px;display:flex;gap:8px"><button class="main" id="exSave">저장</button><button id="exX">닫기</button></div><div id="exMsg" class="msg"></div></div>`;
   document.body.appendChild(ov);
@@ -627,7 +639,7 @@ async function saveExcel() {
   const title = $('stTitle').textContent || '통역 통계';
   const aoa = [[title], []], merges = [];
   tables.forEach((t, i) => {
-    const c = t.cloneNode(true); c.querySelectorAll('button,input').forEach((x) => x.remove()); c.querySelectorAll('br').forEach((b) => b.replaceWith(' '));
+    const c = t.cloneNode(true); c.querySelectorAll('button,input,.src').forEach((x) => x.remove());   // 자동·직접 표시는 엑셀에서 뺌 c.querySelectorAll('br').forEach((b) => b.replaceWith(' '));
     const name = t.dataset.title || ('표 ' + (i + 1));
     aoa.push([name]);
     const ws = XLSX.utils.table_to_sheet(c, { raw: true }), rows = XLSX.utils.sheet_to_json(ws, { header: 1, defval: '', raw: true });

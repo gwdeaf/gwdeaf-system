@@ -135,7 +135,7 @@ async function showMember(id) {
   msg('');
   const rows = [['회원번호', m.member_no], ['이름', m.name], ['생년월일', m.birth], ['성별', m.gender], ['연락처', m.phone], ['주소', m.address], ['구분', m.category], ['가입일', m.join_date], ['상태', m.status], ['탈퇴일', m.leave_date], ['비고', m.note]];
   $('view').innerHTML = `<div class="card" style="cursor:default">${rows.map(r => `<div class="row"><span>${r[0]}</span><span>${esc(r[1] || '')}</span></div>`).join('')}
-    <div class="actions">${ME.can_write ? `<button onclick="editMember(${id})">수정</button>` : ''}<button class="sub" onclick="showList()">목록</button></div></div>
+    <div class="actions">${ME.can_write ? `<button onclick="editMember(${id})">수정</button>` : ''}<button class="sub" onclick="openPrint(${id}, 'cert')">🧾 회비 납부 증명서</button><button class="sub" onclick="openPrint(${id}, 'card')">🪪 회원관리카드</button><button class="sub" onclick="showList()">목록</button></div></div>
     <div class="card" style="cursor:default"><b>입회비·회비 납부</b>
     ${ME.can_write ? `<div class="grid2">
       <div><label>종류</label><select id="fKind"><option>회비</option><option>입회비</option><option>기타</option></select></div>
@@ -151,6 +151,15 @@ async function showMember(id) {
       <div id="hList"><p>불러오는 중…</p></div></div>`;
   loadFees(id); loadHist(id);
 }
+// ── 출력: 회비 납부 증명서 · 회원관리카드 (member/print.html 이 이 자료를 읽어서 그림) ──
+window.MEMBER_PRINT = null;
+async function openPrint(id, doc) {
+  const w = window.open('', '_blank'); if (!w) return msg('팝업이 막혀 있습니다. 브라우저에서 팝업을 허용해 주세요.', 'err');
+  try { window.MEMBER_PRINT = await rpc('member_doc_info', { p_member: id, p_kind: doc }); }
+  catch (e) { w.close(); return msg(e.message, 'err'); }
+  w.location.href = 'print.html?doc=' + doc;
+}
+
 // 회원별 사업 참여 이력 (사업실적과 같은 자료)
 let HIST = [];
 async function loadHist(id) {

@@ -57,8 +57,8 @@
 <header>
   <div><h1 style="margin:0">회계시스템</h1><div id="who">불러오는 중…</div></div>
 </header>
-<nav id="topNav" style="display:none">
-  <button onclick="showList()">품의 목록</button>
+<nav id="topNav" style="display:none" onclick="if(event.target.closest('button')&&event.target.closest('button').id!=='logoutBtn'){this.querySelectorAll('button').forEach(b=>b.classList.toggle('on',b===event.target.closest('button')))}">
+  <button class="on" onclick="showList()">품의 목록</button>
   <button id="btnNew" onclick="showForm()">새 품의</button>
   <button onclick="showResList()">결의 목록</button>
   <button id="btnNewRes" onclick="showResForm()">새 결의</button>

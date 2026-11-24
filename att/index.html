@@ -3781,7 +3781,13 @@ function sendSlackTestDm() {
   if (!name) { slackMsg('슬랙 ID가 입력된 직원이 없습니다. [직원 관리]에서 선임의 슬랙 ID를 입력·저장해 주세요.', 'warn'); return; }
   slackMsg('보내는 중...', 'info');
   gasRun('sendSlackTest', JSON.stringify({name: name}), function(res) {
-    if (res && res.ok) slackMsg('✅ '+name+' 님에게 테스트 DM을 보냈습니다. 슬랙에서 확인해 보세요.', 'ok');
+    if (res && res.ok) {
+      slackMsg('✅ '+name+' 님에게 테스트 DM을 보냈습니다. 슬랙에서 확인해 보세요.', 'ok');
+      var el = document.getElementById('cfg-slack-msg');   // 어디로 갔는지 (워크스페이스·앱 이름·바로가기)
+      if (el && (res.team || res.bot)) el.innerHTML += '<div style="margin-top:4px;color:var(--text-muted)">보낸 곳: <b>' + esc(res.team || '?') + '</b> 워크스페이스의 <b>' + esc(res.bot || '?') + '</b> 앱 대화 · 받는 사람 ID ' + esc(res.sid || '') +
+        (res.link ? ' · <a href="' + esc(res.link) + '" target="_blank" rel="noopener">슬랙에서 이 메시지 열기 ↗</a>' : '') +
+        '<br>슬랙 왼쪽 <b>앱</b> 아래 <b>' + esc(res.bot || '') + '</b>에서 보입니다. 위 워크스페이스·앱 이름이 지금 보고 있는 슬랙과 다르면 다른 앱의 토큰이 저장된 것입니다.</div>';
+    }
     else slackMsg((res && res.msg) || '보내지 못했습니다.', 'warn');
   }, function(m){ slackMsg('오류: '+m, 'warn'); });
 }

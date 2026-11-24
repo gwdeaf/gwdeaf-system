@@ -1,0 +1,448 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>영화실적 · 영화가 있는 날</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  /* 기존 시스템의 색상 변수에 맞춰 이 블록만 바꾸면 됩니다 */
+  .gm{--bg:#f4f5f9;--card:#fff;--ink:#1d2030;--mute:#6d7285;--line:#e3e5ee;--accent:#4a5bd4;--accent-soft:#e9ecfb;
+      --c1:#4a5bd4;--c2:#1f9d8a;--c3:#e0912f;--c4:#9aa0ae;--c5:#cfd2de;--ok:#1f9d6b;--warn:#d9534f;
+      font-family:"Pretendard","Noto Sans KR","Malgun Gothic",sans-serif;font-size:14px;color:var(--ink);background:var(--bg);min-height:100vh}
+  .gm *{box-sizing:border-box}
+  .gm h2{font-size:18px;margin:0}
+  .gm h3{font-size:15px;margin:0 0 10px}
+  .bar-top{background:var(--card);border-bottom:1px solid var(--line);padding:12px 20px;display:flex;flex-wrap:wrap;gap:10px 18px;align-items:center}
+  .bar-top .who{margin-left:auto;display:flex;gap:8px;align-items:center;font-size:12px;color:var(--mute)}
+  .tabs{display:flex;gap:4px;padding:10px 20px 0;background:var(--card);border-bottom:1px solid var(--line);overflow-x:auto}
+  .tabs button{font:inherit;border:0;background:none;padding:10px 14px;cursor:pointer;color:var(--mute);border-bottom:3px solid transparent;white-space:nowrap}
+  .tabs button[aria-selected=true]{color:var(--accent);border-color:var(--accent);font-weight:700}
+  main{padding:20px;max-width:1200px;margin:0 auto}
+  .card{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:16px;margin-bottom:16px}
+  .grid{display:grid;gap:16px}
+  .g2{grid-template-columns:repeat(auto-fit,minmax(340px,1fr))}
+  .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(110px,1fr));gap:10px;margin-bottom:16px}
+  .stat{background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px}
+  .stat small{color:var(--mute);display:block;margin-bottom:4px}
+  .stat b{font-size:22px;font-variant-numeric:tabular-nums}
+  .stat b em{font-size:12px;font-style:normal;color:var(--mute);margin-left:2px}
+  .toolbar{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-end;margin-bottom:12px}
+  .gm label{display:flex;flex-direction:column;gap:3px;font-size:12px;color:var(--mute)}
+  .gm input,.gm select,.gm textarea{font:inherit;color:var(--ink);background:#fff;border:1px solid #cfd2de;border-radius:6px;padding:7px 9px;min-width:0}
+  .gm input:disabled{background:#f1f2f6}
+  .btn{font:inherit;border:1px solid #cfd2de;background:#fff;border-radius:6px;padding:7px 12px;cursor:pointer}
+  .btn.p{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+  .btn.d{color:var(--warn);border-color:#efc3c1}
+  .btn.s{padding:4px 8px;font-size:12px}
+  .btn:disabled{opacity:.45;cursor:not-allowed}
+  table{width:100%;border-collapse:collapse;font-size:13px}
+  th,td{padding:8px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top}
+  th{background:#f0f1f6;font-weight:600;white-space:nowrap}
+  td.n,th.n{text-align:right;font-variant-numeric:tabular-nums}
+  td.c,th.c{text-align:center}
+  tr.click{cursor:pointer}tr.click:hover{background:#f7f8fd}
+  .wrap{overflow-x:auto}
+  .chip{display:inline-block;padding:2px 8px;border-radius:99px;font-size:12px;background:#eceef5;color:#444a60;white-space:nowrap}
+  .chip.ok{background:#dff3ea;color:#16704c}.chip.no{background:#fbe3e2;color:#a8322e}.chip.wait{background:#fdf0d9;color:#9a6212}.chip.acc{background:var(--accent-soft);color:var(--accent)}
+  .muted{color:var(--mute)} .small{font-size:12px}
+  .hb{display:grid;grid-template-columns:110px 1fr 56px;gap:8px;align-items:center;margin:6px 0;font-size:13px}
+  .hb span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+  .hb .t{background:#eef0f6;border-radius:4px;height:14px;overflow:hidden}.hb .t i{display:block;height:100%;background:var(--accent)}
+  .hb b{text-align:right;font-variant-numeric:tabular-nums}
+  .legend{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;color:var(--mute);margin-top:6px}
+  .legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
+  .nhead{display:flex;flex-wrap:wrap;gap:8px;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .chips{display:flex;flex-wrap:wrap;gap:6px;margin:8px 0}
+  .empty{padding:28px;text-align:center;color:var(--mute)}
+  dialog{border:0;border-radius:12px;padding:20px;width:min(520px,94vw);box-shadow:0 12px 40px rgba(0,0,0,.25)}
+  dialog::backdrop{background:rgba(20,22,40,.45)}
+  dialog form{display:flex;flex-direction:column;gap:12px}
+  .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+  .frow{display:grid;grid-template-columns:1.4fr 1fr 1fr 1fr auto;gap:6px;align-items:end}
+  .cnt{display:grid;grid-template-columns:repeat(5,1fr);gap:6px}
+  .arow{display:grid;grid-template-columns:1fr 110px auto;gap:6px;margin-bottom:6px}
+  menu{display:flex;gap:8px;justify-content:flex-end;margin:4px 0 0;padding:0}
+  .hint{font-size:12px;color:var(--mute);margin:0}
+  body{margin:0} body.embed .bar-top{display:none} .gm .notice-err{background:#fbe3e2;color:#a8322e;border-radius:8px;padding:10px 12px;margin-bottom:12px}
+  @media(max-width:640px){.frow{grid-template-columns:1fr 1fr}.hb{grid-template-columns:80px 1fr 48px}}
+</style>
+</head>
+<body>
+<div class="gm" id="gm-root"></div>
+
+<script>
+/* =====================================================================
+ * 영화가 있는 날 · 관람 실적 관리 모듈
+ *  - 도협회(관리자): 월별 공지 / 회신 현황 / 실적 조회 / 극장 설정 / 연간 대시보드
+ *  - 지회: 공지 확인 → 상영 회신(상영작·일정·예상인원) → 관람 실적 입력
+ * ===================================================================== */
+
+/* ---------- 0. 업무 시스템 연결 (Supabase) ---------- */
+const SUPABASE_URL = 'https://uamlualqqcqmpdkprjfs.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhbWx1YWxxcWNxbXBka3ByamZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNjE0OTMsImV4cCI6MjExMDYzNzQ5M30._f4p4pfcKaYbmjKRXOPpkMo7Ydcc26oVVI6lRFYsLkY';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+if (new URLSearchParams(location.search).get('embed') === '1') document.body.classList.add('embed');
+async function rpc(name, a) { const { data, error } = await sb.rpc(name, a || {}); if (error) throw new Error(error.message || '오류가 났습니다.'); return data; }
+let USER = { role: 'region', region: '', can_write: false, name: '' };
+// 서버에서 다시 읽어 오기 (저장할 때마다)
+async function reload() {
+  const d = await rpc('movie_load');
+  USER = d.me; S.role = USER.role; S.region = USER.region;
+  DB = { theaters: d.theaters || [], notices: (d.notices || []).map(n => Object.assign(n, { deadline: String(n.deadline || '').slice(0, 10), films: n.films || [] })), screenings: d.screenings || [] };
+}
+
+/* ---------- 1. 상수 · 유틸 ---------- */
+const CATS = ['청각', '시각', '기타장애', '비장애', '기타'];
+const COLORS = ['var(--c1)', 'var(--c2)', 'var(--c3)', 'var(--c4)', 'var(--c5)'];
+
+const $ = s => document.querySelector(s);
+const esc = v => String(v ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const uid = () => Math.random().toString(36).slice(2, 10) + Date.now().toString(36).slice(-4);
+const pad = n => String(n).padStart(2, '0');
+const today = () => { const t = new Date(); return `${t.getFullYear()}-${pad(t.getMonth() + 1)}-${pad(t.getDate())}`; };
+const fD = d => d ? `${d.slice(0, 4)}. ${+d.slice(5, 7)}. ${+d.slice(8, 10)}` : '';
+const fMD = d => d ? `${+d.slice(5, 7)}/${+d.slice(8, 10)}` : '';
+const fM = m => m ? `${m.slice(0, 4)}년 ${+m.slice(5, 7)}월` : '';
+const num = v => (+v || 0);
+const sumC = c => CATS.reduce((s, k) => s + num(c && c[k]), 0);
+const DOW = ['일', '월', '화', '수', '목', '금', '토'];
+const fDW = d => d ? `${fD(d)} (${DOW[new Date(d + 'T00:00:00').getDay()]})` : '';
+
+/* ---------- 2. 상태 ---------- */
+let DB = { theaters: [], notices: [], screenings: [] };
+const S = {
+  role: 'region', region: '', tab: '',
+  year: new Date().getFullYear(), replyNotice: '',
+  f: { from: '', to: '', region: '', theater: '', film: '', group: 'list' }
+};
+const save = () => {};   // 저장은 각 동작에서 서버로 바로
+const nById = id => DB.notices.find(n => n.id === id);
+const sById = id => DB.screenings.find(s => s.id === id);
+const theaterOf = r => DB.theaters.find(t => t.region === r);
+const regions = () => DB.theaters.map(t => t.region);
+const maxTo = n => n.films.reduce((m, f) => f.to > m ? f.to : m, '');
+const nState = n => { const t = today(), e = maxTo(n); if (e && t > e) return 'ended'; return t <= n.deadline ? 'open' : 'closed'; };
+const STATE_LABEL = { open: ['회신 접수중', 'ok'], closed: ['회신 마감', 'wait'], ended: ['상영 종료', ''] };
+const done = () => DB.screenings.filter(s => s.status === 'done');
+
+function agg(list) {
+  const t = { 건수: 0, 총인원: 0 }; CATS.forEach(k => t[k] = 0);
+  list.forEach(s => { t.건수++; CATS.forEach(k => t[k] += num(s.counts && s.counts[k])); });
+  t.총인원 = CATS.reduce((a, k) => a + t[k], 0); return t;
+}
+function replyState(nid, region) {
+  const l = DB.screenings.filter(s => s.noticeId === nid && s.region === region);
+  if (l.some(s => s.status === 'absent')) return 'absent';
+  return l.length ? 'replied' : 'none';
+}
+
+/* ---------- 3. 화면 조각 ---------- */
+function statsHtml(t) {
+  return `<div class="stats">
+    <div class="stat"><small>건수</small><b>${t.건수}<em>건</em></b></div>
+    <div class="stat"><small>총인원</small><b>${t.총인원.toLocaleString()}<em>명</em></b></div>
+    ${CATS.map((k, i) => `<div class="stat"><small><i style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${COLORS[i]};margin-right:5px"></i>${k}</small><b>${t[k].toLocaleString()}<em>명</em></b></div>`).join('')}</div>`;
+}
+function hbars(items, n = 8) {
+  items = items.filter(i => i.value > 0).sort((a, b) => b.value - a.value).slice(0, n);
+  if (!items.length) return '<div class="empty">데이터가 없습니다.</div>';
+  const max = items[0].value;
+  return items.map(i => `<div class="hb"><span title="${esc(i.label)}">${esc(i.label)}</span><div class="t"><i style="width:${i.value / max * 100}%"></i></div><b>${i.value.toLocaleString()}</b></div>`).join('');
+}
+function monthChart(rows) {
+  const W = 640, H = 230, L = 40, B = 26, T = 10, bw = (W - L) / 12;
+  const max = Math.max(10, ...rows.map(sumC)), ymax = Math.ceil(max / 4 / 10) * 10 * 4 || 40;
+  let g = '';
+  for (let i = 0; i <= 4; i++) {
+    const y = T + (H - T - B) * (1 - i / 4);
+    g += `<line x1="${L}" x2="${W}" y1="${y}" y2="${y}" stroke="#e3e5ee"/><text x="${L - 6}" y="${y + 4}" text-anchor="end" font-size="11" fill="#6d7285">${Math.round(ymax * i / 4)}</text>`;
+  }
+  rows.forEach((r, m) => {
+    let y = H - B;
+    CATS.forEach((k, i) => {
+      const h = num(r[k]) / ymax * (H - T - B); y -= h;
+      if (h > 0) g += `<rect x="${L + m * bw + bw * .2}" y="${y}" width="${bw * .6}" height="${h}" fill="${COLORS[i]}"><title>${m + 1}월 ${k} ${num(r[k])}명</title></rect>`;
+    });
+    g += `<text x="${L + m * bw + bw / 2}" y="${H - 8}" text-anchor="middle" font-size="11" fill="#6d7285">${m + 1}월</text>`;
+  });
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" style="max-width:760px;display:block" role="img" aria-label="월별 관람인원">${g}</svg>
+    <div class="legend">${CATS.map((k, i) => `<span><i style="background:${COLORS[i]}"></i>${k}</span>`).join('')}</div>`;
+}
+const recRow = (s, i, adm) => `<tr class="click" data-act="editResult" data-id="${s.id}">
+  <td class="c">${i + 1}</td><td>${esc(s.region)}</td><td>${fD(s.date)}</td><td class="c">${esc(s.time)}</td><td>${esc(s.theater)}</td><td>${esc(s.film)}</td>
+  <td class="n"><b>${sumC(s.counts)}</b></td>${CATS.map(k => `<td class="n">${num(s.counts && s.counts[k])}</td>`).join('')}</tr>`;
+const recHead = '<tr><th class="c">순번</th><th>지역</th><th>날짜</th><th class="c">시간</th><th>상영관</th><th>상영작</th><th class="n">관람인원</th>' + CATS.map(k => `<th class="n">${k}</th>`).join('') + '</tr>';
+
+/* ---------- 4. 관리자 화면 ---------- */
+function vDash() {
+  const y = S.year, list = done().filter(s => s.date.startsWith(y + '-'));
+  const months = Array.from({ length: 12 }, (_, m) => { const a = agg(list.filter(s => +s.date.slice(5, 7) === m + 1)); return a; });
+  const by = key => { const o = {}; list.forEach(s => o[key(s)] = (o[key(s)] || 0) + sumC(s.counts)); return Object.entries(o).map(([label, value]) => ({ label, value })); };
+  const years = [...new Set([y, ...done().map(s => +s.date.slice(0, 4))])].sort((a, b) => b - a);
+  return `<div class="toolbar"><label>연도<select data-bind="year">${years.map(v => `<option ${v === y ? 'selected' : ''}>${v}</option>`).join('')}</select></label>
+</div>
+    ${statsHtml(agg(list))}
+    <div class="card"><h3>${y}년 월별 관람인원</h3>${monthChart(months)}</div>
+    <div class="grid g2">
+      <div class="card"><h3>지역별 관람인원</h3>${hbars(by(s => s.region), 18)}</div>
+      <div class="card"><h3>상영작별 관람인원</h3>${hbars(by(s => s.film), 10)}</div>
+      <div class="card"><h3>극장별 관람인원</h3>${hbars(by(s => s.theater), 10)}</div>
+      <div class="card"><h3>회신 대기 현황</h3>${pendingBox()}</div>
+    </div>`;
+}
+function pendingBox() {
+  const n = DB.notices.filter(n => nState(n) !== 'ended').sort((a, b) => b.month.localeCompare(a.month))[0];
+  if (!n) return '<div class="empty">진행 중인 공지가 없습니다.</div>';
+  const none = regions().filter(r => replyState(n.id, r) === 'none');
+  return `<p class="muted small">${fM(n.month)} · 회신 마감 ${fDW(n.deadline)}</p>
+    <p><b>${regions().length - none.length}</b> / ${regions().length}개 지회 회신</p>
+    <div class="chips">${none.length ? none.map(r => `<span class="chip wait">${esc(r)} 미회신</span>`).join('') : '<span class="chip ok">모든 지회 회신 완료</span>'}</div>`;
+}
+
+function vNotice() {
+  const act = DB.notices.filter(n => nState(n) !== 'ended').sort((a, b) => b.month.localeCompare(a.month));
+  const old = DB.notices.filter(n => nState(n) === 'ended').sort((a, b) => b.month.localeCompare(a.month));
+  const card = n => {
+    const st = STATE_LABEL[nState(n)], rs = regions().map(r => replyState(n.id, r));
+    return `<div class="card"><div class="nhead"><div><h3 style="margin:0">${fM(n.month)} 영화가 있는 날 상영 안내</h3>
+      <span class="chip ${st[1]}">${st[0]}</span> <span class="small" style="color:#c0392b"><b>신청 마감일 ${fDW(n.deadline)}</b></span></div>
+      <div><button class="btn s" data-act="goReply" data-id="${n.id}">회신 현황</button> <button class="btn s" data-act="editNotice" data-id="${n.id}">수정</button> <button class="btn s d" data-act="delNotice" data-id="${n.id}">삭제</button></div></div>
+      <div class="wrap"><table><tr><th>상영작</th><th>상영 일정</th><th>비고</th></tr>
+      ${n.films.map(f => `<tr><td>${esc(f.title)}</td><td>${fMD(f.from)} ~ ${fMD(f.to)}</td><td>${esc(f.remark)}</td></tr>`).join('')}</table></div>
+      ${n.memo ? `<p class="small" style="white-space:pre-wrap">${esc(n.memo)}</p>` : ''}
+      <div class="chips"><span class="chip ok">회신 ${rs.filter(x => x === 'replied').length}</span><span class="chip no">불참 ${rs.filter(x => x === 'absent').length}</span><span class="chip wait">미회신 ${rs.filter(x => x === 'none').length}</span></div></div>`;
+  };
+  return `<div class="toolbar"><button class="btn p" data-act="newNotice">+ 월별 공지 작성</button></div>
+    ${act.map(card).join('') || '<div class="card empty">진행 중인 공지가 없습니다. 월별 공지를 작성해 주세요.</div>'}
+    <div class="card"><h3>지난 상영 목록 <span class="muted small">(상영 기간이 끝난 공지는 자동으로 이곳에 정리됩니다)</span></h3>
+    ${old.length ? `<div class="wrap"><table><tr><th>월</th><th>상영작</th><th class="n">상영 건수</th><th class="n">총 관람인원</th></tr>
+      ${old.map(n => { const a = agg(DB.screenings.filter(s => s.noticeId === n.id && s.status === 'done')); return `<tr class="click" data-act="goReply" data-id="${n.id}"><td>${fM(n.month)}</td><td>${n.films.map(f => esc(f.title)).join(', ')}</td><td class="n">${a.건수}</td><td class="n">${a.총인원.toLocaleString()}</td></tr>`; }).join('')}</table></div>` : '<div class="empty">아직 종료된 상영이 없습니다.</div>'}</div>`;
+}
+
+function vReply() {
+  const sorted = [...DB.notices].sort((a, b) => b.month.localeCompare(a.month));
+  if (!sorted.length) return '<div class="card empty">등록된 공지가 없습니다.</div>';
+  const n = nById(S.replyNotice) || sorted[0];
+  const rows = DB.theaters.map(t => {
+    const l = DB.screenings.filter(s => s.noticeId === n.id && s.region === t.region);
+    const st = replyState(n.id, t.region);
+    const body = st === 'absent' ? `<span class="muted">불참 사유: ${esc(l.find(s => s.status === 'absent').reason)}</span>`
+      : l.map(s => `${esc(s.film)} · ${fDW(s.date)} ${esc(s.time)} · 예상 ${num(s.expected)}명${s.remark ? ' · ' + esc(s.remark) : ''}${s.status === 'done' ? ` · <b>실적 ${sumC(s.counts)}명</b>` : ''}`).join('<br>');
+    return `<tr><td>${esc(t.region)}</td><td>${esc(t.name)}</td><td><span class="chip ${st === 'replied' ? 'ok' : st === 'absent' ? 'no' : 'wait'}">${st === 'replied' ? '회신' : st === 'absent' ? '불참' : '미회신'}</span></td><td>${body}</td></tr>`;
+  }).join('');
+  return `<div class="toolbar"><label>공지<select data-bind="replyNotice">${sorted.map(x => `<option value="${x.id}" ${x.id === n.id ? 'selected' : ''}>${fM(x.month)}</option>`).join('')}</select></label>
+    <span class="muted small">회신 마감 ${fDW(n.deadline)} · 상영작 ${n.films.map(f => esc(f.title)).join(', ')}</span></div>
+    <div class="card wrap"><table><tr><th>지역</th><th>극장</th><th>상태</th><th>회신 내용 (상영작 · 일정 · 예상인원 · 비고)</th></tr>${rows}</table></div>`;
+}
+
+/* 실적 조회: 관리자(전체) / 지회(자기 지역 고정) 공용 */
+function vRec(fixRegion) {
+  const F = S.f, all = done().filter(s => !fixRegion || s.region === fixRegion);
+  const list = all.filter(s => (!F.from || s.date >= F.from) && (!F.to || s.date <= F.to) && (!F.region || s.region === F.region) && (!F.theater || s.theater === F.theater) && (!F.film || s.film === F.film))
+    .sort((a, b) => a.date.localeCompare(b.date) || a.region.localeCompare(b.region));
+  const opt = (arr, v) => `<option value="">전체</option>` + [...new Set(arr)].sort().map(x => `<option ${x === v ? 'selected' : ''}>${esc(x)}</option>`).join('');
+  const keyFn = { month: s => s.date.slice(0, 7), film: s => s.film, theater: s => s.theater, region: s => s.region }[F.group];
+  let table;
+  if (!list.length) table = '<div class="empty">조건에 맞는 실적이 없습니다.</div>';
+  else if (F.group === 'list') table = `<div class="wrap"><table>${recHead}${list.map((s, i) => recRow(s, i)).join('')}</table></div>`;
+  else {
+    const o = {}; list.forEach(s => (o[keyFn(s)] = o[keyFn(s)] || []).push(s));
+    table = `<div class="wrap"><table><tr><th>${{ month: '월', film: '상영작', theater: '극장', region: '지역' }[F.group]}</th><th class="n">건수</th><th class="n">총인원</th>${CATS.map(k => `<th class="n">${k}</th>`).join('')}</tr>
+      ${Object.keys(o).sort().map(k => { const a = agg(o[k]); return `<tr><td>${esc(F.group === 'month' ? fM(k + '-01') : k)}</td><td class="n">${a.건수}</td><td class="n"><b>${a.총인원.toLocaleString()}</b></td>${CATS.map(c => `<td class="n">${a[c]}</td>`).join('')}</tr>`; }).join('')}</table></div>`;
+  }
+  return `<div class="toolbar">
+    <label>시작일<input type="date" data-f="from" value="${F.from}"></label><label>종료일<input type="date" data-f="to" value="${F.to}"></label>
+    ${fixRegion ? '' : `<label>지역<select data-f="region">${opt(all.map(s => s.region), F.region)}</select></label>`}
+    <label>극장<select data-f="theater">${opt(all.map(s => s.theater), F.theater)}</select></label>
+    <label>상영작<select data-f="film">${opt(all.map(s => s.film), F.film)}</select></label>
+    <label>보기<select data-f="group"><option value="list" ${F.group === 'list' ? 'selected' : ''}>상세 목록</option><option value="month" ${F.group === 'month' ? 'selected' : ''}>월별</option><option value="film" ${F.group === 'film' ? 'selected' : ''}>상영작별</option><option value="theater" ${F.group === 'theater' ? 'selected' : ''}>극장별</option>${fixRegion ? '' : `<option value="region" ${F.group === 'region' ? 'selected' : ''}>지역별</option>`}</select></label>
+    <button class="btn" data-act="resetF">조건 초기화</button><button class="btn" data-act="csv">CSV 내려받기</button></div>
+    ${statsHtml(agg(list))}<div class="card">${table}</div>`;
+}
+
+function vTheater() {
+  return `<div class="card"><p class="muted small">지회별 신청 극장명과 고정 상영시간을 설정합니다. 칸을 고치면 바로 저장됩니다. (지회 목록은 업무 시스템의 기관 목록을 따릅니다)</p><div class="wrap"><table>
+    <tr><th>지역</th><th>극장명</th><th>고정 상영시간</th></tr>
+    ${DB.theaters.map((t, i) => `<tr><td>${esc(t.region)}</td><td><input data-th="${i}" data-k="name" value="${esc(t.name)}" placeholder="극장 이름"></td>
+      <td><input type="text" data-th="${i}" data-k="time" value="${esc(t.time)}" placeholder="0째주0요일 14시"></td></tr>`).join('')}</table></div></div>`;
+}
+
+/* ---------- 5. 지회 화면 ---------- */
+function vMine() {
+  const r = S.region, th = theaterOf(r);
+  const list = [...DB.notices].sort((a, b) => b.month.localeCompare(a.month));
+  const card = n => {
+    const st = nState(n), lab = STATE_LABEL[st], mine = DB.screenings.filter(s => s.noticeId === n.id && s.region === r), abs = mine.find(s => s.status === 'absent');
+    const open = st === 'open' && USER.can_write;
+    return `<div class="card"><div class="nhead"><div><h3 style="margin:0">${fM(n.month)} 영화가 있는 날 상영 안내</h3><span class="chip ${lab[1]}">${lab[0]}</span>
+      <span class="small" style="color:#c0392b"><b>신청 마감일 ${fDW(n.deadline)}</b></span></div>
+      <div>${abs ? `<button class="btn s" data-act="cancelAbsent" data-id="${abs.id}" ${open ? '' : 'disabled'}>불참 취소</button>` :
+        `<button class="btn p s" data-act="newScreening" data-id="${n.id}" ${open ? '' : 'disabled'}>+ 상영 회신</button> <button class="btn s" data-act="absent" data-id="${n.id}" ${open ? '' : 'disabled'}>불참</button>`}</div></div>
+      <div class="wrap"><table><tr><th>상영작</th><th>상영 기간</th><th>비고</th></tr>${n.films.map(f => `<tr><td>${esc(f.title)}</td><td>${fMD(f.from)} ~ ${fMD(f.to)}</td><td>${esc(f.remark)}</td></tr>`).join('')}</table></div>
+      ${n.memo ? `<p class="small" style="white-space:pre-wrap">${esc(n.memo)}</p>` : ''}
+      ${abs ? `<p class="chip no">불참 · ${esc(abs.reason)}</p>` : mine.length ? `<div class="wrap"><table><tr><th>상영작</th><th>확정 일정</th><th class="n">예상</th><th class="n">실적</th><th></th></tr>
+      ${mine.map(s => `<tr><td>${esc(s.film)}</td><td>${fDW(s.date)} ${esc(s.time)}</td><td class="n">${num(s.expected)}</td><td class="n">${s.status === 'done' ? `<b>${sumC(s.counts)}</b>` : '<span class="chip wait">미입력</span>'}</td>
+        <td class="n"><button class="btn s p" data-act="editResult" data-id="${s.id}" ${USER.can_write ? '' : 'disabled'}>${s.status === 'done' ? '실적 수정' : '관람실적 입력'}</button>
+        <button class="btn s" data-act="editScreening" data-id="${s.id}">일정 수정</button> <button class="btn s d" data-act="delScreening" data-id="${s.id}">삭제</button></td></tr>`).join('')}</table></div>`
+        : `<p class="muted small">아직 회신하지 않았습니다.</p>`}</div>`;
+  };
+  return `${USER.can_write ? '' : '<div class="notice-err">영화실적 입력 권한이 없어 보기만 할 수 있습니다. 지회 담당자에게 [영화실적: 상영 회신·관람 실적 입력] 권한을 요청하세요.</div>'}<p class="muted">신청 극장: <b>${esc(th ? th.name : '미설정')}</b> · 고정 상영시간 ${esc(th ? th.time : '-')}</p>${list.map(card).join('') || '<div class="card empty">도협회 공지가 아직 없습니다.</div>'}`;
+}
+
+/* ---------- 6. 다이얼로그 ---------- */
+const dlg = () => $('#dlg');
+function openDlg(html) { dlg().innerHTML = html; if (!dlg().open) dlg().showModal(); }
+const closeDlg = () => dlg().open && dlg().close();
+const btns = (extra = '') => `<menu><button type="button" class="btn" data-act="closeDlg">취소</button>${extra}<button class="btn p">저장</button></menu>`;
+
+function filmRow(f = {}) {
+  return `<div class="frow"><label>상영작<input name="ft" value="${esc(f.title)}" required></label><label>시작일<input type="date" name="ff" value="${f.from || ''}" required></label>
+    <label>종료일<input type="date" name="fe" value="${f.to || ''}" required></label><label>비고<input name="fr" value="${esc(f.remark)}"></label>
+    <button type="button" class="btn s d" data-act="delFilm">✕</button></div>`;
+}
+function dlgNotice(id) {
+  const n = id ? nById(id) : { month: today().slice(0, 7), films: [{}], deadline: '', memo: '' };
+  openDlg(`<form data-form="saveNotice"><h3>${id ? '공지 수정' : '월별 공지 작성'}</h3><input type="hidden" name="id" value="${id || ''}">
+    <div class="row2"><label>상영 월<input type="month" name="month" value="${n.month}" required></label><label>회신 마감일<input type="date" name="deadline" value="${n.deadline}" required></label></div>
+    <div id="films">${n.films.map(filmRow).join('')}</div><button type="button" class="btn s" data-act="addFilm">+ 상영작 추가</button>
+    <label>공지사항<textarea name="memo" rows="4" placeholder="불참 시 사유 기재, 일정 변경은 신청 기간에 한정 등">${esc(n.memo)}</textarea></label>${btns()}</form>`);
+}
+// 고정 상영시간 글자('둘째주 목요일 14시', '14:30')에서 시:분만 꺼내 회신 시간 기본값으로
+function parseFixedTime(raw) {
+  const v = String(raw || '');
+  const m1 = v.match(/(\d{1,2}):(\d{2})/);
+  if (m1) return `${pad(m1[1])}:${m1[2]}`;
+  const m2 = v.match(/(\d{1,2})\s*시(?:\s*(\d{1,2})\s*분)?/);
+  if (m2) return `${pad(m2[1])}:${pad(m2[2] || 0)}`;
+  return '14:00';
+}
+function dlgScreening(nid, id) {
+  const n = nById(nid), s = id ? sById(id) : {}, th = theaterOf(S.region);
+  openDlg(`<form data-form="saveScreening"><h3>${fM(n.month)} 상영 회신</h3><input type="hidden" name="nid" value="${nid}"><input type="hidden" name="id" value="${id || ''}">
+    <label>극장<input value="${esc(th ? th.name : '')}" disabled></label>
+    <label>상영작<select name="film">${n.films.map(f => `<option value="${esc(f.title)}" ${f.title === s.film ? 'selected' : ''}>${esc(f.title)} (${fMD(f.from)}~${fMD(f.to)})</option>`).join('')}</select></label>
+    <div class="row2"><label>확정 상영일<input type="date" name="date" value="${s.date || ''}" required></label><label>상영 시간<input type="time" name="time" value="${s.time || parseFixedTime(th && th.time)}" required></label></div>
+    <label>예상 인원(명)<input type="number" min="0" name="expected" value="${s.expected ?? ''}" required></label>
+    <label>비고<input name="remark" value="${esc(s.remark)}"></label>${btns()}</form>`);
+}
+function dlgAbsent(nid) {
+  openDlg(`<form data-form="saveAbsent"><h3>불참 회신</h3><input type="hidden" name="nid" value="${nid}">
+    <label>불참 사유<textarea name="reason" rows="3" required placeholder="불참 사유를 꼭 적어 주세요"></textarea></label>${btns()}</form>`);
+}
+const attRow = (a = {}) => `<div class="arow"><input name="an" placeholder="성명" value="${esc(a.name)}"><select name="at">${CATS.map(k => `<option ${k === a.type ? 'selected' : ''}>${k}</option>`).join('')}</select><button type="button" class="btn s d" data-act="delAtt">✕</button></div>`;
+function dlgResult(id) {
+  const s = sById(id), c = s.counts || {};
+  openDlg(`<form data-form="saveResult"><h3>관람 실적 입력</h3><p class="hint">${esc(s.region)} · ${esc(s.theater)} · ${esc(s.film)} · ${fD(s.date)} ${esc(s.time)}</p><input type="hidden" name="id" value="${id}">
+    <div class="cnt">${CATS.map(k => `<label>${k}<input type="number" min="0" name="c_${k}" value="${num(c[k])}"></label>`).join('')}</div>
+    <p class="hint" id="cnt-hint">인원수를 직접 입력하거나, 아래에 명단을 입력하면 구분별 인원이 자동 집계됩니다.</p>
+    <div id="atts">${(s.attendees || []).map(attRow).join('')}</div><button type="button" class="btn s" data-act="addAtt">+ 이용자 명단 추가</button>
+    <p class="hint">※ 명단에는 개인정보(성명)가 포함됩니다. 필요한 경우에만 입력해 주세요.</p>${btns()}</form>`);
+  syncCounts();
+}
+function syncCounts() {
+  const rows = [...document.querySelectorAll('#atts .arow')].filter(r => r.querySelector('[name=an]').value.trim());
+  const on = rows.length > 0, t = {}; CATS.forEach(k => t[k] = 0);
+  rows.forEach(r => t[r.querySelector('[name=at]').value]++);
+  CATS.forEach(k => { const i = document.querySelector(`[name=c_${k}]`); if (!i) return; i.readOnly = on; if (on) i.value = t[k]; });
+  const h = $('#cnt-hint'); if (h) h.textContent = on ? `명단 ${rows.length}명 기준으로 자동 집계됩니다.` : '인원수를 직접 입력하거나, 아래에 명단을 입력하면 구분별 인원이 자동 집계됩니다.';
+}
+
+/* ---------- 7. 동작 ---------- */
+const A = {
+  closeDlg, resetF() { S.f = { from: '', to: '', region: '', theater: '', film: '', group: 'list' }; },
+  newNotice() { dlgNotice(); }, editNotice(el) { dlgNotice(el.dataset.id); },
+  goReply(el) { S.replyNotice = el.dataset.id; S.tab = 'reply'; },
+  async delNotice(el) {
+    const id = el.dataset.id;
+    if (DB.screenings.some(s => s.noticeId === id && s.status === 'done')) { alert('관람 실적이 입력된 공지는 삭제할 수 없습니다.'); return 'keep'; }
+    if (!confirm('이 공지와 지회 회신 내역을 삭제할까요?')) return 'keep';
+    await rpc('movie_notice_delete', { p_id: Number(id) }); await reload();
+  },
+  addFilm() { $('#films').insertAdjacentHTML('beforeend', filmRow()); }, delFilm(el) { if (document.querySelectorAll('.frow').length > 1) el.closest('.frow').remove(); },
+  newScreening(el) { dlgScreening(el.dataset.id); }, editScreening(el) { const s = sById(el.dataset.id); dlgScreening(s.noticeId, s.id); },
+  absent(el) { dlgAbsent(el.dataset.id); },
+  async cancelAbsent(el) { await rpc('movie_screening_delete', { p_id: Number(el.dataset.id) }); await reload(); },
+  async delScreening(el) { if (!confirm('이 상영 회신을 삭제할까요?')) return 'keep'; await rpc('movie_screening_delete', { p_id: Number(el.dataset.id) }); await reload(); },
+  editResult(el) { const s = sById(el.dataset.id); if (s && s.status !== 'absent') dlgResult(s.id); return 'keep'; },
+  addAtt() { $('#atts').insertAdjacentHTML('beforeend', attRow()); }, delAtt(el) { el.closest('.arow').remove(); syncCounts(); return 'keep'; },
+
+  csv() {
+    const F = S.f, fix = S.role === 'region' ? S.region : '';
+    const list = done().filter(s => (!fix || s.region === fix) && (!F.from || s.date >= F.from) && (!F.to || s.date <= F.to) && (!F.region || s.region === F.region) && (!F.theater || s.theater === F.theater) && (!F.film || s.film === F.film)).sort((a, b) => a.date.localeCompare(b.date));
+    const rows = [['순번', '지역', '날짜', '시간', '상영관', '상영작', '관람인원', ...CATS], ...list.map((s, i) => [i + 1, s.region, s.date, s.time, s.theater, s.film, sumC(s.counts), ...CATS.map(k => num(s.counts && s.counts[k]))])];
+    const csv = '\ufeff' + rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',')).join('\r\n');
+    const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' })); a.download = `영화관람실적_${today()}.csv`; a.click(); URL.revokeObjectURL(a.href);
+    return 'keep';
+  },
+};
+const FORMS = {
+  async saveNotice(f) {
+    const q = n => [...f.querySelectorAll(`[name=${n}]`)].map(i => i.value.trim());
+    const films = q('ft').map((t, i) => ({ title: t, from: q('ff')[i], to: q('fe')[i], remark: q('fr')[i] })).filter(x => x.title);
+    if (!films.length) { alert('상영작을 1개 이상 입력해 주세요.'); return false; }
+    if (films.some(x => x.to < x.from)) { alert('상영 종료일이 시작일보다 빠릅니다.'); return false; }
+    await rpc('movie_notice_save', { p: { id: f.elements.id.value, month: f.elements.month.value, deadline: f.elements.deadline.value, memo: f.elements.memo.value.trim(), films } });
+  },
+  async saveScreening(f) {
+    const n = nById(f.elements.nid.value), film = n.films.find(x => x.title === f.elements.film.value), d = f.elements.date.value;
+    if (film && (d < film.from || d > film.to) && !confirm(`선택한 날짜가 상영 기간(${fMD(film.from)}~${fMD(film.to)})을 벗어났습니다. 그래도 저장할까요?`)) return false;
+    await rpc('movie_screening_save', { p: { id: f.elements.id.value, noticeId: n.id, film: f.elements.film.value, date: d, time: f.elements.time.value, expected: num(f.elements.expected.value), remark: f.elements.remark.value.trim() } });
+  },
+  async saveAbsent(f) { await rpc('movie_absent', { p_notice: Number(f.elements.nid.value), p_reason: f.elements.reason.value.trim() }); },
+  async saveResult(f) {
+    const s = sById(f.elements.id.value), att = [...f.querySelectorAll('.arow')].map(r => ({ name: r.querySelector('[name=an]').value.trim(), type: r.querySelector('[name=at]').value })).filter(a => a.name);
+    const counts = {}; CATS.forEach(k => counts[k] = att.length ? att.filter(a => a.type === k).length : num(f.elements['c_' + k].value));
+    await rpc('movie_result_save', { p_id: Number(s.id), p_counts: counts, p_attendees: att });
+  }
+};
+
+/* ---------- 8. 렌더 · 이벤트 ---------- */
+function render() {
+  const adm = S.role === 'admin';
+  const tabs = adm ? [['dash', '연간 대시보드'], ['notice', '월별 공지'], ['reply', '회신 현황'], ['rec', '실적 조회'], ['theater', '극장 설정']] : [['mine', '공지 · 회신'], ['myrec', '우리 지역 실적']];
+  if (!tabs.some(t => t[0] === S.tab)) S.tab = tabs[0][0];
+  const view = { dash: vDash, notice: vNotice, reply: vReply, rec: () => vRec(''), theater: vTheater, mine: vMine, myrec: () => vRec(S.region) }[S.tab]();
+  $('#gm-root').innerHTML = `<div class="bar-top"><h2>🎬 영화가 있는 날 관람 실적</h2>
+    <div class="who">${esc(adm ? '도협회' : S.region)} · ${esc(USER.name || '')}</div></div>
+    <div class="tabs" role="tablist">${tabs.map(t => `<button role="tab" aria-selected="${t[0] === S.tab}" data-tab="${t[0]}">${t[1]}</button>`).join('')}</div>
+    <main>${view}</main><dialog id="dlg"></dialog>`;
+}
+const commit = () => { save(); const open = dlg() && dlg().open; closeDlg(); render(); };
+
+document.addEventListener('click', e => {
+  const tab = e.target.closest('[data-tab]'); if (tab) { S.tab = tab.dataset.tab; return render(); }
+  const el = e.target.closest('[data-act]'); if (!el || !A[el.dataset.act]) return;
+  if (el.disabled) return;
+  Promise.resolve().then(() => A[el.dataset.act](el)).then(r => {
+    if (r === 'keep' || ['newNotice', 'editNotice', 'addFilm', 'delFilm', 'newScreening', 'editScreening', 'absent', 'addAtt', 'closeDlg'].includes(el.dataset.act)) return;
+    render();
+  }).catch(err => alert(err.message));
+});
+document.addEventListener('submit', async e => {
+  const f = e.target.closest('[data-form]'); if (!f) return; e.preventDefault();
+  const btn = f.querySelector('button.p'); if (btn) btn.disabled = true;
+  try { if (await FORMS[f.dataset.form](f) === false) { if (btn) btn.disabled = false; return; } await reload(); closeDlg(); render(); }
+  catch (err) { alert(err.message); if (btn) btn.disabled = false; }
+});
+document.addEventListener('change', e => {
+  const t = e.target;
+  if (t.closest('#atts')) return syncCounts();
+  if (t.dataset.bind) { const k = t.dataset.bind; S[k] = k === 'year' ? +t.value : t.value; if (k === 'role') S.tab = ''; return render(); }
+  if (t.dataset.f) { S.f[t.dataset.f] = t.value; return render(); }
+  if (t.dataset.th !== undefined) {   // 극장 설정: 바로 저장
+    const th = DB.theaters[+t.dataset.th]; th[t.dataset.k] = t.value.trim();
+    rpc('movie_theater_save', { p_chapter: th.chapter_id, p_name: th.name, p_time: th.time }).catch(err => alert(err.message));
+  }
+});
+document.addEventListener('input', e => { if (e.target.closest('#atts')) syncCounts(); });
+
+(async function init() {
+  const { data: { session } } = await sb.auth.getSession();
+  if (!session) { $('#gm-root').innerHTML = '<main><div class="card"><h3>로그인이 필요합니다</h3><p class="muted">업무 시스템 홈에서 로그인한 뒤 다시 열어 주세요.</p><a class="btn p" href="/">업무 시스템 홈으로</a></div></main>'; return; }
+  try { await reload(); } catch (e) { $('#gm-root').innerHTML = `<main><div class="card"><h3>영화실적을 열 수 없습니다</h3><p class="muted">${esc(e.message)}</p></div></main>`; return; }
+  render();
+})();
+</script>
+</body>
+</html>

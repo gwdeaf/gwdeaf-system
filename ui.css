@@ -37,6 +37,18 @@ table{font-variant-numeric:tabular-nums}
   --ink:#1f2937; --muted:#6b7280; --line:#e5e9f2;
 }
 
+/* 화면 안 메뉴(탭): 밑줄 탭 — 지금 메뉴는 파란 글씨 + 밑줄, 나머지는 회색 글씨
+   (회원관리·사업실적·통역·회계·공문·증명서·교재 주문의 위쪽 메뉴, 직원·권한·기관 설정의 탭) */
+nav#topNav{background:#fff!important;border-bottom:1px solid var(--ui-line)!important;padding:4px 16px 0!important;gap:2px!important;
+  flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none}
+nav#topNav::-webkit-scrollbar{display:none}
+nav#topNav button{flex:none!important;width:auto!important;min-height:0!important;margin:0 0 -1px!important;padding:10px 14px!important;
+  background:none!important;border:0!important;border-bottom:3px solid transparent!important;border-radius:0!important;box-shadow:none!important;
+  color:var(--ui-mute)!important;font-size:14px!important;font-weight:500!important;white-space:nowrap}
+nav#topNav button:hover{color:var(--ui-text)!important}
+nav#topNav button.on,nav#topNav[data-sub] button:not(.sub),nav#topNav button[aria-selected=true]{color:var(--ui-pri)!important;border-bottom-color:var(--ui-pri)!important;font-weight:700!important}
+nav#topNav #logoutBtn{margin-left:auto!important;color:var(--ui-mute)!important;border-bottom-color:transparent!important;font-weight:500!important}
+
 /* 인쇄할 때는 화면용 꾸밈을 쓰지 않음 */
 @media print{
   body{background:#fff;letter-spacing:normal;word-break:normal;-webkit-font-smoothing:auto}

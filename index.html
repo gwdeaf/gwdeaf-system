@@ -661,6 +661,7 @@ function renderNav(){
     if (ME.is_hq && (ME.role === 'admin' || (ME.perms || []).indexOf('perf.review') >= 0)) h += kidHtml('perf', false, 'settings', '사업 분류');
   }
   if (hasPerm('member.')) h += topHtml('member:s:', '👥', '회원관리', "go('member')");
+  if (hasPerm('movie.')) h += topHtml('movie:s:', '🎬', '영화실적', "go('movie')");
   if (isAttAdmin() || isVehAdmin() || ME.can_manage) h += '<div class="sec">시스템 관리</div>';
   if (ME.can_manage || isAttAdmin()) {   // 🏢 기관 설정: 기관 정보·부서·결재라인·출퇴근 설정 등을 한곳에
     h += grpHtml('🏢', '기관 설정');
@@ -767,7 +768,7 @@ function go(kind, tab, adm){
   } else {
     var url = SUBAPP[kind] ? SUBAPP[kind] + '?embed=1&go=' + encodeURIComponent(tab)
       : kind === 'att' ? '/att/?embed=1&mode=' + (adm ? 'admin' : 'staff') + '&go=' + encodeURIComponent(tab)
-      : kind === 'car' ? '/car/?embed=1' + (adm ? '&admin=1' : '') : kind === 'edu' ? '/edu/?embed=1' : kind === 'doc' ? '/doc/?embed=1' : kind === 'interp' ? '/interp/?embed=1' : kind === 'worklog' ? '/worklog/?embed=1' : kind === 'acct' ? '/acct/?embed=1' : kind === 'cert' ? '/cert/?embed=1' : kind === 'member' ? '/member/?embed=1' : kind === 'org' ? '/access.html?embed=1&view=org&go=' + encodeURIComponent(tab || 'org') : '/access.html?embed=1';
+      : kind === 'car' ? '/car/?embed=1' + (adm ? '&admin=1' : '') : kind === 'edu' ? '/edu/?embed=1' : kind === 'doc' ? '/doc/?embed=1' : kind === 'interp' ? '/interp/?embed=1' : kind === 'worklog' ? '/worklog/?embed=1' : kind === 'acct' ? '/acct/?embed=1' : kind === 'cert' ? '/cert/?embed=1' : kind === 'member' ? '/member/?embed=1' : kind === 'movie' ? '/movie/?embed=1' : kind === 'org' ? '/access.html?embed=1&view=org&go=' + encodeURIComponent(tab || 'org') : '/access.html?embed=1';
     FR = { key:key, ready:false, tab:tab, loadedGo:tab };
     $('floading').classList.remove('hide'); fr.src = url;
   }
@@ -786,6 +787,7 @@ var PV_PERMS = [
   ['🏖 근태', [['att.chapter_view','지회 휴가·출장 전체 조회'],['att.chapter_manage','휴가·출장 관리']]],
   ['💰 회계', [['acct.view','회계 조회'],['acct.write','회계 작성 (품의·결의)'],['acct.approve','회계 결재']]],
   ['📜 증명 · 👥 회원 · 📈 실적', [['cert.view','증명 발급대장 조회'],['cert.issue','증명서 발급'],['member.view','회원명단 조회'],['member.write','회원·회비 입력'],['perf.view','사업실적 조회'],['perf.write','사업실적 입력'],['perf.manage','사업 등록·분기 보고']]],
+  ['🎬 영화실적', [['movie.write','상영 회신·관람 실적 입력']]],
   ['🔑 관리', [['core.manage_staff','공동 관리자 (직원·권한 관리)']]]];
 var PV_PRESET = {
   staff: [],

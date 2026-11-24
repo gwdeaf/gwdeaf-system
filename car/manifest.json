@@ -2,16 +2,22 @@
   "name": "차량운행일지",
   "short_name": "운행일지",
   "start_url": "/car/",
+  "scope": "/car/",
   "display": "standalone",
   "background_color": "#f4f2ee",
   "theme_color": "#3b5bdb",
   "icons": [
     {
-      "src": "/car/icon.jpg",
-      "sizes": "any",
-      "type": "image/jpeg",
+      "src": "/car/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/car/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
       "purpose": "any"
     }
-  ],
-  "scope": "/car/"
+  ]
 }

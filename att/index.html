@@ -2012,6 +2012,9 @@
         <input type="text" id="cfg-att-lat" placeholder="위도" style="max-width:150px;"> <input type="text" id="cfg-att-lng" placeholder="경도" style="max-width:150px;margin-left:6px;">
         <button class="btn btn-outline btn-sm" onclick="attUseHere()" style="margin-left:8px;white-space:nowrap;">📍 현재 위치로</button></div>
       <div class="hint" id="cfg-att-locknote" style="display:none;margin-bottom:0.5rem;">🔒 회색으로 잠긴 항목은 도협회 공통 설정이라 지회에서 바꿀 수 없습니다.</div>
+      <div class="field-row"><label>사무실 인터넷 주소</label><input type="text" id="cfg-att-ips" placeholder="예) 14.54.94.66 (여러 개는 쉼표로)" style="max-width:320px;">
+        <button class="btn btn-outline btn-sm" onclick="attAddMyIp()" style="margin-left:8px;white-space:nowrap;">🖥️ 지금 이 PC 주소 넣기</button></div>
+      <div class="hint" style="margin:-0.2rem 0 0.6rem;">PC는 GPS가 없어 위치가 부정확합니다. 사무실 인터넷(공유기·와이파이)으로 접속해 출퇴근하면 위치와 상관없이 <b>근무지 안</b>으로 기록됩니다. 사무실 PC에서 [지금 이 PC 주소 넣기] → 저장하세요. 인터넷 회사가 주소를 바꾸면 다시 넣어야 합니다.</div>
       <div class="field-row"><label>허용 반경 (m)</label><input type="number" id="cfg-att-radius" min="30" max="5000" step="10" style="max-width:150px;"><span class="hint" style="margin-left:8px;">이 거리 안이면 사유 없이 기록 (기본 300m)</span></div>
       <div class="field-row"><label>기본 출근 / 퇴근</label><input type="time" id="cfg-att-in" style="max-width:130px;"> <input type="time" id="cfg-att-out" style="max-width:130px;margin-left:6px;"><span class="hint" style="margin-left:8px;">직원별 기준은 [직원 관리]에서 따로 지정 (단축근무 등)</span></div>
       <div class="field-row" id="cfg-att-keyrow"><label>카카오 REST API 키</label><input type="password" id="cfg-att-key" placeholder="저장하면 다시 보이지 않습니다" autocomplete="off"><span id="cfg-att-keystate" style="font-size:0.8rem;margin-left:8px;white-space:nowrap;"></span></div>
@@ -6831,12 +6834,20 @@ function punchStart(type) {
   setPunchBusy(true);
   punchAlert('📡 현재 위치를 확인하는 중입니다... (위치 권한 요청이 뜨면 [허용]을 눌러 주세요)', 'info');
   if (!navigator.geolocation) { punchSend(type, null, '', false, '', '이 브라우저는 위치 기능을 지원하지 않습니다.'); return; }
-  navigator.geolocation.getCurrentPosition(function(pos) {
-    punchSend(type, {lat: pos.coords.latitude, lng: pos.coords.longitude, acc: pos.coords.accuracy}, '', false, '', '');
-  }, function(err) {
+  // 위치를 몇 초 동안 여러 번 재서 가장 정확한 값을 씀 (50m 안으로 잡히면 바로 보냄, 최대 6초)
+  var best = null, done = false, wid = null, tm = null;
+  var finish = function(err) {
+    if (done) return; done = true;
+    if (wid != null) navigator.geolocation.clearWatch(wid); clearTimeout(tm);
+    if (best) { punchSend(type, {lat: best.coords.latitude, lng: best.coords.longitude, acc: best.coords.accuracy}, '', false, '', ''); return; }
     var msg = err && err.code === 1 ? '위치 권한이 꺼져 있습니다. 브라우저(주소창 왼쪽 자물쇠/설정)에서 이 사이트의 위치를 허용하면 주소가 함께 기록됩니다.' : '현재 위치를 확인하지 못했습니다. (실내이거나 GPS가 꺼져 있을 수 있어요)';
     punchSend(type, null, '', false, '', msg);
-  }, {enableHighAccuracy: true, timeout: 15000, maximumAge: 0});
+  };
+  wid = navigator.geolocation.watchPosition(function(pos) {
+    if (!best || pos.coords.accuracy < best.coords.accuracy) best = pos;
+    if (best.coords.accuracy <= 50) finish();
+  }, function(err) { if (err && err.code === 1) finish(err); }, {enableHighAccuracy: true, timeout: 15000, maximumAge: 0});
+  tm = setTimeout(function() { if (best) finish(); else tm = setTimeout(function() { finish({ code: 3 }); }, 9000); }, 6000);
 }
 function punchSend(type, geo, reason, saveReason, place, geoNote) {
   punchState.pending = {type: type, geo: geo, geoNote: geoNote || ''};
@@ -7250,7 +7261,7 @@ function loadAttendSettings() {
   gasRun('getAttendAdminConfig', null, function(c) {
     if (!c || !c.ok) return;
     var set = function(id, v) { var el = document.getElementById(id); if (el) el.value = v == null ? '' : v; };
-    set('cfg-att-place', c.placeName); set('cfg-att-addr', c.address); set('cfg-att-lat', c.lat); set('cfg-att-lng', c.lng); set('cfg-att-radius', c.radius); set('cfg-att-in', c.stdIn); set('cfg-att-out', c.stdOut);
+    set('cfg-att-ips', c.officeIps); set('cfg-att-place', c.placeName); set('cfg-att-addr', c.address); set('cfg-att-lat', c.lat); set('cfg-att-lng', c.lng); set('cfg-att-radius', c.radius); set('cfg-att-in', c.stdIn); set('cfg-att-out', c.stdOut);
     var st = document.getElementById('cfg-att-keystate'); if (st) { st.textContent = c.hasKey ? '✅ 저장됨' : '⚪ 미설정'; st.style.color = c.hasKey ? 'var(--success)' : 'var(--text-muted)'; }
     var shared = c.keySource === 'shared';   // 공용 키가 있으면 지회는 키 입력 칸·발급 안내를 숨김
     [['cfg-att-keyrow', !shared], ['cfg-att-keyguide', !shared], ['cfg-att-keydel', !shared]].forEach(function(x) { var el = document.getElementById(x[0]); if (el) el.style.display = x[1] ? '' : 'none'; });
@@ -7272,6 +7283,16 @@ function attFindCoord() {
     } else attMsg((res && res.msg) || '찾지 못했습니다.', 'warn');
   }, function(m) { attMsg('오류: ' + m, 'warn'); });
 }
+function attAddMyIp() {
+  attMsg('지금 접속한 인터넷 주소를 확인하는 중...', 'info');
+  gasRun('myIp', null, function(r) {
+    var ip = r && r.ip; if (!ip) { attMsg('주소를 확인하지 못했습니다.', 'warn'); return; }
+    var el = document.getElementById('cfg-att-ips'), cur = (el.value || '').split(/[\s,]+/).filter(Boolean);
+    if (cur.indexOf(ip) < 0) cur.push(ip);
+    el.value = cur.join(', ');
+    attMsg('✅ ' + ip + ' 을(를) 넣었습니다. 사무실 인터넷에 연결된 상태인지 확인하고 [출퇴근 설정 저장]을 눌러 주세요.', 'ok');
+  }, function(m) { attMsg('오류: ' + m, 'warn'); });
+}
 function attUseHere() {
   if (!navigator.geolocation) { attMsg('이 브라우저는 위치 기능을 지원하지 않습니다.', 'warn'); return; }
   attMsg('현재 위치를 확인하는 중...', 'info');
@@ -7281,7 +7302,7 @@ function attUseHere() {
   }, function() { attMsg('위치를 확인하지 못했습니다. 브라우저의 위치 권한을 허용해 주세요.', 'warn'); }, {enableHighAccuracy: true, timeout: 15000});
 }
 function saveAttendSettings() {
-  var p = {placeName: _aeVal('cfg-att-place'), address: _aeVal('cfg-att-addr'), lat: _aeVal('cfg-att-lat'), lng: _aeVal('cfg-att-lng'), radius: _aeVal('cfg-att-radius') || 300, stdIn: _aeVal('cfg-att-in') || '09:00', stdOut: _aeVal('cfg-att-out') || '18:00'};
+  var p = {officeIps: _aeVal('cfg-att-ips'), placeName: _aeVal('cfg-att-place'), address: _aeVal('cfg-att-addr'), lat: _aeVal('cfg-att-lat'), lng: _aeVal('cfg-att-lng'), radius: _aeVal('cfg-att-radius') || 300, stdIn: _aeVal('cfg-att-in') || '09:00', stdOut: _aeVal('cfg-att-out') || '18:00'};
   var key = _aeVal('cfg-att-key'); if (key) p.kakaoKey = key;
   attMsg('저장 중...', 'info');
   gasRun('saveAttendConfig', JSON.stringify(p), function(res) {

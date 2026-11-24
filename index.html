@@ -369,6 +369,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 /* 화면 모드: 다크 = 전체 색 뒤집기 (그림·사진·동영상은 원래 색) */
 html.dark{filter:invert(.9) hue-rotate(180deg);background:#111}
 html.dark img,html.dark video,html.dark canvas,html.dark .noinv{filter:invert(1) hue-rotate(180deg)}
+html.dark .emo{filter:invert(1) hue-rotate(180deg) saturate(.7) brightness(.92)}   /* 다크: 이모지 아이콘은 원래 색으로 되돌리고 살짝 차분하게 */
 .thm{display:flex;border:1px solid var(--line);background:#fff;border-radius:10px;padding:2px;gap:2px}
 .thm button{border:0;background:none;border-radius:8px;padding:5px 9px;font-size:.82rem;font-weight:700;color:var(--mute);cursor:pointer;white-space:nowrap}
 .thm button.on{background:var(--pri-soft);color:var(--pri)}
@@ -852,8 +853,50 @@ function applyTheme(){
   document.documentElement.classList.toggle('dark', THEME === 'dark');
   document.querySelectorAll('.thm button').forEach(function(b){ b.classList.toggle('on', b.dataset.th === THEME); });
 }
-function setTheme(v){ THEME = v === 'dark' ? 'dark' : 'light'; try { localStorage.setItem('gw-theme', THEME); } catch(e){} applyTheme(); }
+function setTheme(v){ THEME = v === 'dark' ? 'dark' : 'light'; try { localStorage.setItem('gw-theme', THEME); } catch(e){} applyTheme(); emoAll(); }
+
+/* 다크 모드는 화면 전체 색을 뒤집어서 만들기 때문에 이모지 아이콘 색이 탁해집니다.
+   다크일 때만 이모지를 <span class="emo">로 감싸 원래 색(조금 차분하게)으로 되돌립니다. 안쪽 화면(iframe)도 같이. */
+var EMO_T = /\p{Extended_Pictographic}/u;
+var EMO_G = /(\p{Extended_Pictographic}(?:\uFE0F|\u200D\p{Extended_Pictographic}|[\u{1F3FB}-\u{1F3FF}])*\uFE0F?)/gu;
+var EMO_CSS = 'html.emo-dark .emo{filter:invert(1) hue-rotate(180deg) saturate(.7) brightness(.92)}';
+function emoWrap(root){
+  if (!root) return;
+  var doc = root.ownerDocument || root, list = [], w;
+  try {
+    w = doc.createTreeWalker(root, 4, { acceptNode: function(n){
+      var p = n.parentNode;
+      if (!p || /^(SCRIPT|STYLE|TEXTAREA|OPTION|TITLE|NOSCRIPT)$/.test(p.nodeName) || p.isContentEditable || (p.classList && p.classList.contains('emo'))) return 2;
+      return EMO_T.test(n.nodeValue) ? 1 : 2; } });
+    while (w.nextNode()) list.push(w.currentNode);
+  } catch(e){ return; }
+  list.forEach(function(n){
+    var parts = n.nodeValue.split(EMO_G); if (parts.length < 2 || !n.parentNode) return;
+    var f = doc.createDocumentFragment();
+    parts.forEach(function(t, i){ if (!t) return; if (i % 2) { var sp = doc.createElement('span'); sp.className = 'emo'; sp.textContent = t; f.appendChild(sp); } else f.appendChild(doc.createTextNode(t)); });
+    n.parentNode.replaceChild(f, n);
+  });
+}
+function emoWatch(doc){   // 화면이 바뀔 때마다 새로 생긴 이모지도 감싸기 (다크일 때만)
+  if (!doc || !doc.body || doc.__emoObs) return;
+  var busy = false;
+  doc.__emoObs = new MutationObserver(function(){ if (THEME !== 'dark' || busy) return; busy = true; requestAnimationFrame(function(){ emoWrap(doc.body); busy = false; }); });
+  doc.__emoObs.observe(doc.body, { childList: true, subtree: true, characterData: true });
+}
+function emoAll(){
+  if (THEME !== 'dark') { try { var fd0 = $('frame').contentDocument; if (fd0) fd0.documentElement.classList.remove('emo-dark'); } catch(e){} return; }
+  emoWrap(document.body); emoWatch(document);
+  try {
+    var fd = $('frame').contentDocument;
+    if (fd && fd.body) {
+      fd.documentElement.classList.add('emo-dark');   // 안쪽 화면에는 .emo 되돌리기 규칙만 (전체 반전은 바깥 화면이 이미 함)
+      if (!fd.getElementById('emo-css')) { var st = fd.createElement('style'); st.id = 'emo-css'; st.textContent = EMO_CSS; fd.head.appendChild(st); }
+      emoWrap(fd.body); emoWatch(fd);
+    }
+  } catch(e){}
+}
 applyTheme();
+document.addEventListener('DOMContentLoaded', emoAll);
 var FS = 1; try { FS = parseFloat(localStorage.getItem('gw-fs')) || 1; } catch(e){}
 var FS_LV = [1, 1.15];   // 보통(아이콘 한 줄 4개) · 크게(한 줄 3개)
 if (FS_LV.indexOf(FS) < 0) FS = FS > 1 ? 1.15 : 1;
@@ -867,6 +910,7 @@ function stepFs(d){ var i = Math.max(0, Math.min(FS_LV.length - 1, FS_LV.indexOf
 function setFs(v){ FS = v; try { localStorage.setItem('gw-fs', String(v)); } catch(e){} applyFs(); }
 applyFs();
 $('frame').addEventListener('load', applyFs);
+$('frame').addEventListener('load', emoAll);
 $('frame').addEventListener('load', function(){ if (FR.key && FR.key.indexOf('att') !== 0) $('floading').classList.add('hide'); });
 function subKind(){ return FR.key ? FR.key.split(':')[0] : ''; }
 window.addEventListener('message', function(e){

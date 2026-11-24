@@ -84,6 +84,9 @@ if (EMBED) document.body.classList.add('embed');
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 async function rpc(name, a) { const { data, error } = await sb.rpc(name, a || {}); if (error) throw new Error(error.message || '오류가 났습니다.'); return data; }
 const $ = id => document.getElementById(id);
+
+// 화면 순서 지키기: 메뉴를 빨리 바꿔 누르면, 늦게 도착한 이전 화면이 지금 화면을 덮어쓰지 않게 함
+let VTK = 0; function vtok() { return ++VTK; } function vw(t) { return t === VTK ? $('view') : document.createElement('div'); }
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const won = n => Number(n || 0).toLocaleString('ko-KR');
 function msg(t, type) { const m = $('msg'); m.textContent = t || ''; m.className = 'msg ' + (type || ''); if (t) window.scrollTo(0, 0); }
@@ -98,10 +101,10 @@ window.addEventListener('message', e => { if (e.origin !== location.origin || !e
 function badgeTell(n) { if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'book-badge', n: n }, location.origin); } catch (e) {} }
 
 let D = null, CART = {}, F = { receive: 'delivery', ship: 'prepaid', st: false, rc: false, tax: false }, ORDERS = [], AF = '접수';
-async function init() {
+async function init() { const VT = vtok();
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { $('view').innerHTML = '<div class="card">업무 시스템에 로그인한 뒤 다시 열어 주세요.</div>'; return; }
-  try { D = await rpc('book_init'); } catch (e) { $('view').innerHTML = '<div class="card">' + esc(e.message) + '</div>'; return; }
+  if (!session) { vw(VT).innerHTML = '<div class="card">업무 시스템에 로그인한 뒤 다시 열어 주세요.</div>'; return; }
+  try { D = await rpc('book_init'); } catch (e) { vw(VT).innerHTML = '<div class="card">' + esc(e.message) + '</div>'; return; }
   $('who').textContent = D.me.chapter_name + ' · ' + (D.me.name || D.me.email);
   document.querySelectorAll('.mgr').forEach(b => b.style.display = D.mgr ? '' : 'none');
   setBadge(D.badge);
@@ -126,6 +129,7 @@ function cartTotal() { return itemsOf().reduce((s, b) => s + (CART[b.id] ? b.pri
 function shipNow() { const tot = cartTotal(); return F.receive === 'pickup' ? 'pickup' : tot >= freeAt() ? 'free' : F.ship; }
 function shipLabel(s, fee) { return s === 'prepaid' ? '선불 (택배비 ' + won(fee || preFee()) + '원 별도)' : s === 'postpaid' ? '착불' : s === 'free' ? '택배 (배송비 무료)' : '인편 (직접 수령)'; }
 function showOrder() {
+  vtok();
   const v = $('view'), me = D.me;
   v.innerHTML = `<div class="card"><h2>📖 교재 선택</h2><div id="books"></div></div>
   <div class="card"><h2>🚚 주문자 · 배송</h2><div class="grid2">
@@ -249,10 +253,10 @@ function itemsText(o) { return (o.items || []).map(i => esc(i.name) + ' ' + i.qt
 function itemsList(o) {   // 교재마다 한 줄씩
   return `<table class="t" style="margin-top:8px;font-size:14px"><tr><th>교재</th><th class="c" style="width:70px">수량</th><th class="r" style="width:90px">단가</th><th class="r" style="width:100px">금액</th></tr>${(o.items || []).map(i => `<tr><td>${esc(i.name)}</td><td class="c">${i.qty}권</td><td class="r">${won(i.price)}</td><td class="r">${won(i.price * i.qty)}</td></tr>`).join('')}<tr><td colspan="3" class="r"><b>합계</b></td><td class="r"><b>${won(o.total)}원</b></td></tr></table>`;
 }
-async function showMy() {
-  $('view').innerHTML = '<div class="card">불러오는 중…</div>';
+async function showMy() { const VT = vtok();
+  vw(VT).innerHTML = '<div class="card">불러오는 중…</div>';
   try { ORDERS = await rpc('book_orders_list', { p_all: false }); } catch (e) { return msg(e.message, 'err'); }
-  $('view').innerHTML = `<div class="card"><h2>📋 우리 지회 주문 내역</h2>${ORDERS.length ? ORDERS.map(o => `<div class="ord"><div class="top"><span class="no">${esc(o.order_no)}</span><span class="chip s-${o.status}">${o.status === '주문확인' ? '주문 확인' : o.status === '발송완료' ? '발송 완료' : o.status}</span><span class="hint" style="margin:0">${esc(String(o.created_at).slice(0, 10))} · ${esc(o.buyer_name)}</span></div>
+  vw(VT).innerHTML = `<div class="card"><h2>📋 우리 지회 주문 내역</h2>${ORDERS.length ? ORDERS.map(o => `<div class="ord"><div class="top"><span class="no">${esc(o.order_no)}</span><span class="chip s-${o.status}">${o.status === '주문확인' ? '주문 확인' : o.status === '발송완료' ? '발송 완료' : o.status}</span><span class="hint" style="margin:0">${esc(String(o.created_at).slice(0, 10))} · ${esc(o.buyer_name)}</span></div>
     ${itemsList(o)}<div class="hint">🚚 ${esc(shipLabel(o.ship, o.ship_fee))}</div>${docsDone(o)}
     <div style="margin-top:6px">${steps(o)}</div>${o.ship_note ? `<div class="hint">📮 ${esc(o.ship_note)}</div>` : ''}${o.need_tax ? `<div class="hint">🧾 전자계산서: ${esc(o.tax_status || '신청접수')}</div>` : ''}
     <div class="acts">${docBtns(o)}${o.status === '접수' ? `<button class="danger sm" onclick="cancelOrder(${o.id})">주문 취소</button>` : ''}</div></div>`).join('') : '<div class="hint">아직 주문한 내역이 없습니다.</div>'}</div>`;
@@ -260,12 +264,12 @@ async function showMy() {
 async function cancelOrder(id) { if (!confirm('이 주문을 취소할까요?')) return; try { await rpc('book_order_cancel', { p_id: id }); showMy(); msg('주문을 취소했습니다.', 'ok'); } catch (e) { msg(e.message, 'err'); } }
 
 // ═════════ 주문 관리 (도협회) ═════════
-async function showAdmin() {
-  $('view').innerHTML = '<div class="card">불러오는 중…</div>';
+async function showAdmin() { const VT = vtok();
+  vw(VT).innerHTML = '<div class="card">불러오는 중…</div>';
   try { ORDERS = await rpc('book_orders_list', { p_all: true }); } catch (e) { return msg(e.message, 'err'); }
   const n = k => ORDERS.filter(o => o.status === k).length; setBadge(n('접수'));
   const list = ORDERS.filter(o => !AF || o.status === AF), money = list.filter(o => o.status !== '취소').reduce((s, o) => s + o.total, 0);
-  $('view').innerHTML = `<div class="card"><h2>🗂 교재 주문 관리</h2><div class="opts" id="a-f">${[['접수', '접수 ' + n('접수')], ['주문확인', '주문 확인 ' + n('주문확인')], ['발송완료', '발송 완료 ' + n('발송완료')], ['취소', '취소 ' + n('취소')], ['', '전체 ' + ORDERS.length]].map(x => `<span class="opt ${AF === x[0] ? 'on' : ''}" data-v="${x[0]}">${x[1]}</span>`).join('')}</div>
+  vw(VT).innerHTML = `<div class="card"><h2>🗂 교재 주문 관리</h2><div class="opts" id="a-f">${[['접수', '접수 ' + n('접수')], ['주문확인', '주문 확인 ' + n('주문확인')], ['발송완료', '발송 완료 ' + n('발송완료')], ['취소', '취소 ' + n('취소')], ['', '전체 ' + ORDERS.length]].map(x => `<span class="opt ${AF === x[0] ? 'on' : ''}" data-v="${x[0]}">${x[1]}</span>`).join('')}</div>
     <div class="hint" style="margin:8px 0">${list.length}건 · 합계 ${won(money)}원 (취소 제외, 택배비 별도)</div>
     ${list.length ? list.map(o => `<div class="ord"><div class="top"><span class="no">${esc(o.order_no)}</span><span class="chip s-${o.status}">${o.status}</span><b>${esc(o.chapter_name)}</b><span class="hint" style="margin:0">${esc(o.buyer_name)} · ${esc(o.tel)} · ${esc(String(o.created_at).slice(0, 16).replace('T', ' '))}</span></div>
       ${itemsList(o)}
@@ -296,6 +300,7 @@ async function bizFile(id) {
 
 // ═════════ 교재 · 판매자 정보 (도협회) ═════════
 function showBooks() {
+  vtok();
   const opts = (sel, me) => '<option value="">없음</option>' + D.items.filter(b => b.id !== me).map(b => `<option value="${b.id}" ${sel === b.id ? 'selected' : ''}>${esc(b.name)}</option>`).join('');
   const K = ['상호', '사업자번호', '전화', '주소', '이메일', '은행', '계좌번호', '예금주', '선불 택배비', '무료배송 기준', '사업자등록증 링크', '통장사본 링크', '주문 안내'];
   $('view').innerHTML = `<div class="card"><h2>📚 교재 목록</h2><div style="overflow-x:auto"><table class="t"><tr><th>교재명</th><th>저자</th><th class="r">단가</th><th>주문 조건</th><th class="c">판매</th><th></th></tr>

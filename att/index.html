@@ -238,6 +238,17 @@
   .content-area{min-width:0;}
   .view.view-wide{max-width:1480px;}
   .nav-badge{display:inline-block;min-width:18px;padding:1px 6px;margin-left:6px;border-radius:10px;background:#e8a830;color:#3d2000;font-size:0.7rem;font-weight:700;text-align:center;vertical-align:middle;}
+  /* 선임 확인: 한 화면에 위쪽 작은 탭 */
+  .srtabs{display:flex;gap:2px;border-bottom:1px solid var(--border);overflow-x:auto;margin:0 0 14px;scrollbar-width:none;}
+  .srtabs button{flex:none;background:none;border:none;border-bottom:3px solid transparent;margin-bottom:-1px;padding:10px 14px;font-size:0.95rem;color:var(--text-muted);cursor:pointer;white-space:nowrap;font-family:inherit;}
+  .srtabs button:hover{color:var(--text);}
+  .srtabs button.on{color:var(--primary);border-bottom-color:var(--primary);font-weight:700;}
+  .srtabs .n{display:inline-block;min-width:18px;padding:0 5px;margin-left:5px;border-radius:9px;background:#e5484d;color:#fff;font-size:0.72rem;line-height:18px;text-align:center;font-weight:700;}
+  .srbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin:0 0 12px;font-size:0.86rem;color:var(--text-muted);}
+  .srbar .chip{padding:3px 10px;border-radius:12px;background:var(--surface);border:1px solid var(--border);}
+  .srbar .chip b{color:var(--text);margin-left:3px;} .srbar .chip.warn b{color:#b26b00;} .srbar .chip.ok b{color:var(--success);}
+  .srbar .sp{flex:1;}
+  .srbar button{border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:6px;padding:4px 10px;font-size:0.82rem;cursor:pointer;font-family:inherit;}
   .page-head{display:flex;align-items:flex-end;justify-content:space-between;gap:1rem;flex-wrap:wrap;margin-bottom:1rem;}
   .page-head h2{font-size:1.25rem;color:var(--primary);font-weight:700;}
   .page-head .sub{font-size:0.82rem;color:var(--text-muted);margin-top:3px;}
@@ -880,18 +891,12 @@
 </div>
 
 <!-- ========== [6] 선임: 시수 대시보드 ========== -->
-<div class="view" id="view-dashboard">
-  <div class="alert alert-info">📋 담당 직원의 시수 신청을 확인하는 선임 전용 화면입니다.</div>
+<div class="view view-wide" id="view-dashboard">
+  <div class="srtabs-slot"></div>
+  <div class="srbar"><span class="chip">전체<b id="stat-num-total">-</b></span><span class="chip warn">확인 대기<b id="stat-num-pending">-</b></span><span class="chip ok">확인 완료<b id="stat-num-done">-</b></span><span class="sp"></span><button class="no-print" onclick="loadDashboard()">🔄 새로고침</button></div>
   <div class="card">
-    <div class="card-title">전체 신청 현황</div>
-    <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem;">
-      <div class="stat-box"><div class="stat-num" id="stat-num-total">-</div><div class="stat-label">전체 신청</div></div>
-      <div class="stat-box stat-warn"><div class="stat-num" id="stat-num-pending">-</div><div class="stat-label">확인 대기</div></div>
-      <div class="stat-box stat-success"><div class="stat-num" id="stat-num-done">-</div><div class="stat-label">확인 완료</div></div>
-    </div>
-    <div id="dashboard-list"><div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:0.9rem">새로고침을 눌러 목록을 불러오세요.</div></div>
+    <div id="dashboard-list"><div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:0.9rem">불러오는 중...</div></div>
   </div>
-  <div class="btn-group no-print"><button class="btn btn-primary" onclick="loadDashboard()">🔄 새로고침</button></div>
 </div>
 
 <!-- ========== [7] 선임: 시수 확인 ========== -->
@@ -924,18 +929,12 @@
 </div>
 
 <!-- ========== [8] 선임: 대체시수 대시보드 ========== -->
-<div class="view" id="view-altdashboard">
-  <div class="alert alert-alt">🔄 대체시수 선임 확인 전용 화면입니다.</div>
+<div class="view view-wide" id="view-altdashboard">
+  <div class="srtabs-slot"></div>
+  <div class="srbar"><span class="chip">전체<b id="alt-stat-total">-</b></span><span class="chip warn">확인 대기<b id="alt-stat-pending">-</b></span><span class="chip ok">확인 완료<b id="alt-stat-done">-</b></span><span class="sp"></span><button class="no-print" onclick="loadAltDashboard()">🔄 새로고침</button></div>
   <div class="card">
-    <div class="card-title card-title-alt">대체시수 신청 현황</div>
-    <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:1.2rem;">
-      <div class="stat-box"><div class="stat-num" id="alt-stat-total">-</div><div class="stat-label">전체 신청</div></div>
-      <div class="stat-box stat-warn"><div class="stat-num" id="alt-stat-pending">-</div><div class="stat-label">확인 대기</div></div>
-      <div class="stat-box stat-success"><div class="stat-num" id="alt-stat-done">-</div><div class="stat-label">확인 완료</div></div>
-    </div>
-    <div id="alt-dashboard-list"><div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:0.9rem">새로고침을 눌러 목록을 불러오세요.</div></div>
+    <div id="alt-dashboard-list"><div style="text-align:center;padding:2rem;color:var(--text-muted);font-size:0.9rem">불러오는 중...</div></div>
   </div>
-  <div class="btn-group no-print"><button class="btn btn-alt" onclick="loadAltDashboard()">🔄 새로고침</button></div>
 </div>
 
 <!-- ========== [9] 선임: 대체시수 확인 ========== -->
@@ -1677,13 +1676,14 @@
 
 <!-- ========== 신청 처리 (선임: 담당 직원 / 관리자: 전체) ========== -->
 <div class="view view-wide" id="view-leavemgr">
+  <div class="srtabs-slot"></div>
   <div class="page-head">
-    <div>
+    <div id="lm-headtxt">
       <h2 id="leavemgr-title">📋 후임 신청 현황</h2>
       <div class="sub" id="leavemgr-sub"></div>
     </div>
     <div class="page-tools no-print">
-      <div class="seg">
+ <div class="seg" id="lm-catseg">
         <button id="lm-btn-leave" onclick="filterLeaveMgr('휴가')">🗓️ 휴가</button>
         <button id="lm-btn-otreq" onclick="filterLeaveMgr('시간외 사전신청')">📝 시간외 사전신청</button>
         <button id="lm-btn-ot" onclick="filterLeaveMgr('시간외')">⏰ 시간외 보고서</button>
@@ -2261,7 +2261,9 @@ function resetAltUseForm() {
 // ===== 시수 화면용 데이터 로드 (로그인 후 1회) =====
 // 직원 정보는 통합 [직원목록] 시트 하나에서 읽습니다.
 var _sisuLoaded = false, _sisuLoading = false;
+var _sisuWait = [];   // 준비 중에 들어온 '끝나면 할 일'
 function init(cb) {
+  if (cb) _sisuWait.push(cb);
   if (_sisuLoading) return;
   _sisuLoading = true;
   var staffLoaded=false, approvalLoaded=false;
@@ -2269,7 +2271,7 @@ function init(cb) {
     if (!(staffLoaded && approvalLoaded)) return;
     _sisuLoading = false; _sisuLoaded = true;
     if (leaveUser) applyStaffName(leaveUser.name);
-    if (cb) cb();
+    var w = _sisuWait; _sisuWait = []; w.forEach(function(f){ try { f(); } catch(e) {} });
   }
   gasRun('loadAltStaffList', undefined,
     function(r) { if (r && r.success && Array.isArray(r.list)) STAFF=r.list; staffLoaded=true; done(); },
@@ -3017,6 +3019,8 @@ function silentRefreshBadge() {
 // ===== 시수 대시보드 =====
 function loadDashboard() {
   var listEl=document.getElementById('dashboard-list');
+  srRender('sisu');
+  if (!_sisuLoaded) { listEl.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-muted)">불러오는 중...</div>'; init(loadDashboard); return; }
   listEl.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-muted)">불러오는 중...</div>';
   gasRun('listAllData',undefined,
     function(r){ r.success?renderDashboard(r.list):(listEl.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-muted)">실패: '+r.message+'</div>'); },
@@ -3107,6 +3111,8 @@ function updateConfirmProgress() {
 // ===== 대체시수 대시보드 =====
 function loadAltDashboard() {
   var listEl=document.getElementById('alt-dashboard-list');
+  srRender('alt');
+  if (!_sisuLoaded) { listEl.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-muted)">불러오는 중...</div>'; init(loadAltDashboard); return; }   // 직원 목록(담당 선임)을 받은 뒤 걸러야 후임 신청이 보임
   listEl.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-muted)">불러오는 중...</div>';
   gasRun('listAllAltData',undefined,
     function(r){ r.success?renderAltDashboard(r.list):(listEl.innerHTML='<div style="text-align:center;padding:2rem;color:var(--text-muted)">데이터 없음</div>'); },
@@ -3972,6 +3978,7 @@ function refreshSeniorBadge() {
   if (!leaveUser || leaveUser.role !== '선임') return;
   gasRun('getSupervisorPending', JSON.stringify({auth: myAuth()}), function(r) {
     var b = document.getElementById('senior-pending-badge');
+    if (r && r.ok) { SRN = r; var on = document.querySelector('.srtabs button.on'); var cur = document.getElementById('view-dashboard').classList.contains('active') ? 'sisu' : document.getElementById('view-altdashboard').classList.contains('active') ? 'alt' : currentLeaveMgrMode; if (on) srRender(cur); }
     if (!b || !r || !r.ok) return;
     b.textContent = r.total; b.style.display = r.total > 0 ? '' : 'none';
   }, function(){});
@@ -5749,20 +5756,40 @@ function loadLeaveMgr() {
     ? '전 직원의 휴가·시간외·대체휴무 신청 현황입니다. 휴가는 신청 즉시 확정되고, 시간외·대체휴무는 각 직원의 담당 선임이 승인합니다.'
     : '담당 후임이 낸 신청을 처리합니다. (휴가는 신청 즉시 확정되어 승인 대상이 아닙니다.) 시간외는 ① 사전신청 수락 → 근무 → ② 보고서 최종 승인 순서입니다.';
   var scopeSeg = document.getElementById('lm-scope-pending'); if (scopeSeg && scopeSeg.parentNode) scopeSeg.parentNode.style.display = (E_APPROVAL || OTREQ_APPROVAL) ? '' : 'none';
-  var lb = document.getElementById('lm-btn-leave'); if (lb) lb.style.display = (leaveIsAdmin || !E_APPROVAL) ? '' : 'none';   // 전자결재 켜면 휴가는 선임 화면에서 숨김
+  var lb = document.getElementById('lm-btn-leave'); if (lb) lb.style.display = (leaveIsAdmin || !E_APPROVAL) ? '' : 'none';
+  var cs = document.getElementById('lm-catseg'); if (cs) cs.style.display = leaveIsAdmin ? '' : 'none';   // 선임은 위쪽 탭으로 고름
+  var ht = document.getElementById('lm-headtxt'); if (ht) ht.style.display = leaveIsAdmin ? '' : 'none';   // 전자결재 켜면 휴가는 선임 화면에서 숨김
   var mode = currentLeaveMgrMode || '휴가';
   if (!leaveIsAdmin && !currentLeaveMgrMode && OTREQ_APPROVAL) mode = '시간외 사전신청';   // 선임은 수락할 사전신청부터
   filterLeaveMgr(mode);
   if (!leaveIsAdmin) refreshSeniorBadge();
 }
 
+// ===== 선임 확인: 신청 종류를 위쪽 작은 탭으로 (시수·대체시수도 같은 화면에서) =====
+var SR_TABS = [['휴가','휴가',''],['시간외 사전신청','시간외 사전신청','otreq'],['시간외','시간외 보고서','overtime'],['대체휴무','대체휴무','comp'],['출장 신청','출장','' ],['sisu','시수','sisu'],['alt','대체시수','alt']];
+var SRN = {};
+function srRender(active) {
+  if (leaveIsAdmin) { document.querySelectorAll('.srtabs-slot').forEach(function(el){ el.innerHTML = ''; }); return; }
+  var h = '<div class="srtabs no-print">' + SR_TABS.map(function(t){
+    var n = t[2] && SRN[t[2]] ? '<span class="n">' + SRN[t[2]] + '</span>' : '';
+    return '<button class="' + (t[0] === active ? 'on' : '') + '" onclick="srGo(\'' + t[0] + '\')">' + t[1] + n + '</button>';
+  }).join('') + '</div>';
+  document.querySelectorAll('.srtabs-slot').forEach(function(el){ el.innerHTML = h; });
+}
+function srGo(k) {
+  if (k === 'sisu') { switchTabSenior('dashboard'); return; }
+  if (k === 'alt') { switchTabSenior('altdashboard'); return; }
+  var v = document.getElementById('view-leavemgr');
+  if (!v || !v.classList.contains('active')) showView('leavemgr');
+  currentLeaveMgrMode = k; loadLeaveMgr();
+}
 function setLeaveMgrScope(pendingOnly) {
   leaveMgrPendingOnly = pendingOnly;
   renderLeaveMgrTable();
 }
 
 function filterLeaveMgr(type) {
-  currentLeaveMgrMode = type;
+  currentLeaveMgrMode = type; srRender(type);
   var tbody = document.getElementById('leavemgr-body');
   tbody.innerHTML = '<tr><td colspan="5" class="empty">불러오는 중...</td></tr>';
   [['lm-btn-leave','휴가'],['lm-btn-otreq','시간외 사전신청'],['lm-btn-ot','시간외'],['lm-btn-comp','대체휴무'],['lm-btn-trip','출장 신청']].forEach(function(p){

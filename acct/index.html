@@ -65,7 +65,6 @@
   <button onclick="showLedger()">출납부</button>
   <button onclick="showGL()">원장</button>
   <button onclick="showBank()">통장 내역</button>
-  <button onclick="showBudgetEdit()">예산 편성</button>
   <button onclick="showStatus()">집행 현황</button>
   <button onclick="showSearch()">검색</button>
   <button id="btnSet" class="sub" onclick="showSettings()" style="display:none">설정</button>
@@ -142,6 +141,9 @@ async function api(fn, ...args) {
 }
 
 const $ = id => document.getElementById(id);
+
+// 화면 순서 지키기: 메뉴를 빨리 바꿔 누르면, 늦게 도착한 이전 화면이 지금 화면을 덮어쓰지 않게 함
+let VTK = 0; function vtok() { return ++VTK; } function vw(t) { return t === VTK ? $('view') : document.createElement('div'); }
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const won = n => Number(n || 0).toLocaleString('ko-KR') + '원';
@@ -184,11 +186,11 @@ async function loginGoogle() {
   if (error) alert(error.message);
 }
 async function logout() { await sb.auth.signOut(); location.href = location.origin + location.pathname; }
-async function init() {
+async function init() { const VT = vtok();
   const { data: { session } } = await sb.auth.getSession();
   if (!session) {
     $('topNav').style.display = 'none';
-    $('view').innerHTML = '<div class="card" style="cursor:default"><h2>로그인</h2><p>업무용 구글 계정(@gwdeaf.or.kr)으로 로그인하세요.</p><button onclick="loginGoogle()">구글 계정으로 로그인</button></div>';
+    vw(VT).innerHTML = '<div class="card" style="cursor:default"><h2>로그인</h2><p>업무용 구글 계정(@gwdeaf.or.kr)으로 로그인하세요.</p><button onclick="loginGoogle()">구글 계정으로 로그인</button></div>';
     return;
   }
   try {
@@ -202,7 +204,7 @@ async function init() {
   } catch (e) {
     $('topNav').style.display = 'none';
     $('who').textContent = '';
-    $('view').innerHTML = `<div class="card" style="cursor:default"><h2>사용할 수 없습니다</h2><p>${esc(e.message)}</p><button class="sub" onclick="logout()">다른 계정으로 로그인</button></div>`;
+    vw(VT).innerHTML = `<div class="card" style="cursor:default"><h2>사용할 수 없습니다</h2><p>${esc(e.message)}</p><button class="sub" onclick="logout()">다른 계정으로 로그인</button></div>`;
   }
 }
 sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_IN' && !ME) init(); });
@@ -219,25 +221,25 @@ function subGo(t) { (SUB_FN[t] || SUB_FN.prop)(); }
 
 
 // ===== 4단계: 품의 =====
-async function showList() {
+async function showList() { const VT = vtok();
   msg(''); subTell('prop');
-  $('view').innerHTML = '<p>불러오는 중…</p>';
+  vw(VT).innerHTML = '<p>불러오는 중…</p>';
   try {
     const list = await api('listProposals', OPTS.year);
-    if (!list.length) { $('view').innerHTML = '<p>등록된 품의가 없습니다.</p>'; return; }
+    if (!list.length) { vw(VT).innerHTML = '<p>등록된 품의가 없습니다.</p>'; return; }
     let FC = {}; if (EVIDENCE) try { FC = await api('filesCount', '품의'); } catch (e) {}
-    $('view').innerHTML = list.map(p => `
+    vw(VT).innerHTML = list.map(p => `
       <div class="card" onclick="showDetail('${esc(p['품의번호'])}')">
         <div><b>${esc(p['품의번호'])}</b> ${badge(p['상태'])}${FC[p['품의번호']] ? ` <span class="badge">📎 ${FC[p['품의번호']]}</span>` : ''}</div>
         <div style="margin:4px 0">${esc(p['사업명'])}</div>
         <div style="color:#555;font-size:14px">${won(p['금액'])} · ${esc(p['거래처'])}</div>
       </div>`).join('');
   } catch (e) {
-    $('view').innerHTML = `<p>${esc(e.message)}</p>`;
+    vw(VT).innerHTML = `<p>${esc(e.message)}</p>`;
   }
 }
 
-async function showDetail(no) {
+async function showDetail(no) { const VT = vtok();
   try {
     const p = await api('getProposal', no);
     const mine = p['작성자'] === ME.email;
@@ -265,7 +267,7 @@ async function showDetail(no) {
     ];
     if (p['상태'] === '취소') rows.push(['취소사유', p['취소사유']], ['취소일시', p['취소일시']]);
 
-    $('view').innerHTML = `<h2>${esc(no)} ${badge(p['상태'])}</h2>` +
+    vw(VT).innerHTML = `<h2>${esc(no)} ${badge(p['상태'])}</h2>` +
       rows.map(([k, v]) => `<div class="row"><span>${esc(k)}</span><span style="text-align:right">${esc(v)}</span></div>`).join('') +
       `<div class="actions">${btns}</div><div id="evid"></div>`;
     loadEvid('품의', no);
@@ -295,7 +297,7 @@ async function cancelDoc(no) {
   }
 }
 
-async function showForm(no) {
+async function showForm(no) { const VT = vtok();
   msg('');
   let p = {};
   if (no) {
@@ -305,7 +307,7 @@ async function showForm(no) {
   let cfg = {}; try { cfg = await printCfg(); } catch (e) {}
 
   await loadPick();
-  $('view').innerHTML = `
+  vw(VT).innerHTML = `
     <h2>${no ? '품의 수정 ' + esc(no) : '새 품의 작성'}</h2>
     <input type="hidden" id="f_no" value="${esc(no || '')}">
     <label>사업명</label>
@@ -390,26 +392,26 @@ function accName(id) {
   return b ? `${b['은행명']} ${b['계좌번호']}` : (id || '');
 }
 
-async function showResList() {
+async function showResList() { const VT = vtok();
   subTell('res');
   msg('');
-  $('view').innerHTML = '<p>불러오는 중…</p>';
+  vw(VT).innerHTML = '<p>불러오는 중…</p>';
   try {
     const list = await api('listResolutions', OPTS.year);
-    if (!list.length) { $('view').innerHTML = '<p>등록된 결의가 없습니다.</p>'; return; }
+    if (!list.length) { vw(VT).innerHTML = '<p>등록된 결의가 없습니다.</p>'; return; }
     let FC = {}; if (EVIDENCE) try { FC = await api('filesCount', '결의'); } catch (e) {}
-    $('view').innerHTML = list.map(r => `
+    vw(VT).innerHTML = list.map(r => `
       <div class="card" onclick="showResDetail('${esc(r['결의번호'])}')">
         <div><b>${esc(r['결의번호'])}</b> ${badge(r['상태'])}${FC[r['결의번호']] ? ` <span class="badge">📎 ${FC[r['결의번호']]}</span>` : ''}</div>
         <div style="margin:4px 0">${esc(r['적요'])}</div>
         <div style="color:#555;font-size:14px">${esc(r['결의구분'])} · ${won(r['금액'])} · ${esc(r['날짜'])}</div>
       </div>`).join('');
   } catch (e) {
-    $('view').innerHTML = `<p>${esc(e.message)}</p>`;
+    vw(VT).innerHTML = `<p>${esc(e.message)}</p>`;
   }
 }
 
-async function showResDetail(no) {
+async function showResDetail(no) { const VT = vtok();
   try {
     await loadRes();
     const r = await api('getResolution', no);
@@ -435,7 +437,7 @@ async function showResDetail(no) {
     ];
     if (r['상태'] === '취소') rows.push(['취소사유', r['취소사유']], ['취소일시', r['취소일시']]);
 
-    $('view').innerHTML = `<h2>${esc(no)} ${badge(r['상태'])}</h2>` +
+    vw(VT).innerHTML = `<h2>${esc(no)} ${badge(r['상태'])}</h2>` +
       rows.map(([k, v]) => `<div class="row"><span>${esc(k)}</span><span style="text-align:right">${esc(v)}</span></div>`).join('') +
       `<div class="actions">${btns}</div><div id="evid"></div>`;
     loadEvid('결의', no);
@@ -465,7 +467,7 @@ async function resCancel(no) {
   }
 }
 
-async function showResForm(no, presetKind, presetProp) {
+async function showResForm(no, presetKind, presetProp) { const VT = vtok();
   msg('');
   let r = {};
   try {
@@ -486,7 +488,7 @@ async function showResForm(no, presetKind, presetProp) {
   const back = isEdit ? `showResDetail('${esc(no)}')` : 'showResList()';
   let cfg = {}; try { cfg = await printCfg(); } catch (e) {}
 
-  $('view').innerHTML = `
+  vw(VT).innerHTML = `
     <h2>${isEdit ? '결의 수정 ' + esc(no) : '새 결의 작성'}</h2>
     <input type="hidden" id="r_no" value="${esc(no || '')}">
     <label>결의 구분</label>
@@ -590,7 +592,7 @@ async function saveRes() {
   }
 }
 
-async function showLedger(month) {
+async function showLedger(month) { const VT = vtok();
   msg(''); subTell('cash');
   month = month || '';
   try {
@@ -610,7 +612,7 @@ async function showLedger(month) {
       </tr>`;
     }).join('') : '<tr><td colspan="6">기록이 없습니다.</td></tr>';
     const inSum = rows.reduce((a, r) => a + (Number(r['수입금액']) || 0), 0), outSum = rows.reduce((a, r) => a + (Number(r['지출금액']) || 0), 0);
-    $('view').innerHTML = `
+    vw(VT).innerHTML = `
       <h2>금전출납부 (${esc(OPTS.year)}회계연도)</h2>
       <p style="color:#666;font-size:13px">취소되지 않은 결의가 날짜순으로 들어갑니다. 통장·재원별 잔고는 <a href="#" onclick="showBank();return false">통장 내역</a>, 목별 집계는 <a href="#" onclick="showGL();return false">원장</a>에서 봅니다.</p>
       <label>월 선택</label>
@@ -630,7 +632,7 @@ async function showLedger(month) {
 }
 
 // ===== 원장: 목(계정)별 수입·지출 집계와 내역 =====
-async function showGL(mok) {
+async function showGL(mok) { const VT = vtok();
   msg(''); subTell('ledger');
   mok = mok || '';
   try {
@@ -661,7 +663,7 @@ async function showGL(mok) {
             <td style="${TD}text-align:right">${won(acc)}</td></tr>`; }).join('') || '<tr><td colspan="7">기록이 없습니다.</td></tr>'}
         </table>`;
     }
-    $('view').innerHTML = `
+    vw(VT).innerHTML = `
       <h2>원장 (${esc(OPTS.year)}회계연도 · 목별)</h2>
       <p style="color:#666;font-size:13px">취소되지 않은 결의를 목(예산 과목)별로 모읍니다. 줄을 누르면 그 목의 내역이 아래에 나옵니다.</p>
       ${noMok ? '<p class="msg err">목 정보를 보려면 23번 SQL을 실행해 주세요.</p>' : ''}
@@ -678,7 +680,7 @@ async function showGL(mok) {
 }
 
 // ===== 통장 내역: 통장별 잔고(재원별)와 입출금 내역 =====
-async function showBank(acc) {
+async function showBank(acc) { const VT = vtok();
   msg(''); subTell('bank');
   try {
     await loadRes();
@@ -702,7 +704,7 @@ async function showBank(acc) {
         <td style="${TD}">${esc(r['날짜'])}</td><td style="${TD}">${esc(r['적요'])}</td><td style="${TD}">${esc(srcName(r['자금원천']))}</td>
         <td style="${TD}text-align:right">${Number(r['수입금액']) ? won(r['수입금액']) : ''}</td><td style="${TD}text-align:right">${Number(r['지출금액']) ? won(r['지출금액']) : ''}</td>
         <td style="${TD}text-align:right">${won(bal)}</td></tr>`; }).join('') || '<tr><td colspan="6">기록이 없습니다.</td></tr>';
-    $('view').innerHTML = `
+    vw(VT).innerHTML = `
       <h2>통장 잔고 (재원별)</h2>${balHtml}${carryBtn}
       <h2>통장 내역 (${esc(OPTS.year)}회계연도)</h2>
       <p style="color:#666;font-size:13px">취소되지 않은 결의가 들어갑니다.</p>
@@ -730,7 +732,7 @@ async function makeCarry() {
 
 // ===== 6단계: 검색 =====
 function showSearch() {
-  msg('');
+  vtok(); msg('');
   $('view').innerHTML = `
     <h2>검색</h2>
     <label>회계연도 (비우면 전체)</label>
@@ -799,7 +801,7 @@ let BP = [];   // 사용 중인 사업의 맨 아래 과목 (+ 예산·품의·�
 async function loadPick() { try { BP = await api('pickList', OPTS.year); } catch (e) { BP = []; } }
 function itemPicker(id, gb, cur, on) {
   const list = BP.filter(x => x['구분'] === gb);
-  if (!list.length && !cur) return `<div class="binfo">사업별 예산 과목이 아직 없습니다. <b>예산 편성</b>에서 사업과 과목을 만들면 여기서 고를 수 있어요. (지금은 아래 목·자금원천으로 작성)</div>`;
+  if (!list.length && !cur) return '';
   const by = {}; list.forEach(x => (by[x['사업']] = by[x['사업']] || []).push(x));
   return `<label>예산 과목 (사업 › 과목)</label><select id="${id}" onchange="${on}"><option value="">— 고르지 않음 (목·자금원천 직접 선택) —</option>
     ${Object.keys(by).map(b => `<optgroup label="${esc(b)}">${by[b].map(x => `<option value="${x.id}" ${String(x.id) === String(cur || '') ? 'selected' : ''}>${esc(x['경로'])} (남은 ${won(x['예산액'] - (gb === '세출' ? x['집행액'] : 0))})</option>`).join('')}</optgroup>`).join('')}</select>`;
@@ -843,13 +845,13 @@ function bizForm(b) {
     ${b.id ? `<label style="font-weight:normal"><input type="checkbox" id="bz_use" style="width:auto" ${b['사용'] ? 'checked' : ''}> 사용 중 (끄면 품의·결의에서 안 보임)</label>` : ''}
     <div class="actions"><button onclick="saveBiz(${b.id || ''})">저장</button><button class="sub" onclick="${b.id ? `openBiz(${b.id})` : 'showBudgetEdit()'}">닫기</button></div></div>`;
 }
-async function showBudgetEdit() {
+async function showBudgetEdit() { const VT = vtok();
   msg(''); subTell('budget');
-  $('view').innerHTML = '<p>불러오는 중…</p>';
+  vw(VT).innerHTML = '<p>불러오는 중…</p>';
   try {
     const list = await api('bizList', OPTS.year);
     const T = 'padding:7px 5px;border-bottom:1px solid #ddd;font-size:14px';
-    $('view').innerHTML = `<h2>예산 편성 (${esc(OPTS.year)}회계연도)</h2>
+    vw(VT).innerHTML = `<h2>예산 편성 (${esc(OPTS.year)}회계연도)</h2>
       <p style="color:#555;font-size:14px">보조금 사업마다 예산을 따로 관리합니다. 사업을 만들고, 그 안에 <b>관 › 항 › 목 › 세목</b> 과목과 금액을 넣으세요. 과목 이름은 우리 지회에 맞게 자유롭게 정합니다.</p>
       ${ME.can_write ? '<div class="actions" style="margin-top:0"><button onclick="newBiz()">+ 새 사업</button></div>' : ''}
       <div id="bizFormBox"></div>
@@ -876,7 +878,7 @@ function rollup(items) {
   return roots;
 }
 function flat(nodes, out) { nodes.forEach(n => { out.push(n); flat(n.kids, out); }); return out; }
-async function openBiz(id) {
+async function openBiz(id) { const VT = vtok();
   msg('');
   try {
     const d = await api('itemsGet', id); BZ = d.biz; BITEMS = d.items;
@@ -892,7 +894,7 @@ async function openBiz(id) {
       return `<div class="card" style="cursor:default"><div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:6px"><b>${gb} · 합계 ${won(tot)}</b>${W ? `<button class="sub" onclick="addItem('${gb}',null)">+ ${gb} 관 추가</button>` : ''}</div>
         ${rows ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;margin-top:6px">${rows}</table></div>` : '<p style="color:#777">과목이 없습니다.</p>'}</div>`;
     };
-    $('view').innerHTML = `<h2>${esc(BZ['이름'])}</h2>
+    vw(VT).innerHTML = `<h2>${esc(BZ['이름'])}</h2>
       <div style="color:#555;font-size:14px">재원 ${esc(nameOf('자금원천', BZ['자금원천코드']))}${BZ['시작일'] ? ' · ' + esc(BZ['시작일']) + ' ~ ' + esc(BZ['종료일'] || '') : ''}${BZ['사용'] ? '' : ' · <span class="badge cancel">사용 안 함</span>'}</div>
       <p style="color:#666;font-size:13px">금액은 맨 아래 과목에 넣고(칸을 고치면 바로 저장), 위 과목은 합계로 보여요. 이미 넣은 금액을 바꾸면 사유를 물어보고 <b>변경 이력</b>에 남겨요.</p>
       <div id="bizFormBox"></div>
@@ -957,9 +959,9 @@ function rateBar(r) {
   return `<div style="display:flex;align-items:center;gap:6px;justify-content:flex-end"><div style="width:60px;height:8px;background:#e6e9ef;border-radius:4px;overflow:hidden"><div style="width:${Math.min(100, r)}%;height:100%;background:${c}"></div></div>${r}%</div>`;
 }
 const rate = (a, b) => b ? Math.round(a / b * 1000) / 10 : null;
-async function showStatus(bizId) {
+async function showStatus(bizId) { const VT = vtok();
   msg(''); subTell('status');
-  $('view').innerHTML = '<p>불러오는 중…</p>';
+  vw(VT).innerHTML = '<p>불러오는 중…</p>';
   try {
     const T = 'padding:7px 5px;border-bottom:1px solid #ddd;font-size:13px;text-align:right;white-space:nowrap';
     const H = (hs) => `<tr>${hs.map((h, i) => `<th style="${T};${i ? '' : 'text-align:left;'}border-bottom:2px solid #999">${h}</th>`).join('')}</tr>`;
@@ -970,10 +972,11 @@ async function showStatus(bizId) {
       const rows = list.filter(b => b['사용']).map(b => { const a = agg[b.id] || { 세출: 0, 품의: 0, 집행: 0, 세입: 0, 수입: 0 };
         return `<tr style="cursor:pointer" onclick="showStatus(${b.id})"><td style="${T};text-align:left"><b>${esc(b['이름'])}</b></td><td style="${T}">${won(a.세출)}</td><td style="${T}">${won(a.품의)}</td><td style="${T}">${won(a.집행)}</td>
           <td style="${T};${a.세출 - a.집행 < 0 ? 'color:#c0392b' : ''}">${won(a.세출 - a.집행)}</td><td style="${T}">${rateBar(rate(a.집행, a.세출))}</td><td style="${T}">${won(a.수입)} / ${won(a.세입)}</td></tr>`; }).join('');
-      $('view').innerHTML = `<h2>집행 현황 (${esc(OPTS.year)}회계연도)</h2>
+      if (!rows) return showBudget();   // 사업별 예산이 없으면 재원별 예산 현황
+      vw(VT).innerHTML = `<h2>집행 현황 (${esc(OPTS.year)}회계연도)</h2>
         <p style="color:#666;font-size:13px">사업을 누르면 과목별로 볼 수 있어요. 집행 = 작성(확정)된 지출결의 · 잔액 = 예산 − 집행</p>
         ${rows ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;background:#fff">${H(['사업', '세출 예산', '품의', '집행', '잔액', '집행률', '수입 / 세입 예산'])}${rows}</table></div>`
-          : `<p style="color:#777">사업별 예산이 아직 없습니다.${ME.can_write ? ' <a href="#" onclick="showBudgetEdit();return false">예산 편성</a>에서 만들어 주세요.' : ''}</p>`}
+          : `<p style="color:#777">사업별 예산이 아직 없습니다.</p>`}
         <div class="actions"><button class="sub" onclick="showBudget()">재원별 예산 현황 (전체)</button></div>`;
       return;
     }
@@ -990,11 +993,11 @@ async function showStatus(bizId) {
         ${H(gb === '세출' ? ['과목', '예산', '품의', '집행', '잔액', '집행률'] : ['과목', '예산', '수입', '차액', '수입률'])}${rows}
         <tr style="font-weight:bold;background:#eef2fa"><td style="${T};text-align:left">합계</td>${line(tot)}</tr></table></div>`;
     };
-    $('view').innerHTML = `<h2>집행 현황 · ${esc(BZ['이름'])}</h2>
+    vw(VT).innerHTML = `<h2>집행 현황 · ${esc(BZ['이름'])}</h2>
       <p style="color:#666;font-size:13px">과목을 누르면 그 과목의 결의 목록이 아래에 나와요.</p>
       ${sec('세출')}${sec('세입')}
       <div id="docBox"></div>
-      <div class="actions"><button class="sub" onclick="openBiz(${BZ.id})">예산 편성 보기</button><button class="sub" onclick="showStatus()">전체 사업</button></div>`;
+      <div class="actions"><button class="sub" onclick="showStatus()">전체 사업</button></div>`;
   } catch (e) { msg(e.message, 'err'); }
 }
 async function itemDocs(id) {
@@ -1056,7 +1059,7 @@ async function delEvid(i) {
 }
 
 // ===== 설정 (지회 담당자) =====
-async function showSettings() {
+async function showSettings() { const VT = vtok();
   msg('');
   try {
     const d = await api('getManage');
@@ -1071,7 +1074,7 @@ async function showSettings() {
     const budRows = bud.map(b => `<div class="row"><span>${esc(b['코드'])} ${esc(b['이름'])}</span>
       <span style="display:flex;gap:6px;align-items:center"><input type="number" min="0" id="bd_${esc(b['코드'])}" value="${b['예산설정'] ? b['예산액'] : ''}" placeholder="예산액(원)" style="max-width:160px;margin:0">
       <button class="sub" onclick="saveBud('${esc(b['코드'])}')">저장</button></span></div>`).join('') || '<p style="color:#777">자금원천을 먼저 추가하세요.</p>';
-    $('view').innerHTML = `
+    vw(VT).innerHTML = `
       <h2>회계 설정</h2>
       <p style="color:#555;font-size:14px">우리 지회에만 적용됩니다. 코드는 지워지지 않고 "사용 중지"만 가능합니다. (이미 쓴 문서 보호)</p>
       <div class="card" style="cursor:default"><b>현재 회계연도</b>
@@ -1095,7 +1098,7 @@ async function saveBud(c) { try { await api('saveBudget', (await api('getManage'
 async function saveSign() { try { await api('saveSignline', $('st_sign').value); PCFG = null; await showSettings(); msg('결재란을 저장했습니다.', 'ok'); } catch (e) { msg(e.message, 'err'); } }
 
 // ===== 예산 현황 =====
-async function showBudget() {
+async function showBudget() { const VT = vtok();
   msg('');
   try {
     const list = await loadBudget();
@@ -1108,7 +1111,7 @@ async function showBudget() {
 <td style="${T};${left < 0 ? 'color:#c0392b' : ''}">${won(left)}</td>
         <td style="${T}">${rate == null ? '-' : rate + '%'}</td><td style="${T}">${won(b['수입액'])}</td></tr>`;
     };
-    $('view').innerHTML = `<h2>재원별 예산 현황 (${esc(OPTS.year)}회계연도)</h2>
+    vw(VT).innerHTML = `<h2>재원별 예산 현황 (${esc(OPTS.year)}회계연도)</h2>
       <p style="color:#666;font-size:13px">집행 = 작성(확정)된 지출결의 · 남은 예산 = 예산 − 집행</p>
       <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;background:#fff"><tr>
         ${['재원','예산','품의','집행','남은 예산','집행률','수입'].map((h, i) => `<th style="${T};${i ? '' : 'text-align:left;'}border-bottom:2px solid #999">${h}</th>`).join('')}</tr>

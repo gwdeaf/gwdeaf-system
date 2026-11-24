@@ -67,6 +67,9 @@ if (EMBED) document.body.classList.add('embed');
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 async function rpc(name, a) { const { data, error } = await sb.rpc(name, a || {}); if (error) throw new Error(error.message || '오류가 났습니다.'); return data; }
 const $ = id => document.getElementById(id);
+
+// 화면 순서 지키기: 메뉴를 빨리 바꿔 누르면, 늦게 도착한 이전 화면이 지금 화면을 덮어쓰지 않게 함
+let VTK = 0; function vtok() { return ++VTK; } function vw(t) { return t === VTK ? $('view') : document.createElement('div'); }
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
 const won = n => Number(n || 0).toLocaleString('ko-KR') + '원';
 function msg(text, type) { const m = $('msg'); m.textContent = text || ''; m.className = 'msg ' + (type || ''); if (text) window.scrollTo(0, 0); }
@@ -108,9 +111,9 @@ async function init() {
 sb.auth.onAuthStateChange(ev => { if (ev === 'SIGNED_IN' && !ME) init(); });
 
 // ---- 회원명단 ----
-async function showList(q, st) {
+async function showList(q, st) { const VT = vtok();
   setTab('list'); msg('');
-  $('view').innerHTML = `<div class="tbar">
+  vw(VT).innerHTML = `<div class="tbar">
     <input id="mQ" placeholder="이름·연락처·회원번호" value="${esc(q || '')}" onkeydown="if(event.key==='Enter')showList(this.value,$('mSt').value)">
     <select id="mSt" onchange="showList($('mQ').value,this.value)"><option value="">전체 상태</option>${STATUS.map(s => `<option ${s === st ? 'selected' : ''}>${s}</option>`).join('')}</select>
     <button onclick="showList($('mQ').value,$('mSt').value)">검색</button>
@@ -130,11 +133,11 @@ function downloadMembers() {
   const csv = '﻿' + rows.map(r => r.map(c => '"' + String(c ?? '').replace(/"/g, '""') + '"').join(',')).join('\r\n');
   const a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' })); a.download = '회원명단.csv'; a.click();
 }
-async function showMember(id) {
+async function showMember(id) { const VT = vtok();
   const m = LIST.find(x => x.id === id); if (!m) return;
   msg('');
   const rows = [['회원번호', m.member_no], ['이름', m.name], ['생년월일', m.birth], ['성별', m.gender], ['연락처', m.phone], ['주소', m.address], ['구분', m.category], ['가입일', m.join_date], ['상태', m.status], ['탈퇴일', m.leave_date], ['비고', m.note]];
-  $('view').innerHTML = `<div class="card" style="cursor:default">${rows.map(r => `<div class="row"><span>${r[0]}</span><span>${esc(r[1] || '')}</span></div>`).join('')}
+  vw(VT).innerHTML = `<div class="card" style="cursor:default">${rows.map(r => `<div class="row"><span>${r[0]}</span><span>${esc(r[1] || '')}</span></div>`).join('')}
     <div class="actions">${ME.can_write ? `<button onclick="editMember(${id})">수정</button>` : ''}<button class="sub" onclick="openPrint(${id}, 'cert')">🧾 회비 납부 증명서</button><button class="sub" onclick="openPrint(${id}, 'card')">🪪 회원관리카드</button><button class="sub" onclick="showList()">목록</button></div></div>
     <div class="card" style="cursor:default"><b>입회비·회비 납부</b>
     ${ME.can_write ? `<div class="grid2">
@@ -200,6 +203,7 @@ async function cancelFee(fid, memberId) {
   try { await rpc('member_fee_cancel', { p_id: fid, p_reason: r }); msg('취소했습니다.', 'ok'); memberId ? loadFees(memberId) : showFees(); } catch (e) { msg(e.message, 'err'); }
 }
 function editMember(id) {
+  vtok();
   const m = LIST.find(x => x.id === id) || { status: '활동', category: '정회원' };
   const inp = (k, label, type, ph) => `<div><label>${label}</label><input id="e_${k}" type="${type || 'text'}" value="${esc(m[k] || '')}" placeholder="${ph || ''}"></div>`;
   $('view').innerHTML = `<div class="card" style="cursor:default"><b>${id ? '회원 수정' : '회원 등록'}</b><div class="grid2">
@@ -220,9 +224,9 @@ async function saveMember(id) {
 }
 
 // ---- 회비 내역 ----
-async function showFees(y) {
+async function showFees(y) { const VT = vtok();
   setTab('fees'); msg(''); y = y || ME.year;
-  $('view').innerHTML = `<div class="tbar"><select id="feeY" onchange="showFees(this.value)">${[0, 1, 2, 3].map(i => { const v = ME.year - i; return `<option ${String(v) === String(y) ? 'selected' : ''} value="${v}">${v}년</option>`; }).join('')}</select></div><div id="feeBody"><p>불러오는 중…</p></div>`;
+  vw(VT).innerHTML = `<div class="tbar"><select id="feeY" onchange="showFees(this.value)">${[0, 1, 2, 3].map(i => { const v = ME.year - i; return `<option ${String(v) === String(y) ? 'selected' : ''} value="${v}">${v}년</option>`; }).join('')}</select></div><div id="feeBody"><p>불러오는 중…</p></div>`;
   try {
     const f = await rpc('member_fee_list', { p_member: null, p_year: Number(y) });
     const ok = f.filter(x => x.status === '납부'), sum = k => ok.filter(x => !k || x.kind === k).reduce((a, x) => a + Number(x.amount), 0);
@@ -230,9 +234,9 @@ async function showFees(y) {
   } catch (e) { $('feeBody').innerHTML = `<p>${esc(e.message)}</p>`; }
 }
 // ---- 미납자 ----
-async function showUnpaid(y) {
+async function showUnpaid(y) { const VT = vtok();
   setTab('unpaid'); msg(''); y = y || ME.year;
-  $('view').innerHTML = `<div class="tbar"><select onchange="showUnpaid(this.value)">${[0, 1, 2].map(i => { const v = ME.year - i; return `<option ${String(v) === String(y) ? 'selected' : ''} value="${v}">${v}년</option>`; }).join('')}</select><span class="hint">활동 회원 중 이 해 '회비' 납부 기록이 없는 사람</span></div><div id="uBody"><p>불러오는 중…</p></div>`;
+  vw(VT).innerHTML = `<div class="tbar"><select onchange="showUnpaid(this.value)">${[0, 1, 2].map(i => { const v = ME.year - i; return `<option ${String(v) === String(y) ? 'selected' : ''} value="${v}">${v}년</option>`; }).join('')}</select><span class="hint">활동 회원 중 이 해 '회비' 납부 기록이 없는 사람</span></div><div id="uBody"><p>불러오는 중…</p></div>`;
   try {
     const u = await rpc('member_unpaid', { p_year: Number(y) });
     if (!LIST.length) LIST = await rpc('member_list', {});
@@ -241,6 +245,7 @@ async function showUnpaid(y) {
 }
 // ---- 명단 가져오기 ----
 function showImport() {
+  vtok();
   setTab('import'); msg('');
   $('view').innerHTML = `<div class="card" style="cursor:default"><b>엑셀·구글 시트 명단 가져오기</b>
     <div class="hint">1) 엑셀에서 <b>제목 줄을 포함해</b> 표를 복사(Ctrl+C) → 2) 아래 칸에 붙여넣기(Ctrl+V) → 3) [확인]<br>
@@ -268,16 +273,16 @@ async function doImport() {
   catch (e) { msg(e.message, 'err'); }
 }
 // ---- 도협회: 지회별 요약 ----
-async function showSummary() {
+async function showSummary() { const VT = vtok();
   setTab('sum'); msg('');
   try {
     const s = await rpc('member_province_summary');
     const t = k => s.reduce((a, x) => a + Number(x[k]), 0);
-    $('view').innerHTML = `<div class="hint" style="margin-bottom:6px">지회별 인원 수와 올해 납부 합계만 보입니다. (명단·인적사항은 각 지회만 볼 수 있음)</div>
+    vw(VT).innerHTML = `<div class="hint" style="margin-bottom:6px">지회별 인원 수와 올해 납부 합계만 보입니다. (명단·인적사항은 각 지회만 볼 수 있음)</div>
       <table class="t"><thead><tr><th>지회</th><th>활동</th><th>휴회</th><th>탈퇴</th><th>올해 납부 합계</th></tr></thead><tbody>${
       s.map(x => `<tr><td>${esc(x.chapter)}</td><td>${x.active}</td><td>${x.rest}</td><td>${x.left}</td><td style="text-align:right">${won(x.fee_year)}</td></tr>`).join('')}
       <tr style="font-weight:bold"><td>합계</td><td>${t('active')}</td><td>${t('rest')}</td><td>${t('left')}</td><td style="text-align:right">${won(t('fee_year'))}</td></tr></tbody></table>`;
-  } catch (e) { $('view').innerHTML = `<p>${esc(e.message)}</p>`; }
+  } catch (e) { vw(VT).innerHTML = `<p>${esc(e.message)}</p>`; }
 }
 init();
 </script>

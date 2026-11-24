@@ -468,7 +468,7 @@ html.dark .emo{filter:invert(1) hue-rotate(180deg) saturate(.7) brightness(.92)}
     <div class="wltabs hide" id="wltabs"><button data-t="writer" class="on" onclick="wlTab('writer')">✍️ 일지 작성</button><button data-t="calendar" onclick="wlTab('calendar')">🗓️ 캘린더</button></div>
     <div class="wldate hide" id="wldate"><input type="date" id="wl-date" onchange="wlDate(this.value)" title="작성일자"><span class="wlst" id="wl-st"></span></div>
     <div class="tright">
-      <select class="dsel hide" id="dsel" onchange="setDept(this.value)" title="지금 일하는 부서 — 회계·공문·증명서가 이 부서 기준으로 바뀝니다"></select>
+      <select class="dsel hide" id="dsel" onchange="setDept(this.value)" title="지금 일하는 부서 — 회계·공문이 이 부서 기준으로 바뀝니다"></select>
       <span class="tdate" id="today"></span>
       <span class="pstat hide" id="pstat" onclick="openPunch()" title="출퇴근 기록"></span>
       <button class="pbtn hide" id="pbtn" onclick="openPunch()">📍 출퇴근</button>
@@ -637,8 +637,7 @@ function renderNav(){
   [['leave','내 근태현황'],['leave-apply','휴가(시수) 신청'],['overtime','시간외 신청']].forEach(function(k){ h += kidHtml('att', false, k[0], k[1]); });
   h += kidHtml('att', false, 'attend', '월별 근태현황');
   if (ATT && ATT.staff && ATT.staff.role === '선임')   // 선임만 보임 (기존 '선임 확인' 권한 그대로)
-    h += grpHtml('✅', '선임 확인').replace('</div>', supB('total') + '</div>')
-      + supKid('senior:leavemgr', '후임 신청 현황', 'req') + supKid('senior:dashboard', '시수 신청 현황', 'sisu') + supKid('senior:altdashboard', '대체시수 신청 현황', 'alt');
+    h += topHtml(mid('att', false, 'senior:leavemgr'), '✅', '선임 확인', "go('att','senior:leavemgr',false)").replace('class="top"', 'class="top" style="display:flex;align-items:center"').replace('</a>', supB('total') + '</a>');   // 휴가·시간외·대체휴무·출장·시수·대체시수는 화면 위쪽 탭에서
   h += grpHtml('🚌', '출장 관리') + kidHtml('att', false, 'trip-apply', '출장 신청') + kidHtml('att', false, 'trip-hist', '출장 내역');
   if (isAttAdmin()) h += kidHtml('att', true, 'trip', '출장대장');
   h += topHtml('car:s:', '🚗', '차량운행일지', "go('car')");   // 지회 직원 누구나
@@ -653,8 +652,7 @@ function renderNav(){
   h += grpHtml('🤟', '수어통역') + kidHtml('interp', false, 'log', '통역일지') + kidHtml('interp', false, 'counsel', '상담일지')
     + (['interp.view', 'interp.report', 'interp.review'].some(function(k){ return (ME.perms || []).indexOf(k) >= 0; }) ? kidHtml('interp', false, 'stats', '통계') : '');
   h += grpHtml('📒', '업무일지') + kidHtml('worklog', false, 'write', '업무일지 작성') + kidHtml('worklog', false, 'print', '업무일지 인쇄');
-  if (hasPerm('acct.')) h += grpHtml('💰', '회계') + kidHtml('acct', false, 'budget', '예산 편성') + kidHtml('acct', false, 'prop', '품의') + kidHtml('acct', false, 'res', '결의') + kidHtml('acct', false, 'cash', '출납부') + kidHtml('acct', false, 'ledger', '원장') + kidHtml('acct', false, 'bank', '통장 내역') + kidHtml('acct', false, 'status', '집행 현황');
-  if (hasPerm('cert.')) h += grpHtml('📜', '증서·증명 발급') + kidHtml('cert', false, 'issue', '증서·증명 발급') + kidHtml('cert', false, 'list', '발급 대장');
+  if (hasPerm('acct.')) h += grpHtml('💰', '회계') + kidHtml('acct', false, 'prop', '품의') + kidHtml('acct', false, 'res', '결의') + kidHtml('acct', false, 'cash', '출납부') + kidHtml('acct', false, 'ledger', '원장') + kidHtml('acct', false, 'bank', '통장 내역') + kidHtml('acct', false, 'status', '집행 현황');
   if (hasPerm('perf.')) {   // 사업실적 (회원명단은 회원관리와 같은 자료)
     h += grpHtml('📈', '사업실적');
     [['dash','대시보드'],['projects','사업관리'],['new','사업실적 등록'],['list','사업실적 목록'],['people','참여자 관리'],['reports','분기별 보고'],['stats','통계 및 분석']].forEach(function(k){ h += kidHtml('perf', false, k[0], k[1]); });
@@ -786,7 +784,7 @@ var PV_PERMS = [
   ['🤟 수어통역', [['interp.write','통역일지 시트 입력'],['interp.cwrite','상담일지 시트 입력'],['interp.view','전체 기록 조회 (센터 담당)'],['interp.report','통역 통계 도센터 보고']]],
   ['🏖 근태', [['att.chapter_view','지회 휴가·출장 전체 조회'],['att.chapter_manage','휴가·출장 관리']]],
   ['💰 회계', [['acct.view','회계 조회'],['acct.write','회계 작성 (품의·결의)'],['acct.approve','회계 결재']]],
-  ['📜 증명 · 👥 회원 · 📈 실적', [['cert.view','증명 발급대장 조회'],['cert.issue','증명서 발급'],['member.view','회원명단 조회'],['member.write','회원·회비 입력'],['perf.view','사업실적 조회'],['perf.write','사업실적 입력'],['perf.manage','사업 등록·분기 보고']]],
+  ['👥 회원 · 📈 실적', [['member.view','회원명단 조회'],['member.write','회원·회비 입력'],['perf.view','사업실적 조회'],['perf.write','사업실적 입력'],['perf.manage','사업 등록·분기 보고']]],
   ['🎬 영화실적', [['movie.write','상영 회신·관람 실적 입력']]],
   ['🔑 관리', [['core.manage_staff','공동 관리자 (직원·권한 관리)']]]];
 var PV_PRESET = {
@@ -1060,7 +1058,7 @@ function render(){
 /* ── 공지사항 ── */
 /* ── 자주 쓰는 메뉴 · 마이페이지 ── */
 var PREFS = null;
-var QUICK_DEFAULT = ['att:s:leave-apply', 'att:s:leave', 'att:s:trip-apply', 'att:s:write', 'car:s:', 'edu:s:courses', 'doc:s:internal', 'interp:s:log', 'worklog:s:write', 'acct:s:prop', 'cert:s:issue', 'member:s:'];
+var QUICK_DEFAULT = ['att:s:leave-apply', 'att:s:leave', 'att:s:trip-apply', 'att:s:write', 'car:s:', 'edu:s:courses', 'doc:s:internal', 'interp:s:log', 'worklog:s:write', 'acct:s:prop', 'member:s:'];
 var QUICK_OLD = { 'att:s:trip':'att:s:trip-apply', 'doc:s:':'doc:s:internal', 'interp:s:':'interp:s:log', 'interp:s:dash':'interp:s:log', 'worklog:s:':'worklog:s:write', 'acct:s:':'acct:s:prop', 'cert:s:':'cert:s:issue', 'att:a:trip':'att:a:trip' };   // 메뉴 개편 전에 저장한 항목
 function quickIds(){ return (Array.isArray(PREFS.quick) ? PREFS.quick : QUICK_DEFAULT).map(function(id){ return QUICK_OLD[id] || id; }); }
 function navItems(){   // 왼쪽 메뉴에 있는 항목 (권한에 맞게 보이는 것만)

@@ -191,6 +191,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .mylist label{display:flex;align-items:center;gap:8px;padding:7px 0;border-bottom:1px solid var(--line);font-size:.9rem;cursor:pointer}
 .mylist label:last-child{border-bottom:0}.mylist small{color:var(--mute)}
 .myinfo .r{display:flex;justify-content:space-between;padding:7px 0;border-bottom:1px solid var(--line);font-size:.9rem}.myinfo .r span:first-child{color:var(--mute)}
+.dsel{border:1.5px solid var(--pri);border-radius:10px;padding:7px 10px;font-weight:700;font-size:.86rem;color:var(--pri);background:var(--pri-soft);max-width:180px}
 .pbtn{border:0;border-radius:10px;padding:9px 15px;font-weight:800;font-size:.88rem;color:#fff;background:var(--pri);white-space:nowrap}
 .pbtn.in{background:#16a34a}.pbtn.out{background:#dc2626}.pbtn.done{background:#e5e9f2;color:#4b5563}
 .tuser{display:flex;align-items:center;gap:8px;font-weight:700;font-size:.9rem;white-space:nowrap}
@@ -389,6 +390,7 @@ html.dark img,html.dark video,html.dark canvas,html.dark .noinv{filter:invert(1)
   .tuser span{font-size:14px}
   .pstat,.pbtn{order:7;flex:none}
   .pstat{padding:5px 7px;font-size:12px}
+  .dsel{order:7;flex:0 1 auto;min-width:0;max-width:150px;padding:5px 6px;font-size:.8rem}
   .pbtn{padding:6px 10px;font-size:13px}
   .mfs2{order:8;flex:none}
   .mfs2 button{padding:4px 9px;font-size:13px}
@@ -400,6 +402,20 @@ html.dark img,html.dark video,html.dark canvas,html.dark .noinv{filter:invert(1)
   #mhome .mh-sec.mqh{display:flex!important}
   #mquick{display:grid!important}
 }
+
+/* 지회 화면 미리보기 (도협회 관리자 설명용) */
+#pvbar{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);z-index:60;background:#14213D;color:#fff;border-radius:999px;padding:8px 10px 8px 16px;display:flex;align-items:center;gap:10px;font-size:.85rem;box-shadow:0 6px 20px rgba(0,0,0,.25);max-width:94vw}
+#pvbar b{color:#ffd166}#pvbar button{border:0;border-radius:999px;padding:6px 12px;font:inherit;font-weight:700;cursor:pointer}
+#pvbar .e{background:#ffd166;color:#14213D}#pvbar .c{background:#2f3e63;color:#fff}
+.pvck{display:grid;grid-template-columns:repeat(auto-fill,minmax(210px,1fr));gap:4px 10px;margin-top:6px}
+.pvck label{display:flex!important;align-items:center;gap:6px;font-weight:500!important;margin:0!important;font-size:.83rem!important;color:#1f2937!important}
+.pvck input{width:auto}
+.pvg{font-weight:800;font-size:.85rem;margin:12px 0 2px;color:#2f5bd6}
+#view-pv{max-width:900px}
+#view-pv .pvcard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:20px 22px;line-height:1.75}
+#view-pv .pvcard ul{padding-left:0}#view-pv .pvcard ul>li{list-style:none;background:#f8fafc;border:1px solid #edf1f7;border-radius:10px;padding:8px 12px;margin:0 0 8px}
+#view-pv .pvcard .lb{display:block;color:#1e3a8a}
+#view-pv .pvnote{background:#fff7e6;border:1px solid #f5d79e;color:#7a4b00;border-radius:12px;padding:10px 14px;margin-bottom:12px;font-size:.88rem}
 </style>
 <link rel="stylesheet" href="/ui.css?v=1">
 <style>.gbtn2{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 11px;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--text)}.gbtn2:hover{background:var(--pri-soft)}@media(max-width:600px){.gbtn2 .gtx{display:none}}</style>
@@ -451,11 +467,12 @@ html.dark img,html.dark video,html.dark canvas,html.dark .noinv{filter:invert(1)
     <div class="wltabs hide" id="wltabs"><button data-t="writer" class="on" onclick="wlTab('writer')">✍️ 일지 작성</button><button data-t="calendar" onclick="wlTab('calendar')">🗓️ 캘린더</button></div>
     <div class="wldate hide" id="wldate"><input type="date" id="wl-date" onchange="wlDate(this.value)" title="작성일자"><span class="wlst" id="wl-st"></span></div>
     <div class="tright">
+      <select class="dsel hide" id="dsel" onchange="setDept(this.value)" title="지금 일하는 부서 — 회계·공문·증명서가 이 부서 기준으로 바뀝니다"></select>
       <span class="tdate" id="today"></span>
       <span class="pstat hide" id="pstat" onclick="openPunch()" title="출퇴근 기록"></span>
       <button class="pbtn hide" id="pbtn" onclick="openPunch()">📍 출퇴근</button>
       <div class="thm" title="화면 모드"><button data-th="light" onclick="setTheme('light')">☀️<span class="tt"> 라이트</span></button><button data-th="dark" onclick="setTheme('dark')">🌙<span class="tt"> 다크</span></button></div>
-      <button class="gbtn2" onclick="openGuide(ME, (CUR||'home').split(':')[0])" title="사용 안내">📖<span class="gtx"> 사용 안내</span><span class="gtx2"> 사용설명서</span></button>
+      <button class="gbtn2" onclick="openGuide(ME, /:senior/.test(CUR||'') ? 'senior' : (CUR||'home').split(':')[0])" title="사용 안내">📖<span class="gtx"> 사용 안내</span><span class="gtx2"> 사용설명서</span></button>
       <div class="tuser" onclick="openMy()" title="마이페이지"><div class="av sm" id="tb-av"></div><span id="tb-nm"></span></div>
     </div>
   </div>
@@ -518,6 +535,7 @@ html.dark img,html.dark video,html.dark canvas,html.dark .noinv{filter:invert(1)
       <div class="inqthread" id="inq-thread"><div class="empty">왼쪽에서 문의를 고르거나 <b>+ 문의</b>를 누르세요.<br><span class="mute">도협회나 다른 지회에 물어볼 수 있습니다. 개인정보(수강생·이용인 이름 등)는 적지 마세요.</span></div></div>
     </div>
   </main>
+  <main id="view-pv" class="hide"></main>
   <div id="view-frame" class="hide">
     <div class="sysnote hide" id="sysnote"></div>
     <div class="fwrap">
@@ -530,6 +548,7 @@ html.dark img,html.dark video,html.dark canvas,html.dark .noinv{filter:invert(1)
 </div>
 
 <div id="modal" class="ov hide"></div>
+<div id="pvbar" class="hide"></div>
 <div id="pmodal" class="ov hide" onclick="if(event.target===this)closePunch()">
   <div class="pbox"><div class="phead"><b>📍 출퇴근 기록</b><button onclick="closePunch()">✕</button></div>
   <iframe id="pframe" title="출퇴근" allow="geolocation"></iframe></div>
@@ -577,6 +596,22 @@ async function start(){
   fromHash();
 }
 
+/* 부서 전환 — 두 부서 이상 맡은 사람만 보임. 고른 부서는 서버에 저장되어 회계·공문·증명서가 그 부서 기준으로 열립니다. */
+function deptSel(){
+  var el = $('dsel'), ds = (ME && ME.depts) || [];
+  if (PV || ds.length < 2) { el.classList.add('hide'); return; }
+  el.innerHTML = ds.map(function (d) { return '<option value="' + esc(d) + '"' + (d === (ME.cur_dept || '') ? ' selected' : '') + '>🏢 ' + esc(d || '부서 없음') + '</option>'; }).join('');
+  el.classList.remove('hide');
+}
+async function setDept(v){
+  var r = await sb.rpc('set_my_dept', { p_dept: v });
+  if (r.error) { alert(r.error.message); deptSel(); return; }
+  ME.cur_dept = r.data.cur;
+  var fr = $('frame');   // 열려 있는 화면을 새 부서 기준으로 다시 열기
+  if (!$('view-frame').classList.contains('hide') && fr.src && fr.src !== 'about:blank') { $('floading').classList.remove('hide'); FR.ready = false; try { fr.contentWindow.location.reload(); } catch(e){ fr.src = fr.src; } }
+  if (typeof loadBoard === 'function') loadBoard();
+}
+
 function isAttAdmin(){ return ME.role === 'admin' || ME.role === 'lead' || (ME.perms || []).indexOf('att.chapter_manage') >= 0; }
 function isVehAdmin(){ return (ME.perms || []).indexOf('vehicle.manage') >= 0; }
 function mgrExtra(){
@@ -605,7 +640,7 @@ function renderNav(){
       + supKid('senior:leavemgr', '후임 신청 현황', 'req') + supKid('senior:dashboard', '시수 신청 현황', 'sisu') + supKid('senior:altdashboard', '대체시수 신청 현황', 'alt');
   h += grpHtml('🚌', '출장 관리') + kidHtml('att', false, 'trip-apply', '출장 신청') + kidHtml('att', false, 'trip-hist', '출장 내역');
   if (isAttAdmin()) h += kidHtml('att', true, 'trip', '출장대장');
-  if (hasPerm('vehicle.')) h += topHtml('car:s:', '🚗', '차량운행일지', "go('car')");
+  h += topHtml('car:s:', '🚗', '차량운행일지', "go('car')");   // 지회 직원 누구나
   var bookMgr = ME.role === 'admin' || (ME.is_hq && hasPerm('book.manage'));
   if (hasPerm('edu.') || bookMgr) {
     h += grpHtml('📚', '수어교육관리');
@@ -632,6 +667,7 @@ function renderNav(){
   }
   if (isVehAdmin()) h += topHtml('car:a:', '🔧', '차량 관리', "go('car','',true)");
   if (ME.can_manage) h += topHtml('access:s:', '🔑', '직원·권한 관리', "go('access')");
+  if ((PV ? PV.real.ME : ME).role === 'admin' && !PV) h += topHtml('pv:s:', '👀', '지회 화면 미리보기', 'pvOpen()');
   $('nav').innerHTML = h;
   foldNav();
   if (PREFS !== undefined && $('quick')) loadQuick();
@@ -690,6 +726,8 @@ var SUBAPP = { book:'/book/', doc:'/doc/', interp:'/interp/', worklog:'/worklog/
 var SUBDEF = { book:'order', doc:'internal', interp:'log', worklog:'write', acct:'prop', cert:'issue', perf:'dash' };   // 하위 메뉴 없이 열면 첫 메뉴
 function go(kind, tab, adm){
   tab = tab || ''; adm = !!adm; closeSide();
+  $('view-pv').classList.add('hide');
+  if (PV && kind !== 'home') { pvShow(kind, tab, adm); return; }
   if (SUBAPP[kind] && !tab) tab = SUBDEF[kind];
   if (kind === 'att' && !adm && tab === 'trip') tab = 'trip-apply';
   if (kind === 'inq') {
@@ -727,9 +765,83 @@ function go(kind, tab, adm){
   markNav();
   try { history.replaceState(null, '', '#' + kind + (adm ? '-admin' : '') + (tab ? '/' + tab : '')); } catch(e){}
 }
+
+/* ── 지회 화면 미리보기 (도협회 관리자 설명용) ──
+   가상의 직원을 만들어 권한을 체크하면 왼쪽 메뉴·바로가기·사용설명서가 그 사람 기준으로 바뀝니다.
+   실제 데이터는 열지 않고(도협회 계정으로 열리면 헷갈리므로), 메뉴를 누르면 그 화면의 설명이 나옵니다. 저장되는 것은 없습니다. */
+var PV = null;
+var PV_PERMS = [
+  ['🚗 차량', [['vehicle.maint','정비 기록 입력'],['vehicle.manage','차량·운전자 설정']]],
+  ['📚 수어교육', [['edu.view','강좌·현황 조회'],['edu.write','출석·교육일지 입력'],['edu.course','강좌·명단 관리'],['edu.pii','수강생 개인정보 보기'],['edu.stats','통계 보기'],['edu.report','실적 보고 제출']]],
+  ['🤟 수어통역', [['interp.write','통역일지 시트 입력'],['interp.cwrite','상담일지 시트 입력'],['interp.view','전체 기록 조회 (센터 담당)'],['interp.report','통역 통계 도센터 보고']]],
+  ['🏖 근태', [['att.chapter_view','지회 휴가·출장 전체 조회'],['att.chapter_manage','휴가·출장 관리']]],
+  ['💰 회계', [['acct.view','회계 조회'],['acct.write','회계 작성 (품의·결의)'],['acct.approve','회계 결재']]],
+  ['📜 증명 · 👥 회원 · 📈 실적', [['cert.view','증명 발급대장 조회'],['cert.issue','증명서 발급'],['member.view','회원명단 조회'],['member.write','회원·회비 입력'],['perf.view','사업실적 조회'],['perf.write','사업실적 입력'],['perf.manage','사업 등록·분기 보고']]],
+  ['🔑 관리', [['core.manage_staff','공동 관리자 (직원·권한 관리)']]]];
+var PV_PRESET = {
+  staff: [],
+  interp: ['interp.write','interp.cwrite'],
+  center: ['interp.write','interp.cwrite','interp.view','interp.report'],
+  edu: ['edu.view','edu.write','edu.course','edu.stats'],
+  acct: ['acct.view','acct.write']
+};
+function pvOpen(){
+  var last = {}; try { last = JSON.parse(localStorage.getItem('pv-last') || '{}'); } catch(e){}
+  var ck = last.perms || [];
+  $('modal').innerHTML = '<div class="modal" style="max-width:720px"><h3>👀 지회 화면 미리보기</h3>'
+    + '<p class="mute" style="font-size:.85rem;margin:0">가상의 직원을 만들어 권한을 고르면, 그 직원에게 보이는 <b>왼쪽 메뉴 · 바로가기 · 사용설명서</b>로 바뀝니다. 실제 데이터는 열리지 않고, 저장되는 것도 없습니다.</p>'
+    + '<div style="display:grid;grid-template-columns:1fr 1fr;gap:10px">'
+    + '<div><label>이름 (가상)</label><input type="text" id="pv-name" value="' + esc(last.name || '홍길동') + '"></div>'
+    + '<div><label>소속 (가상)</label><input type="text" id="pv-chap" value="' + esc(last.chap || '춘천시지회') + '"></div></div>'
+    + '<label>역할</label><div style="display:flex;gap:14px;flex-wrap:wrap">'
+    + ['staff:직원','lead:지회 담당자 (사무국장 · 모든 권한)'].map(function(x){ var k = x.split(':'); return '<label class="ck" style="margin:0"><input type="radio" name="pv-role" value="' + k[0] + '"' + ((last.role || 'staff') === k[0] ? ' checked' : '') + ' style="width:auto"> ' + k[1] + '</label>'; }).join('')
+    + '<label class="ck" style="margin:0"><input type="checkbox" id="pv-sen"' + (last.senior ? ' checked' : '') + ' style="width:auto"> ✅ 선임</label></div>'
+    + '<label>빠른 선택</label><div style="display:flex;gap:6px;flex-wrap:wrap">'
+    + [['staff','일반 직원'],['interp','통역사'],['center','센터 담당'],['edu','수어교육 담당'],['acct','회계 담당']].map(function(x){ return '<button class="btn" type="button" onclick="pvPreset(\'' + x[0] + '\')">' + x[1] + '</button>'; }).join('') + '</div>'
+    + '<div id="pv-perms">' + PV_PERMS.map(function(g){ return '<div class="pvg">' + g[0] + '</div><div class="pvck">' + g[1].map(function(p){ return '<label><input type="checkbox" value="' + p[0] + '"' + (ck.indexOf(p[0]) >= 0 ? ' checked' : '') + '> ' + esc(p[1]) + '</label>'; }).join('') + '</div>'; }).join('') + '</div>'
+    + '<div class="mfoot"><span style="flex:1"></span><button class="btn" onclick="closeModal()">닫기</button><button class="btn pri" onclick="pvStart()">이 직원 화면으로 보기</button></div></div>';
+  $('modal').classList.remove('hide');
+}
+function pvPreset(k){ var on = PV_PRESET[k] || []; document.querySelectorAll('#pv-perms input').forEach(function(i){ i.checked = on.indexOf(i.value) >= 0; }); var r = document.querySelector('input[name=pv-role][value=staff]'); if (r) r.checked = true; }
+function pvStart(){
+  var role = (document.querySelector('input[name=pv-role]:checked') || {}).value || 'staff';
+  var cfg = { name: $('pv-name').value.trim() || '홍길동', chap: $('pv-chap').value.trim() || '춘천시지회', role: role, senior: $('pv-sen').checked,
+    perms: [].map.call(document.querySelectorAll('#pv-perms input:checked'), function(i){ return i.value; }) };
+  try { localStorage.setItem('pv-last', JSON.stringify(cfg)); } catch(e){}
+  closeModal();
+  var real = PV ? PV.real : { ME: ME, ATT: ATT, SUPN: SUPN };
+  var all = []; PV_PERMS.forEach(function(g){ g[1].forEach(function(p){ all.push(p[0]); }); });
+  var perms = role === 'lead' ? all : cfg.perms;
+  PV = { real: real, cfg: cfg };
+  ME = Object.assign({}, real.ME, { name: cfg.name, email: 'preview@example', role: role, perms: perms, is_hq: false, chapter_name: cfg.chap, dept: '', position: '',
+    can_manage: role === 'lead' || perms.indexOf('core.manage_staff') >= 0 });
+  ATT = { staff: { name: cfg.name, role: cfg.senior ? '선임' : '일반' }, staffName: cfg.name };
+  SUPN = cfg.senior ? { total: 3, req: 2, sisu: 1, alt: 0 } : {};
+  $('pvbar').innerHTML = '👀 미리보기 · <b>' + esc(cfg.name) + '</b> (' + esc(cfg.chap) + ' · ' + (role === 'lead' ? '지회 담당자' : '직원') + (cfg.senior ? ' · 선임' : '') + ') <button class="c" onclick="pvOpen()">권한 바꾸기</button><button class="e" onclick="pvEnd()">끝내기</button>';
+  $('pvbar').classList.remove('hide');
+  try { localStorage.setItem('guideSeen:preview@example', '1'); } catch(e){}
+  render(); go('home');
+}
+function pvEnd(){
+  if (!PV) return;
+  ME = PV.real.ME; ATT = PV.real.ATT; SUPN = PV.real.SUPN || {}; PV = null;
+  $('pvbar').classList.add('hide'); $('view-pv').classList.add('hide');
+  render(); go('home');
+}
+function pvShow(kind, tab, adm){
+  CUR = mid(kind, adm, tab);
+  ['view-home','view-frame','view-inq','view-attall'].forEach(function(id){ var e = $(id); if (e) e.classList.add('hide'); });
+  var sec = /^senior:/.test(tab) ? 'senior' : (kind === 'att' && adm) ? 'attadmin' : kind === 'access' ? 'manager' : kind === 'car' ? 'car' : kind === 'inq' ? 'inq' : kind;
+  var g = window.guideSection ? guideSection(sec) : null, a = document.querySelector('#nav [data-id="' + CUR + '"]');
+  var label = a ? a.getAttribute('data-lb') : (g ? g.t : kind);
+  $('view-pv').innerHTML = '<h2 style="margin:4px 0 12px">' + esc(label) + '</h2>'
+    + '<div class="pvnote">👀 미리보기에서는 실제 화면을 열지 않아요. <b>' + esc(PV.cfg.name) + '</b> 님이 이 메뉴를 누르면 아래 설명의 화면이 열립니다.</div>'
+    + (g ? '<div class="pvcard"><h3 style="margin-top:0">' + g.ic + ' ' + esc(g.t) + '</h3>' + g.b + '</div>' : '<div class="pvcard mute">이 메뉴의 설명이 아직 없습니다.</div>');
+  $('view-pv').classList.remove('hide');
+  markNav(); window.scrollTo(0, 0);
+}
 function fromHash(){
   var m = /^#(att|car|edu|book|doc|interp|worklog|acct|cert|member|access)(-admin)?(?:\/(.+))?$/.exec(location.hash || ''); if (!m) return false;
-  if (m[1] === 'car' && !hasPerm('vehicle.')) return false;
   if (m[1] === 'edu' && !hasPerm('edu.')) return false;
   go(m[1], m[3] ? decodeURIComponent(m[3]) : '', !!m[2]); return true;
 }
@@ -785,6 +897,7 @@ window.addEventListener('message', function(e){
     FR.tab = d.tab; CUR = mid(k, false, d.tab); markNav();
     try { history.replaceState(null, '', '#' + k + '/' + d.tab); } catch(x){}
   }
+  if (d.type === 'ot-report' && e.source === $('pframe').contentWindow) { closePunch(); go('att', 'overtime'); return; }   // 퇴근 → 시간외 보고서
   if (d.type === 'doc-badge' && e.source === $('frame').contentWindow) { docBadge(); return; }
   if (d.type === 'edu-badge' && e.source === $('frame').contentWindow) { eduBadge(); return; }
   if (d.type === 'book-badge' && e.source === $('frame').contentWindow) { bookBadgeSet(d.n); return; }
@@ -830,7 +943,7 @@ async function loadCal(){
       return { s: sd, e: ed, title: x.title, tm: tm, place: x.place, ci: x.ci, cal: x.cal, link: x.link };
     }).filter(function(x){ return x.e >= from; });
     if (!items.length) { $('calbox').innerHTML = legend + '<div class="empty">앞으로 14일간 일정이 없습니다.' + (multi ? '' : '<br><span class="mute">연결된 캘린더: ' + esc((j.cals || []).map(function(c){ return c.name; }).join(', ')) + '</span>') + '</div>' + calFoot(''); return; }
-    var shown = items.slice(0, 8);
+    var shown = items.slice(0, window.matchMedia('(max-width:860px)').matches ? items.length : 8);   // 휴대폰은 2주 일정 모두
     $('calbox').innerHTML = legend + shown.map(function(x){
       var d = new Date(x.s + 'T00:00:00'), ing = x.s <= from && x.e >= from;
       var tag = x.link ? 'a href="' + esc(x.link) + '" target="_blank" rel="noopener" title="구글 캘린더에서 열기"' : 'div style="cursor:default"';
@@ -882,6 +995,7 @@ function render(){
   $('me-sub').textContent = ME.chapter_name + (ME.position ? ' · ' + ME.position : '');
   var roleTxt = ME.role === 'admin' ? '도협회 관리자' : ME.role === 'lead' ? '지회 담당자' : (ME.can_manage ? '공동 관리자' : '');
   $('chips').innerHTML = '<span class="chip pri">' + esc(ME.chapter_name) + '</span>' + (roleTxt ? '<span class="chip">' + roleTxt + '</span>' : '') + (ME.dept ? '<span class="chip">' + esc(ME.dept) + '</span>' : '');
+  deptSel();
   $('tb-av').textContent = name.charAt(0); $('tb-nm').textContent = name;
   renderNav();
   try { var gk = 'guideSeen:' + (ME.email || ''); if (!localStorage.getItem(gk)) { localStorage.setItem(gk, '1'); setTimeout(function(){ openGuide(ME, 'home'); }, 600); } } catch(e){}
@@ -1111,6 +1225,7 @@ var SUPN = {};   // { total, req(시간외·대체휴무), sisu(시수·병가 �
 function supB(k){ var n = SUPN[k] || 0; return '<span class="nbadge' + (n ? '' : ' hide') + '" data-sup="' + k + '">' + n + '</span>'; }
 function supKid(tab, label, k){ return kidHtml('att', false, tab, label).replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', supB(k) + '</a>'); }
 async function supBadge(){
+  if (PV) return;   // 미리보기 중엔 가상 숫자
   if (!ATT || !ATT.staff || ATT.staff.role !== '선임') return;
   try { var r = await attCall('getSupervisorPending', JSON.stringify({ auth: { name: ATT.staffName } })); if (!r || !r.ok) return; SUPN = { total: r.total || 0, req: r.req != null ? r.req : (r.total || 0), sisu: r.sisu || 0, alt: r.alt || 0 }; } catch(e){ return; }
   document.querySelectorAll('[data-sup]').forEach(function(b){ var n = SUPN[b.getAttribute('data-sup')] || 0; b.textContent = n; b.classList.toggle('hide', !n); });

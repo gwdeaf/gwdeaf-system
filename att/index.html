@@ -396,6 +396,109 @@
   html.embed body{background:var(--bg);}
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
+<style>  /* ===== 대체시수 표 머리글: 진한 배경 + 진한 글씨 → 연한 배경 + 진한 글씨 ===== */
+  #alt-table, #altuse-table { font-size:0.85rem !important; }
+  #alt-table th, #altuse-table th { color:#3f2a00 !important; background:#fdecc8 !important; font-weight:700; font-size:0.8rem; padding:6px 4px; border:1px solid #ecd9ae; }
+  #alt-table th:first-child, #altuse-table tr:first-child th:first-child { background:#eef0f3 !important; color:#374151 !important; }
+  #alt-table th:last-child { background:#e3f4ea !important; color:#1d5e3a !important; }
+  #altuse-table tr:first-child th:nth-child(4), #altuse-table tr:nth-child(2) th:nth-child(n+6) { background:#e3ecff !important; color:#1e3a8a !important; border-color:#c9d8f7; }
+  #altuse-table tr:first-child th:nth-child(5) { background:#e3f4ea !important; color:#1d5e3a !important; }
+  #altuse-table tr:first-child th:nth-child(3) { background:#d8dee8 !important; }
+  #alt-table td, #altuse-table td { font-size:0.85rem !important; color:#1f2937; }
+  #alt-table select, #alt-table input, #altuse-table select, #altuse-table input { font-size:0.85rem !important; color:#111; }
+  @media (min-width:641px) {
+  #alt-table td:nth-child(5) select { width:66px !important; min-width:66px !important; }
+  #alt-table td:nth-child(2) select, #alt-table td:nth-child(3) select { width:50px !important; min-width:50px !important; }
+  }
+  @media (max-width:640px) {
+    /* 위 버튼 한 줄 */
+    #lp-bar { flex-wrap:nowrap !important; gap:4px !important; }
+    #lp-bar .lp-b { flex:1 1 0; min-width:0; padding:8px 2px !important; font-size:0.85rem !important; white-space:nowrap; text-align:center; }
+    #lp-bar .lp-b small { display:none; }
+    #la-alt-tabs { flex-wrap:nowrap !important; gap:4px !important; }
+    #la-alt-tabs .alt-t { flex:1 1 0; min-width:0; padding:7px 2px !important; font-size:0.8rem !important; white-space:nowrap; text-align:center; overflow:hidden; text-overflow:ellipsis; }
+    .top-btn-grid .btn { padding:9px 2px !important; font-size:0.8rem !important; white-space:nowrap; }
+    /* 휴가 종류: 버튼 대신 드롭다운 */
+    #leave-type-btns { display:none !important; }
+    #lt-sel { display:block !important; height:44px; font-size:16px; padding:0 10px; border-radius:10px; }
+    /* 시작일 · 종료일 · 신청 일수 한 줄 */
+    #la-day > .form-grid:first-child { grid-template-columns:1fr 1fr 64px !important; gap:6px !important; }
+    #la-day > .form-grid:first-child label { font-size:0.78rem; white-space:nowrap; overflow:hidden; }
+    #la-day > .form-grid:first-child label span { display:none; }
+    #leave-start, #leave-end { font-size:14px !important; padding:0 4px !important; min-width:0; height:42px; }
+    #leave-days { font-size:14px !important; padding:0 4px !important; text-align:center; height:42px; }
+
+    /* 표를 줄마다 카드로: 월·일·요일 칸을 넓게 */
+    #sisu-table thead, #alt-table thead, #altuse-table thead, #alt-table colgroup, #altuse-table colgroup { display:none; }
+    #sisu-table, #alt-table, #altuse-table, #sisu-table tbody, #alt-table tbody, #altuse-table tbody { display:block; width:100%; }
+    #sisu-table tr, #alt-table tr, #altuse-table tr { display:grid; gap:6px 8px; padding:10px; margin-bottom:8px; border:1px solid #e3e6ec; border-radius:12px; background:#fff !important; }
+    #sisu-table td, #alt-table td, #altuse-table td { display:flex; flex-direction:column; align-items:stretch; justify-content:center; border:none !important; padding:0 !important; background:transparent !important; text-align:left !important; white-space:normal !important; font-size:0.95rem !important; min-width:0; }
+    #sisu-table td::before, #alt-table td::before, #altuse-table td::before { font-size:0.72rem; color:#6b7280; font-weight:600; margin-bottom:2px; }
+    #sisu-table select, #sisu-table input, #alt-table select, #alt-table input, #altuse-table select, #altuse-table input {
+      width:100% !important; max-width:none !important; min-width:0 !important; height:40px; box-sizing:border-box; border:1px solid #d5dae2 !important; border-radius:8px !important;
+      background:#fff !important; font-size:16px !important; text-align:center; text-align-last:center; padding:0 4px !important; -webkit-appearance:none; appearance:none; color:#111; }
+    #sisu-table .time-inputs { display:flex; flex-direction:row !important; align-items:center; gap:6px; }
+    #sisu-table .time-inputs select { flex:1; }
+    #sisu-table td:first-child, #alt-table td:first-child, #altuse-table td:first-child { font-weight:800; color:#2f5bd6 !important; font-size:0.9rem !important; }
+    #sisu-table td[colspan], #alt-table td[colspan], #altuse-table td[colspan] { grid-column:1 / -1; text-align:center !important; }
+
+    /* 시수: [차시] 월 일 확인 / 시간 / 비고 */
+    #sisu-table tr { grid-template-columns:44px 1fr 1fr 60px; }
+    #sisu-table td:nth-child(1)::before { content:'차시'; }
+    #sisu-table td:nth-child(2)::before { content:'월'; }
+    #sisu-table td:nth-child(3)::before { content:'일'; }
+    #sisu-table td:nth-child(4) { grid-column:1 / -1; grid-row:2; } #sisu-table td:nth-child(4)::before { content:'시간 (시작 ~ 종료)'; }
+    #sisu-table td:nth-child(5) { grid-column:1 / -1; grid-row:3; } #sisu-table td:nth-child(5)::before { content:'비고'; }
+    #sisu-table td:nth-child(6) { grid-column:4; grid-row:1; align-items:center; } #sisu-table td:nth-child(6)::before { content:'선임 확인'; }
+
+    /* 대체시수 발생: [번호] 월 일 요일 / 시간 인정 / 사유 확인 */
+    #alt-table tr { grid-template-columns:40px 1fr 1fr 1fr; }
+    #alt-table td:nth-child(1)::before { content:'번호'; }
+    #alt-table td:nth-child(2)::before { content:'월'; }
+    #alt-table td:nth-child(3)::before { content:'일'; }
+    #alt-table td:nth-child(4)::before { content:'요일'; }
+    #alt-table td:nth-child(5) { grid-column:1 / 4; flex-direction:row !important; flex-wrap:wrap; align-items:center; gap:4px; }
+    #alt-table td:nth-child(5)::before { content:'시간 (시작 ~ 종료)'; width:100%; }
+    #alt-table td:nth-child(5) select { flex:1; width:auto !important; }
+    #alt-table td:nth-child(6) { color:#8a5e00 !important; font-weight:800; font-size:1.05rem !important; align-items:center; } #alt-table td:nth-child(6)::before { content:'인정시간'; }
+    #alt-table td:nth-child(7) { grid-column:1 / 4; } #alt-table td:nth-child(7)::before { content:'사유'; }
+    #alt-table td:nth-child(7) input { text-align:left; padding:0 8px !important; }
+    #alt-table td:nth-child(8) { align-items:center; } #alt-table td:nth-child(8)::before { content:'발생 확인'; }
+
+    /* 대체시수 사용: 발생(읽기 전용, 노란 줄) + 사용 입력 */
+    #altuse-table tr { grid-template-columns:40px 1fr 1fr 1fr 1fr; }
+    #altuse-table td:nth-child(1)::before { content:'번호'; }
+    #altuse-table td:nth-child(n+2):nth-child(-n+6) { background:#fff7e8 !important; color:#5b3a00 !important; border-radius:8px; padding:4px 6px !important; }
+    #altuse-table td:nth-child(2)::before { content:'발생 월'; }
+    #altuse-table td:nth-child(3)::before { content:'일'; }
+    #altuse-table td:nth-child(4)::before { content:'요일'; }
+    #altuse-table td:nth-child(5) { grid-column:2 / 4; grid-row:2; } #altuse-table td:nth-child(5)::before { content:'발생 시간'; }
+    #altuse-table td:nth-child(6) { grid-column:4 / 6; grid-row:2; font-weight:800; } #altuse-table td:nth-child(6)::before { content:'인정시간'; }
+    #altuse-table td:nth-child(2) { grid-column:2 / 3; } #altuse-table td:nth-child(3) { grid-column:3 / 4; } #altuse-table td:nth-child(4) { grid-column:4 / 6; }
+    #altuse-table td:nth-child(7) { display:none !important; }
+    #altuse-table td:nth-child(8) { grid-column:1 / 3; grid-row:3; } #altuse-table td:nth-child(8)::before { content:'🌴 사용 월'; color:#1e3a8a; }
+    #altuse-table td:nth-child(9) { grid-column:3; grid-row:3; } #altuse-table td:nth-child(9)::before { content:'일'; color:#1e3a8a; }
+    #altuse-table td:nth-child(10) { grid-column:4 / 6; grid-row:3; } #altuse-table td:nth-child(10)::before { content:'요일'; color:#1e3a8a; }
+    #altuse-table td:nth-child(11) { grid-column:1 / 5; grid-row:4; flex-direction:row !important; flex-wrap:wrap; align-items:center; gap:4px; }
+    #altuse-table td:nth-child(11)::before { content:'사용 시간'; width:100%; color:#1e3a8a; }
+    #altuse-table td:nth-child(11) input { flex:1; width:auto !important; }
+    #altuse-table td:nth-child(12) { grid-column:5; grid-row:4; align-items:center; } #altuse-table td:nth-child(12)::before { content:'확인'; }
+    #altuse-table td[colspan="4"] { grid-column:1 / 5 !important; grid-row:3; color:#c0392b !important; }
+    #altuse-table td[colspan="4"] + td { grid-column:5 !important; grid-row:3; }
+    #altuse-table td[colspan="12"] { grid-column:1 / -1 !important; grid-row:auto; }
+    #altuse-table td[colspan="12"]::before, #alt-table td[colspan]::before { content:none; }
+    #altuse-table td[colspan="4"]::before { content:none !important; }
+    #altuse-table td[colspan="4"] + td::before { content:'확인' !important; color:#6b7280 !important; }
+    #la-day > .form-grid:first-child { grid-template-columns:1fr 1fr 70px !important; }
+    /* 시간외 사전 신청: 예정일 · 시작 · 종료 한 줄 (반복이면 날짜 2칸 / 시간 2칸) */
+    #ot-req-grid { grid-template-columns:1.25fr 1fr 1fr !important; gap:6px !important; }
+    #ot-req-grid:has(.ot-rep:not([style*="none"])) { grid-template-columns:1fr 1fr !important; }
+    #ot-req-grid label { font-size:0.78rem; white-space:nowrap; overflow:hidden; }
+    #ot-req-grid > .form-group, #la-day > .form-grid:first-child > .form-group { min-width:0; }
+    #ot-req-grid input { font-size:14px !important; padding:0 4px !important; height:42px; min-width:0; width:100% !important; box-sizing:border-box; }
+    #ot-req-grid input::-webkit-calendar-picker-indicator, #leave-start::-webkit-calendar-picker-indicator, #leave-end::-webkit-calendar-picker-indicator { margin:0; padding:0; width:12px; }
+  }
+</style>
 <style>html{font-size:105%}@media print{html{font-size:100%}}</style>
 <style>#view-trip[data-mode="apply"] .trip-hist-only{display:none !important}#view-trip[data-mode="hist"] #trip-form-card{display:none !important}</style>
 <link rel="stylesheet" href="/ui.css?v=1">
@@ -487,7 +590,7 @@
     <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-bar" style="width:0%"></div></div>
     <br>
     <div class="table-scroll-wrap">
-      <table class="hours-table">
+      <table class="hours-table" id="sisu-table">
         <thead><tr>
           <th style="width:36px">차시</th>
           <th style="width:36px">월</th>
@@ -1266,6 +1369,10 @@
     <div class="card-title">🗓️ 휴가(시수) 신청</div>
     <div id="la-balance" style="background:#eaf6ef;color:#14532d;border-radius:8px;padding:0.8rem;margin-bottom:1rem;font-size:0.9rem;line-height:1.7;">남은 연차 불러오는 중...</div>
     <label style="display:block;font-weight:600;margin-bottom:0.4rem;">휴가 종류</label>
+    <select id="lt-sel" onchange="ltSel(this)" style="display:none;width:100%;margin-bottom:1rem;">
+      <option value="연차휴가">🏖 연차</option><option value="병가">🤒 병가</option><option value="특별휴가">🎉 특별휴가</option><option value="공무상질병휴가">🏥 공무상질병</option>
+      <option value="@sisu-연차">⏱ 1시간(시수)</option><option value="@sisu-병가">🤒 병가 1시간</option><option value="@alt">🔄 대체시수</option><option value="@comp">🎁 대체휴무</option><option value="기타">기타 (경조사·공가 등)</option>
+    </select>
     <div id="leave-type-btns" style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-bottom:1rem;">
       <button type="button" class="lt-btn on" data-v="연차휴가" onclick="pickLeaveType(this)">🏖 연차</button>
       <button type="button" class="lt-btn" data-v="병가" onclick="pickLeaveType(this)">🤒 병가</button>
@@ -1372,7 +1479,7 @@
     <div class="card-title">📝 시간외 근무 사전 신청</div>
     <div class="hint" style="margin-bottom:0.8rem;">시간외 근무를 하기 전에, 담당 선임에게 <b>사유</b>를 적어 먼저 신청하세요. 선임이 <b>수락</b>하면, 근무를 마치고 <b>퇴근을 찍은 뒤</b> 아래 [내 사전 신청]의 <b>📝 보고서 작성</b>을 누르세요. 신청 시간 안에서 퇴근 시각까지 자동으로 채워집니다. 근무 보고서는 [🖨️ 출력]해서 수기로 결재받으세요.</div>
     <label style="display:flex;align-items:center;gap:6px;font-weight:600;margin-bottom:0.6rem;cursor:pointer;"><input type="checkbox" id="ot-req-repeat" onchange="otRepeatToggle()" style="width:auto;"> 🔁 반복 신청 <span style="font-weight:400;color:var(--text-muted);font-size:0.82rem;">(예: 매주 월~금 19:00~20:30 수어교육 — 한 번 신청, 한 달에 한 번 체크)</span></label>
-    <div class="form-grid">
+    <div class="form-grid" id="ot-req-grid">
       <div class="form-group"><label id="ot-req-date-label">근무 예정일</label><input type="date" id="ot-req-date" style="width:100%"></div>
       <div class="form-group ot-rep" style="display:none;"><label>반복 종료일</label><input type="date" id="ot-req-to" style="width:100%"></div>
       <div class="form-group"><label>예정 시작</label><input type="time" id="ot-req-start" value="18:00" style="width:100%"></div>
@@ -1559,9 +1666,6 @@
         </tbody>
       </table>
     </div>
-  </div>
-  <div class="btn-group no-print">
-    <button class="btn btn-primary" onclick="loadLeaveHist()">🔄 새로고침</button>
   </div>
 </div>
 
@@ -4065,6 +4169,16 @@ function ensureHolidays(cb) {
   gasRun('getHolidays', null, function(r) { HOLI = {}; (r && r.list || []).forEach(function(d){ HOLI[d] = true; }); cb && cb(); }, function(){ HOLI = {}; cb && cb(); });
 }
 function isOffDay(d) { var w = d.getDay(); return w === 0 || w === 6 || !!(HOLI && HOLI[localDateStr(d)]); }
+// 휴대폰: 휴가 종류 드롭다운 → 같은 버튼을 누른 것처럼
+function ltSel(sel) {
+  var v = sel.value;
+  if (v.charAt(0) === '@') {
+    var cur = document.querySelector('#leave-type-btns .lt-btn.on'); sel.value = cur && cur.getAttribute('data-v') || '연차휴가';
+    if (v === '@alt') laPanel('alt'); else if (v === '@comp') laPanel('comp'); else laPanel('sisu', v.slice(6));
+    return;
+  }
+  var b = document.querySelector('#leave-type-btns .lt-btn[data-v="' + v + '"]'); if (b) pickLeaveType(b);
+}
 function pickLeaveType(btn) {
   document.querySelectorAll('.lt-btn').forEach(function(b){ b.classList.toggle('on', b === btn); });
   var v = btn.getAttribute('data-v'), etc = document.getElementById('la-etc');

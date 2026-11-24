@@ -79,7 +79,8 @@ body.noea .ea{display:none!important}
   <button onclick="openSearch()">검색</button>
   <button onclick="openRecv()">📥 받은 문서 <span id="recvCnt" class="badge wait" style="display:none"></span></button>
   <button onclick="openSent()">📤 보낸 문서</button>
-  <button onclick="openLedger()">공문 대장</button>
+  <button onclick="openLedger()">발송 대장</button>
+  <button onclick="openRLedger()">수신 대장</button>
   <button id="staffBtn" onclick="openSettings()" style="display:none">공문 설정</button>
   <button id="logoutBtn" onclick="logout()">로그아웃</button>
 </nav>
@@ -146,7 +147,7 @@ body.noea .ea{display:none!important}
       <textarea id="fAttach" style="min-height:60px" placeholder="2026 강원수어문화제 포스터 1부.&#10;2026 강원수어문화제 초대장 1부."></textarea>
       <label>협조자 (없으면 비워 두기)</label><input id="fCoop">
       <div id="coopBox" style="display:none;border:1px dashed #c9d3e4;border-radius:10px;padding:8px 10px;margin-top:10px">
-        <b style="font-size:13px">업무협조전 양식</b> <span class="hint" style="margin:0">비워 두면 공문 설정의 값을 씁니다</span>
+        <b style="font-size:13px">업무협조전 양식</b> <span class="hint" style="margin:0">공문 설정의 값이 미리 채워져요. 이 문서만 다르게 하려면 고치세요</span>
         <label>결재라인 (/ 로 나눔)</label><input id="fChain" placeholder="예: 대리 김경식 / 과장 박보미 / 부장 이성혜">
         <div class="row"><div><label>단체장 (아래쪽 큰 글씨)</label><input id="fChief" placeholder="예: 강원특별자치도수어통역센터장"></div>
           <div class="narrow"><label>총 매수 (표지 포함)</label><input id="fPages" inputmode="numeric" value="1"></div></div>
@@ -319,6 +320,7 @@ body.noea .ea{display:none!important}
       <div class="hint">우리 지회 문서 번호의 모양입니다. 이미 부여된 번호는 바뀌지 않고, 앞으로 기안하는 문서부터 적용됩니다. 직원 등록은 "직원·권한 관리"에서 합니다.</div>
       <div class="row">
         <div><label>번호 앞 이름</label><input id="seName"></div>
+        <div><label>업무협조전 번호 앞 이름</label><input id="seCoopName" placeholder="비우면: 번호 앞 이름 + 협조전"></div>
         <div class="narrow"><label>종류 표기</label><select id="seStyle"><option>표기 안 함</option><option>짧은 이름</option></select></div>
         <div class="narrow"><label>구분 기호</label><select id="seSep"><option>하이픈</option><option>공백</option><option>없음</option></select></div>
         <div class="narrow"><label>연도 자릿수</label><select id="seYear"><option>4</option><option>2</option></select></div>
@@ -429,8 +431,11 @@ async function boot() {
   if (!data || !data.active) { $('topNav').style.display = 'none'; showScreen('screenDenied'); return; }
   me = data;
   if (me.is_hq) { const o = $('fSeal').options; o[0].text = '도협회 직인'; o[1].text = '도센터 직인'; }
+  // 부서 직인 (기관 설정 → 부서에 올린 직인)이 있으면 맨 위에 '우리 부서 직인'
+  try { const r = await sb.rpc('doc_print_assets', { p_id: null }); PV_ASSETS = r.data || {}; } catch (e) { PV_ASSETS = {}; }
+  if (PV_ASSETS.seals && PV_ASSETS.seals['부서']) $('fSeal').insertAdjacentHTML('afterbegin', `<option value="부서">${esc(me.dept || '부서')} 직인</option>`);
   try { const r = await sb.rpc('doc_staff_list'); staffList = r.data || []; } catch (e) { staffList = []; }
-  $('whoText').textContent = `${me.chapter_name} · ${me.name} (${me.email})${me.is_admin ? ' · 관리자' : ''}`;
+  $('whoText').textContent = `${me.chapter_name}${me.dept ? ' ' + me.dept : ''} · ${me.name} (${me.email})${me.is_admin ? ' · 관리자' : ''}`;
   $('topNav').style.display = 'flex';
   $('staffBtn').style.display = me.is_admin ? '' : 'none';
   SUB.ready = true;
@@ -573,7 +578,21 @@ function fillForm(d) {
   $('fChain').value = f.chain || ''; $('fChief').value = f.chief || ''; $('fPages').value = f.pages || '1';
   coopToggle();
 }
-function coopToggle() { $('coopBox').style.display = $('fKind').value === '업무협조전' ? '' : 'none'; }
+function coopToggle() { $('coopBox').style.display = $('fKind').value === '업무협조전' ? '' : 'none'; if ($('fKind').value === '업무협조전') coopFill(); }
+// 업무협조전: 공문 설정의 결재라인·단체장을 미리 채움 (결재선이 비어 있으면 결재라인으로 채움)
+async function coopFill() {
+  if (!PV_ASSETS) { try { const r = await sb.rpc('doc_print_assets', { p_id: null }); PV_ASSETS = r.data || {}; } catch (e) { PV_ASSETS = {}; } }
+  const cfg = PV_ASSETS.cfg || {}, chain = cfg['협조전 결재라인'] || '';
+  if (!$('fChain').value.trim() && chain) $('fChain').value = chain;
+  if (!$('fChief').value.trim() && cfg['협조전 단체장']) $('fChief').value = cfg['협조전 단체장'];
+  if (chain && !current && !readSteps().length) {   // 새 문서일 때만
+    $('stepsBody').innerHTML = '';
+    chain.split('/').map((x) => x.trim()).filter(Boolean).forEach((x) => { const m = x.match(/^(\S+)\s+(.+)$/); addStepRow(m ? { role: m[1], name: m[2] } : { role: x }); });
+    const p = staffList; [...document.querySelectorAll('#stepsBody tr')].forEach((tr) => { const n = tr.querySelector('.sName').value, hit = p.find((s) => s.name === n); if (hit) { tr.querySelector('.sPick').value = hit.email; tr.querySelector('.sEmail').value = hit.email; } });
+    msg('stepsMsg', '공문 설정의 업무협조전 결재라인으로 결재선을 채웠어요. 필요하면 고치세요.', true);
+  }
+  pvSoon();
+}
 // 종류를 내부결재로 바꾸면 수신 = '내부결재'
 function kindChanged() {
   const k = $('fKind').value, r = $('fRecipient');
@@ -606,7 +625,7 @@ async function openWrite(id) {
   if (!id) {
     current = null;
     $('writeTitle').textContent = '새 문서 작성';
-    $('fKind').value = KIND || '공문'; $('fDate').value = new Date().toISOString().slice(0, 10); $('fSeal').value = '지회';
+    $('fKind').value = KIND || '공문'; $('fDate').value = new Date().toISOString().slice(0, 10); $('fSeal').value = $('fSeal').querySelector('option[value="부서"]') ? '부서' : '지회';
     $('fRecipient').value = ''; $('fTitle').value = ''; $('fBody').value = ''; $('fAttach').value = '';
     $('fVia').value = ''; $('fCoop').value = ''; $('fOpen').value = '공개'; $('fChain').value = ''; $('fChief').value = ''; $('fPages').value = '1';
     addStepRow({});
@@ -1091,7 +1110,7 @@ async function downloadRLedgerCsv() {
 }
 
 // ============ 9) 번호 설정 (관리자만) ============
-const SE_IDS = { '번호 앞 이름': 'seName', '종류 표기 방식': 'seStyle', '구분 기호': 'seSep', '연도 자릿수': 'seYear', '일련번호 자릿수': 'seWidth',
+const SE_IDS = { '번호 앞 이름': 'seName', '협조전 번호 앞 이름': 'seCoopName', '종류 표기 방식': 'seStyle', '구분 기호': 'seSep', '연도 자릿수': 'seYear', '일련번호 자릿수': 'seWidth',
   '머리 표어': 'fmSlogan', '머리 기관명': 'fmHead', '발신명의': 'fmSender', '우편번호': 'fmZip', '주소': 'fmAddr', '홈페이지': 'fmWeb', '전화': 'fmTel', '전송': 'fmFax', '이메일': 'fmMail', '영상전화': 'fmVideo', '협조전 결재라인': 'fmChain', '협조전 단체장': 'fmChief' };
 async function openSettings() {
   if (!me.is_admin) return;
@@ -1106,7 +1125,9 @@ function previewNumber() {
   const y = $('seYear').value === '2' ? String(TODAY_YEAR).slice(-2) : String(TODAY_YEAR);
   const sep = { '하이픈': '-', '공백': ' ', '없음': '' }[$('seSep').value];
   const head = $('seStyle').value === '짧은 이름' ? ($('seName').value + ' 공문').trim() : $('seName').value;
-  $('sePreview').textContent = '번호 예시: ' + (head + ' ' + y + sep + '1'.padStart(Number($('seWidth').value), '0')).trim();
+  const num = y + sep + '1'.padStart(Number($('seWidth').value), '0');
+  const coopHead = $('seStyle').value === '짧은 이름' ? ($('seName').value + ' 업무협조전').trim() : ($('seCoopName').value.trim() || ($('seName').value + ' 협조전').trim());
+  $('sePreview').textContent = '번호 예시: 공문 ' + (head + ' ' + num).trim() + '  ·  업무협조전 ' + (coopHead + ' ' + num).trim() + '  (번호는 종류마다 따로 1번부터)';
 }
 async function saveSettingsClick() {
   const p = {}; Object.keys(SE_IDS).forEach((k) => { p[k] = $(SE_IDS[k]).value.trim(); });

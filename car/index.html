@@ -11,7 +11,7 @@
 <meta name="apple-mobile-web-app-title" content="운행일지">
 <style>
 *{box-sizing:border-box;margin:0}
-:root{--k:1}
+:root{--k:0.9}
 body{font-family:-apple-system,"Pretendard","Malgun Gothic",sans-serif;background:#f5f7fb;color:#1f1f1f;padding:20px 16px 40px;max-width:480px;margin:auto}
 button{font:inherit;cursor:pointer;border:0;border-radius:14px;color:inherit}
 .head{display:flex;justify-content:space-between;align-items:flex-start;margin:14px 0 18px}
@@ -1184,7 +1184,6 @@ async function initSession(){
   let w=null;
   try{ const r=await sb.rpc("whoami"); w=r.data; }catch(e){}
   if(!w || !w.ok){ SESSION=null; CH=null; BLOCK=(w&&w.reason)||"error"; return false; }
-  if(!(w.perms||[]).some(x=>String(x).startsWith("vehicle."))){ SESSION=null; CH=null; BLOCK="no_perm"; return false; }
   CH = w.chapter_id; ROLE = w.role; SESSION = data.session; CAN_MANAGE = (w.perms||[]).indexOf("vehicle.manage")>=0;
   ME_NAME = String(w.name||"").trim() || String(w.email||"").split("@")[0];
   driver = ME_NAME; ORG_NAME = w.chapter_name || "";   // 운전자는 로그인한 사람 이름으로 자동 입력

@@ -145,8 +145,29 @@ async function showMember(id) {
       <div><label>납부 방법</label><select id="fMethod"><option>계좌이체</option><option>현금</option><option>카드</option><option>기타</option></select></div>
       <div><label>메모</label><input id="fNote"></div></div>
       <div class="actions"><button onclick="addFee(${id})">납부 기록</button></div>` : ''}
-    <div id="fList" style="margin-top:10px"><p>불러오는 중…</p></div></div>`;
-  loadFees(id);
+    <div id="fList" style="margin-top:10px"><p>불러오는 중…</p></div></div>
+    <div class="card" style="cursor:default"><b>📈 사업 참여 이력</b> <span class="hint">사업실적에 참여자로 기록된 사업 · 행사 (모든 연도)</span>
+      <div class="tbar" style="margin-top:8px"><input id="hQ" placeholder="사업명 · 장소 · 내용 검색" oninput="drawHist()"><select id="hY" onchange="drawHist()"><option value="">전체 연도</option></select></div>
+      <div id="hList"><p>불러오는 중…</p></div></div>`;
+  loadFees(id); loadHist(id);
+}
+// 회원별 사업 참여 이력 (사업실적과 같은 자료)
+let HIST = [];
+async function loadHist(id) {
+  try { HIST = await rpc('member_perf_history', { p_member: id }); }
+  catch (e) { $('hList').innerHTML = `<p class="hint">${esc(e.message)}</p>`; return; }
+  const ys = [...new Set(HIST.map(h => String(h.held_on).slice(0, 4)))].sort().reverse();
+  $('hY').innerHTML = '<option value="">전체 연도</option>' + ys.map(y => `<option value="${y}">${y}년 (${HIST.filter(h => String(h.held_on).startsWith(y)).length}회)</option>`).join('');
+  drawHist();
+}
+function drawHist() {
+  const q = ($('hQ').value || '').trim(), y = $('hY').value;
+  const list = HIST.filter(h => (!y || String(h.held_on).startsWith(y)) && (!q || [h.project_name, h.place, h.content, h.category].some(v => String(v || '').includes(q))));
+  if (!HIST.length) { $('hList').innerHTML = '<p class="hint">참여 기록이 없습니다. 사업실적 → 사업실적 등록에서 이 회원을 참여자로 체크하면 여기에 나옵니다.</p>'; return; }
+  const nP = new Set(list.map(h => h.project_name)).size;
+  $('hList').innerHTML = `<p class="hint" style="margin:4px 0 8px">참여 <b>${list.length}회</b> · 사업 <b>${nP}개</b>${y || q ? ' (골라 본 결과)' : ''}</p>
+    <div style="overflow-x:auto"><table class="t"><thead><tr><th>날짜</th><th>사업 · 행사</th><th>분류</th><th>회차</th><th>장소</th><th>내용</th></tr></thead><tbody>${
+    list.map(h => `<tr><td style="white-space:nowrap">${esc(h.held_on)}${h.start_time ? ' ' + esc(h.start_time) : ''}</td><td><b>${esc(h.project_name)}</b></td><td>${esc(h.category || '-')}</td><td>${h.round_no}회</td><td>${esc(h.place || '-')}</td><td>${esc(h.content || '-')}</td></tr>`).join('') || '<tr><td colspan="6" class="hint">찾는 기록이 없습니다.</td></tr>'}</tbody></table></div>`;
 }
 async function loadFees(id) {
   try {

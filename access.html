@@ -60,7 +60,7 @@ const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const SYS = {core:"관리", vehicle:"차량운행", edu:"수어교육", att:"근태", interp:"수어통역", acct:"회계", cert:"증서·증명", member:"회원관리", perf:"사업실적", news:"뉴스 배정표", book:"교재 주문"};
 const ROLE = {admin:"도협회 관리자", lead:"지회 담당", staff:"직원"};
-const ACT = {add_staff:"직원 등록", delete_staff:"직원 삭제", update_staff:"직원 정보 수정", enable_staff:"사용 재개", disable_staff:"사용 중지", grant:"권한 부여", revoke:"권한 해제",
+const ACT = {chapter_reset:"자료 초기화", dept:"부서", add_staff:"직원 등록", delete_staff:"직원 삭제", update_staff:"직원 정보 수정", enable_staff:"사용 재개", disable_staff:"사용 중지", grant:"권한 부여", revoke:"권한 해제",
              save_approval:"결재라인 저장", delete_approval:"결재라인 삭제", assign_lead:"지회 담당 지정", set_admin:"도협회 관리자 변경"};
 const DEFAULT_AP = ["부장","사무처장","본부장"];
 let me = null, tab = "staff", staff = [], catalog = [], lines = [], chapters = [], logs = [];
@@ -102,7 +102,7 @@ function blockedView(){
 
 /* ---------- 화면 ---------- */
 function render(){
-  const tabs = me.can_manage ? [["staff","직원·권한"],["lines","결재라인"],["log","변경 기록"]] : [];
+  const tabs = me.can_manage ? [["staff","직원·권한"],["depts","부서"],["lines","결재라인"],["log","변경 기록"]] : [];
   if(me.role === "admin") tabs.push(["chapters","지회 관리"]);   // 도협회: 지회 담당 지정 + 드라이브·캘린더 연결
   if(me.can_manage) tabs.push(["org","기관 정보"]);
   if(me.role === "lead") tabs.push(["drive","지회 설정"]);        // 지회 담당자: 우리 지회 드라이브·캘린더 연결
@@ -113,12 +113,13 @@ function render(){
       <div><a class="btn sub sm" href="/" style="text-decoration:none;display:inline-block">🏠 홈으로</a> <button class="btn sub sm" onclick="logout()">로그아웃</button></div></div>
     <div class="tabs">${tabs.map(t=>`<button class="${tab===t[0]?"on":""}" onclick="go('${t[0]}')">${t[1]}</button>`).join("")}</div>
     <div id="body"></div>`;
-  ({staff:staffView, lines:linesView, log:logView, chapters:chaptersView, drive:driveView, org:orgView, sign:signView, me:meView}[tab] || meView)();
+  ({staff:staffView, depts:deptsView, lines:linesView, log:logView, chapters:chaptersView, drive:driveView, org:orgView, sign:signView, me:meView}[tab] || meView)();
 }
 async function go(t){
   tab = t;
   try{
     if(t==="staff") await loadStaff();
+    else if(t==="depts"){ SCH = null; await loadStaff(); deptEdit = null; }
     else if(t==="lines"){ await loadStaff(); lines = await rpc("get_approval_lines"); drafts = {}; }
     else if(t==="log") logs = await rpc("get_access_log", {p_limit:100});
     else if(t==="chapters"){ chapters = await rpc("list_chapters"); try{ await loadDrive(); }catch(e){ drv = {ok:false, msg:e.message}; } }
@@ -138,6 +139,14 @@ async function loadStaff(){
   if(SCHS === null){ try{ SCHS = me.is_hq ? (await rpc("staff_chapters")) || [] : []; }catch(e){ SCHS = []; } SCHS.sort((a,b)=>chRank(a)-chRank(b) || String(a.name).localeCompare(b.name)); }
   staff = await rpc("list_staff", PC());
   try{ ATTI = await rpc("staff_att_list", PC()); }catch(e){ ATTI = null; }
+  try{ DEPTS = await rpc("dept_list", PC()); }catch(e){ DEPTS = null; }   // 64번 SQL 전에는 null
+}
+/* 부서 목록 (기관 설정 → 부서). 직원 부서는 이 목록에서 고릅니다. */
+let DEPTS = null, deptEdit = null;
+function deptPick(id, cur){
+  if(!DEPTS || !DEPTS.length) return `<input id="${id}" value="${esc(cur||"")}" placeholder="부서">`;
+  const has = !cur || DEPTS.some(d=>d.name===cur);
+  return `<select id="${id}"><option value="">(부서 없음)</option>${DEPTS.map(d=>`<option ${d.name===cur?"selected":""}>${esc(d.name)}</option>`).join("")}${has?"":`<option selected>${esc(cur)}</option>`}</select>`;
 }
 async function pickCh(v){ const c = SCHS.find(x=>String(x.id)===String(v)); SCH = c && !c.is_hq ? c.id : null; editId = null; openId = null; await loadStaff(); render(); }
 function chPicker(){
@@ -164,7 +173,7 @@ function staffView(){
   const mgr = me.role==="admin" || me.role==="lead";
   $("#body").innerHTML = chPicker() + `<div class="card"><h2>직원 등록${SCH ? " · " + esc((SCHS.find(x=>x.id===SCH)||{}).name||"") : ""}</h2><div class="muted" style="margin-bottom:6px">업무용 구글 이메일로 등록하면, 그 직원이 구글 로그인으로 들어올 수 있습니다. 직원 정보(소속 구분·입사일·근태 정보 포함)는 이 화면 한 곳에서 관리하며, 근태 관리에는 자동으로 반영됩니다. 퇴사한 직원은 <b>사용 중지</b>하세요(근태 기록은 남습니다).</div>
     ${ATTI && !ATTI.sheet ? '<div class="muted" style="margin-bottom:6px">※ 근태를 한 번 열면(근태 / 휴가 관리) 근태 정보(역할·담당 선임·연차 등)도 여기서 입력할 수 있습니다.</div>' : ''}
-    <div class="grid"><input id="n_email" class="full" placeholder="이메일 (예: name@도메인)" autocomplete="off"><input id="n_name" placeholder="이름"><input id="n_dept" placeholder="부서"><input id="n_pos" class="full" placeholder="직위">
+    <div class="grid"><input id="n_email" class="full" placeholder="이메일 (예: name@도메인)" autocomplete="off"><input id="n_name" placeholder="이름">${deptPick("n_dept","")}<input id="n_pos" class="full" placeholder="직위">
     <button class="btn full" onclick="addStaff()">등록</button></div></div>
     ${staff.map(s=>staffCard(s, mgr)).join("") || '<div class="muted center">등록된 직원이 없습니다.</div>'}`;
 }
@@ -191,9 +200,10 @@ function staffCard(s, mgr){
       <div>${lb("이름")}<input id="e_name" value="${esc(s.name)}" placeholder="이름"></div>
       <div>${lb("구글 이메일 (로그인 계정)")}<input id="e_email" type="email" value="${esc(s.email)}" ${s.email===me.email?"disabled":""}></div>
       <div>${lb("소속 구분")}<select id="e_org"><option value="">선택</option>${ORGS.map(o=>`<option ${o===org?"selected":""}>${o}</option>`).join("")}</select></div>
-      <div>${lb("부서")}<input id="e_dept" value="${esc(s.dept)}" placeholder="부서"></div>
+      <div>${lb("기본 부서")}${deptPick("e_dept", s.dept)}</div>
       <div>${lb("직급·직위")}<input id="e_pos" value="${esc(s.position)}" placeholder="직위"></div>
       <div class="full">${lb("입사일 (넣으면 연차 자동 계산: 입사한 해 매달 1일 → 다음 해부터 15일, 셋째 해부터 2년마다 +1일, 최대 25일)")}<input id="e_hire" type="date" value="${esc(s.hire_date||"")}"></div>
+      ${DEPTS && DEPTS.length > 1 ? `<div class="full">${lb("함께 맡는 부서 (두 부서 업무를 같이 하면 체크 · 화면 위에서 부서를 바꿔 가며 일합니다)")}<div class="row">${DEPTS.map(d=>`<label style="display:flex;align-items:center;gap:4px;white-space:nowrap;margin-right:10px"><input type="checkbox" style="width:auto;margin:0" class="e_d2" value="${esc(d.name)}" ${(s.depts2||[]).includes(d.name)?"checked":""}>${esc(d.name)}</label>`).join("")}</div></div>` : ""}
       ${attBox}
       <div class="full muted" style="font-size:12px">이름을 바꾸면 근태 직원목록의 이름도 바뀝니다. 이미 있는 휴가·시수 기록은 예전 이름으로 남으니 꼭 필요할 때만 바꾸세요.</div>
       <button class="btn" onclick="saveEdit(${s.id})">저장</button><button class="btn sub" onclick="editId=null;render()">취소</button></div></div>`;
@@ -203,7 +213,7 @@ function staffCard(s, mgr){
       const k = c.system+"."+c.perm, on = s.grants.includes(k), dis = c.system==="core" && !mgr;
       return `<label><input type="checkbox" ${on?"checked":""} ${dis?"disabled":""} onchange="grant(${s.id},'${c.system}','${c.perm}',this.checked)">${esc(c.label)}</label>`; }).join("")}`).join("")}</div>` : "";
   const a = attOf(s);
-  return `<div class="card ${off?"off":""}"><div class="st"><div><b>${esc(s.name)}</b> <span class="muted">${esc(s.position)} ${esc(s.dept)}</span>${s.org_type?`<span class="badge g">${esc(s.org_type)}</span>`:""}${a&&a.role==="선임"?'<span class="badge o">선임</span>':""}
+  return `<div class="card ${off?"off":""}"><div class="st"><div><b>${esc(s.name)}</b> <span class="muted">${esc(s.position)} ${esc(s.dept)}${(s.depts2||[]).length?" + "+esc(s.depts2.join(", ")):""}</span>${s.org_type?`<span class="badge g">${esc(s.org_type)}</span>`:""}${a&&a.role==="선임"?'<span class="badge o">선임</span>':""}
       ${s.hire_date||(a&&a.supervisor)?`<div class="muted" style="font-size:12px">${s.hire_date?"입사 "+esc(s.hire_date):""}${a&&a.supervisor?(s.hire_date?" · ":"")+"담당 선임 "+esc(a.supervisor):""}</div>`:""}
       <span class="badge ${lead?"":"g"}">${ROLE[s.role]}</span>${off?'<span class="badge x">사용 중지</span>':""}${s.grants.includes("core.manage_staff")?'<span class="badge o">공동 관리자</span>':""}
       <div class="muted">${esc(s.email)}</div>${lead?'<div class="muted">담당자는 모든 권한을 가집니다.</div>':`<div class="muted">부여된 권한 ${s.grants.length}개</div>`}</div>
@@ -224,6 +234,7 @@ async function saveEdit(id){
       catch(e){ if(/update_staff_email/.test(e.message)) throw new Error("이메일을 고치려면 25번 SQL을 먼저 실행해 주세요."); throw e; }
     }
     await rpc("update_staff", PC({p_id:id, p_name:val("e_name"), p_dept:val("e_dept"), p_position:val("e_pos")}));
+    if(DEPTS && DEPTS.length > 1) await rpc("staff_depts_set", PC({p_staff:id, p_depts:[...document.querySelectorAll(".e_d2:checked")].map(x=>x.value)}));
     const p = {org_type: val("e_org"), hire_date: val("e_hire")};
     if($("#e_arole")) p.att = {role:val("e_arole"), supervisor:val("e_asup"), annualLeave:val("e_aleave"), weeklyHours:val("e_aweek"), stdIn:val("e_ain"), stdOut:val("e_aout"),
       hourly:val("e_ahour"), contact:val("e_acontact"), slackId:val("e_aslack"), note:val("e_anote")};
@@ -247,7 +258,7 @@ function dropAdmin(email){ if(confirm("이 사람의 도협회 관리자 권한�
 
 /* 결재라인 */
 function linesView(){
-  const set = {}; staff.forEach(s=>{ if(s.dept) set[s.dept] = 1; }); lines.forEach(l=>{ set[l.dept] = 1; }); Object.keys(drafts).forEach(d=>{ set[d] = 1; });
+  const set = {}; (DEPTS||[]).forEach(d=>{ set[d.name] = 1; }); staff.forEach(s=>{ if(s.dept) set[s.dept] = 1; }); lines.forEach(l=>{ set[l.dept] = 1; }); Object.keys(drafts).forEach(d=>{ set[d] = 1; });
   deptKeys = Object.keys(set).sort();
   $("#body").innerHTML = `<div class="card"><div class="muted">부서별로 결재칸(1~5칸)의 직책 이름과 수신처를 정합니다. 휴가·출장·시간외 등 모든 신청서를 인쇄할 때 이 설정이 쓰입니다.</div>
     <div class="row" style="margin-top:8px"><input id="nd" placeholder="새 부서 이름" style="flex:1"><button class="btn sub sm" onclick="addDept()">부서 추가</button></div></div>
@@ -277,6 +288,46 @@ function apDel(i){ const x = drafts[deptKeys[i]]; if(x.ap.length > 1) x.ap.pop()
 function apSave(i){ const d = deptKeys[i], x = drafts[d]; act("save_approval_line", {p_dept:d, p_approvers:x.ap, p_addressee:x.to}, "저장했습니다.", async()=>{ lines = await rpc("get_approval_lines"); drafts = {}; linesView(); }); }
 function apRemove(i){ const d = deptKeys[i]; if(confirm(d + " 부서의 결재라인을 삭제할까요?")) act("delete_approval_line", {p_dept:d}, "삭제했습니다.", async()=>{ lines = await rpc("get_approval_lines"); drafts = {}; linesView(); }); }
 
+/* 부서 — 부서마다 정식 기관명·발신 명의·주소·전화·직인. 공문·증명서·회계 인쇄에 쓰입니다. */
+function deptsView(){
+  if(DEPTS === null){ $("#body").innerHTML = '<div class="card muted">부서 기능을 쓰려면 64번 SQL을 먼저 실행해 주세요.</div>'; return; }
+  const f = (id, lab, v, ph) => `<div><label class="muted" style="font-size:12px;display:block">${lab}</label><input id="${id}" value="${esc(v||"")}" placeholder="${ph||""}"></div>`;
+  const form = d => `<div class="grid" style="margin-top:8px">
+      ${f("d_name","부서 이름 (메뉴·대장에 보이는 짧은 이름)", d.name, "예) 수어통역센터")}
+      ${f("d_sort","순서", d.sort, "1")}
+      ${f("d_full","정식 기관명 (공문 머리·증명서·회계 인쇄)", d.full_name, "예) 춘천시수어통역센터")}
+      ${f("d_sender","발신 명의", d.sender, "예) 춘천시수어통역센터장")}
+      ${f("d_addr","주소", d.address, "비우면 기관 정보의 주소")}
+      ${f("d_phone","전화", d.phone, "033-000-0000")}
+      ${f("d_fax","팩스", d.fax, "")}
+      <div class="full row"><button class="btn" onclick="deptSave(${d.id||"null"})">저장</button><button class="btn sub" onclick="deptEdit=null;deptsView()">취소</button>
+      ${d.id?`<button class="btn red" onclick="deptDel(${d.id})">삭제</button>`:""}</div></div>`;
+  $("#body").innerHTML = `<div class="card"><h2>🏢 부서</h2><div class="muted">부서마다 회계·공문·증명서·결재라인이 따로 운영됩니다. 정식 기관명·발신 명의·주소·직인을 넣으면 그 부서에서 만든 공문·증명서·회계 문서에 찍힙니다.
+    두 부서 업무를 같이 하는 직원은 <b>직원·권한 → 수정 → 함께 맡는 부서</b>에서 체크하세요. 그 직원은 화면 위에서 부서를 바꿔 가며 일합니다.</div>
+    <div class="muted" style="font-size:12px;margin-top:4px">※ 공문 설정(공문 → 설정)에 따로 적은 기관명·주소가 있으면 그것이 먼저 쓰입니다. 부서 이름을 바꾸면 그 부서의 기존 자료도 새 이름으로 함께 옮겨집니다.</div>
+    ${deptEdit==="new" ? form({}) : `<div class="row" style="margin-top:8px"><button class="btn sub sm" onclick="deptEdit='new';deptsView()">＋ 부서 추가</button></div>`}</div>
+    ${DEPTS.map(d=>`<div class="card">${deptEdit===d.id ? `<h2>${esc(d.name)} 고치기</h2>` + form(d) : `<div class="st"><div><b>${esc(d.name)}</b> <span class="muted">직원 ${d.staff}명</span>
+        <div class="muted" style="font-size:13px">${esc(d.full_name||"정식 기관명 없음")}${d.sender?" · 발신 "+esc(d.sender):""}</div>
+        <div class="muted" style="font-size:12px">${esc(d.address||"주소: 기관 정보와 같음")}${d.phone?" · ☎ "+esc(d.phone):""}${d.fax?" · 팩스 "+esc(d.fax):""}</div></div>
+      <div style="text-align:center">${d.seal?`<img src="${esc(d.seal)}" style="max-height:56px;max-width:90px;display:block;margin:0 auto 4px">`:'<div class="muted" style="font-size:12px">직인 없음</div>'}
+        <input type="file" accept="image/png,image/jpeg,image/webp" id="d_f_${d.id}" style="display:none" onchange="deptSeal(${d.id},this)">
+        <button class="btn sub sm" onclick="$('#d_f_${d.id}').click()">직인 ${d.seal?"바꾸기":"올리기"}</button>${d.seal?` <button class="btn sub sm" onclick="deptSealDel(${d.id})">지우기</button>`:""}</div></div>
+      <div class="row" style="margin-top:6px"><button class="btn sub sm" onclick="deptEdit=${d.id};deptsView()">고치기</button></div>`}</div>`).join("") || '<div class="muted center">등록된 부서가 없습니다. ＋ 부서 추가를 눌러 만드세요.</div>'}`;
+}
+async function deptReload(){ DEPTS = await rpc("dept_list"); deptsView(); }
+function deptSave(id){
+  const cur = id ? DEPTS.find(x=>x.id===id) : null;
+  if(cur && val("d_name") !== cur.name && !confirm(`부서 이름을 "${cur.name}" → "${val("d_name")}"(으)로 바꿀까요?\n그 부서의 회계·공문·증명서·결재라인과 직원 부서도 함께 바뀝니다.`)) return;
+  act("dept_save", {p_id:id, p_name:val("d_name"), p_full_name:val("d_full"), p_sender:val("d_sender"), p_address:val("d_addr"), p_phone:val("d_phone"), p_fax:val("d_fax"), p_sort:parseInt(val("d_sort"))||0},
+    "저장했습니다.", async()=>{ deptEdit = null; await deptReload(); });
+}
+function deptDel(id){ if(confirm("이 부서를 삭제할까요?")) act("dept_delete", {p_id:id}, "삭제했습니다.", async()=>{ deptEdit = null; await deptReload(); }); }
+async function deptSeal(id, input){
+  const f = input.files && input.files[0]; if(!f) return;
+  try{ await rpc("dept_seal_save", {p_id:id, p_image: await shrinkImage(f)}); toast("직인을 저장했습니다."); await deptReload(); }catch(e){ toast(e.message, true); }
+}
+function deptSealDel(id){ if(confirm("이 부서 직인을 지울까요?")) act("dept_seal_save", {p_id:id, p_image:null}, "지웠습니다.", deptReload); }
+
 /* 변경 기록 */
 function logView(){
   $("#body").innerHTML = `<div class="card"><table class="log"><tr><th>일시</th><th>처리자</th><th>내용</th></tr>${logs.map(l=>`<tr><td>${esc(l.at)}</td><td>${esc(l.actor)}</td><td><b>${esc(ACT[l.action]||l.action)}</b> ${esc(l.target)}<div class="muted">${esc(l.detail)}</div></td></tr>`).join("") || '<tr><td colspan="3" class="muted">기록이 없습니다.</td></tr>'}</table></div>`;
@@ -300,7 +351,40 @@ function orgView(){
       ${org.seals[k]?`<div><img src="${esc(org.seals[k])}" style="max-height:80px;max-width:160px;border:1px solid #ddd;margin-top:4px"></div>`:'<div class="muted">등록된 직인이 없습니다.</div>'}</div>
       <div><input type="file" accept="image/png,image/jpeg,image/webp" id="o_f_${k}" style="display:none" onchange="orgSeal('${k}',this)">
       <button class="btn sub sm" onclick="$('#o_f_${k}').click()">${org.seals[k]?"바꾸기":"올리기"}</button>
-      ${org.seals[k]?`<button class="btn sub sm" onclick="orgSealDel('${k}')">삭제</button>`:""}</div></div>`).join("")}</div>`;
+      ${org.seals[k]?`<button class="btn sub sm" onclick="orgSealDel('${k}')">삭제</button>`:""}</div></div>`).join("")}</div>
+    ${me.role==="admin"||me.role==="lead" ? resetCard() : ""}`;
+}
+/* 자료 초기화 — 체험 지회·시범 운영 뒤 업무 자료만 지움 (설정은 남김) */
+const RESET_CATS = [["acct","회계","품의·결의·출납·첨부 (회계 번호 처음부터)"],["doc","공문","문서·결재·발송·수신·대장 (문서번호 처음부터)"],["cert","증명서 발급","발급대장 (증명서 번호 처음부터)"],
+  ["perf","사업실적","실적·참여자·분기 보고"],["perf_proj","사업 목록","사업관리에 등록한 사업"],["interp","통역·상담일지","일지·월 보고"],["car","차량","운행·예약·정비 기록"],
+  ["att","근태","휴가·시간외·시수·대체휴무·출퇴근·출장"],["member","회원","회원 명단·회비"],["edu","수어교육","강좌·수강생·출석·교육일지·수납·수료·보고"],["book","교재 주문","주문 내역"],["board","공지·업무일지","우리 지회 공지, 업무일지"]];
+let RST = null;
+function resetCard(){
+  return `<div class="card" style="border-color:#f3c4c4"><h2>🧹 자료 초기화</h2>
+    <div class="muted">체험 지회 교육이 끝났거나, 시범 운영을 마치고 정식으로 쓰기 전에 <b>테스트로 넣은 업무 자료</b>를 지웁니다. 우리 기관(${esc(me.chapter_name)}) 자료만 지워집니다.</div>
+    <div class="muted" style="margin-top:4px">남는 것: 직원·권한, 부서, 결재라인, 기관 정보·직인, 회계 통장·예산 설정, 공문 설정, 증명서 종류·번호 묶음, 차량·운전자 목록 등 <b>설정</b>. <b style="color:#c0392b">지운 자료는 되돌릴 수 없습니다.</b></div>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:6px;margin-top:10px">${RESET_CATS.map(c=>`<label style="display:flex;gap:6px;align-items:flex-start;border:1px solid #e3e6ee;border-radius:8px;padding:7px 9px;cursor:pointer">
+      <input type="checkbox" class="rs_c" value="${c[0]}" style="width:auto;margin-top:3px" ${c[0]!=="member"?"checked":""} onchange="RST=null;$('#rs_out').innerHTML=''"><span><b>${c[1]}</b><span class="muted" style="display:block;font-size:12px">${c[2]}</span></span></label>`).join("")}</div>
+    <div class="row" style="margin-top:10px"><button class="btn sub" onclick="resetCheck()">① 지울 건수 확인</button></div>
+    <div id="rs_out"></div></div>`;
+}
+const rsCats = () => [...document.querySelectorAll(".rs_c:checked")].map(x=>x.value);
+async function resetCheck(){
+  const cats = rsCats(); if(!cats.length) return toast("지울 항목을 하나 이상 고르세요.", true);
+  try{ RST = await rpc("chapter_reset", {p_cats:cats, p_confirm:"", p_dry:true}); }catch(e){ return toast(e.message, true); }
+  const tot = Object.values(RST.counts).reduce((a,b)=>a+b,0);
+  $("#rs_out").innerHTML = `<table class="log" style="margin-top:10px"><tr><th>항목</th><th>지울 건수</th></tr>${cats.map(c=>`<tr><td>${(RESET_CATS.find(x=>x[0]===c)||[])[1]}</td><td><b>${RST.counts[c]||0}</b>건</td></tr>`).join("")}<tr><td><b>합계</b></td><td><b>${tot}</b>건</td></tr></table>
+    <div class="muted" style="margin-top:8px">② 확인을 위해 지회 이름 <b>${esc(RST.chapter)}</b> 을(를) 그대로 입력하세요.</div>
+    <div class="row"><input id="rs_name" placeholder="${esc(RST.chapter)}" style="flex:1"><button class="btn red" onclick="resetRun()">③ 초기화 실행</button></div>`;
+}
+async function resetRun(){
+  if(!RST) return;
+  const cats = rsCats(), nm = val("rs_name");
+  if(nm !== RST.chapter) return toast("지회 이름이 맞지 않습니다.", true);
+  if(!confirm(RST.chapter + "의 선택한 자료를 모두 지웁니다.\n되돌릴 수 없습니다. 계속할까요?")) return;
+  try{ const r = await rpc("chapter_reset", {p_cats:cats, p_confirm:nm, p_dry:false}); RST = null;
+    $("#rs_out").innerHTML = `<div class="card" style="background:#eefaf1;margin-top:10px">✅ 초기화했습니다. 지운 자료 ${Object.values(r.counts).reduce((a,b)=>a+b,0)}건 · 변경 기록에 남았습니다.</div>`; toast("초기화했습니다."); }
+  catch(e){ toast(e.message, true); }
 }
 function orgSave(){ act("save_org_profile", {p_phone:val("o_phone"), p_center:$("#o_center")?val("o_center"):"", p_direct:val("o_direct"), p_address:val("o_addr")}, "저장했습니다.", async()=>{ org = await rpc("get_org_profile"); orgView(); }); }
 function shrinkImage(file){

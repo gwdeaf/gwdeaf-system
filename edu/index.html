@@ -17,6 +17,11 @@ html.embed body:has(#tabs:not(.hidden)){padding-left:0!important}
 html.embed .top{background:transparent!important;box-shadow:none!important;border:0!important;margin-left:0!important;padding:6px 16px 0!important;min-height:0!important;position:static!important}
 html.embed .top h1,html.embed .top .who{display:none!important}
 html.embed .top .help-btn{color:#1f4d3a;border-color:#b9cbc2}
+html.embed .top-inner{align-items:center}
+html.embed .top{position:sticky!important;top:0;z-index:30;background:var(--mist)!important}   /* 스크롤을 내려도 탭·사용설명서가 보이게 */
+#topSlot{flex:1;min-width:0;display:flex;flex-direction:column}
+#topSlot .seg{margin:0}
+#topSlot:not(:empty) ~ #helpBtn{margin-left:0}
 #pwForm,#rsForm,#phForm,#sealBox{display:none!important}
 :root {
   --pine: #1f4d3a;
@@ -4814,6 +4819,23 @@ function openHelp() {
   if (!d.open) d.showModal();
 }
 $('#helpBtn').onclick = openHelp;
+
+/* 통합 시스템 안에서는 화면 위 탭(강좌|파견 교육, 접수 안내|강사비, 실적 보고|통계)을 사용설명서·문의 줄로 올림 */
+(function eduTopSlot() {
+  if (!document.documentElement.classList.contains('embed')) return;
+  const ti = document.querySelector('.top .top-inner'), help = document.getElementById('helpBtn'), sw = document.getElementById('sw'), v = document.getElementById('view');
+  if (!ti || !help || !v) return;
+  const slot = document.createElement('div'); slot.id = 'topSlot'; ti.insertBefore(slot, help);
+  if (sw) slot.appendChild(sw);
+  const sync = recs => {
+    if (recs && recs.every(r => !r.addedNodes.length)) return;   // 탭을 옮기면서 생긴 변화는 무시
+    slot.querySelectorAll('.csw-moved').forEach(n => n.remove());
+    const f = v.firstElementChild;
+    if (f && f.matches('.seg[role=tablist]') && f.querySelector('[data-csw]')) { f.classList.add('csw-moved'); slot.insertBefore(f, slot.firstChild); }
+  };
+  new MutationObserver(sync).observe(v, { childList: true }); sync();
+})();
+
 $('#helpClose').onclick = () => $('#helpDlg').close();
 
 /* =========================================================

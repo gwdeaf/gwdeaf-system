@@ -29,6 +29,12 @@
   .opts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
   .opt { border: 2px solid #dde1e8; border-radius: 9px; padding: 9px 14px; cursor: pointer; background: #fff; font-size: 14px; }
   .opt.on { border-color: #2f5bd6; background: #eef3ff; font-weight: 700; }
+  /* 주문 관리 상태 고르기: 다른 화면과 같은 밑줄 탭 */
+  .ftabs { display: flex; flex-wrap: wrap; gap: 2px; border-bottom: 1px solid #e3e6ee; margin-top: 4px; }
+  .ftabs .opt { border: none; border-bottom: 3px solid transparent; border-radius: 0; background: none; padding: 8px 12px; margin-bottom: -1px; color: #666; }
+  .ftabs .opt.on { color: #2f5bd6; border-bottom-color: #2f5bd6; background: none; font-weight: 700; }
+  .ftabs .opt b { display: inline-block; min-width: 18px; margin-left: 4px; padding: 0 5px; border-radius: 9px; background: #eef0f4; color: #555; font-size: 12px; line-height: 18px; text-align: center; }
+  .ftabs .opt.on b { background: #2f5bd6; color: #fff; }
   .sumbar { position: sticky; bottom: 0; background: #fff; border-top: 2px solid #2f5bd6; padding: 12px 16px; display: flex; flex-wrap: wrap; gap: 10px; align-items: center; box-shadow: 0 -2px 10px rgba(0,0,0,.06); border-radius: 10px 10px 0 0; }
   .sumbar .tot { font-size: 18px; font-weight: 800; color: #1a3a6b; flex: 1; }
   .chip { display: inline-block; font-size: 12px; font-weight: 700; padding: 3px 9px; border-radius: 99px; background: #eef0f4; color: #555; white-space: nowrap; }
@@ -107,6 +113,7 @@ async function init() { const VT = vtok();
   try { D = await rpc('book_init'); } catch (e) { vw(VT).innerHTML = '<div class="card">' + esc(e.message) + '</div>'; return; }
   $('who').textContent = D.me.chapter_name + ' · ' + (D.me.name || D.me.email);
   document.querySelectorAll('.mgr').forEach(b => b.style.display = D.mgr ? '' : 'none');
+  if (D.me.is_hq) document.querySelectorAll('#topNav [data-tab="order"], #topNav [data-tab="my"]').forEach(b => b.style.display = 'none');   // 도협회는 주문 받는 쪽
   setBadge(D.badge);
   $('topNav').style.display = 'flex';
   go(SUB.go || (D.mgr && D.me.is_hq ? 'admin' : 'order'), true);
@@ -115,6 +122,7 @@ async function init() { const VT = vtok();
 function setBadge(n) { $('bdg').textContent = n ? '(' + n + ')' : ''; badgeTell(n || 0); }
 function go(t, quiet) {
   if ((t === 'admin' || t === 'books') && !D.mgr) t = 'order';
+  if ((t === 'order' || t === 'my') && D.me.is_hq && D.mgr) t = 'admin';
   document.querySelectorAll('#topNav button[data-tab]').forEach(b => b.classList.toggle('sub', b.dataset.tab !== t));
   msg(''); subTell(t);
   ({ order: showOrder, my: showMy, admin: showAdmin, books: showBooks })[t]();
@@ -269,7 +277,7 @@ async function showAdmin() { const VT = vtok();
   try { ORDERS = await rpc('book_orders_list', { p_all: true }); } catch (e) { return msg(e.message, 'err'); }
   const n = k => ORDERS.filter(o => o.status === k).length; setBadge(n('접수'));
   const list = ORDERS.filter(o => !AF || o.status === AF), money = list.filter(o => o.status !== '취소').reduce((s, o) => s + o.total, 0);
-  vw(VT).innerHTML = `<div class="card"><h2>🗂 교재 주문 관리</h2><div class="opts" id="a-f">${[['접수', '접수 ' + n('접수')], ['주문확인', '주문 확인 ' + n('주문확인')], ['발송완료', '발송 완료 ' + n('발송완료')], ['취소', '취소 ' + n('취소')], ['', '전체 ' + ORDERS.length]].map(x => `<span class="opt ${AF === x[0] ? 'on' : ''}" data-v="${x[0]}">${x[1]}</span>`).join('')}</div>
+  vw(VT).innerHTML = `<div class="card"><h2>🗂 교재 주문 관리</h2><div class="ftabs" id="a-f">${[['접수', '접수', n('접수')], ['주문확인', '주문 확인', n('주문확인')], ['발송완료', '발송 완료', n('발송완료')], ['취소', '취소', n('취소')], ['', '전체', ORDERS.length]].map(x => `<span class="opt ${AF === x[0] ? 'on' : ''}" data-v="${x[0]}">${x[1]}<b>${x[2]}</b></span>`).join('')}</div>
     <div class="hint" style="margin:8px 0">${list.length}건 · 합계 ${won(money)}원 (취소 제외, 택배비 별도)</div>
     ${list.length ? list.map(o => `<div class="ord"><div class="top"><span class="no">${esc(o.order_no)}</span><span class="chip s-${o.status}">${o.status}</span><b>${esc(o.chapter_name)}</b><span class="hint" style="margin:0">${esc(o.buyer_name)} · ${esc(o.tel)} · ${esc(String(o.created_at).slice(0, 16).replace('T', ' '))}</span></div>
       ${itemsList(o)}

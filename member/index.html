@@ -40,6 +40,7 @@
   .hint { color:#64748b; font-size:13px; margin-top:4px; }
   .chip { display:inline-block; background:#eef2ff; color:#3730a3; border-radius:12px; padding:3px 10px; margin:3px 4px 0 0; font-size:13px; cursor:pointer; }
   .tbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin-bottom:10px; } .tbar input, .tbar select { width:auto; flex:1 1 140px; margin:0; }
+  @media (max-width:640px) { .t.fit .fo { display:none; } .t.fit .fiA { width:90px !important; } }   /* 휴대폰: 회비 한꺼번에 입력 표는 이름·금액·납부만 */
 </style>
 <link rel="stylesheet" href="/ui.css?v=1">
 </head>
@@ -50,6 +51,7 @@
 <nav id="topNav" data-sub style="display:none">
   <button data-tab="list" onclick="showList()">회원명단</button>
   <button data-tab="fees" class="sub" onclick="showFees()">회비 내역</button>
+  <button data-tab="feein" id="btnFeeIn" class="sub" onclick="showFeeIn()" style="display:none">회비 한꺼번에 입력</button>
   <button data-tab="unpaid" class="sub" onclick="showUnpaid()">미납자</button>
   <button data-tab="import" id="btnImport" class="sub" onclick="showImport()" style="display:none">명단 가져오기</button>
   <button data-tab="sum" id="btnSum" class="sub" onclick="showSummary()" style="display:none">지회별 요약</button>
@@ -102,6 +104,7 @@ async function init() {
     ME = await rpc('member_me');
     $('who').textContent = `${ME.chapter_name} · ${ME.name || ME.email}`;
     $('btnImport').style.display = ME.can_write ? '' : 'none';
+    $('btnFeeIn').style.display = ME.can_write ? '' : 'none';
     $('btnSum').style.display = ME.is_hq ? '' : 'none';
     if (!ME.can_view && !ME.is_hq) throw new Error('회원 권한이 없습니다. 지회 담당자에게 요청하세요.');
     $('topNav').style.display = 'flex';
@@ -143,7 +146,7 @@ async function showMember(id) { const VT = vtok();
     ${ME.can_write ? `<div class="grid2">
       <div><label>종류</label><select id="fKind"><option>회비</option><option>입회비</option><option>기타</option></select></div>
       <div><label>해당 연도</label><input id="fYear" type="number" value="${ME.year}"></div>
-      <div><label>금액(원)</label><input id="fAmt" type="number" min="1" placeholder="예) 50000"></div>
+      <div><label>금액(원)</label><input id="fAmt" type="number" min="1" placeholder="예) 50000" value="${esc(fiPref('amt'))}"></div>
       <div><label>납부일</label><input id="fDate" type="date" value="${todayStr()}"></div>
       <div><label>납부 방법</label><select id="fMethod"><option>계좌이체</option><option>현금</option><option>카드</option><option>기타</option></select></div>
       <div><label>메모</label><input id="fNote"></div></div>
@@ -195,7 +198,8 @@ function feeTable(f, withName) {
 async function addFee(id) {
   try {
     await rpc('member_fee_add', { p_member: id, p_kind: $('fKind').value, p_year: Number($('fYear').value) || null, p_amount: Number($('fAmt').value) || 0, p_date: $('fDate').value, p_method: $('fMethod').value, p_note: $('fNote').value });
-    msg('✅ 기록했습니다.', 'ok'); $('fAmt').value = ''; $('fNote').value = ''; loadFees(id);
+    if ($('fKind').value === '회비') fiPref('amt', $('fAmt').value);   // 다음 회원에게도 같은 금액을 미리 채움
+    msg('✅ 기록했습니다.', 'ok'); $('fNote').value = ''; loadFees(id);
   } catch (e) { msg(e.message, 'err'); }
 }
 async function cancelFee(fid, memberId) {
@@ -232,6 +236,68 @@ async function showFees(y) { const VT = vtok();
     const ok = f.filter(x => x.status === '납부'), sum = k => ok.filter(x => !k || x.kind === k).reduce((a, x) => a + Number(x.amount), 0);
     $('feeBody').innerHTML = `<div class="card" style="cursor:default">합계 <b>${won(sum())}</b> · 입회비 ${won(sum('입회비'))} · 회비 ${won(sum('회비'))} · 기타 ${won(sum('기타'))}</div>` + (!f.length ? '<p>내역이 없습니다.</p>' : feeTable(f, true));
   } catch (e) { $('feeBody').innerHTML = `<p>${esc(e.message)}</p>`; }
+}
+// ---- 회비 한꺼번에 입력: 회원 목록에서 체크만 하면 같은 금액·날짜로 한 번에 기록 ----
+let FI = { y: null, paid: {} };
+function fiPref(k, v) { try { if (v === undefined) return localStorage.getItem('feeIn.' + k) || ''; localStorage.setItem('feeIn.' + k, v); } catch (e) { return ''; } }
+async function showFeeIn(y) { const VT = vtok();
+  setTab('feein'); msg(''); y = Number(y) || FI.y || ME.year; FI.y = y;
+  vw(VT).innerHTML = '<div class="card" style="cursor:default">불러오는 중…</div>';
+  try {
+    if (!LIST.length) LIST = await rpc('member_list', {});
+    const f = await rpc('member_fee_list', { p_member: null, p_year: y });
+    FI.paid = {}; f.filter(x => x.status !== '취소' && x.kind === '회비').forEach(x => { (FI.paid[x.member_id] = FI.paid[x.member_id] || []).push(x); });
+  } catch (e) { return msg(e.message, 'err'); }
+  const amt = fiPref('amt') || '', meth = fiPref('method') || '계좌이체';
+  vw(VT).innerHTML = `<div class="card" style="cursor:default"><b>회비 한꺼번에 입력</b>
+    <div class="hint">낸 회원을 체크하고 [선택한 회원 납부 기록]을 누르면 같은 금액·납부일로 한 번에 기록합니다. 금액이 다른 회원은 그 줄의 금액만 고치세요. 이미 낸 회원은 ✓로 표시됩니다.</div>
+    <div class="grid2" style="margin-top:8px">
+      <div><label>해당 연도</label><select id="fiY" onchange="showFeeIn(this.value)">${[1, 0, -1, -2, -3].map(i => { const v = ME.year + i; return `<option ${v === y ? 'selected' : ''}>${v}</option>`; }).join('')}</select></div>
+      <div><label>금액(원) <span class="hint">기본값</span></label><input id="fiAmt" type="number" min="1" value="${esc(amt)}" placeholder="예) 50000" oninput="fiSyncAmt()"></div>
+      <div><label>납부일</label><input id="fiDate" type="date" value="${todayStr()}"></div>
+      <div><label>납부 방법</label><select id="fiMethod">${['계좌이체', '현금', '카드', '기타'].map(x => `<option ${x === meth ? 'selected' : ''}>${x}</option>`).join('')}</select></div>
+    </div>
+    <div class="tbar" style="margin-top:10px"><input id="fiQ" placeholder="이름·연락처로 찾기" oninput="fiDraw()">
+      <select id="fiShow" onchange="fiDraw()"><option value="unpaid">안 낸 회원만</option><option value="all">모든 활동 회원</option></select>
+      <label style="display:flex;align-items:center;gap:4px;margin:0;white-space:nowrap;flex:none"><input type="checkbox" id="fiAll" onchange="fiCheckAll(this.checked)" style="width:auto"> 보이는 회원 모두 선택</label></div>
+    <div id="fiList"></div>
+    <div class="actions" style="position:sticky;bottom:0;background:#fff;padding:8px 0"><span id="fiSum" class="hint" style="flex:1"></span><button onclick="fiSave()">선택한 회원 납부 기록</button></div></div>`;
+  fiDraw();
+}
+function fiDraw() {
+  const q = ($('fiQ').value || '').trim(), only = $('fiShow').value === 'unpaid', amt = $('fiAmt').value;
+  const rows = LIST.filter(m => m.status === '활동' || FI.paid[m.id]).filter(m => !q || (m.name + ' ' + (m.phone || '') + ' ' + (m.member_no || '')).indexOf(q) >= 0).filter(m => !only || !FI.paid[m.id]);
+  $('fiList').innerHTML = !rows.length ? '<p class="hint">' + (only ? '이 해 회비를 안 낸 활동 회원이 없습니다. 👍' : '회원이 없습니다.') + '</p>'
+    : `<div style="overflow-x:auto"><table class="t fit"><thead><tr><th style="width:40px"></th><th class="fo">회원번호</th><th>이름</th><th class="fo">연락처</th><th class="fo">구분</th><th style="width:130px">금액</th><th>이 해 납부</th></tr></thead><tbody>${rows.map(m => {
+      const p = FI.paid[m.id];
+      return `<tr><td><input type="checkbox" class="fiC" data-id="${m.id}" style="width:auto" onchange="fiCount()"></td><td class="fo">${esc(m.member_no || '')}</td><td><b>${esc(m.name)}</b></td><td class="fo">${esc(m.phone || '')}</td><td class="fo">${esc(m.category || '')}</td>
+        <td><input type="number" class="fiA" data-id="${m.id}" value="${esc(amt)}" min="1" style="width:110px"></td>
+        <td>${p ? '✓ ' + p.map(x => won(x.amount) + ' (' + esc(String(x.paid_date).slice(5)) + ')').join(', ') : '<span class="hint">-</span>'}</td></tr>`; }).join('')}</tbody></table></div>`;
+  fiCount();
+}
+function fiSyncAmt() { const v = $('fiAmt').value; document.querySelectorAll('.fiA').forEach(i => { i.value = v; }); fiCount(); }
+function fiCheckAll(on) { document.querySelectorAll('.fiC').forEach(c => { c.checked = on; }); fiCount(); }
+function fiCount() {
+  const sel = [...document.querySelectorAll('.fiC:checked')];
+  const sum = sel.reduce((s, c) => s + (Number(document.querySelector('.fiA[data-id="' + c.dataset.id + '"]').value) || 0), 0);
+  $('fiSum').textContent = sel.length ? sel.length + '명 선택 · 합계 ' + won(sum) : '';
+}
+async function fiSave() {
+  const sel = [...document.querySelectorAll('.fiC:checked')];
+  if (!sel.length) return msg('납부한 회원을 체크하세요.', 'err');
+  if (!$('fiDate').value) return msg('납부일을 입력하세요.', 'err');
+  const items = sel.map(c => ({ id: Number(c.dataset.id), amt: Number(document.querySelector('.fiA[data-id="' + c.dataset.id + '"]').value) || 0 }));
+  if (items.some(x => x.amt <= 0)) return msg('금액이 비어 있는 회원이 있습니다.', 'err');
+  const twice = items.filter(x => FI.paid[x.id]).length;
+  if (!confirm(FI.y + '년 회비 ' + items.length + '명을 기록할까요?' + (twice ? '\n(이 중 ' + twice + '명은 이미 이 해 납부 기록이 있습니다)' : ''))) return;
+  fiPref('amt', $('fiAmt').value); fiPref('method', $('fiMethod').value);
+  let ok = 0; const fail = [];
+  for (const x of items) {
+    try { await rpc('member_fee_add', { p_member: x.id, p_kind: '회비', p_year: FI.y, p_amount: x.amt, p_date: $('fiDate').value, p_method: $('fiMethod').value, p_note: '' }); ok++; }
+    catch (e) { const m = LIST.find(v => v.id === x.id); fail.push((m ? m.name : x.id) + ': ' + e.message); }
+  }
+  await showFeeIn(FI.y);
+  msg(ok + '명 기록했습니다.' + (fail.length ? ' 실패 ' + fail.length + '명 — ' + fail.join(' / ') : ''), fail.length ? 'err' : 'ok');
 }
 // ---- 미납자 ----
 async function showUnpaid(y) { const VT = vtok();

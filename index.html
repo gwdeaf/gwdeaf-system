@@ -634,18 +634,17 @@ function grpHtml(ic, label){ return '<div class="grp"><span class="ic">' + ic + 
 function renderNav(){
   var h = topHtml('inq:s:', '💬', '문의함', "go('inq')").replace('</a>', '<span class="nbadge hide" id="inq-badge"></span></a>');
   h += grpHtml('🏖', '근태 / 휴가 관리');
-  [['leave','내 근태현황'],['leave-apply','휴가(시수) 신청'],['overtime','시간외 신청']].forEach(function(k){ h += kidHtml('att', false, k[0], k[1]); });
-  h += kidHtml('att', false, 'attend', '월별 근태현황');
+  [['leave-apply','휴가(시수) 신청'],['overtime','시간외 신청'],['leave','내 근태현황']].forEach(function(k){ h += kidHtml('att', false, k[0], k[1]); });   // 월별 근태현황은 내 근태현황 안의 탭
   if (ATT && ATT.staff && ATT.staff.role === '선임')   // 선임만 보임 (기존 '선임 확인' 권한 그대로)
     h += topHtml(mid('att', false, 'senior:leavemgr'), '✅', '선임 확인', "go('att','senior:leavemgr',false)").replace('class="top"', 'class="top" style="display:flex;align-items:center"').replace('</a>', supB('total') + '</a>');   // 휴가·시간외·대체휴무·출장·시수·대체시수는 화면 위쪽 탭에서
-  h += grpHtml('🚌', '출장 관리') + kidHtml('att', false, 'trip-apply', '출장 신청') + kidHtml('att', false, 'trip-hist', '출장 내역');
+  h += grpHtml('🚌', '출장 관리') + kidHtml('att', false, 'trip-apply', '출장 신청') + kidHtml('att', false, 'trip-hist', '내 출장 신청 내역');
   if (isAttAdmin()) h += kidHtml('att', true, 'trip', '출장대장');
   h += topHtml('car:s:', '🚗', '차량운행일지', "go('car')");   // 지회 직원 누구나
   var bookMgr = ME.role === 'admin' || (ME.is_hq && hasPerm('book.manage'));
   if (hasPerm('edu.') || bookMgr) {
     h += grpHtml('📚', '수어교육관리');
     if (hasPerm('edu.')) [['dash','대시보드'],['courses','강좌'],['apply','접수·강사비'],['report','보고·통계'],['files','자료요청']].forEach(function(k){ if (EDU_HIDE.indexOf(k[0]) < 0) { var kh = kidHtml('edu', false, k[0], k[1]); if (k[0] === 'courses') kh = kh.replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', '<span class="nbadge hide" id="edu-badge"></span></a>'); h += kh; } });
-    h += kidHtml('book', false, 'order', '교재 주문');
+    if (!ME.is_hq) h += kidHtml('book', false, 'order', '교재 주문');   // 도협회는 주문 관리만
     if (bookMgr) h += kidHtml('book', false, 'admin', '교재 주문 관리').replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', '<span class="nbadge hide" id="book-badge"></span></a>');
   }
   h += grpHtml('📝', '공문 작성') + kidHtml('doc', false, 'internal', '내부결재') + kidHtml('doc', false, 'coop', '업무협조전') + kidHtml('doc', false, 'send', '문서 발송') + kidHtml('doc', false, 'recv', '받은 문서').replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', '<span class="nbadge hide" id="docr-badge"></span></a>') + kidHtml('doc', false, 'sent', '보낸 문서') + kidHtml('doc', false, 'ledger', '발송 대장') + kidHtml('doc', false, 'rledger', '수신 대장');
@@ -658,8 +657,8 @@ function renderNav(){
     [['dash','대시보드'],['projects','사업관리'],['new','사업실적 등록'],['list','사업실적 목록'],['people','참여자 관리'],['reports','분기별 보고'],['stats','통계 및 분석']].forEach(function(k){ h += kidHtml('perf', false, k[0], k[1]); });
     if (ME.is_hq && (ME.role === 'admin' || (ME.perms || []).indexOf('perf.review') >= 0)) h += kidHtml('perf', false, 'settings', '사업 분류');
   }
+  if (hasPerm('movie.')) h += topHtml('movie:s:', '🎬', '영화실적', "go('movie')");   // 사업실적 바로 아래
   if (hasPerm('member.')) h += topHtml('member:s:', '👥', '회원관리', "go('member')");
-  if (hasPerm('movie.')) h += topHtml('movie:s:', '🎬', '영화실적', "go('movie')");
   if (isAttAdmin() || isVehAdmin() || ME.can_manage) h += '<div class="sec">시스템 관리</div>';
   if (ME.can_manage || isAttAdmin()) {   // 🏢 기관 설정: 기관 정보·부서·결재라인·출퇴근 설정 등을 한곳에
     h += grpHtml('🏢', '기관 설정');
@@ -1237,7 +1236,8 @@ function openNotice(i){
   $('modal').innerHTML = '<div class="modal nform"><h3>' + (n ? '공지 수정' : '공지 쓰기') + '</h3>'
     + '<label>제목</label><input type="text" id="nt-t" maxlength="100" value="' + esc(n ? n.title : '') + '">'
     + '<label>내용</label><textarea id="nt-b">' + esc(n ? n.body : '') + '</textarea>'
-    + '<label>보는 사람</label><select id="nt-aud">' + M.audiences.map(function(a){ return '<option value="' + a.v + '"' + (a.v === aud ? ' selected' : '') + '>' + esc(a.label) + (a.v === 'all' ? '' : ' (그 업무 권한이 있는 직원만)') + '</option>'; }).join('') + '</select>'
+    + (M.hq ? '<label>보는 사람</label><select id="nt-aud">' + M.audiences.map(function(a){ return '<option value="' + a.v + '"' + (a.v === aud ? ' selected' : '') + '>' + esc(a.label) + (a.v === 'all' ? '' : ' (그 업무 권한이 있는 직원만)') + '</option>'; }).join('') + '</select>'
+        : '<input type="hidden" id="nt-aud" value="all">')   // 지회 공지는 우리 직원 모두에게
     + (M.hq ? '<label>받는 곳</label><div class="radios">'
         + [['mine','우리(도협회)'],['all','전체 지회'],['pick','지회 골라서']].map(function(x){ return '<label><input type="radio" name="nt-sc" value="' + x[0] + '"' + (x[0] === sc ? ' checked' : '') + ' onchange="ntScope()"> ' + x[1] + '</label>'; }).join('') + '</div>'
         + '<div class="chlist' + (sc === 'pick' ? '' : ' hide') + '" id="nt-chs">' + M.chapters.map(function(c){ return '<label><input type="checkbox" value="' + c.id + '"' + (picked.indexOf(c.id) >= 0 ? ' checked' : '') + '> ' + esc(c.name) + '</label>'; }).join('') + '</div>' : '')

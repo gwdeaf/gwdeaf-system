@@ -42,6 +42,8 @@ table{font-variant-numeric:tabular-nums}
 nav#topNav{background:#fff!important;border-bottom:1px solid var(--ui-line)!important;padding:4px 16px 0!important;gap:2px!important;
   flex-wrap:nowrap!important;overflow-x:auto;scrollbar-width:none}
 nav#topNav::-webkit-scrollbar{display:none}
+nav#topNav{position:sticky!important;top:0;z-index:30}   /* 스크롤을 내려도 위 탭이 보이게 */
+@media (max-width:640px){nav#topNav{flex-wrap:wrap!important;padding:2px 8px 0!important}nav#topNav button{padding:8px 10px!important;font-size:13.5px!important}}   /* 휴대폰: 탭이 넘치면 두 줄로 (가려지지 않게) */
 nav#topNav button{flex:none!important;width:auto!important;min-height:0!important;margin:0 0 -1px!important;padding:10px 14px!important;
   background:none!important;border:0!important;border-bottom:3px solid transparent!important;border-radius:0!important;box-shadow:none!important;
   color:var(--ui-mute)!important;font-size:14px!important;font-weight:500!important;white-space:nowrap}

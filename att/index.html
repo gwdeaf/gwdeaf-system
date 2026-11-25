@@ -2107,6 +2107,24 @@
       <div id="cfg-slack-last" style="font-size:0.82rem;margin-top:0.4rem;padding:8px 10px;background:var(--bg,#f5f7fb);border-radius:8px;"></div>
     </div>
 
+    <div class="card set-noti" id="hqs-card" style="grid-column:1/-1;display:none;">
+      <div class="card-title">📣 전 직원 슬랙 알림 확인 (도협회 전용)</div>
+      <div class="hint" style="margin-bottom:0.6rem;">슬랙 ID가 들어간 직원에게 확인 메시지를 보내고, 사람마다 잘 갔는지 결과를 보여 줍니다. 받는 사람이 많으니 <b>근무 시간에</b> 보내 주세요. (지회마다 차례로 보내서 1~2분 걸립니다)</div>
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;align-items:center;margin-bottom:0.6rem;">
+        <button class="btn btn-outline btn-sm" onclick="hqsLoad()">👥 대상 불러오기</button>
+        <label style="display:flex;align-items:center;gap:4px;font-size:0.85rem;margin:0;"><input type="checkbox" id="hqs-all" onchange="hqsAll(this.checked)" style="width:auto;margin:0;"> 전체 선택</label>
+        <span id="hqs-count" style="font-size:0.85rem;color:var(--text-muted);"></span>
+      </div>
+      <div id="hqs-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px;margin-bottom:0.6rem;font-size:0.85rem;"></div>
+      <div class="field-row"><label>보낼 문구</label><textarea id="hqs-text" rows="2" maxlength="500" style="flex:1;min-width:0;">✅ 업무 시스템 슬랙 알림 테스트입니다. 이 메시지가 보이면 알림이 잘 연결된 것입니다. (도협회)</textarea></div>
+      <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.4rem;">
+        <button class="btn btn-primary" id="hqs-send" onclick="hqsSend()">📨 선택한 지회에 보내기</button>
+        <button class="btn btn-outline" onclick="hqsCsv()">⬇️ 결과 엑셀(CSV)</button>
+      </div>
+      <div id="hqs-msg" style="font-size:0.85rem;min-height:1.2em;margin-top:0.5rem;"></div>
+      <div id="hqs-result" style="margin-top:0.4rem;"></div>
+    </div>
+
     <div class="card" style="grid-column:1/-1;display:none;" id="att-approval-card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;">
         <div class="card-title" style="margin:0;border:none;padding:0;">📋 결재라인 (전체 신청서 공통)</div>
@@ -3784,7 +3802,7 @@ function adminShowAlert(msg, type) {
 
 function loadAdminSettings() {
   var u = document.getElementById('cfg-link-url'); if (u) u.textContent = shareLink();
-  loadProvinceCard(); loadPolicyCard();
+  loadProvinceCard(); loadPolicyCard(); loadHqsCard();
   gasRun('getAdminConfig', null, function(c) {
     if (!c || !c.ok) return;
     document.getElementById('cfg-org-name').value   = c.orgName || '';
@@ -3843,6 +3861,65 @@ function clearSlackToken() {
   gasRun('saveSlackConfig', JSON.stringify({clearToken: true}), function(res) {
     if (res && res.ok) { slackMsg('토큰을 삭제했습니다.', 'ok'); loadSlackSettings(); } else slackMsg((res && res.msg) || '삭제하지 못했습니다.', 'warn');
   }, function(m){ slackMsg('오류: '+m, 'warn'); });
+}
+// ----- 도협회: 전 직원 슬랙 알림 확인 -----
+var hqsChapters = [], hqsRows = [];
+function loadHqsCard() { var c = document.getElementById('hqs-card'); if (c) c.style.display = (ME && ME.isProvince) ? '' : 'none'; }
+function hqsMsg(t, color) { var el = document.getElementById('hqs-msg'); el.style.color = color || ''; el.innerHTML = t; }
+function hqsLoad() {
+  hqsMsg('대상을 불러오는 중입니다... (지회가 많아 20~30초 걸릴 수 있어요)');
+  gasRun('provinceSlackChapters', null, function(r) {
+    if (!r || !r.ok) { hqsMsg('불러오지 못했습니다: ' + esc((r && r.msg) || ''), 'var(--danger)'); return; }
+    hqsChapters = r.list || [];
+    document.getElementById('hqs-list').innerHTML = hqsChapters.map(function(c, i) {
+      return '<label style="display:flex;align-items:center;gap:6px;margin:0;padding:6px 8px;border:1px solid var(--border);border-radius:8px;font-weight:400;">'
+        + '<input type="checkbox" class="hqs-ck" data-i="' + i + '" onchange="hqsCount()" style="width:auto;margin:0;"' + (c.withId ? '' : ' disabled') + '>'
+        + '<span>' + esc(c.name) + ' <b>' + c.withId + '</b><span style="color:var(--text-muted)">/' + c.total + '명</span></span></label>';
+    }).join('') || '<span style="color:var(--text-muted)">지회가 없습니다.</span>';
+    document.getElementById('hqs-all').checked = false; hqsCount();
+    hqsMsg('숫자는 <b>슬랙 ID 있는 직원 / 전체 직원</b>입니다. 보낼 지회를 고르세요.');
+  }, function(m) { hqsMsg('불러오지 못했습니다: ' + esc(m), 'var(--danger)'); });
+}
+function hqsAll(on) { document.querySelectorAll('.hqs-ck').forEach(function(x) { if (!x.disabled) x.checked = on; }); hqsCount(); }
+function hqsPicked() { return Array.prototype.filter.call(document.querySelectorAll('.hqs-ck'), function(x) { return x.checked; }).map(function(x) { return hqsChapters[+x.dataset.i]; }); }
+function hqsCount() {
+  var p = hqsPicked(), n = p.reduce(function(a, c) { return a + (c.withId || 0); }, 0);
+  document.getElementById('hqs-count').textContent = p.length ? '지회 ' + p.length + '곳 · 받는 사람 ' + n + '명' : '';
+}
+function hqsDraw(done, total) {
+  var ok = hqsRows.filter(function(x) { return x.ok; }).length, bad = hqsRows.filter(function(x) { return !x.ok && !x.skip; }).length, skip = hqsRows.filter(function(x) { return x.skip; }).length;
+  var rows = hqsRows.slice().sort(function(a, b) { return (a.ok ? 2 : a.skip ? 1 : 0) - (b.ok ? 2 : b.skip ? 1 : 0); });
+  document.getElementById('hqs-result').innerHTML = '<div style="font-size:0.9rem;margin-bottom:6px;"><b>✅ 보냄 ' + ok + '명</b> · <span style="color:var(--danger)"><b>❌ 못 보냄 ' + bad + '명</b></span> · 슬랙 ID 없음 ' + skip + '명'
+    + (done < total ? ' <span style="color:var(--text-muted)">(' + done + '/' + total + ' 지회 진행 중)</span>' : '') + '</div>'
+    + '<div style="overflow-x:auto;max-height:420px;overflow-y:auto;"><table class="adm-table" style="min-width:560px;"><thead><tr><th>지회</th><th>이름</th><th>직위</th><th>결과</th><th class="l">이유</th></tr></thead><tbody>'
+    + rows.map(function(x) {
+        return '<tr><td>' + esc(x.chapter) + '</td><td>' + esc(x.name) + '</td><td>' + esc(x.pos || '') + '</td><td>' + (x.ok ? '✅' : x.skip ? '⚪' : '❌') + '</td><td class="l">' + esc(x.why || '') + '</td></tr>';
+      }).join('') + '</tbody></table></div>';
+}
+function hqsSend() {
+  var p = hqsPicked(); if (!p.length) { hqsMsg('보낼 지회를 고르세요. (먼저 👥 대상 불러오기)', 'var(--danger)'); return; }
+  var n = p.reduce(function(a, c) { return a + (c.withId || 0); }, 0), text = document.getElementById('hqs-text').value.trim();
+  if (!text) { hqsMsg('보낼 문구를 적어 주세요.', 'var(--danger)'); return; }
+  if (!confirm('지회 ' + p.length + '곳, ' + n + '명에게 슬랙 메시지를 보냅니다.\n\n"' + text + '"\n\n보낼까요?')) return;
+  hqsRows = []; var i = 0, btn = document.getElementById('hqs-send'); btn.disabled = true;
+  var next = function() {
+    if (i >= p.length) { btn.disabled = false; hqsMsg('✅ 모두 보냈습니다. 못 보낸 사람은 이유를 보고 직원·권한에서 슬랙 ID를 고쳐 주세요.', 'var(--success)'); hqsDraw(p.length, p.length); return; }
+    var c = p[i]; hqsMsg('📨 ' + esc(c.name) + ' 보내는 중... (' + (i + 1) + '/' + p.length + ')');
+    gasRun('provinceSlackCheck', JSON.stringify({ chapterId: c.id, text: text }), function(r) {
+      if (r && r.ok) (r.list || []).forEach(function(x) { hqsRows.push(Object.assign({ chapter: c.name }, x)); });
+      else hqsRows.push({ chapter: c.name, name: '(지회 전체)', ok: false, why: (r && r.msg) || '보내지 못했습니다.' });
+      i++; hqsDraw(i, p.length); next();
+    }, function(m) { hqsRows.push({ chapter: c.name, name: '(지회 전체)', ok: false, why: m }); i++; hqsDraw(i, p.length); next(); });
+  };
+  next();
+}
+function hqsCsv() {
+  if (!hqsRows.length) { hqsMsg('아직 보낸 결과가 없습니다.', 'var(--danger)'); return; }
+  var q = function(v) { return '"' + String(v == null ? '' : v).replace(/"/g, '""') + '"'; };
+  var csv = '﻿' + [['지회', '이름', '직위', '슬랙ID', '결과', '이유']].concat(hqsRows.map(function(x) { return [x.chapter, x.name, x.pos || '', x.sid || '', x.ok ? '보냄' : x.skip ? '슬랙 ID 없음' : '못 보냄', x.why || '']; }))
+    .map(function(r) { return r.map(q).join(','); }).join('\r\n');
+  var a = document.createElement('a'); a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv;charset=utf-8' }));
+  a.download = '슬랙알림확인_' + localDateStr(new Date()) + '.csv'; document.body.appendChild(a); a.click(); a.remove();
 }
 function sendSlackTestDm() {
   var name = document.getElementById('cfg-slack-test-name').value;

@@ -246,6 +246,13 @@ body.pc .head{margin-bottom:6px}
 .mpage{background:#fff;padding:8px;page-break-after:always}
 .mpage:last-child{page-break-after:auto}
 @media print{ .arow{display:none} }
+/* 관리자 화면 글씨를 다른 메뉴와 같은 크기로 (탭 버튼 · 운행일지 · 결재라인/차량별 현황 · 정비기록 · 차량·운전자 · 도움말) */
+.side{--k:1}
+.cont .cfgcard{--k:1}
+.minfo,.mtb{--k:1}
+.cont.t-log .hbtns{flex-wrap:nowrap}
+.hbtns select{width:auto;padding:7px 10px;font-size:calc(14px * var(--k));border-radius:11px;margin:0}
+.cfghead>div:first-child{min-width:0}
 </style>
 <link rel="stylesheet" href="/ui.css?v=1">
 </head>
@@ -641,7 +648,7 @@ function adminView(){
   $("#app").innerHTML = `${EMBED?"":`<div class="topbar"><button class="back" onclick="location.href='/'">← 업무 홈</button></div>`}
   <div class="head"><h1>관리자<span>화면</span></h1></div>
   <div class="adm"><nav class="side">${tabs.map(([k,l])=>`<button class="${adminTab===k?'on':''}" onclick="adminGo('${k}')">${l}</button>`).join("")}</nav>
-  <section class="cont">${body}</section></div>
+  <section class="cont t-${adminTab}">${body}</section></div>
   ${footHtml()}`;
 }
 function adminGate(){

@@ -2201,8 +2201,8 @@ function approvalBoxHTML(dept, stampH) {
   var cfg = getDeptConfig(dept);
   stampH = stampH || '34px';
   return '<table style="border-collapse:collapse;font-size:11px"><tr>'
-    + '<td rowspan="2" style="border:1px solid black;padding:2px 5px;background:#f0f0f0;font-weight:700;writing-mode:vertical-rl;text-align:center;vertical-align:middle;width:9mm">결재</td>'
-    + cfg.approvers.map(function(a){ return '<td style="border:1px solid black;padding:3px 10px;text-align:center;background:#f5f5f5;font-weight:600;min-width:20mm;">'+a+'</td>'; }).join('')
+    + '<td rowspan="2" style="border:1px solid black;padding:2px 5px;text-align:center;vertical-align:middle;width:9mm;line-height:2.2">결<br>재</td>'
+    + cfg.approvers.map(function(a){ return '<td style="border:1px solid black;padding:3px 10px;text-align:center;min-width:20mm;">'+a+'</td>'; }).join('')
     + '</tr><tr>'
     + cfg.approvers.map(function(){ return '<td style="border:1px solid black;height:'+stampH+';min-width:20mm"></td>'; }).join('')
     + '</tr></table>';
@@ -3347,55 +3347,44 @@ function renderPreview() {
   document.getElementById('print-doc').innerHTML=buildDocHTML(cfg,dateStr,true);
 }
 function buildDocHTML(cfg, dateStr, forPrint) {
-  const fs=forPrint?'12pt':'0.82rem', fsTitle=forPrint?'22pt':'1.4rem';
-  const stampH=forPrint?'24mm':'44px', mbSec=forPrint?'3mm':'6px', cellPad=forPrint?'4px 6px':'3px 5px';
-  return `<div style="font-size:${fs};width:100%">
-    <div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:${mbSec}">
-      <div><div style="font-size:0.78rem;margin-bottom:3mm">NO. ${reportData.docNo||''}</div>
-      <div style="font-size:${fsTitle};font-weight:700;letter-spacing:0.25em;white-space:nowrap">${/^병가-/.test(reportData.docNo||'')?'병가(시간) 사용 보고서':'시수 사용 보고서'}</div></div>
-      <table style="border-collapse:collapse;font-size:0.78rem"><tr>
-        <td rowspan="2" style="border:1px solid black;padding:2px 5px;background:#f0f0f0;font-weight:700;writing-mode:vertical-rl;text-align:center;vertical-align:middle;width:9mm">결재</td>
-        ${cfg.approvers.map(a=>`<td style="border:1px solid black;padding:3px 10px;text-align:center;background:#f5f5f5;font-weight:600;min-width:22mm;">${a}</td>`).join('')}
+  const fs=forPrint?'12.5pt':'0.82rem', fsTitle=forPrint?'22pt':'1.4rem';
+  const stampH=forPrint?'22mm':'44px', rowH=forPrint?'12.5mm':'30px', cellPad=forPrint?'2px 6px':'3px 5px';
+  const B='border:1px solid black;', TH=B+'background:#d9d9d9;text-align:center;padding:'+cellPad+';', TD=B+'text-align:center;padding:'+cellPad+';';
+  const title=/^병가-/.test(reportData.docNo||'')?'병가(시간) 사용 보고서':'시수제 사용 보고서';
+  const word=/^병가-/.test(reportData.docNo||'')?'병가(시간)':'휴가(시수제)';
+  const hm=t=>t===0||t?(String(t).indexOf(':')>=0?String(t):String(t).padStart(2,'0')+':00'):'';
+  return `<div style="font-size:${fs};width:100%;font-family:'맑은 고딕','Malgun Gothic','Noto Sans KR',sans-serif">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:${forPrint?'5mm':'10px'}">
+      <div><div style="font-size:${forPrint?'10pt':'0.75rem'};font-weight:700;margin-bottom:${forPrint?'4mm':'6px'}">NO. ${esc(reportData.docNo||'')}</div>
+      <div style="font-size:${fsTitle};font-weight:800;letter-spacing:0.12em;white-space:nowrap;padding-left:${forPrint?'4mm':'6px'}">${title}</div></div>
+      <table style="border-collapse:collapse;font-size:${forPrint?'10pt':'0.78rem'}"><tr>
+        <td rowspan="2" style="${B}padding:2px 5px;text-align:center;vertical-align:middle;width:9mm;line-height:2.2">결<br>재</td>
+        ${cfg.approvers.map(a=>`<td style="${B}padding:3px 10px;text-align:center;min-width:22mm;">${esc(a)}</td>`).join('')}
       </tr><tr>
-        ${cfg.approvers.map(()=>`<td style="border:1px solid black;height:${stampH};min-width:22mm"></td>`).join('')}
+        ${cfg.approvers.map(()=>`<td style="${B}height:${stampH};min-width:22mm"></td>`).join('')}
       </tr></table>
     </div>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:${mbSec};font-size:${fs}"><tr>
-      <td style="border:1px solid black;background:#f0f0f0;font-weight:700;text-align:center;padding:${cellPad};width:15mm;">성&nbsp;명</td>
-      <td style="border:1px solid black;padding:${cellPad};width:35mm;">${reportData.name||''}</td>
-      <td style="border:1px solid black;background:#f0f0f0;font-weight:700;text-align:center;padding:${cellPad};width:15mm;">직&nbsp;위</td>
-      <td style="border:1px solid black;padding:${cellPad};">${reportData.position||''}</td>
-    </tr><tr>
-      <td style="border:1px solid black;background:#f0f0f0;font-weight:700;text-align:center;padding:${cellPad};">부&nbsp;서</td>
-      <td style="border:1px solid black;padding:${cellPad};">${reportData.dept||''}</td>
-      <td style="border:1px solid black;background:#f0f0f0;font-weight:700;text-align:center;padding:${cellPad};">연락처</td>
-      <td style="border:1px solid black;padding:${cellPad};">${reportData.contact||''}</td>
-    </tr></table>
-    <table style="width:100%;border-collapse:collapse;margin-bottom:1rem;font-size:${fs};table-layout:fixed">
-      <colgroup><col style="width:10%"><col style="width:10%"><col style="width:10%"><col style="width:30%"><col><col style="width:10%"></colgroup>
-      <thead><tr style="background:#f0f0f0">
-        <th style="border:1px solid black;padding:6px 3px;text-align:center;">사용차시</th>
-        <th style="border:1px solid black;padding:6px 3px;text-align:center;">월</th>
-        <th style="border:1px solid black;padding:6px 3px;text-align:center;">일</th>
-        <th style="border:1px solid black;padding:6px 3px;text-align:center;">시간</th>
-        <th style="border:1px solid black;padding:6px 3px;text-align:center;">비고</th>
-        <th style="border:1px solid black;padding:6px 3px;text-align:center;">선임<br>확인</th>
-      </tr></thead>
-      <tbody>${reportData.rows.map(r=>`<tr>
-        <td style="border:1px solid black;text-align:center;height:9mm;padding:2px;">${r.seq}</td>
-        <td style="border:1px solid black;text-align:center;padding:2px;">${r.month||''}</td>
-        <td style="border:1px solid black;text-align:center;padding:2px;">${r.day||''}</td>
-        <td style="border:1px solid black;text-align:center;padding:2px;">${fmtT(r.timeStart)}${(r.timeStart||r.timeEnd)?' ~ ':''}${fmtT(r.timeEnd)}</td>
-        <td style="border:1px solid black;padding:2px 4px;">${(r.month||r.day)?(r.note||''):''}</td>
-        <td style="border:1px solid black;text-align:center;padding:2px;">${stampHTML(r.confirmed,reportData.name,forPrint)}</td>
-      </tr>`).join('')}</tbody>
+    <table style="width:100%;border-collapse:collapse;font-size:${fs};table-layout:fixed">
+      <colgroup><col style="width:14%"><col style="width:8%"><col style="width:8%"><col style="width:22%"><col style="width:17%"><col style="width:19%"><col style="width:12%"></colgroup>
+      <tbody>
+      <tr><td style="${TH}height:${rowH};letter-spacing:0.5em">성 명</td><td colspan="3" style="${TD}">${esc(reportData.name||'')}</td><td style="${TH}letter-spacing:0.5em">직 위</td><td colspan="2" style="${TD}">${esc(reportData.position||'')}</td></tr>
+      <tr><td style="${TH}height:${rowH};letter-spacing:0.5em">부 서</td><td colspan="3" style="${TD}">${esc(reportData.dept||'')}</td><td style="${TH}">연락처</td><td colspan="2" style="${TD}">${esc(reportData.contact||'')}</td></tr>
+      <tr><td colspan="7" style="${B}height:${forPrint?'3mm':'8px'};padding:0"></td></tr>
+      <tr><td style="${TH}height:${rowH}">사용차시</td><td style="${TH}">월</td><td style="${TH}">일</td><td style="${TH}">시간</td><td colspan="2" style="${TH}">비고</td><td style="${TH}line-height:1.2">선임<br>확인</td></tr>
+      ${reportData.rows.map(r=>`<tr>
+        <td style="${TD}height:${rowH}">${r.seq}</td>
+        <td style="${TD}">${r.month||''}</td>
+        <td style="${TD}">${r.day||''}</td>
+        <td style="${TD}white-space:nowrap">${hm(r.timeStart)} &nbsp;~&nbsp; ${hm(r.timeEnd)}</td>
+        <td colspan="2" style="${TD}">${(r.month||r.day||r.timeStart)?esc(r.note||''):''}</td>
+        <td style="${TD}">${stampHTML(r.confirmed,reportData.name,forPrint)}</td>
+      </tr>`).join('')}
+      <tr><td style="${TH}height:${forPrint?'14mm':'38px'}">특이사항</td><td colspan="6" style="${B}padding:${cellPad};text-align:left">${esc(reportData.special||'')}</td></tr>
+      <tr><td colspan="7" style="${TD}height:${forPrint?'22mm':'56px'}">위와 같이 ${word}를 사용하였음을 보고합니다.</td></tr>
+      <tr><td style="${TD}height:${forPrint?'14mm':'38px'}">작성일자</td><td colspan="3" style="${TD}">${dateStr}</td><td style="${TD}">신청자</td><td colspan="2" style="${TD}">${esc(reportData.name||'')} <span style="font-size:${forPrint?'7pt':'0.6rem'};color:#555">(서명또는 인)</span></td></tr>
+      </tbody>
     </table>
-    <div style="text-align:center;margin:16px 0;">위와 같이 시수를 사용하였음을 보고합니다.</div>
-    <div style="display:flex;justify-content:space-between;align-items:baseline;font-size:${fs};">
-      <span>작성일자 &nbsp;&nbsp; ${dateStr}</span>
-      <span>신청자 &nbsp;&nbsp; ${reportData.name||''} &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; (서명 또는 인)</span>
-    </div>
-    <div style="text-align:center;margin-top:10px;font-size:1rem;font-weight:700;letter-spacing:0.1em;border-top:2px solid black;padding-top:8px;">${cfg.addressee}</div>
+    <div style="text-align:right;margin-top:${forPrint?'6mm':'10px'};font-size:${forPrint?'16pt':'1rem'};font-weight:800;letter-spacing:0.05em;">${esc(cfg.addressee)}</div>
   </div>`;
 }
 function doPrint(){
@@ -4599,7 +4588,8 @@ function submitLeaveReq() {
   lastLeaveReqData = {
     name: leaveUser.name, position: leaveUser.position||'', dept: leaveUser.dept||'',
     contact: leaveUser.contact||'', type, start, end, days, reason, delegate,
-    date: new Date().toISOString().split('T')[0], status:'확정'
+    date: new Date().toISOString().split('T')[0], status:'확정',
+    remain: laBal ? Math.round(((laBal.remaining || 0) - (type.indexOf('연차') === 0 ? (parseFloat(days) || 0) : 0)) * 1000) / 1000 : ''
   };
   gasRunLeave('submitLeave', JSON.stringify({
     name: leaveUser.name, leaveType: type, startDate: start, endDate: end, days, reason
@@ -4634,21 +4624,32 @@ function resetLeaveForm() {
 function printLeaveReq(dArg, silent) {
   var d = dArg || lastLeaveReqData;
   if (!d) return;
-  var printWin = window.open('','_blank','width=800,height=600');
+  var printWin = window.open('','_blank','width=800,height=1000');
   if (!printWin) { if (!silent) alert('팝업이 차단되었습니다. 팝업을 허용해 주세요.'); return; }
-  printWin.document.write('<html><head><title>휴가신청서</title><style>body{font-family:"맑은 고딕","Noto Sans KR",sans-serif;font-size:11pt;padding:20mm 15mm;}h2{text-align:center;font-size:18pt;letter-spacing:.2em;margin:0;}table{width:100%;border-collapse:collapse;margin-bottom:5mm;}td{border:1px solid black;padding:4px 8px;}td.lb{background:#f0f0f0;font-weight:700;text-align:center;width:20mm;}.val{min-height:10mm;}</style></head><body>');
-  printWin.document.write('<div style="display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:8mm;"><h2>휴 가 신 청 서</h2>'+approvalBoxHTML(d.dept)+'</div>');
-  printWin.document.write('<table><tr><td class="lb">성명</td><td>'+d.name+'</td><td class="lb">부서</td><td>'+d.dept+'</td></tr>');
-  printWin.document.write('<tr><td class="lb">직위</td><td>'+d.position+'</td><td class="lb">연락처</td><td>'+d.contact+'</td></tr>');
-  printWin.document.write('<tr><td class="lb">휴가종류</td><td>'+d.type+'</td><td class="lb">신청일수</td><td>'+d.days+'</td></tr>');
-  printWin.document.write('<tr><td class="lb">기간</td><td colspan="3">'+d.start+' ~ '+d.end+'</td></tr>');
-  printWin.document.write('<tr><td class="lb">사유</td><td colspan="3" class="val">'+d.reason+'</td></tr>');
-  printWin.document.write('<tr><td class="lb">업무대행</td><td colspan="3">'+d.delegate+'</td></tr></table>');
-  printWin.document.write('<p style="text-align:center;margin:8mm 0;">위와 같이 휴가를 신청합니다.</p>');
-  printWin.document.write('<p style="text-align:center;">'+d.date+'</p>');
-  printWin.document.write('<p style="text-align:center;">신청인: '+d.name+' (서명 또는 인)</p>');
-  printWin.document.write(addresseeHTML(d.dept));
-  printWin.document.write('</body></html>');
+  var md = function(v) { var m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[2] + '월 ' + m[3] + '일' : (v || ''); };
+  var ymd = function(v) { var m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? m[1] + '년 ' + Number(m[2]) + '월 ' + Number(m[3]) + '일' : (v || ''); };
+  var e = function(v) { return esc(v == null ? '' : String(v)); };
+  var cfg = getDeptConfig(d.dept);
+  var remain = (d.remain === 0 || d.remain) ? fmtDays(d.remain) : '';
+  var css = '@page{size:A4 portrait;margin:18mm 16mm}*{box-sizing:border-box;margin:0;padding:0}body{font-family:"맑은 고딕","Malgun Gothic","Noto Sans KR",sans-serif;color:#000}'
+    + '.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14mm}.title{flex:1;text-align:center;font-size:24pt;font-weight:800;letter-spacing:6px}'
+    + 'table.f{width:100%;border-collapse:collapse;table-layout:fixed}table.f td{border:1px solid #000;font-size:13pt;text-align:center;vertical-align:middle;height:17mm;padding:0 6px;word-break:keep-all}'
+    + 'td.th{background:#d9d9d9;letter-spacing:4px}td.head{font-weight:800;letter-spacing:6px;height:14mm}tr.gap td{height:5mm}td.big{height:40mm}'
+    + '.sig{font-size:8pt;color:#666;margin-left:6px}.to{text-align:right;font-size:17pt;font-weight:800;margin-top:22mm;letter-spacing:1px}';
+  var html = '<html><head><meta charset="UTF-8"><title>휴가신청서</title><style>' + css + '</style></head><body>'
+    + '<div class="top"><div class="title">휴 가 신 청 서</div>' + approvalBoxHTML(d.dept, '16mm') + '</div>'
+    + '<table class="f"><colgroup><col style="width:19%"><col style="width:31%"><col style="width:19%"><col style="width:31%"></colgroup><tbody>'
+    + '<tr><td colspan="4" class="head">신 청 내 역</td></tr>'
+    + '<tr><td class="th">성 명</td><td>' + e(d.name) + '</td><td class="th">직 위</td><td>' + e(d.position) + '</td></tr>'
+    + '<tr><td class="th">부 서</td><td>' + e(d.dept) + '</td><td class="th" style="letter-spacing:0">연락처</td><td>' + e(d.contact) + '</td></tr>'
+    + '<tr class="gap"><td colspan="4"></td></tr>'
+    + '<tr><td class="th">구 분</td><td>' + e(d.type) + '</td><td class="th">사 유</td><td>' + e(d.reason) + '</td></tr>'
+    + '<tr><td class="th">일 시</td><td colspan="3">' + e(md(d.start)) + ' ~ ' + e(md(d.end)) + ' ( ' + e(d.days) + ' 일 )</td></tr>'
+    + '<tr><td class="th" style="letter-spacing:0">업무대행자</td><td>' + e(d.delegate) + '</td><td class="th" style="letter-spacing:0">잔여일수</td><td>' + e(remain) + '</td></tr>'
+    + '<tr><td colspan="4" class="big">위와 같이 휴가를 신청합니다.</td></tr>'
+    + '<tr><td class="th" style="letter-spacing:0">작성일자</td><td>' + e(ymd(d.date)) + '</td><td class="th" style="letter-spacing:0">신청자</td><td>' + e(d.name) + '<span class="sig">(서명또는 인)</span></td></tr>'
+    + '</tbody></table><div class="to">' + e(cfg.addressee) + '</div></body></html>';
+  printWin.document.write(html);
   printWin.document.close();
   printWin.focus();
   setTimeout(function(){ printWin.print(); }, 500);
@@ -6221,7 +6222,7 @@ function printTripFrom(arr, row) { var it = arr.filter(function(x) { return x.ro
 function tripKDate(s) { var m = String(s || '').match(/^(\d{4})-(\d{2})-(\d{2})$/); return m ? Number(m[2]) + '월 ' + Number(m[3]) + '일' : ''; }
 function printTripReq(it) {
   var dm = (APPROVAL_CONFIG || []).filter(function(c) { return c.dept === it.dept && c.addressee; })[0];
-  var org = dm ? dm.addressee : (window._orgName || '');   // 부서 결재라인에 받는 사람(예: ○○센터장 귀하)이 있으면 그 부서 이름으로
+  var org = window._orgName || (dm ? dm.addressee : '');   // 양식: 아래에 기관 이름   // 부서 결재라인에 받는 사람(예: ○○센터장 귀하)이 있으면 그 부서 이름으로
   var period = it.start === it.end ? tripKDate(it.start) + ' ( 1 일 )' : tripKDate(it.start) + ' ~ ' + tripKDate(it.end) + ' ( ' + it.days + ' 일 )';
   var ap = '';
   var applyD = it.date ? it.date.replace(/^(\d{4})-(\d{2})-(\d{2})$/, function(a, y, m, d) { return y + '년 ' + Number(m) + '월 ' + Number(d) + '일'; }) : '';
@@ -6244,7 +6245,7 @@ function printTripReq(it) {
     + '<tr class="sm"><td class="th">출 장 지</td><td colspan="5">' + esc(it.to) + '</td></tr>'
     + '<tr class="sm"><td class="th">교 통 편</td><td>' + esc(it.transport) + '</td><td class="th" colspan="2" style="width:auto">업무대행자</td><td colspan="2">' + esc(it.deputy) + '</td></tr>'
     + '<tr class="sm"><td class="th">지급출처</td><td colspan="5">' + esc(it.payment) + '</td></tr>'
-    + '<tr class="sm"><td class="th">비 고</td><td colspan="5">' + esc(it.note) + '</td></tr></tbody></table>'
+    + (it.note ? '<tr class="sm"><td class="th">비 고</td><td colspan="5">' + esc(it.note) + '</td></tr>' : '') + '</tbody></table>'
     + '<div class="foot"><div style="height:20mm">위와 같이 출장을 신청합니다.</div><div style="height:16mm">' + esc(applyD) + '</div>'
     + '<div style="height:18mm;justify-content:flex-end;padding-right:6mm">신청인 &nbsp;&nbsp; ' + esc(it.name) + ' &nbsp;&nbsp; <span style="font-size:10pt;color:#777">(서명 또는 인)</span></div>'
     + '<div style="height:20mm;font-size:16pt;font-weight:700;letter-spacing:2px">' + esc(org) + '</div></div>'
@@ -6416,7 +6417,7 @@ function printTripReport(it) {
   var org = window._orgName || '';
   var period = it.start === it.end ? tripKDate(it.start) + ' ( 1 일 )' : tripKDate(it.start) + ' ~ ' + tripKDate(it.end) + ' ( ' + it.days + ' 일 )';
   var subD = rep.submitDate ? rep.submitDate.replace(/^(\d{4})-(\d{2})-(\d{2})$/, function(a, y, m, d) { return y + '년 ' + Number(m) + '월 ' + Number(d) + '일'; }) : '';
-  var rows = rep.rows.slice(); var minRows = Math.max(rows.length + 1, 3);
+  var rows = rep.rows.slice(); var minRows = Math.max(rows.length, 8);
   while (rows.length < minRows) rows.push({});
   var money = function(n) { return n ? Number(n).toLocaleString('ko-KR') : ''; };
   var rowsHTML = rows.map(function(r) {
@@ -6443,7 +6444,7 @@ function printTripReport(it) {
     + '<tr><td class="th">출 장 지</td><td colspan="5">' + esc(it.to) + '</td></tr>'
     + '<tr><td class="th">출 장<br>보 고</td><td colspan="5" class="tall">' + esc(rep.result) + '</td></tr>'
     + '<tr><td class="th">지급출처</td><td colspan="5">' + esc(it.payment) + '</td></tr></tbody></table>'
-    + '<table class="exp"><thead><tr><th rowspan="2" style="width:22mm">성명</th><th colspan="2">교통비</th><th rowspan="2" style="width:18mm">식비</th><th rowspan="2" style="width:18mm">일비</th><th rowspan="2" style="width:20mm">숙박비</th><th rowspan="2" style="width:22mm">합계</th><th rowspan="2">비 고</th></tr><tr><th style="width:22mm">교통수단</th><th style="width:20mm">금액</th></tr></thead>'
+    + '<table class="exp"><thead><tr><th colspan="8" style="font-weight:400;font-size:11pt;padding:4px">여비지급명세서 (단위: 원)</th></tr><tr><th rowspan="2" style="width:22mm">성명</th><th colspan="2">교통비</th><th rowspan="2" style="width:18mm">식비</th><th rowspan="2" style="width:18mm">일비</th><th rowspan="2" style="width:20mm">숙박비</th><th rowspan="2" style="width:22mm">합계</th><th rowspan="2">비 고</th></tr><tr><th style="width:22mm">교통수단</th><th style="width:20mm">금액</th></tr></thead>'
     + '<tbody>' + rowsHTML + '</tbody><tfoot><tr><td colspan="2">합 계</td><td class="r" style="text-align:right">' + money(rep.tTransport) + '</td><td style="text-align:right">' + money(rep.tMeal) + '</td><td style="text-align:right">' + money(rep.tDaily) + '</td><td style="text-align:right">' + money(rep.tLodging) + '</td><td style="text-align:right;color:#c84b31">' + money(rep.total) + '</td><td></td></tr>'
     + '<tr><td colspan="2">편도요금</td><td colspan="6" style="font-weight:400;background:#fff">' + esc(rep.fare) + '</td></tr></tfoot></table>'
     + '<div class="foot"><div style="height:16mm">위와 같이 출장결과를 보고합니다.</div><div style="height:13mm">' + esc(subD) + '</div>'

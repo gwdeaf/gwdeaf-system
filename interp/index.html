@@ -290,7 +290,7 @@ async function boot() {
   try { const r = await sb.rpc('interp_presets_get'); presets = r.data || {}; } catch (e) { presets = {}; }
   try { const r = await sb.rpc('counsel_presets_get'); cpresets = r.data || {}; } catch (e) { cpresets = {}; }
   drawFav(); drawCFav();
-  if (SUB.go) subGo(SUB.go); else setTab(me.can_write ? 'write' : 'mine');
+  if (carPrefill()) {} else if (SUB.go) subGo(SUB.go); else setTab(me.can_write ? 'write' : 'mine');
   subReady();
 }
 sb.auth.onAuthStateChange((event) => { if (event === 'SIGNED_IN') boot(); });
@@ -339,6 +339,21 @@ function setTab(t) {
   if (ALL) loadNames();
   if (!$('from').value) { const d = new Date(); d.setDate(1); $('from').value = d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-01'; $('to').value = today(); }
   loadList();
+}
+// ===== 차량운행일지에서 '통역'으로 도착하면 넘어옴: 날짜·시간·장소 미리 채우기 (30분 안에 온 것만) =====
+function carPrefill() {
+  let p = null; try { p = JSON.parse(localStorage.getItem('interpFromCar') || 'null'); } catch (e) {}
+  if (!p) return false;
+  try { localStorage.removeItem('interpFromCar'); } catch (e) {}
+  if (!me.can_write || !p.at || Date.now() - p.at > 30 * 60 * 1000) return false;
+  if (p.date) $('date').value = p.date;
+  if (p.start) $('startTime').value = String(p.start).slice(0, 5);
+  if (p.end) $('endTime').value = String(p.end).slice(0, 5);
+  if (p.location) $('location').value = p.location;
+  $('type').value = '출장';
+  setTab('write');
+  msg('writeMsg', '🚗 차량운행일지에서 날짜·시간·장소를 가져왔어요. 의뢰자·종류·대상·통역내용을 적고 저장하세요.', true);
+  return true;
 }
 // ===== 하위 메뉴 (업무 시스템 왼쪽 메뉴에서 이동) =====
 const SUB = { go: new URLSearchParams(location.search).get('go') || '', ready: false };

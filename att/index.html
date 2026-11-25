@@ -452,6 +452,7 @@
   html.embed .header, html.embed .sidebar, html.embed #boot-msg{display:none!important;}
   html.embed .app-layout{min-height:100vh;}
   html.embed body{background:var(--bg);}
+  @media print{ html,body,html.embed body,#print-view,.print-doc{background:#fff !important;} }   /* 시수제 사용 보고서도 다른 양식처럼 흰 바탕 */
 </style>
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <style>  /* ===== 대체시수 표 머리글: 진한 배경 + 진한 글씨 → 연한 배경 + 진한 글씨 ===== */
@@ -4634,8 +4635,8 @@ function printLeaveReq(dArg, silent) {
   var css = '@page{size:A4 portrait;margin:18mm 16mm}*{box-sizing:border-box;margin:0;padding:0}body{font-family:"맑은 고딕","Malgun Gothic","Noto Sans KR",sans-serif;color:#000}'
     + '.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:14mm}.title{flex:1;text-align:center;font-size:24pt;font-weight:800;letter-spacing:6px}'
     + 'table.f{width:100%;border-collapse:collapse;table-layout:fixed}table.f td{border:1px solid #000;font-size:13pt;text-align:center;vertical-align:middle;height:17mm;padding:0 6px;word-break:keep-all}'
-    + 'td.th{background:#d9d9d9;letter-spacing:4px}td.head{font-weight:800;letter-spacing:6px;height:14mm}tr.gap td{height:5mm}td.big{height:40mm}'
-    + '.sig{font-size:8pt;color:#666;margin-left:6px}.to{text-align:right;font-size:17pt;font-weight:800;margin-top:22mm;letter-spacing:1px}';
+    + 'table.f td.th{background:#d9d9d9;letter-spacing:4px}table.f td.head{font-weight:800;letter-spacing:6px;height:14mm}table.f tr.gap td{height:5mm}table.f td.big{height:76mm}'
+    + '.sig{font-size:8pt;color:#666;margin-left:6px}.to{text-align:right;font-size:17pt;font-weight:800;margin-top:12mm;letter-spacing:1px}';
   var html = '<html><head><meta charset="UTF-8"><title>휴가신청서</title><style>' + css + '</style></head><body>'
     + '<div class="top"><div class="title">휴 가 신 청 서</div>' + approvalBoxHTML(d.dept, '16mm') + '</div>'
     + '<table class="f"><colgroup><col style="width:19%"><col style="width:31%"><col style="width:19%"><col style="width:31%"></colgroup><tbody>'
@@ -4644,7 +4645,7 @@ function printLeaveReq(dArg, silent) {
     + '<tr><td class="th">부 서</td><td>' + e(d.dept) + '</td><td class="th" style="letter-spacing:0">연락처</td><td>' + e(d.contact) + '</td></tr>'
     + '<tr class="gap"><td colspan="4"></td></tr>'
     + '<tr><td class="th">구 분</td><td>' + e(d.type) + '</td><td class="th">사 유</td><td>' + e(d.reason) + '</td></tr>'
-    + '<tr><td class="th">일 시</td><td colspan="3">' + e(md(d.start)) + ' ~ ' + e(md(d.end)) + ' ( ' + e(d.days) + ' 일 )</td></tr>'
+    + '<tr><td class="th">일 시</td><td colspan="3">' + e(md(d.start)) + ' ~ ' + e(md(d.end)) + (/^\d+(\.\d+)?$/.test(String(d.days).trim()) ? ' ( ' + e(d.days) + ' 일 )' : ' ( ' + e(d.days) + ' )') + '</td></tr>'
     + '<tr><td class="th" style="letter-spacing:0">업무대행자</td><td>' + e(d.delegate) + '</td><td class="th" style="letter-spacing:0">잔여일수</td><td>' + e(remain) + '</td></tr>'
     + '<tr><td colspan="4" class="big">위와 같이 휴가를 신청합니다.</td></tr>'
     + '<tr><td class="th" style="letter-spacing:0">작성일자</td><td>' + e(ymd(d.date)) + '</td><td class="th" style="letter-spacing:0">신청자</td><td>' + e(d.name) + '<span class="sig">(서명또는 인)</span></td></tr>'

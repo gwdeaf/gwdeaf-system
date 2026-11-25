@@ -563,6 +563,7 @@ function arrive(){
   <input type="text" id="dest" placeholder="어디를 다녀왔나요?" value="${tr.dest||''}">
   <label>목적 <span class="req">*필수</span></label>
   <div class="opts"><button id="p1" class="${purpose==='업무'?'on':''}" onclick="setP('업무')">업무</button><button id="p2" class="${purpose==='통역'?'on':''}" onclick="setP('통역')">통역</button></div>
+  <div class="lbl" id="pHint" style="margin-top:6px;color:#2f5bd6;${purpose==='통역'?'':'display:none'}">🤟 통역을 고르면 저장한 뒤 <b>통역일지 쓰기</b>로 넘어가요. 날짜·시간·장소가 미리 채워집니다.</div>
   <label>🕒 도착 날짜·시간</label>
   <div class="two"><input type="date" id="eD" value="${dStr(new Date())}" oninput="this.dataset.t='1'"><input type="time" id="eT" value="${tStr(new Date())}" oninput="this.dataset.t='1'"></div>
   <div class="lbl" style="margin-top:6px">수정하지 않으면 저장하는 시각이 자동 기록됩니다.</div>
@@ -584,7 +585,7 @@ function ppStep(d){ people=Math.max(6,(people||6)+d); $("#ppNum").textContent=pe
 function toggleMemo(){ const a=$("#mh").parentElement; a.classList.toggle("open"); if(a.classList.contains("open")) setTimeout(()=>$("#memo").focus(),280); }
 function editStart(){ $("#sEdit").classList.toggle("hide"); }
 function updStart(){ $("#sTxt").textContent = $("#sD").value+" "+$("#sT").value; }
-function setP(p){ purpose=p; $("#p1").classList.toggle("on",p==="업무"); $("#p2").classList.toggle("on",p==="통역"); }
+function setP(p){ purpose=p; $("#p1").classList.toggle("on",p==="업무"); $("#p2").classList.toggle("on",p==="통역"); const h=$("#pHint"); if(h) h.style.display=p==="통역"?"":"none"; }
 function setG(k){
   const N=cellsOf(car);
   gauge = gauge===k+"/"+N+"칸" ? "" : k+"/"+N+"칸";
@@ -630,6 +631,12 @@ async function save(){
     recent[car]=[{md:sD.slice(5).replace("-","/"), st:tr.time, en:eT, driver:tr.driver, dest, odoS:String(tr.odoS), odoE:String(e)}];
     ls.set("recent",recent);
     if(gauge){ fuelMap[car]=gauge; ls.set("fuelMap",fuelMap); }
+    if(purpose==="통역"){   // 통역으로 다녀왔으면 통역일지 쓰기로 (날짜·시간·장소를 넘겨줌)
+      try{ localStorage.setItem("interpFromCar", JSON.stringify({date:sD, start:sT, end:eT, location:dest, car, at:Date.now()})); }catch(_){}
+      toast("저장되었습니다 · 통역일지로 이동합니다");
+      setTimeout(()=>{ if(EMBED && window.parent!==window){ try{ window.parent.postMessage({type:"nav-go", kind:"interp", tab:""}, location.origin); return; }catch(_){} } location.href="/interp/"; },1400);
+      return;
+    }
     toast("저장되었습니다"); setTimeout(goHome,1400);
   }catch(x){ err.textContent="저장에 실패했습니다. 인터넷 연결을 확인하고 다시 눌러 주세요."; btn.disabled=false; btn.textContent="💾 저장"; }
 }

@@ -115,7 +115,7 @@ function tabList(){
     if(me.role === "admin" || me.role === "lead") tabs.push(["reset","자료 초기화"]);
     return tabs;
   }
-  if(me.can_manage) tabs.push(["staff","직원·권한"],["log","변경 기록"]);
+  if(me.can_manage) tabs.push(["staff","직원·권한"],["pay","호봉표"],["log","변경 기록"]);
   tabs.push(["sign","내 서명"],["me","내 권한"]);
   return tabs;
 }
@@ -126,12 +126,13 @@ function render(){
       <div><a class="btn sub sm" href="/" style="text-decoration:none;display:inline-block">🏠 홈으로</a> <button class="btn sub sm" onclick="logout()">로그아웃</button></div></div>
     <div class="tabs">${tabs.map(t=>`<button class="${tab===t[0]?"on":""}" onclick="go('${t[0]}')">${t[1]}</button>`).join("")}</div>
     <div id="body"></div>`;
-  ({reset:resetView, staff:staffView, depts:deptsView, lines:linesView, log:logView, chapters:chaptersView, drive:driveView, org:orgView, sign:signView, me:meView}[tab] || meView)();
+  ({reset:resetView, staff:staffView, pay:payView, depts:deptsView, lines:linesView, log:logView, chapters:chaptersView, drive:driveView, org:orgView, sign:signView, me:meView}[tab] || meView)();
 }
 async function go(t){
   tab = t;
   try{
     if(t==="staff") await loadStaff();
+    else if(t==="pay") await payLoad();
     else if(t==="depts"){ SCH = null; await loadStaff(); deptEdit = null; }
     else if(t==="lines"){ await loadStaff(); lines = await rpc("get_approval_lines"); drafts = {}; }
     else if(t==="log") logs = await rpc("get_access_log", {p_limit:100});
@@ -159,9 +160,23 @@ let DEPTS = null, deptEdit = null;
 function deptPick(id, cur){
   if(!DEPTS || !DEPTS.length) return `<input id="${id}" value="${esc(cur||"")}" placeholder="부서">`;
   const has = !cur || DEPTS.some(d=>d.name===cur);
-  return `<select id="${id}"><option value="">(부서 없음)</option>${DEPTS.map(d=>`<option ${d.name===cur?"selected":""}>${esc(d.name)}</option>`).join("")}${has?"":`<option selected>${esc(cur)}</option>`}</select>`;
+  return `<div style="display:flex;gap:6px"><select id="${id}" style="flex:1"><option value="">(부서 없음)</option>${DEPTS.map(d=>`<option ${d.name===cur?"selected":""}>${esc(d.name)}</option>`).join("")}${has?"":`<option selected>${esc(cur)}</option>`}</select>`
+    + `<button type="button" class="btn sub" style="white-space:nowrap;margin:0" onclick="deptAdd('${id}')">+ 부서 추가</button></div>`;
 }
-async function pickCh(v){ const c = SCHS.find(x=>String(x.id)===String(v)); SCH = c && !c.is_hq ? c.id : null; editId = null; openId = null; await loadStaff(); render(); }
+/* 직원 등록 화면에서 바로 부서 추가 (그 기관의 부서 목록에 들어감) */
+async function deptAdd(id){
+  const nm = (prompt("추가할 부서 이름 (예: 법인, 센터, 수어문화원)") || "").trim(); if(!nm) return;
+  try{
+    await rpc("dept_save", PC({p_id:null, p_name:nm, p_full_name:"", p_sender:"", p_address:"", p_phone:"", p_fax:"", p_sort:(DEPTS||[]).length + 1}));
+    DEPTS = await rpc("dept_list", PC());
+    const sel = $("#"+id), keep = sel.value;
+    sel.innerHTML = '<option value="">(부서 없음)</option>' + DEPTS.map(d=>`<option>${esc(d.name)}</option>`).join("");
+    sel.value = keep || nm; if(!keep) sel.value = nm;
+    const box = $("#e_d2box"); if(box) box.insertAdjacentHTML("beforeend", `<label style="display:flex;align-items:center;gap:4px;white-space:nowrap;margin-right:10px"><input type="checkbox" style="width:auto;margin:0" class="e_d2" value="${esc(nm)}">${esc(nm)}</label>`);
+    toast("부서 '" + nm + "'을(를) 추가했습니다. 부서 이름·발신명의 등은 [부서] 화면에서 고칠 수 있습니다.");
+  }catch(e){ toast(e.message, true); }
+}
+async function pickCh(v){ const c = SCHS.find(x=>String(x.id)===String(v)); SCH = c && !c.is_hq ? c.id : null; editId = null; openId = null; await loadStaff(); if(tab==="pay"){ try{ await payLoad(); }catch(e){ toast(e.message, true); } } render(); }
 function chPicker(){
   if(!SCHS || SCHS.length < 2) return "";
   const cur = SCH || (SCHS.find(x=>x.is_hq)||{}).id;
@@ -171,6 +186,11 @@ function chPicker(){
 }
 function attOf(s){ if(!ATTI || !ATTI.rows) return null; const e = String(s.email||"").toLowerCase(); return ATTI.rows.find(r=>r.email===e) || null; }
 const ORGS = ["도협회","지회","센터"];
+/* 도협회에서만 쓰는 권한 / 지회에서만 쓰는 권한: 지금 보고 있는 기관에 맞는 것만 보여 줌
+   (서버도 도협회 권한은 도협회 직원에게만 효과가 있음) */
+const PERM_HQ = ["book.manage","news.edit","perf.review","movie.manage","interp.review"], PERM_CH = ["movie.write"];
+function permShown(c){ const k = c.system+"."+c.perm, hq = !!(me.is_hq && !SCH); return hq ? !PERM_CH.includes(k) : !PERM_HQ.includes(k); }
+function permTxt(t){ return String(t).replace(/\s*\((도협회|지회)\)\s*$/, ""); }
 function permLabel(k){ const c = catalog.find(x=>x.system+"."+x.perm===k); return c ? c.label : k; }
 
 /* 내 권한 */
@@ -203,21 +223,20 @@ function staffForm(s, mgr){
   if(a && a.supervisor && !seniors.includes(a.supervisor)) seniors.push(a.supervisor);
   const lead = s.role !== "staff";
   /* ③ 권한 */
-  const groups = {}; catalog.forEach(c=>{ (groups[c.system] = groups[c.system] || []).push(c); });
+  const groups = {}; catalog.filter(permShown).forEach(c=>{ (groups[c.system] = groups[c.system] || []).push(c); });
   const others = staff.filter(x=>x.role==="staff" && x.id!==s.id && x.active && x.grants.length);
   const perm = lead ? `<div class="full muted">담당자는 모든 권한을 가집니다.</div>`
     : `<div class="full">${others.length?`${lb("다른 직원과 같은 권한으로 (고르면 아래 체크가 그 직원과 똑같이 바뀝니다)")}<select onchange="permCopy(this.value)"><option value="">직접 고르기</option>${others.map(x=>`<option value="${x.id}">${esc(x.name)} ${esc(x.position||"")} (${x.grants.length}개)</option>`).join("")}</select>`:""}
        <div class="perm cols">${Object.keys(groups).map(sys=>`<div class="pg"><b>${SYS[sys]||sys}</b>${groups[sys].map(c=>{ const k = c.system+"."+c.perm;
-         return `<label><input type="checkbox" class="e_pm" value="${k}" ${s.grants.includes(k)?"checked":""} ${c.system==="core"&&!mgr?"disabled":""}>${esc(c.label)}</label>`; }).join("")}</div>`).join("")}</div></div>`;
+         return `<label><input type="checkbox" class="e_pm" value="${k}" ${s.grants.includes(k)?"checked":""} ${c.system==="core"&&!mgr?"disabled":""}>${esc(permTxt(c.label))}</label>`; }).join("")}</div>`).join("")}</div></div>`;
   const attBox = attOn ? `
       <div>${lb("역할")}<select id="e_arole"><option ${a.role!=="선임"?"selected":""}>일반</option><option ${a.role==="선임"?"selected":""}>선임</option></select></div>
       <div>${lb("담당 선임 (시간외·대체휴무 승인자)")}<select id="e_asup"><option value="">(없음)</option>${seniors.map(n=>`<option ${n===a.supervisor?"selected":""}>${esc(n)}</option>`).join("")}</select></div>
-      <div>${lb("출근 기준 시각")}<input id="e_ain" type="time" value="${esc(a.stdIn)}"></div>
-      <div>${lb("퇴근 기준 시각")}<input id="e_aout" type="time" value="${esc(a.stdOut)}"></div>
-      <div>${lb("기본 연차 (일 · 입사일을 넣으면 자동 계산)")}<input id="e_aleave" inputmode="decimal" value="${esc(a.annualLeave)}"></div>
-      <details class="full" style="margin-top:6px"><summary class="muted" style="cursor:pointer;font-size:13px">더보기 (단축근무·시급·비고)</summary><div class="grid">
-        <div>${lb("주간 근무시간 (단축근무자만)")}<input id="e_aweek" inputmode="decimal" value="${esc(a.weeklyHours)}" placeholder="40"></div>
-        <div>${lb("시급 (원)")}<input id="e_ahour" inputmode="numeric" value="${esc(a.hourly==="0"?"":a.hourly)}"></div>
+      <div class="full">${lb("기본 연차 (일 · 입사일을 넣으면 자동 계산)")}<input id="e_aleave" inputmode="decimal" value="${esc(a.annualLeave)}"></div>
+      <details class="full" style="margin-top:6px" ${a.stdIn||a.stdOut?"open":""}><summary class="muted" style="cursor:pointer;font-size:13px">출퇴근 기준 시각 · 비고 <b>(기관 기본 시각과 다른 사람만)</b></summary>
+        <div class="muted" style="font-size:12px;margin:4px 0">비워 두면 기관 기본 출퇴근 시각(기관 설정 → 출퇴근·근무지)을 따릅니다. 시차출퇴근처럼 시각이 다른 직원만 넣으세요.</div><div class="grid">
+        <div>${lb("출근 기준 시각 (다른 사람만)")}<input id="e_ain" type="time" value="${esc(a.stdIn)}"></div>
+        <div>${lb("퇴근 기준 시각 (다른 사람만)")}<input id="e_aout" type="time" value="${esc(a.stdOut)}"></div>
         <div class="full">${lb("비고")}<input id="e_anote" value="${esc(a.note)}"></div></div></details>`
     : `<div class="full muted" style="font-size:12px">${ATTI && ATTI.sheet ? "근태 직원목록에 같은 이름의 다른 직원이 있어 연결하지 못했습니다. 이름을 구분해 주세요." : "근태를 한 번 열면(근태 / 휴가 관리) 근태 정보(역할·담당 선임·연락처·슬랙 ID 등)도 여기서 입력할 수 있습니다."}</div>`;
   return `<div class="grid">
@@ -225,25 +244,138 @@ function staffForm(s, mgr){
       <div class="full">${lb("구글 이메일 (로그인 계정)")}<input id="e_email" type="email" value="${esc(s.email)}" placeholder="name@도메인" autocomplete="off" ${!isNew&&s.email===me.email?"disabled":""}></div>
       <div>${lb("이름")}<input id="e_name" value="${esc(s.name)}" placeholder="이름"></div>
       <div>${lb("직급·직위")}<input id="e_pos" value="${esc(s.position)}" placeholder="직위"></div>
-      <div>${lb("소속 구분")}<select id="e_org"><option value="">선택</option>${ORGS.map(o=>`<option ${o===org?"selected":""}>${o}</option>`).join("")}</select></div>
-      <div>${lb("기본 부서")}${deptPick("e_dept", s.dept)}</div>
-      ${DEPTS && DEPTS.length > 1 ? `<div class="full">${lb("함께 맡는 부서 (두 부서 업무를 같이 하면 체크)")}<div class="row">${DEPTS.map(d=>`<label style="display:flex;align-items:center;gap:4px;white-space:nowrap;margin-right:10px"><input type="checkbox" style="width:auto;margin:0" class="e_d2" value="${esc(d.name)}" ${(s.depts2||[]).includes(d.name)?"checked":""}>${esc(d.name)}</label>`).join("")}</div></div>` : ""}
+      <div class="full">${lb("기본 부서")}${deptPick("e_dept", s.dept)}</div>
+      ${DEPTS && DEPTS.length > 1 ? `<div class="full">${lb("함께 맡는 부서 (두 부서 업무를 같이 하면 체크)")}<div class="row" id="e_d2box">${DEPTS.map(d=>`<label style="display:flex;align-items:center;gap:4px;white-space:nowrap;margin-right:10px"><input type="checkbox" style="width:auto;margin:0" class="e_d2" value="${esc(d.name)}" ${(s.depts2||[]).includes(d.name)?"checked":""}>${esc(d.name)}</label>`).join("")}</div></div>` : ""}
       <div class="full">${lb("입사일 (넣으면 연차 자동 계산)")}<input id="e_hire" type="date" value="${esc(s.hire_date||"")}"></div>
       ${attOn ? `<div>${lb("연락처")}<input id="e_acontact" value="${esc(a.contact)}"></div>
       <div>${lb("슬랙 ID (알림 받을 때 필요)")}<input id="e_aslack" value="${esc(a.slackId)}" placeholder="U0…"></div>` : ""}
       ${sec("② 근태 정보")}${attBox}
+      ${attOn ? sec("근무조건 (단축근무 · 호봉 · 시급)") + `<div class="full" id="wtBox">${isNew ? wtNewHTML(s) : '<div class="muted">불러오는 중…</div>'}</div>` : ""}
       ${sec("③ 권한")}${perm}
       ${isNew ? "" : `<div class="full muted" style="font-size:12px;margin-top:8px">이름을 바꾸면 근태 직원목록의 이름도 바뀝니다. 이미 있는 휴가·시수 기록은 예전 이름으로 남으니 꼭 필요할 때만 바꾸세요.</div>`}
       <button class="btn" style="margin-top:10px" onclick="staffSave(${isNew?"null":s.id})">${isNew?"등록":"저장"}</button><button class="btn sub" style="margin-top:10px" onclick="editId=null;render()">취소</button></div>`;
 }
+/* ───── 근무조건 기록 (적용일별 주간 근무시간 · 직급·호봉 · 시급) ───── */
+let WT = {id:null, rows:[], grades:[]};
+const wtTxt = r => [r.weekly_hours ? "주 " + Number(r.weekly_hours) + "시간" : "주 40시간(기본)", r.monthly ? "월 기본급 " + Number(r.monthly).toLocaleString() + "원" : r.hourly ? "시급 직접 입력" : [r.grade, r.step!=null ? r.step + "호봉" : ""].filter(Boolean).join(" ")].filter(Boolean).join(" · ");
+// 저장할 때 근태 직원목록에 넣을 '오늘' 값 (근무조건 기록이 없으면 예전 값 그대로)
+function wtNow(k, id){
+  const cur = WT.id === id ? WT.rows.find(r=>r.current) : null;
+  const s = staff.find(x=>x.id===id), a = s ? attOf(s) : null;
+  if(!cur) return a ? (k === "hourly" ? a.hourly : a.weeklyHours) : "";
+  return k === "hourly" ? String(cur.now || 0) : (cur.weekly_hours ? String(Number(cur.weekly_hours)) : "");
+}
+function wtFields(pfx, r){
+  r = r || {};
+  return `<div class="grid" style="margin-top:4px">
+    <div>${'<label class="muted" style="font-size:12px;display:block">적용 시작일</label>'}<input id="${pfx}_start" type="date" value="${esc(r.start_on||"")}"></div>
+    <div><label class="muted" style="font-size:12px;display:block">주간 근무시간 <b>(단축근무자만 · 비우면 40)</b></label><input id="${pfx}_week" inputmode="decimal" placeholder="40" value="${r.weekly_hours?Number(r.weekly_hours):""}"></div>
+    <div><label class="muted" style="font-size:12px;display:block">직급 (호봉표)</label><input id="${pfx}_grade" list="wtGrades" value="${esc(r.grade||"")}" placeholder="예: 주임"></div>
+    <div><label class="muted" style="font-size:12px;display:block">호봉</label><input id="${pfx}_step" inputmode="numeric" value="${r.step!=null?r.step:""}" placeholder="예: 3"></div>
+    <div><label class="muted" style="font-size:12px;display:block">월 기본급 직접 입력 <b>(호봉표를 안 쓸 때)</b></label><input id="${pfx}_mon" inputmode="numeric" value="${r.monthly?Number(r.monthly).toLocaleString():""}" placeholder="예: 2,500,000" oninput="wtMon('${pfx}')">
+      <div class="muted" id="${pfx}_monh" style="font-size:12px">${r.monthly?"→ 시급 "+Math.round(r.monthly/209).toLocaleString()+"원 (÷209시간)":"넣으면 시급이 저절로 계산됩니다 (÷209시간)"}</div></div>
+    <div><label class="muted" style="font-size:12px;display:block">시급 직접 입력 <b>(시간제 등 시급제만)</b></label><input id="${pfx}_hour" inputmode="numeric" value="${r.hourly&&!r.monthly?r.hourly:""}" placeholder="비우면 호봉표·기본급으로 계산"></div>
+    <div class="full"><label class="muted" style="font-size:12px;display:block">메모</label><input id="${pfx}_note" value="${esc(r.note||"")}" placeholder="예: 육아기 단축근무, 정기 승급"></div></div>
+    <div class="muted" style="font-size:12px">시급은 <b>시급 직접 입력 → 월 기본급 → 호봉표(직급·호봉)</b> 순서로 정해집니다. 하나만 넣으세요.</div>`;
+}
+const wtVal = pfx => { const n = x => { const v = String(val(pfx+"_"+x)).replace(/[^0-9.]/g,""); return v === "" ? null : Number(v); };
+  return {p_start: val(pfx+"_start") || null, p_weekly: n("week"), p_grade: val(pfx+"_grade"), p_step: n("step"), p_hourly: n("hour"), p_monthly: n("mon"), p_note: val(pfx+"_note")}; };
+function wtMon(pfx){ const n = Number(String(val(pfx+"_mon")).replace(/[^0-9]/g,"")); $("#"+pfx+"_monh").textContent = n ? "→ 시급 " + Math.round(n/209).toLocaleString() + "원 (÷209시간)" : "넣으면 시급이 저절로 계산됩니다 (÷209시간)"; }
+function wtNewHTML(s){
+  return `<div class="muted" style="font-size:12px">시간외 수당 계산에 쓰입니다. 호봉표가 있으면 <b>직급·호봉</b>만, 없으면 <b>월 기본급</b>(시급이 저절로 계산됨)이나 <b>시급</b>을 넣으세요. 나중에 단축근무·승급이 생기면 수정 화면에서 <b>변경 추가</b>로 적용일과 함께 넣습니다.</div>
+    <datalist id="wtGrades"></datalist>${wtFields("wn", {start_on: s.hire_date || new Date().toISOString().slice(0,10)})}`;
+}
+async function wtNewSave(id){
+  const v = wtVal("wn"); if(!v.p_start) v.p_start = val("e_hire") || new Date().toISOString().slice(0,10);
+  if(v.p_weekly == null && v.p_step == null && !v.p_hourly && !v.p_monthly) return;   // 아무것도 안 넣었으면 기록 안 함
+  await rpc("work_term_save", PC(Object.assign({p_staff:id, p_id:null}, v)));
+}
+async function wtLoad(id){
+  const box = $("#wtBox"); if(!box) return;
+  try{ const d = await rpc("work_terms_get", PC({p_staff:id})); WT = {id, rows:d.rows||[], grades:d.grades||[]}; }
+  catch(e){ box.innerHTML = `<div class="muted">${esc(e.message)}</div>`; return; }
+  wtDraw();
+}
+function wtDraw(edit){
+  const box = $("#wtBox"); if(!box) return;
+  const s = staff.find(x=>x.id===WT.id), a = s ? attOf(s) : null, won = n => Number(n||0).toLocaleString() + "원";
+  const today = new Date().toISOString().slice(0,10);
+  box.innerHTML = `<datalist id="wtGrades">${WT.grades.map(g=>`<option value="${esc(g)}">`).join("")}</datalist>
+    <div class="muted" style="font-size:12px;margin-bottom:6px">단축근무·호봉 승급·시급이 바뀌면 <b>변경 추가</b>로 <b>적용 시작일</b>과 함께 넣으세요. 미리 넣어 둬도 되고, 시간외 수당은 <b>그 근무일</b>에 맞는 값으로 계산됩니다.</div>
+    ${WT.rows.length ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="background:#f1f5f9"><th style="padding:6px;text-align:left">적용 시작일</th><th style="padding:6px;text-align:left">근무조건</th><th style="padding:6px;text-align:right">시급</th><th style="padding:6px;text-align:left">메모</th><th></th></tr>
+      ${WT.rows.map(r=>`<tr style="border-top:1px solid #e5e7eb;${r.current?"background:#eef6ff":""}"><td style="padding:6px;white-space:nowrap">${esc(r.start_on)} ${r.current?'<span class="badge">지금</span>':r.start_on>today?'<span class="badge o">예정</span>':""}</td>
+        <td style="padding:6px">${esc(wtTxt(r))}</td><td style="padding:6px;text-align:right;white-space:nowrap">${r.calc==null?'<span style="color:#b91c1c">호봉표 없음</span>':won(r.current?r.now:r.calc)}</td><td style="padding:6px">${esc(r.note||"")}</td>
+        <td style="padding:6px;white-space:nowrap"><button type="button" class="btn sub sm" style="margin:0" onclick="wtDraw(${r.id})">고치기</button> <button type="button" class="btn sub sm" style="margin:0" onclick="wtDel(${r.id})">지우기</button></td></tr>`).join("")}</table></div>`
+      : `<div class="muted" style="font-size:13px">아직 기록이 없습니다. ${a && (Number(a.hourly)||a.weeklyHours) ? `지금 근태에 들어 있는 값: ${a.weeklyHours?"주 "+esc(a.weeklyHours)+"시간 · ":""}시급 ${won(a.hourly)}` : ""}</div>`}
+    ${edit !== undefined ? `<div class="card" style="margin:8px 0 0;background:#f8fafc"><b>${edit ? "근무조건 고치기" : "근무조건 변경 추가"}</b>${wtFields("we", edit ? WT.rows.find(r=>r.id===edit) : {start_on: today})}
+        <div class="row" style="margin-top:6px"><button type="button" class="btn" style="margin:0" onclick="wtSave(${edit||"null"})">이 근무조건 저장</button><button type="button" class="btn sub" style="margin:0" onclick="wtDraw()">취소</button></div></div>`
+      : `<button type="button" class="btn sub" style="margin-top:8px" onclick="wtDraw(0)">＋ 변경 추가 (단축근무·승급·시급)</button>`}`;
+}
+async function wtSave(rid){
+  const v = wtVal("we"); if(!v.p_start) return toast("적용 시작일을 넣어 주세요.", true);
+  try{ await rpc("work_term_save", PC(Object.assign({p_staff:WT.id, p_id:rid || null}, v))); toast("근무조건을 저장했습니다."); await wtLoad(WT.id); }
+  catch(e){ toast(e.message, true); }
+}
+async function wtDel(rid){
+  const r = WT.rows.find(x=>x.id===rid); if(!r || !confirm(r.start_on + "부터 적용하는 근무조건 기록을 지울까요?")) return;
+  try{ await rpc("work_term_delete", PC({p_id:rid})); toast("지웠습니다."); await wtLoad(WT.id); }catch(e){ toast(e.message, true); }
+}
+
+/* ───── 호봉표 탭 ───── */
+let PAY = {year: new Date().getFullYear(), rows: [], years: []};
+async function payLoad(){ const d = await rpc("pay_scale_get", PC({p_year: PAY.year})); PAY.rows = d.rows || []; PAY.years = d.years || []; }
+function payView(){
+  const won = n => Number(n||0).toLocaleString();
+  const ys = [...new Set([...PAY.years, PAY.year, new Date().getFullYear(), new Date().getFullYear()+1])].sort((a,b)=>b-a);
+  $("#body").innerHTML = chPicker() + `<div class="card"><h2>호봉표</h2>
+    <div class="muted" style="font-size:13px">연도별로 <b>직급 · 호봉 · 월 기본급</b>을 넣으면 시급이 저절로 계산됩니다 (월 기본급 ÷ 209시간). 직원에게는 <b>직원 수정 → 근무조건</b>에서 직급·호봉만 정해 주면 됩니다.<br>
+    해마다 임금이 오르면 <b>다른 해로 복사</b>로 인상률을 넣어 새 해 표를 만들고, 호봉이 오른 직원은 근무조건에 <b>변경 추가</b>(적용일 · 새 호봉)만 하면 됩니다.</div>
+    <div class="row" style="margin:10px 0;align-items:center">
+      <select id="payYear" style="width:auto" onchange="PAY.year=Number(this.value);payLoad().then(payView,e=>toast(e.message,true))">${ys.map(y=>`<option ${y===PAY.year?"selected":""}>${y}</option>`).join("")}</select><span class="muted">년 호봉표</span>
+      <span style="flex:1"></span>
+      ${PAY.rows.length ? `<input id="payTo" type="number" style="width:90px" value="${PAY.year+1}" title="받을 연도"><span class="muted">년으로</span><input id="payPct" type="number" step="0.1" style="width:80px" value="0" title="인상률 %"><span class="muted">% 올려</span><button class="btn sub" style="margin:0" onclick="payCopy()">다른 해로 복사</button>` : ""}
+    </div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:14px" id="payTbl"><tr style="background:#f1f5f9"><th style="padding:6px;text-align:left">직급</th><th style="padding:6px;text-align:left;width:90px">호봉</th><th style="padding:6px;text-align:left">월 기본급 (원)</th><th style="padding:6px;text-align:right">시급</th><th style="width:40px"></th></tr>
+      ${(PAY.rows.length ? PAY.rows : [{grade:"",step:"",monthly:""}]).map(payRow).join("")}</table></div>
+    <div class="row" style="margin-top:8px"><button class="btn sub" style="margin:0" onclick="payAdd()">＋ 줄 추가</button>
+      <span style="flex:1"></span><button class="btn" style="margin:0" onclick="paySave()">${PAY.year}년 호봉표 저장</button></div>
+    <details style="margin-top:12px"><summary class="muted" style="cursor:pointer">엑셀에서 붙여넣기 (직급 · 호봉 · 월 기본급 세 칸)</summary>
+      <div class="muted" style="font-size:12px;margin:4px 0">엑셀에서 세 칸(직급, 호봉, 월 기본급)을 제목 줄 없이 복사해 붙여넣고 [표에 넣기]를 누르세요. 지금 표 아래에 추가됩니다.</div>
+      <textarea id="payPaste" rows="5" placeholder="주임	1	2400000"></textarea><button class="btn sub" style="margin:4px 0 0" onclick="payPaste()">표에 넣기</button></details></div>`;
+}
+function payRow(r){
+  return `<tr class="payr" style="border-top:1px solid #e5e7eb"><td style="padding:4px"><input class="pg" value="${esc(r.grade||"")}" placeholder="예: 주임"></td><td style="padding:4px"><input class="ps" inputmode="numeric" value="${r.step===""||r.step==null?"":r.step}" placeholder="1"></td>
+    <td style="padding:4px"><input class="pm" inputmode="numeric" value="${r.monthly?Number(r.monthly).toLocaleString():""}" placeholder="2,400,000" oninput="payCalc(this)"></td><td style="padding:4px;text-align:right" class="ph">${r.monthly?Math.round(r.monthly/209).toLocaleString()+"원":""}</td>
+    <td><button class="btn sub sm" style="margin:0" onclick="this.closest('tr').remove()" title="이 줄 빼기">✕</button></td></tr>`;
+}
+function payCalc(el){ const n = Number(String(el.value).replace(/[^0-9]/g,"")); el.closest("tr").querySelector(".ph").textContent = n ? Math.round(n/209).toLocaleString()+"원" : ""; }
+function payAdd(r){ $("#payTbl").insertAdjacentHTML("beforeend", payRow(r || {grade:"",step:"",monthly:""})); }
+function payPaste(){
+  const lines = String(val("payPaste")).split(/\r?\n/).map(l=>l.split("\t")).filter(c=>c.length>=3 && c.join("").trim());
+  if(!lines.length) return toast("붙여넣은 내용에서 세 칸(직급, 호봉, 월 기본급)을 찾지 못했습니다.", true);
+  lines.forEach(c=>payAdd({grade:c[0].trim(), step:c[1].trim(), monthly:Number(String(c[2]).replace(/[^0-9]/g,""))}));
+  $("#payPaste").value = ""; toast(lines.length + "줄을 넣었습니다. 확인 후 [저장]을 누르세요.");
+}
+async function paySave(){
+  const rows = [...document.querySelectorAll("#payTbl tr.payr")].map(tr=>({grade:tr.querySelector(".pg").value.trim(), step:tr.querySelector(".ps").value.trim(), monthly:tr.querySelector(".pm").value.replace(/[^0-9]/g,"")}))
+    .filter(r=>r.grade || r.step || r.monthly);
+  if(rows.some(r=>r.step==="" || !r.monthly)) return toast("호봉과 월 기본급은 모든 줄에 넣어 주세요.", true);
+  const seen = new Set(); for(const r of rows){ const k = r.grade+"|"+r.step; if(seen.has(k)) return toast(`${r.grade||"(직급 없음)"} ${r.step}호봉이 두 번 있습니다.`, true); seen.add(k); }
+  try{ const n = await rpc("pay_scale_save", PC({p_year:PAY.year, p_rows:rows})); toast(`${PAY.year}년 호봉표 ${n}줄을 저장했습니다.`); await payLoad(); payView(); }catch(e){ toast(e.message, true); }
+}
+async function payCopy(){
+  const to = Number(val("payTo")), pct = Number(val("payPct")) || 0;
+  if(!confirm(`${PAY.year}년 표를 ${pct}% 올려 ${to}년 표로 만들까요?\n${to}년 표가 이미 있으면 바뀝니다.`)) return;
+  try{ const n = await rpc("pay_scale_copy", PC({p_from:PAY.year, p_to:to, p_pct:pct})); PAY.year = to; await payLoad(); payView(); toast(`${to}년 호봉표 ${n}줄을 만들었습니다.`); }catch(e){ toast(e.message, true); }
+}
 function permCopy(id){ const x = staff.find(v=>String(v.id)===String(id)); if(!x) return; document.querySelectorAll(".e_pm").forEach(c=>{ if(!c.disabled) c.checked = x.grants.includes(c.value); }); }
 function staffCard(s, mgr){
   const self = s.email === me.email, lead = s.role !== "staff", off = !s.active;
-  if(editId === s.id) return `<div class="card"><h2>${esc(s.name)} 수정</h2>${staffForm(s, mgr)}</div>`;
-  const groups = {}; catalog.forEach(c=>{ (groups[c.system] = groups[c.system] || []).push(c); });
+  if(editId === s.id){ setTimeout(()=>wtLoad(s.id), 0); return `<div class="card"><h2>${esc(s.name)} 수정</h2>${staffForm(s, mgr)}</div>`; }
+  const groups = {}; catalog.filter(permShown).forEach(c=>{ (groups[c.system] = groups[c.system] || []).push(c); });
   const panel = openId === s.id && !lead ? `<div class="perm">${Object.keys(groups).map(sys=>`<b>${SYS[sys]||sys}</b>${groups[sys].map(c=>{
       const k = c.system+"."+c.perm, on = s.grants.includes(k), dis = c.system==="core" && !mgr;
-      return `<label><input type="checkbox" ${on?"checked":""} ${dis?"disabled":""} onchange="grant(${s.id},'${c.system}','${c.perm}',this.checked)">${esc(c.label)}</label>`; }).join("")}`).join("")}</div>` : "";
+      return `<label><input type="checkbox" ${on?"checked":""} ${dis?"disabled":""} onchange="grant(${s.id},'${c.system}','${c.perm}',this.checked)">${esc(permTxt(c.label))}</label>`; }).join("")}`).join("")}</div>` : "";
   const a = attOf(s);
   return `<div class="card ${off?"off":""}"><div class="st"><div><b>${esc(s.name)}</b> <span class="muted">${esc(s.position)} ${esc(s.dept)}${(s.depts2||[]).length?" + "+esc(s.depts2.join(", ")):""}</span>${s.org_type?`<span class="badge g">${esc(s.org_type)}</span>`:""}${a&&a.role==="선임"?'<span class="badge o">선임</span>':""}
       ${s.hire_date||(a&&a.supervisor)?`<div class="muted" style="font-size:12px">${s.hire_date?"입사 "+esc(s.hire_date):""}${a&&a.supervisor?(s.hire_date?" · ":"")+"담당 선임 "+esc(a.supervisor):""}</div>`:""}
@@ -277,10 +409,12 @@ async function staffSave(id){
     step = "함께 맡는 부서";
     if(DEPTS && DEPTS.length > 1) await rpc("staff_depts_set", PC({p_staff:id, p_depts:[...document.querySelectorAll(".e_d2:checked")].map(x=>x.value)}));
     step = "소속·입사일·근태 정보";
-    const p = {org_type: val("e_org"), hire_date: val("e_hire")};
-    if($("#e_arole")) p.att = {role:val("e_arole"), supervisor:val("e_asup"), annualLeave:val("e_aleave"), weeklyHours:val("e_aweek"), stdIn:val("e_ain"), stdOut:val("e_aout"),
-      hourly:val("e_ahour"), contact:val("e_acontact"), slackId:val("e_aslack"), note:val("e_anote")};
+    const p = {org_type: (staff.find(x=>x.id===id)||{}).org_type || "", hire_date: val("e_hire")};   // 소속 구분은 화면에서 뺐음 (예전 값 유지)
+    if($("#e_arole")) p.att = {role:val("e_arole"), supervisor:val("e_asup"), annualLeave:val("e_aleave"), stdIn:val("e_ain"), stdOut:val("e_aout"),
+      hourly:wtNow("hourly", id), contact:val("e_acontact"), slackId:val("e_aslack"), note:val("e_anote")};
+    if($("#e_arole")) p.att.weeklyHours = wtNow("weekly", id);
     await rpc("staff_att_save", PC({p_id:id, p:p}));
+    if(isNew && $("#wn_start")){ step = "근무조건"; await wtNewSave(id); }
     step = "권한";
     const s = staff.find(x=>x.id===id) || {grants:[]};
     for(const c of document.querySelectorAll(".e_pm:not(:disabled)")){
@@ -464,7 +598,8 @@ function orgSealDel(kind){ if(confirm("직인을 삭제할까요?")) act("delete
 let mySign = "", sigStat = null, padDraw = false, padDirty = false;
 function signView(){
   $("#body").innerHTML = `<div class="card"><h2>✍️ 내 서명</h2>
-    <div class="muted">서명 이미지를 한 번 등록해 두면 공문 결재·서식 인쇄 등에서 자동으로 사용됩니다. 같은 지회 직원만 꺼내 쓸 수 있고, 도협회·다른 지회는 볼 수 없습니다.</div>
+    <div style="background:#fff7e6;border:1px solid #fde3a7;border-radius:8px;padding:8px 10px;margin:6px 0;font-size:13px">📌 <b>지금은 쓰이는 곳이 없습니다.</b> 지금은 모든 문서를 출력해서 수기로 결재하고 있어서, 등록한 서명은 <b>앞으로 전자결재를 도입하면</b> 공문 결재란 등에 자동으로 찍힙니다. 미리 등록해 두면 그때 바로 쓸 수 있습니다.</div>
+    <div class="muted">같은 지회 직원만 꺼내 쓸 수 있고, 도협회·다른 지회는 볼 수 없습니다.</div>
     <div style="margin-top:10px"><b>등록된 서명</b>${mySign?`<div><img src="${esc(mySign)}" style="max-height:90px;max-width:240px;border:1px solid #ddd;margin-top:4px;background:#fff"></div>`:'<div class="muted">아직 등록하지 않았습니다.</div>'}</div>
     <div style="margin-top:10px"><input type="file" accept="image/png,image/jpeg,image/webp" id="sg_f" style="display:none" onchange="signUpload(this)">
     <button class="btn sub sm" onclick="$('#sg_f').click()">📷 이미지 올리기</button>

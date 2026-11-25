@@ -648,8 +648,8 @@ function renderNav(){
   [['leave-apply','휴가(시수) 신청'],['overtime','시간외 신청'],['leave','내 근태현황']].forEach(function(k){ h += kidHtml('att', false, k[0], k[1]); });   // 월별 근태현황은 내 근태현황 안의 탭
   if (ATT && ATT.staff && ATT.staff.role === '선임')   // 선임만 보임 (기존 '선임 확인' 권한 그대로)
     h += topHtml(mid('att', false, 'senior:leavemgr'), '✅', '선임 확인', "go('att','senior:leavemgr',false)").replace('class="top"', 'class="top" style="display:flex;align-items:center"').replace('</a>', supB('total') + '</a>');   // 휴가·시간외·대체휴무·출장·시수·대체시수는 화면 위쪽 탭에서
-  h += grpHtml('🚌', '출장 관리') + kidHtml('att', false, 'trip-apply', '출장 신청') + kidHtml('att', false, 'trip-hist', '내 출장 신청 내역');
-  if (isAttAdmin()) h += kidHtml('att', true, 'trip', '출장대장');
+  h += grpHtml('🚌', '출장 관리') + kidHtml('att', false, 'trip-apply', '출장 신청') + kidHtml('att', false, 'trip-hist', '출장 신청 내역');
+  if (isAttAdmin()) h += kidHtml('att', true, 'trip', '출장 대장');
   h += topHtml('car:s:', '🚗', '차량운행일지', "go('car')");   // 지회 직원 누구나
   var bookMgr = ME.role === 'admin' || (ME.is_hq && hasPerm('book.manage'));
   if (hasPerm('edu.') || bookMgr) {

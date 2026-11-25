@@ -599,7 +599,7 @@
   <div class="sidebar-group">🛠 관리자</div>
   <button class="tab" data-adm="dashboard" data-g="all" onclick="switchAdminTab('dashboard')">📊 대시보드</button>
   <button class="tab" data-adm="attend" data-g="punch" onclick="switchAdminTab('attend')">🕘 출퇴근 관리</button>
-  <button class="tab" data-adm="trip" data-g="trip" onclick="switchAdminTab('trip')">🚗 출장대장</button>
+  <button class="tab" data-adm="trip" data-g="trip" onclick="switchAdminTab('trip')">🚗 출장 대장</button>
   <button class="tab" data-adm="approval" data-g="leave" onclick="switchAdminTab('approval')">📋 신청 현황<span class="nav-badge" id="adm-pending-badge" style="display:none">0</span></button>
   <button class="tab" data-adm="annual" data-g="leave" onclick="switchAdminTab('annual')">📅 연차 관리</button>
   <button class="tab" data-adm="comp" data-g="leave" onclick="switchAdminTab('comp')">🔄 대체휴무</button>
@@ -1179,13 +1179,13 @@
 <div class="view view-wide" id="view-trip">
   <div class="page-head">
     <div>
-      <h2 id="trip-head">🚗 출장 신청</h2>
+      <h2 id="trip-head" style="display:none"></h2>
       <div class="sub">휴가처럼 신청하면 바로 확정되고 신청서가 출력됩니다. 출력해서 결재를 받으세요. 신청을 못 했어도 현장에서는 [출퇴근 찍기]의 출장 버튼을 누를 수 있습니다.</div>
     </div>
   </div>
   <div class="srtabs no-print" id="trip-tabs">
     <button data-m="apply" onclick="tripTab('apply')">출장 신청</button>
-    <button data-m="hist" onclick="tripTab('hist')">내 출장 신청 내역</button>
+    <button data-m="hist" onclick="tripTab('hist')">출장 신청 내역</button>
     <span class="tools"><button onclick="refreshTripList()">🔄 새로고침</button></span>
   </div>
   <div id="alert-area-trip"></div>
@@ -1266,21 +1266,27 @@
 <div class="view view-wide" id="view-adm-trip">
   <div class="page-head">
     <div>
-      <h2>🚗 출장대장</h2>
-      <div class="sub">전 직원의 출장 신청 현황과, 부서별 문서번호 규칙을 관리합니다. (승인 단계는 없고, 직원이 신청하면 바로 확정됩니다. 결재는 출력해서 받습니다)</div>
+      <div class="sub">전 직원의 출장 신청 현황과, 부서별 문서 번호 규칙을 관리합니다. (승인 단계는 없고, 직원이 신청하면 바로 확정됩니다. 결재는 출력해서 받습니다)</div>
     </div>
+  </div>
+  <div class="srtabs no-print" id="atrip-tabs">
+    <button data-m="ledger" class="on" onclick="atripTab('ledger')">출장 대장</button>
+    <button data-m="rule" onclick="atripTab('rule')">문서 번호 규칙</button>
+  </div>
+  <div class="page-head atrip-ledger" style="margin-top:0.6rem">
+    <div></div>
     <div class="page-tools no-print">
       <select id="adm-trip-year" onchange="loadAdminTrip()"></select>
       <select id="adm-trip-dept" onchange="renderAdminTrip()" title="부서별 대장"><option value="">전체 부서</option></select>
       <input type="date" id="adm-trip-from" title="시작일(비우면 전체)" style="width:auto"> ~ <input type="date" id="adm-trip-to" title="종료일(비우면 전체)" style="width:auto">
-      <button class="btn btn-outline btn-sm" onclick="printTripLedger()">🖨️ 출장대장 인쇄</button>
-      <button class="btn btn-outline btn-sm" onclick="downloadTripLedger()">📥 출장대장 엑셀</button>
+      <button class="btn btn-outline btn-sm" onclick="printTripLedger()">🖨️ 출장 대장 인쇄</button>
+      <button class="btn btn-outline btn-sm" onclick="downloadTripLedger()">📥 출장 대장 엑셀</button>
       <button class="btn btn-outline btn-sm" onclick="saveTripLedgerGSheet()">📊 시트로 저장</button>
       <button class="btn btn-outline btn-sm" onclick="loadAdminTrip()">🔄 새로고침</button>
     </div>
   </div>
   <div id="alert-area-adm-trip"></div>
-  <div class="card" style="padding:0;overflow:hidden;">
+  <div class="card atrip-ledger" style="padding:0;overflow:hidden;">
     <div style="overflow-x:auto;">
       <table class="adm-table">
         <thead><tr><th style="width:120px;">문서번호</th><th style="width:100px;">신청일</th><th style="width:130px;">출장인</th><th style="width:150px;">출장 기간</th><th class="l">출장지 · 목적</th><th style="width:130px;">상태</th><th style="width:110px;">복명서</th><th style="width:150px;">처리</th></tr></thead>
@@ -1288,9 +1294,8 @@
       </table>
     </div>
   </div>
-  <div class="card" id="adm-trip-unapplied" style="display:none;padding:0;overflow:hidden;margin-top:1rem;"></div>
-  <div class="card" style="margin-top:1rem;">
-    <div class="card-title">🔢 부서별 문서번호 규칙</div>
+  <div class="card atrip-rule" style="display:none">
+    <div class="card-title">🔢 부서별 문서 번호 규칙</div>
     <div class="hint" style="margin-bottom:0.6rem;">신청할 때 자동으로 번호가 붙습니다. 모양은 <b>접두어-연도-번호</b> 순서입니다. (예: 교육팀-2026-001) 규칙을 따로 정하지 않은 부서는 [기본 규칙]을 따르고, 번호는 부서마다 따로 셉니다.<br>예전 번호를 이어 쓰려면 [다음 번호]를 고치세요. (올해 번호에만 적용)</div>
     <div style="overflow-x:auto;">
       <table class="adm-table">
@@ -5182,7 +5187,7 @@ function calcOvertimeLeave() {
     document.getElementById('ot-wi-actual').textContent = weekInfo.actual;
     // 수당 계산
     gasRunLeave('calcOvertimePay', JSON.stringify({
-      hourly: leaveUser.hourly, dayType: dayType, start: start, end: end, actualWeeklyHours: weekInfo.actual, name: leaveUser.name
+      hourly: leaveUser.hourly, dayType: dayType, start: start, end: end, actualWeeklyHours: weekInfo.actual, name: leaveUser.name, date: date   // date: 그 근무일 근무조건(시급·단축근무)으로 계산
     }), function(res) {
       if (!res.ok) { showLeaveAlert(res.msg||'계산 오류','warn','alert-area-overtime'); return; }
       leaveCalcResult = Object.assign({}, res, {date, dayType, start, end, actualWeeklyHours:weekInfo.actual});
@@ -6039,11 +6044,16 @@ function tripApplyMode(mode) {
   TRIP_MODE = mode || '';
   var v = document.getElementById('view-trip'); if (!v) return;
   v.setAttribute('data-mode', TRIP_MODE);
-  var h = document.getElementById('trip-head'); if (h) h.textContent = '🚗 출장 신청';
   document.querySelectorAll('#trip-tabs button[data-m]').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-m') === (TRIP_MODE || 'hist')); });
   v.querySelectorAll('.trip-apply-only').forEach(function(el){ el.style.display = TRIP_MODE === 'apply' ? '' : 'none'; });
 }
-// 위쪽 탭: 출장 신청 / 내 출장 신청 내역 (같은 화면 안에서 바꿈)
+// 관리자 출장 대장 위쪽 탭: 출장 대장 / 문서 번호 규칙
+function atripTab(m) {
+  document.querySelectorAll('#atrip-tabs button[data-m]').forEach(function(b){ b.classList.toggle('on', b.getAttribute('data-m') === m); });
+  document.querySelectorAll('#view-adm-trip .atrip-ledger').forEach(function(el){ el.style.display = m === 'ledger' ? '' : 'none'; });
+  document.querySelectorAll('#view-adm-trip .atrip-rule').forEach(function(el){ el.style.display = m === 'rule' ? '' : 'none'; });
+}
+// 위쪽 탭: 출장 신청 / 출장 신청 내역 (같은 화면 안에서 바꿈)
 function tripTab(mode) {
   if (EMBED) { embedPost({ type: 'nav-go', kind: 'att', tab: mode === 'hist' ? 'trip-hist' : 'trip-apply' }); return; }   // 왼쪽 메뉴 표시도 같이
   tripApplyMode(mode);
@@ -6181,7 +6191,7 @@ function submitTrip() {
   gasRun('submitTripRequest', JSON.stringify(payload), function(res) {
     btn.disabled = false;
     if (res && res.ok) {
-      closeTripForm(); tripApplyMode('hist');   // 신청 뒤에는 내 출장 신청 내역 탭으로
+      closeTripForm(); tripApplyMode('hist');   // 신청 뒤에는 출장 신청 내역 탭으로
       tripAlert('✅ 출장 신청이 접수되었습니다. (문서번호 ' + esc(res.docNo) + ') 신청서를 출력해 결재를 받으세요. (출력 창이 안 열리면 목록의 [🖨️ 인쇄]를 누르세요)', 'success');
       refreshTripList();
       if (res.item) { tripAutoAppend(res.item); printTripReq(res.item); }   // 시트에 자동 추가 + 신청 즉시 출력 창 열기
@@ -6251,7 +6261,7 @@ function loadAdminTrip() {
     ds.innerHTML = '<option value="">전체 부서</option>' + Object.keys(depts).sort().map(function(d) { return '<option' + (d === cur ? ' selected' : '') + '>' + esc(d) + '</option>'; }).join('');
     renderAdminTrip();
   }, function(m) { tb.innerHTML = '<tr><td colspan="8" class="empty danger-text">불러오기 오류: ' + esc(m) + '</td></tr>'; });
-  loadTripCfgAdmin(); loadTripUnappliedMgr('adm-trip-unapplied');
+  loadTripCfgAdmin();
 }
 function admTripDept() { var el = document.getElementById('adm-trip-dept'); return el ? el.value : ''; }
 function renderAdminTrip() {
@@ -6491,7 +6501,7 @@ function tripLedgerSheets() {
     rows.push([it.docNo, it.date, it.name, it.dept, it.position, it.passengers.join(', '), it.start, it.end, it.days, it.to, it.purpose, it.transport, it.payment, it.status, it.approver,
       r ? r.submitDate : '', r ? r.tTransport : '', r ? r.tMeal : '', r ? r.tDaily : '', r ? r.tLodging : '', r ? r.total : '', r ? r.fare : '']);
   });
-  return [{ name: '출장대장', rows: rows, widths: [14, 11, 9, 10, 8, 16, 11, 11, 5, 22, 28, 10, 14, 9, 9, 12, 9, 9, 9, 9, 10, 14] }];
+  return [{ name: '출장 대장', rows: rows, widths: [14, 11, 9, 10, 8, 16, 11, 11, 5, 22, 28, 10, 14, 9, 9, 12, 9, 9, 9, 9, 10, 14] }];
 }
 function _tripLabel() {
   var y = document.getElementById('adm-trip-year').value;
@@ -6507,18 +6517,18 @@ function printTripLedger() {
   if (!w) { alert('팝업이 차단되었습니다. 팝업을 허용해 주세요.'); return; }
   var th = keep.map(function(i) { return '<th>' + esc(rows[0][i]) + '</th>'; }).join('');
   var body = rows.slice(1).map(function(r) { return '<tr>' + keep.map(function(i) { return '<td>' + esc(r[i] == null ? '' : r[i]) + '</td>'; }).join('') + '</tr>'; }).join('');
-  w.document.write('<html><head><meta charset="UTF-8"><title>출장대장</title><style>@page{size:A4 landscape;margin:12mm}body{font-family:"맑은 고딕",sans-serif}h2{text-align:center;letter-spacing:6px;margin:0 0 4px}.sub{text-align:center;color:#555;margin-bottom:10px;font-size:11pt}table{width:100%;border-collapse:collapse;font-size:9.5pt}th,td{border:1px solid #444;padding:4px 5px;text-align:center}th{background:#eee}td:nth-child(8),td:nth-child(9){text-align:left}</style></head><body>'
+  w.document.write('<html><head><meta charset="UTF-8"><title>출장 대장</title><style>@page{size:A4 landscape;margin:12mm}body{font-family:"맑은 고딕",sans-serif}h2{text-align:center;letter-spacing:6px;margin:0 0 4px}.sub{text-align:center;color:#555;margin-bottom:10px;font-size:11pt}table{width:100%;border-collapse:collapse;font-size:9.5pt}th,td{border:1px solid #444;padding:4px 5px;text-align:center}th{background:#eee}td:nth-child(8),td:nth-child(9){text-align:left}</style></head><body>'
     + '<h2>출 장 대 장</h2><div class="sub">' + esc((window._orgName || '') + (dp ? ' · ' + dp : '') + ' · ' + period) + '</div>'
     + '<table><thead><tr>' + th + '</tr></thead><tbody>' + body + '</tbody></table></body></html>');
   w.document.close(); w.focus(); setTimeout(function() { w.print(); }, 500);
 }
 function downloadTripLedger() {
   var sh = tripLedgerSheets(); if (!sh) return;
-  saveBlobAs(buildXlsxBlob(sh), (window._orgName || '') + '_' + _tripLabel() + '_출장대장.xlsx');
+  saveBlobAs(buildXlsxBlob(sh), (window._orgName || '') + '_' + _tripLabel() + '_출장 대장.xlsx');
 }
 function saveTripLedgerGSheet() {
   var sh = tripLedgerSheets(); if (!sh) return;
-  gsheetSave('출장대장', (window._orgName || '') + ' 출장대장 ' + _tripLabel(), sh);
+  gsheetSave('출장대장', (window._orgName || '') + ' 출장 대장 ' + _tripLabel(), sh);
 }
 
 // ===== 구글 시트로 저장 (지회 구글 드라이브) =====

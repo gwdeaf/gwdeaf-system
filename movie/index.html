@@ -402,6 +402,7 @@ function render() {
   const adm = S.role === 'admin';
   const tabs = adm ? [['dash', '연간 대시보드'], ['notice', '월별 공지'], ['reply', '회신 현황'], ['rec', '실적 조회'], ['theater', '극장 설정']] : [['mine', '공지 · 회신'], ['myrec', '우리 지역 실적']];
   if (!tabs.some(t => t[0] === S.tab)) S.tab = tabs[0][0];
+  try { if (window.parent !== window) window.parent.postMessage({ type: 'help-tab', tab: S.tab }, location.origin); } catch (e) {}   // 사용 안내가 이 화면 설명부터 열리게
   const view = { dash: vDash, notice: vNotice, reply: vReply, rec: () => vRec(''), theater: vTheater, mine: vMine, myrec: () => vRec(S.region) }[S.tab]();
   $('#gm-root').innerHTML = `<div class="bar-top"><h2>🎬 영화가 있는 날 관람 실적</h2>
     <div class="who">${esc(adm ? '도협회' : S.region)} · ${esc(USER.name || '')}</div></div>

@@ -90,22 +90,13 @@
     '<p class="hint">잘못 찍었으면 지회 담당자에게 수정을 요청하세요. 고친 내용은 <b>근태수정이력</b>에 남습니다.</p>' },
 
   { id: 'att', ic: '🏖', t: '휴가 · 시수 · 출장', show: ALL, b:
-    '<p><b>근태 / 휴가 관리</b></p>' +
     '<ul>' +
-    '<li><b>내 근태현황</b>: 연차 부여·사용·남은 일수와 이번 해 사용 내역</li>' +
-    '<li><b>휴가(시수) 신청</b>: 화면 위 버튼 <b>🗓 휴가 / ⏱ 시수 / 🔄 대체시수 / 🎁 대체휴무</b> 중 하나를 누르면 그 칸만 보입니다. 날짜와 사유를 적고 <b>신청</b>을 누르면 <b>바로 확정</b>됩니다. <b>🖨️ 출력</b>해서 수기로 결재받으세요. (전자결재는 나중에 도입 예정)</li>' +
-    '<li>휴가 신청 화면 맨 위에 <b>내 남은 연차</b>와 신청 후 남는 연차가 보입니다. 종류는 버튼으로 고르고, <b>기타 ▾</b>에서 경조사·출산휴가·육아휴직·육아기 근로시간 단축 등을 고르면 <b>규정 일수</b>와 종료일이 저절로 들어갑니다. 연차에서 빠지는 건 <b>연차휴가와 시수</b>뿐입니다. <b>1시간 단위 휴가(시수)</b>는 같은 화면 위 <b>⏱ 시수</b> 버튼에서 씁니다: 처음 1시간은 날짜·시간만 고르면 시수 문서가 저절로 만들어지고, 그다음부터는 펼친 시수 표에 바로 채워 저장합니다. 선임 확인을 받고, 8차시(1일)가 차면 출력해서 수기 결재합니다. <b>12월이나 퇴사 등으로 정산할 때는 8차시가 안 돼도 출력</b>할 수 있습니다(12월이 아니면 한 번 확인). (반차 없음) <b>병가도 1시간 단위</b>로 쓸 수 있습니다: 휴가 종류 [🤒 병가 1시간] 또는 ⏱ 시수 화면의 [🤒 병가 (시간)] → 선임 확인 → 8시간이 차면 병가 1일로 출력. 병가는 연차에서 빠지지 않습니다. 담당 선임이 없는 <b>최종결재자</b>는 ⏱ 시수 화면의 <b>✅ 본인 확인</b>으로 본인 시수를 직접 확인합니다. 신청 일수는 <b>주말·공휴일을 빼고</b> 셉니다. 업무 대행자는 목록에서 고르고, 그 사람도 그 기간에 휴가면 알려 줍니다.</li>' +
-    '<li><b>시간외 신청</b>: 먼저 <b>사전 신청</b> → 담당 선임이 <b>수락</b> → 근무를 마치고 <b>퇴근을 찍은 뒤</b> [내 사전 신청]의 <b>📝 보고서 작성</b>을 누릅니다. 신청 시작 시간부터 퇴근 시각까지(신청 종료 시간을 넘지 않게) 저절로 채워지고, 그 안에서만 고칠 수 있습니다. 보고서를 제출하고 출력해서 수기로 결재받습니다.</li>' +
-    '<li><b>퇴근을 못 찍었을 때</b>: 보고서를 쓸 수 없습니다. 관리자에게 출퇴근 기록 수정을 요청한 뒤 작성하세요. 보고서는 근무일 포함 3일 안에 작성합니다.</li>' +
-    '<li><b>반복 시간외</b>(예: 매일 19:00~20:30 수어교육): 사전 신청에서 <b>🔁 반복 신청</b>을 켜고 기간·요일·시간을 한 번만 신청 → 선임이 한 번 수락 → <b>한 달에 한 번 📅 월 체크</b>로 실제로 한 날만 체크하고 사진 1장과 함께 보고 → 🖨️ 출력해서 수기 결재.</li>' +
-    '<li><b>연가 사용 계획서</b>: 연가 사용 통지를 받으면 내 근태현황 위에 안내가 뜨고 <b>계획서 작성하기</b>로 씁니다. (내 근태현황 아래 버튼으로도 열 수 있음)</li>' +
-    '<li><b>내 신청 내역</b>: 내 근태현황 맨 아래에서 확인합니다. 아직 지나지 않은 신청은 <b>삭제</b>할 수 있습니다.</li>' +
+    '<li><b>휴가(시수) 신청</b>: 위쪽 밑줄 버튼 <b>연차 · 병가 · 특별휴가 · 시수 · 대체시수 · 대체휴무 · 기타</b> 중 하나를 고르고 신청하면 <b>바로 확정</b>됩니다. <b>🖨️ 출력</b>해서 수기로 결재받으세요. 시수·대체시수·대체휴무는 담당 선임이 확인합니다.</li>' +
+    '<li><b>시간외 신청</b>: 사전 신청 → 선임 수락 → 퇴근을 찍은 뒤 <b>신청 현황</b>에서 보고서 작성 → 출력. 매주 반복되는 시간외는 <b>🔁 반복 신청</b>.</li>' +
+    '<li><b>내 근태현황</b>: 위에 연차가 늘 보이고, 아래 탭에서 <b>시수 현황 · 대체시수 현황 · 내 신청 내역 · 월별 근태현황</b>을 봅니다.</li>' +
+    '<li><b>출장 신청</b>: 신청하면 바로 확정되고 부서 출장대장에 번호가 붙습니다. <b>내 출장 신청 내역</b>에서 출력·복명서.</li>' +
     '</ul>' +
-    '<p><b>시수</b>(1시간 단위 휴가): <b>휴가(시수) 신청</b> 화면 위 <b>⏱ 시수</b> 버튼에서 씁니다. 문서별 작성·선임 확인·출력은 <b>내 근태현황</b>의 <b>⏱ 시수 현황</b>에서 봅니다.</p>' +
-    '<p><b>대체시수</b>: <b>휴가(시수) 신청</b> 화면 위 <b>대체시수</b> 탭에서 쉬는 날 일한 날은 <b>발생일</b>, 그 시간을 쓴 날은 <b>사용 입력</b>에 적고, <b>내 근태현황 → 대체시수 현황</b> 탭에서 봅니다.</p>' +
-    '<p><b>출퇴근 기록</b>: <b>내 근태현황 → 월별 근태현황</b> 탭에서 한 달 출퇴근 시각과 사유를 봅니다. 내 근태현황 위쪽에는 연차(부여·사용·잔여)가 늘 보이고, 아래 탭에서 시수 현황 · 대체시수 현황 · 내 신청 내역 · 월별 근태현황을 고릅니다.</p>' +
-    '<p><b>지회 근태 보기</b> (도협회 관리자·담당자만, 관리자 메뉴 <b>근태 관리 › 출퇴근 관리</b> 위쪽 버튼): <b>오늘 전체 지회</b>에서 지회별 출근·퇴근·출근 전·휴가·출장 인원을 보고, 지회 줄을 누르면 직원별 상태가 펼쳐집니다. <b>지회별 월별 근태</b>에서 지회와 달을 고르면 직원별 출근일·지각·조퇴·미기록·휴가·출장·시간외가 나오고, 직원을 누르면 날짜별 출퇴근 시각이 나옵니다. 보기만 할 수 있고, 출퇴근 위치와 출장지는 보이지 않습니다. 고치기는 지회 담당자가 합니다.</p>' +
-    '<p><b>출장 관리</b>: <b>출장 신청</b>에서 신청하면 바로 확정됩니다. <b>출장 내역</b>에서 신청서를 출력해 결재를 받고, 다녀온 뒤 복명서를 씁니다. 근태 관리자는 <b>출장대장</b>에서 전 직원 출장을 보고 엑셀로 받습니다. 같은 출장을 다른 부서(예: 법인·센터)에도 올려야 하면 신청서 아래 <b>다른 부서 대장에도 기록</b>에 체크하고 그 부서 직위(예: 센터장)를 적습니다. 부서마다 그 부서 번호로 한 줄씩 생기고 신청서도 따로 출력됩니다. <b>출장대장</b>에서 부서를 골라 인쇄·엑셀로 받습니다. 휴가는 <b>전체 직원 대시보드 → 📋 연가 사용 현황</b>에서 엑셀로 받습니다 (문화원은 따로, 나머지 부서는 함께).</p>' +
+    '<p class="hint">자세한 방법은 근태 화면에서 오른쪽 위 <b>📖 사용 안내</b>를 누르면 그 화면 설명이 바로 열립니다.</p>' +
     '<p class="hint">선임으로 지정된 직원에게는 <b>✅ 선임 확인</b> 메뉴가 보입니다. 후임의 신청을 모아 봅니다 (시간외 사전신청·반복 신청 <b>수락</b>, 시계 없이 낸 시간외 보고 <b>확인</b>, 나머지는 조회). 화면 위쪽 탭에서 휴가·시간외·대체휴무·출장·<b>시수</b>·<b>대체시수</b>를 골라 봅니다.</p>' },
 
   { id: 'car', ic: '🚗', t: '차량운행일지', show: function () { return true; }, b:
@@ -156,7 +147,8 @@
     '<li><b>내가 쓴 문서</b>: 내가 기안한 문서와 진행 상태</li>' +
     '<li><b>공문 대장</b>: 기안한 내부결재·업무협조전·문서 발송을 한곳에서 봅니다. 종류를 고르면 그 종류만 보이고, <b>엑셀(CSV) 받기</b>·<b>구글 시트로 저장</b>도 됩니다.</li>' +
     '</ul>' +
-    '<p class="hint">회수·보내기는 기안자나 지회 담당자가 합니다. 인쇄 머리(표어·기관명)·발신명의·주소·전화는 지회 담당자가 <b>공문 설정</b>에서 정합니다. 전자 서명 이미지(<b>직원·권한 관리 → 내 서명</b>)는 전자결재를 도입하면 쓰입니다.</p>' },
+    '<p class="hint">회수·보내기는 기안자나 지회 담당자가 합니다. 인쇄 머리(표어·기관명)·발신명의·주소·전화는 지회 담당자가 <b>공문 설정</b>에서 정합니다. 전자 서명 이미지(<b>직원·권한 관리 → 내 서명</b>)는 전자결재를 도입하면 쓰입니다.</p>' +
+    '<p class="hint">자세한 방법은 공문 화면에서 오른쪽 위 <b>📖 사용 안내</b>를 누르면 그 화면 설명이 바로 열립니다.</p>' },
 
   { id: 'interp', ic: '🤟', t: '수어통역 (통역일지·상담일지)', show: function (ME) { return true; }, b:
     '<ol>' +
@@ -192,7 +184,8 @@
     '<li><b>업무일지 저장</b>을 누릅니다.</li>' +
     '</ol>' +
     '<p><b>업무일지 인쇄</b>(왼쪽 메뉴): 월별 또는 기간(하루도 가능)을 고르면 결재란 표지와 업무일지를 출력 모양 그대로 미리 보고 <b>🖨️ 인쇄</b>합니다. 결재칸 이름·수신처도 이 화면에서 정합니다.</p>' +
-    '<p class="hint">업무일지는 <b>본인만</b> 볼 수 있습니다. 지회 담당자와 도협회도 볼 수 없습니다. 같은 구글 계정이면 휴대폰·컴퓨터에서 같은 내용이 보입니다.</p>' },
+    '<p class="hint">업무일지는 <b>본인만</b> 볼 수 있습니다. 지회 담당자와 도협회도 볼 수 없습니다. 같은 구글 계정이면 휴대폰·컴퓨터에서 같은 내용이 보입니다.</p>' +
+    '<p class="hint">자세한 방법은 업무일지 화면에서 오른쪽 위 <b>📖 사용 안내</b>를 누르면 그 화면 설명이 바로 열립니다.</p>' },
 
   { id: 'acct', ic: '💰', t: '회계', show: function (ME) { return has(ME, 'acct.'); }, b:
     '<p><b>순서: 품의 작성·인쇄 → 결의 작성(바로 출납부·원장·통장 내역·예산 반영) → 결의서 인쇄·수기 결재</b></p>' +
@@ -212,7 +205,8 @@
     '<li>잘못 쓴 문서는 지우지 않고 <b>취소</b>합니다. 모든 저장·수정·취소는 기록에 남습니다.</li>' +
     '</ul>' +
     '<p class="hint">지회 담당자는 <b>설정</b>에서 회계연도, 목, 자금원천, 통장, <b>재원별 예산</b>, <b>인쇄 결재란</b>(예: 담당,사무국장,지회장)을 먼저 등록하세요. 연말에는 <b>통장 내역</b>의 <b>이월 초안 만들기</b>로 다음 해 시작 잔액을 만듭니다.</p>' +
-    '<p class="hint">권한: <b>회계 조회</b>(보기만) / <b>회계 작성</b> / <b>회계 결재</b>.</p>' },
+    '<p class="hint">권한: <b>회계 조회</b>(보기만) / <b>회계 작성</b> / <b>회계 결재</b>.</p>' +
+    '<p class="hint">자세한 방법은 회계 화면에서 오른쪽 위 <b>📖 사용 안내</b>를 누르면 그 화면 설명이 바로 열립니다.</p>' },
 
   { id: 'perf', ic: '📈', t: '사업실적', show: function (ME) { return has(ME, 'perf.'); }, b:
     '<p class="hint"><b>수어교육관리 강좌는 자동으로 들어옵니다.</b> 강좌 = 사업(분류 <b>수어교육(자동)</b>), 출석을 입력한 회차 = 실시 회차, 출석한 수강생 = 참여자(구분 <b>수강생</b>). 수강생은 <b>회원관리 명단에 들어가지 않습니다</b> — 회원은 지회 회원만입니다. 같은 수강생은 실인원 1명으로 셉니다. 고칠 내용은 수어교육관리에서 고치면 사업실적 화면을 열 때 반영됩니다. (제출·승인된 분기는 그대로)</p>' +
@@ -230,14 +224,16 @@
     '<li><b>분기별 보고</b>: 분기 실적이 자동으로 모입니다. 확인 후 <b>도협회 제출</b>을 누르면 그 분기 실적은 잠깁니다. 도협회 검토 전에는 <b>제출 취소</b>할 수 있고, 보완 요청을 받으면 고쳐서 다시 제출합니다.</li>' +
     '<li>도협회는 같은 화면에서 지회별 제출 현황을 보고 <b>검토 시작 · 승인 · 보완 요청(사유 필수)</b>합니다. 통계는 숫자만 보고 지회 참여자 명단은 보지 않습니다.</li>' +
     '</ul>' +
-    '<p class="hint">권한: 사업실적 조회 / 실적 입력 / 사업 등록·분기 보고 제출 / 보고 검토(도협회) — 직원·권한 관리에서 줍니다.</p>' },
+    '<p class="hint">권한: 사업실적 조회 / 실적 입력 / 사업 등록·분기 보고 제출 / 보고 검토(도협회) — 직원·권한 관리에서 줍니다.</p>' +
+    '<p class="hint">자세한 방법은 사업실적 화면에서 오른쪽 위 <b>📖 사용 안내</b>를 누르면 그 화면 설명이 바로 열립니다.</p>' },
   { id: 'movie', ic: '🎬', t: '영화실적', show: function (ME) { return has(ME, 'movie.'); }, b:
     '<p><b>영화가 있는 날</b> 관람 실적입니다.</p><ol>' +
     '<li><b>도협회</b>가 <b>월별 공지</b>에 상영작·상영 기간·회신 마감일을 올립니다.</li>' +
     '<li><b>지회</b>는 <b>공지 · 회신</b>에서 <b>＋ 상영 회신</b>(상영작·확정 상영일·시간·예상 인원)을 하거나, 참여하지 않으면 <b>불참</b>과 사유를 적습니다. 회신은 마감일까지 고칠 수 있습니다.</li>' +
     '<li>관람한 뒤 <b>관람실적 입력</b>에서 청각·시각·기타장애·비장애·기타 인원을 적습니다. 이용자 명단을 넣으면 구분별 인원이 저절로 셉니다.</li>' +
     '<li><b>우리 지역 실적</b>(지회) / <b>실적 조회</b>·<b>연간 대시보드</b>(도협회)에서 기간·극장·상영작별로 보고 CSV로 내려받습니다.</li></ol>' +
-    '<p class="hint">권한: 지회 직원은 <b>영화실적: 상영 회신·관람 실적 입력</b>, 도협회 담당은 <b>영화실적: 공지·극장 관리</b>. 극장 이름·고정 상영시간은 도협회 <b>극장 설정</b>에서 고칩니다.</p>' },
+    '<p class="hint">권한: 지회 직원은 <b>영화실적: 상영 회신·관람 실적 입력</b>, 도협회 담당은 <b>영화실적: 공지·극장 관리</b>. 극장 이름·고정 상영시간은 도협회 <b>극장 설정</b>에서 고칩니다.</p>' +
+    '<p class="hint">자세한 방법은 영화실적 화면에서 오른쪽 위 <b>📖 사용 안내</b>를 누르면 그 화면 설명이 바로 열립니다.</p>' },
 
   { id: 'member', ic: '👥', t: '회원관리', show: function (ME) { return has(ME, 'member.') || (ME.is_hq && isMgr(ME)); }, b:
     '<ul>' +
@@ -246,10 +242,11 @@
     '<li><b>회비 내역</b>: 연도별 납부 목록과 합계</li>' +
     '<li><b>회비 한꺼번에 입력</b>: 연도·금액·납부일을 정하고 낸 회원만 체크해 한 번에 기록 (금액이 다른 회원은 그 줄만 고침, 이미 낸 회원은 ✓)</li>' +
     '<li><b>미납자</b>: 활동 회원 중 그해 회비 납부 기록이 없는 사람</li>' +
-    '<li><b>명단 가져오기</b>: 엑셀에서 제목 줄까지 복사해 붙여넣으면 한 번에 등록합니다. 이름과 연락처가 같은 회원이 이미 있으면 건너뜁니다.</li>' +
+    '<li><b>과거 자료 올리기</b>: 양식을 받아 지난 회원명단·회비 기록을 엑셀로 한 번에 넣습니다. 미리보기로 확인한 뒤 저장합니다.</li>' +
     '</ul>' +
     '<p class="hint">주민등록번호는 적지 마세요. 잘못 적은 납부 기록은 지우지 않고 <b>취소</b>합니다.</p>' +
-    '<p class="hint">도협회는 <b>지회별 요약</b>에서 인원과 납부 합계만 보고, 지회 회원 명단은 볼 수 없습니다.</p>' },
+    '<p class="hint">도협회는 <b>지회별 요약</b>에서 인원과 납부 합계만 보고, 지회 회원 명단은 볼 수 없습니다.</p>' +
+    '<p class="hint">자세한 방법은 회원관리 화면에서 오른쪽 위 <b>📖 사용 안내</b>를 누르면 그 화면 설명이 바로 열립니다.</p>' },
 
   { id: 'inq', ic: '💬', t: '문의함', show: ALL, b:
     '<ul>' +
@@ -345,7 +342,7 @@
     '</ul>' }
   ];
 
-  var KIND = { senior: 'senior', home: 'home', att: 'att', car: 'car', edu: 'edu', book: 'book', doc: 'doc', interp: 'interp', worklog: 'worklog', acct: 'acct', cert: 'cert', member: 'member', access: 'manager' };
+  var KIND = { senior: 'senior', home: 'home', att: 'att', car: 'car', edu: 'edu', book: 'book', doc: 'doc', interp: 'interp', worklog: 'worklog', acct: 'acct', cert: 'cert', member: 'member', perf: 'perf', movie: 'movie', access: 'manager' };
 
   var css = '#gdBack{position:fixed;inset:0;background:rgba(15,23,42,.45);z-index:9000;display:flex;align-items:center;justify-content:center;padding:16px}' +
     '#gdBox{background:#fff;border-radius:14px;width:min(920px,100%);height:min(86vh,760px);display:flex;flex-direction:column;overflow:hidden;box-shadow:0 12px 40px rgba(0,0,0,.25)}' +
@@ -354,7 +351,7 @@
     '#gdHead button{border:1px solid #e5e9f2;background:#fff;border-radius:8px;padding:7px 12px;font-size:14px;cursor:pointer}' +
     '#gdMain{flex:1;display:flex;min-height:0}#gdList{width:220px;border-right:1px solid #e5e9f2;overflow:auto;padding:8px}' +
     '#gdList a{display:block;padding:8px 10px;border-radius:8px;color:#1f2937;text-decoration:none;font-size:14px;cursor:pointer}' +
-    '#gdList a:hover{background:#f1f5f9}#gdList a.on{background:#eaf0ff;color:#2f5bd6;font-weight:700}' +
+    '#gdList a.gdAll{margin-top:10px;border-top:1px dashed #cbd5e1;border-radius:0;color:#64748b;font-size:13px}#gdList a:hover{background:#f1f5f9}#gdList a.on{background:#eaf0ff;color:#2f5bd6;font-weight:700}' +
     '#gdBody{flex:1;overflow:auto;padding:18px 22px;font-size:15px;line-height:1.75;color:#1f2937;word-break:keep-all;overflow-wrap:anywhere}' +
     '#gdBody h3{margin:0 0 14px;font-size:18px;padding-bottom:8px;border-bottom:2px solid #eaf0ff}' +
     '#gdBody h4{margin:16px 0 6px;font-size:15px;color:#2f5bd6}' +
@@ -362,9 +359,9 @@
     '#gdBody ul>li{padding:10px 12px;margin:0 0 8px -22px;list-style:none;background:#f8fafc;border:1px solid #edf1f7;border-radius:10px}' +
     '#gdBody .lb{display:block;margin-bottom:2px;color:#1e3a8a}' +
     '#gdBody p{margin:12px 0}#gdBody .hint{color:#64748b;font-size:14px;background:#f8fafc;border-left:3px solid #cbd5e1;padding:6px 10px;border-radius:0 6px 6px 0}#gdBody mark{background:#fff3a3}' +
-    '@media(max-width:700px){#gdMain{flex-direction:column}#gdList{width:auto;max-height:150px;border-right:0;border-bottom:1px solid #e5e9f2;display:flex;flex-wrap:wrap;gap:4px}#gdList a{padding:6px 9px;font-size:13px}#gdHead input{flex:1 1 120px}}';
+    '@media(max-width:700px){#gdMain{flex-direction:column}#gdList{width:auto;max-height:150px;border-right:0;border-bottom:1px solid #e5e9f2;display:flex;flex-wrap:wrap;gap:4px}#gdList a{padding:6px 9px;font-size:13px}#gdHead{flex-wrap:wrap;gap:8px}#gdHead h2{font-size:16px;white-space:normal}#gdHead input{flex:1 1 100%;order:3}}';
 
-  var cur = 'start', list = [];
+  var cur = 'start', list = [], DET = null, LAST_ME = {};
   function el(id) { return document.getElementById(id); }
   function strip(h) { return h.replace(/<[^>]+>/g, ' '); }
   // 읽기 쉽게: 문장마다 줄바꿈, '굵은 제목: 설명' 은 제목을 한 줄로
@@ -377,7 +374,8 @@
     el('gdList').innerHTML = shown.length ? shown.map(function (s) {
       return '<a data-id="' + s.id + '" class="' + (s.id === cur ? 'on' : '') + '">' + s.ic + ' ' + s.t + '</a>';
     }).join('') : '<div style="padding:10px;color:#64748b;font-size:14px">찾는 내용이 없습니다.</div>';
-    Array.prototype.forEach.call(el('gdList').querySelectorAll('a'), function (a) { a.onclick = function () { show(a.dataset.id, q); }; });
+    if (DET) el('gdList').innerHTML += '<a class="gdAll" data-all="1">↩ 전체 사용 안내 보기</a>';
+    Array.prototype.forEach.call(el('gdList').querySelectorAll('a'), function (a) { a.onclick = a.dataset.all ? function () { openGuide(LAST_ME, 'home', '', false, true); } : function () { show(a.dataset.id, q); }; });
     if (q && shown.length && !shown.some(function (s) { return s.id === cur; })) show(shown[0].id, q);
   }
   function show(id, q) {
@@ -393,13 +391,17 @@
 
   // 다른 화면에서 설명 한 칸을 빌려 씀 (지회 화면 미리보기)
   window.guideSection = function (id) { var x = SECTIONS.filter(function (s) { return s.id === id; })[0]; return x ? { ic: x.ic, t: x.t, b: pretty(x.b) } : null; };
-  window.openGuide = function (ME, kind) {
-    ME = ME || {};
-    list = SECTIONS.filter(function (s) { try { return s.show(ME); } catch (e) { return false; } });
+  // kind: 지금 보는 앱, tab: 그 앱의 화면, adm: 관리자 메뉴인지, general: 자세한 설명서 대신 전체 안내
+  window.openGuide = function (ME, kind, tab, adm, general) {
+    ME = ME || {}; LAST_ME = ME;
+    var D = !general && window.GUIDE_DETAIL && window.GUIDE_DETAIL[kind];
+    DET = D || null;
+    var ok = function (s) { try { return !s.show || s.show(ME); } catch (e) { return false; } };
+    list = D ? D.items.filter(ok) : SECTIONS.filter(function (s) { try { return s.show(ME); } catch (e) { return false; } });
     if (!el('gdStyle')) { var st = document.createElement('style'); st.id = 'gdStyle'; st.textContent = css; document.head.appendChild(st); }
     close();
     var w = document.createElement('div'); w.id = 'gdBack';
-    w.innerHTML = '<div id="gdBox" role="dialog" aria-label="사용 안내"><div id="gdHead"><h2>📖 사용 안내</h2>' +
+    w.innerHTML = '<div id="gdBox" role="dialog" aria-label="사용 안내"><div id="gdHead"><h2>📖 ' + (D ? D.t + ' 사용설명서' : '사용 안내') + '</h2>' +
       '<input id="gdQ" type="search" placeholder="낱말 검색 (예: 권한, 인쇄)" autocomplete="off"><button id="gdX">닫기</button></div>' +
       '<div id="gdMain"><nav id="gdList"></nav><div id="gdBody"></div></div></div>';
     document.body.appendChild(w);
@@ -407,7 +409,8 @@
     el('gdX').onclick = close;
     el('gdQ').oninput = function () { drawList(this.value.trim()); };
     document.addEventListener('keydown', onKey);
-    cur = KIND[kind] && list.some(function (s) { return s.id === KIND[kind]; }) ? KIND[kind] : 'start';
+    if (D) { var key = (adm ? 'a:' : '') + (tab || ''); var hit = list.filter(function (s) { return (s.tabs || []).indexOf(key) >= 0; })[0]; cur = hit ? hit.id : (list[0] || {}).id; }
+    else cur = KIND[kind] && list.some(function (s) { return s.id === KIND[kind]; }) ? KIND[kind] : 'start';
     drawList(''); show(cur);
   };
 })();

@@ -182,6 +182,156 @@ function go(t, ...args) {
 }
 function goMember() { if (EMBED) try { window.parent.postMessage({ type: 'nav-go', kind: 'member' }, location.origin); } catch (e) {} else location.href = '/member/'; }
 
+/* ===== 과거 자료 올리기 공통: 엑셀 읽기·날짜 정리·미리보기 표 ===== */
+const XLK_URL = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+function xlkLoad() { return window.XLSX ? Promise.resolve() : new Promise((ok, no) => { const s = document.createElement('script'); s.src = XLK_URL; s.onload = ok; s.onerror = () => no(new Error('엑셀 도구를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.')); document.head.appendChild(s); }); }
+// 시트 이름 → [{_row: 엑셀 줄 번호, 칸이름(띄어쓰기·* 뺌): 값}]  (빈 줄은 뺌)
+async function xlkRead(file) {
+  await xlkLoad();
+  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' }), out = {};
+  wb.SheetNames.forEach((n) => {
+    const a = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: '', raw: true });
+    if (!a.length) return;
+    const h = a[0].map((x) => String(x).replace(/[*\s]/g, ''));
+    out[n.replace(/\s/g, '')] = a.slice(1).map((r, i) => { const o = { _row: i + 2 }; h.forEach((k, j) => { if (k) o[k] = typeof r[j] === 'string' ? r[j].trim() : r[j]; }); return o; })
+      .filter((o) => Object.keys(o).some((k) => k !== '_row' && String(o[k]).trim() !== ''));
+  });
+  return out;
+}
+// 이름이 맞는 시트, 없으면 '작성 안내'가 아닌 첫 시트
+function xlkSheet(out, name) { if (out[name]) return out[name]; const k = Object.keys(out).find((x) => x !== '작성안내'); return k ? out[k] : []; }
+const xlkEx = (o) => Object.keys(o).some((k) => k !== '_row' && /\(예시\)/.test(String(o[k])));   // 예시 줄
+const xlkS = (v) => (v == null ? '' : String(v).trim());
+// 날짜 → 2024-03-05 ('' = 비어 있음, '!' = 형식 오류)
+function xlkDate(v) {
+  if (v === '' || v == null) return '';
+  if (typeof v === 'number') { if (v > 20000 && v < 80000) { const d = XLSX.SSF.parse_date_code(v); return d.y + '-' + String(d.m).padStart(2, '0') + '-' + String(d.d).padStart(2, '0'); } return '!'; }
+  const m = String(v).trim().match(/^(\d{4})\s*[-./년]\s*(\d{1,2})\s*[-./월]\s*(\d{1,2})/); if (!m) return '!';
+  const s = m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0'), d = new Date(s + 'T00:00:00');
+  return isNaN(d) || d.getDate() !== Number(m[3]) ? '!' : s;
+}
+// 시각 → 10:00
+function xlkTime(v) {
+  if (v === '' || v == null) return '';
+  if (typeof v === 'number' && v < 1) { const t = Math.round(v * 1440); return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); }
+  const m = String(v).trim().match(/^(\d{1,2})\s*[:시]\s*(\d{2})?/); return m && Number(m[1]) < 24 ? m[1].padStart(2, '0') + ':' + (m[2] || '00') : '!';
+}
+// 숫자 ('' = 비어 있음, NaN = 숫자 아님)
+function xlkNum(v) { if (v === '' || v == null) return ''; const n = Number(String(v).replace(/[,\s원명회시간]/g, '')); return isFinite(n) ? n : NaN; }
+function xlkTpl(href, name) { const a = document.createElement('a'); a.href = href; a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
+function xlkPick(fn) { const i = document.createElement('input'); i.type = 'file'; i.accept = '.xlsx,.xls'; i.onchange = () => { if (i.files[0]) fn(i.files[0]); }; i.click(); }
+// 미리보기 표. rows: {_row, _st:'ok'|'skip'|'err', _why}, cols: [[제목, r => 값]]
+function xlkPrev(rows, cols, title) {
+  const n = { ok: 0, skip: 0, err: 0 }; rows.forEach((r) => n[r._st]++);
+  const td = 'border-bottom:1px solid #e5e7eb;padding:6px;text-align:left;vertical-align:top;font-size:13px';
+  return `<div style="margin:10px 0 6px">${title ? `<b>${esc(title)}</b> · ` : ''}<b>${rows.length}줄</b> 읽음 · <span style="color:#15803d;font-weight:700">저장할 줄 ${n.ok}</span> · <span style="color:#6b7280">건너뜀 ${n.skip}</span> · <span style="color:#b91c1c;font-weight:700">오류 ${n.err}</span></div>
+    ${n.err ? '<div style="font-size:13px;color:#b91c1c;margin-bottom:6px">빨간 줄은 저장하지 않습니다. 엑셀에서 고친 뒤 다시 올리거나, 나머지만 먼저 저장하세요.</div>' : ''}
+    <div style="overflow:auto;max-height:420px;border:1px solid #e5e7eb;border-radius:8px"><table style="border-collapse:collapse;width:100%"><thead><tr style="background:#f1f5f9;position:sticky;top:0"><th style="${td}">줄</th><th style="${td}">결과</th>${cols.map((c) => `<th style="${td};white-space:nowrap">${esc(c[0])}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map((r) => `<tr style="${r._st === 'err' ? 'background:#fef2f2' : r._st === 'skip' ? 'color:#9ca3af' : ''}"><td style="${td}">${r._row}</td><td style="${td};white-space:nowrap">${r._st === 'ok' ? '✅ 저장' : r._st === 'skip' ? '건너뜀' : '❌ 오류'}${r._why ? `<div style="font-size:12px;color:${r._st === 'err' ? '#b91c1c' : '#6b7280'};white-space:normal;min-width:120px">${esc(r._why)}</div>` : ''}</td>${cols.map((c) => `<td style="${td}">${esc(c[1](r))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+const xlkBad = (r, why) => { r._st = 'err'; r._why = (r._why ? r._why + ' · ' : '') + why; };
+// ===== 과거 자료 올리기 (엑셀 [사업]·[실적] 시트) =====
+let PIM = null;
+function showPerfImport() {
+  vtok(); flash(''); document.querySelectorAll('#topNav [data-tab]').forEach((b) => b.classList.toggle('on', b.dataset.tab === 'projects'));
+  view(head('과거 자료 올리기', '양식의 <b>[사업]</b> 시트에 사업을, <b>[실적]</b> 시트에 그 사업을 언제 했는지 적어 올리세요. 올리면 먼저 미리보기가 나오고, [저장]을 눌러야 실제로 들어갑니다.', `<button onclick="go('projects')">← 사업관리</button>`)
+    + `<div class="card"><div class="tools"><button onclick="xlkTpl('tpl_perf.xlsx','사업실적_양식.xlsx')">양식 받기</button><button class="main" onclick="xlkPick(perfImpRead)">엑셀 파일 올리기</button></div>
+      <p class="muted" style="margin:0">· 같은 이름의 사업이 이미 있으면 사업은 건너뛰고 실적만 그 사업에 붙입니다. · [실적]에만 있는 사업명은 같은 이름으로 사업을 새로 만듭니다.<br>· 회차 번호는 실시일 순서대로 자동으로 매깁니다. · 참여자는 인원수만 들어갑니다.</p>
+      <div id="pimPrev"></div></div>`);
+}
+async function perfImpRead(f) {
+  try {
+    flash('엑셀을 읽는 중…', 'warn');
+    const out = await xlkRead(f), P = (out['사업'] || []).filter((o) => !xlkEx(o)), S = (out['실적'] || []).filter((o) => !xlkEx(o));
+    if (!P.length && !S.length) return flash('[사업] 또는 [실적] 시트에 내용이 없습니다. 양식의 시트 이름을 바꾸지 마세요.', 'err');
+    PROJ = await rpc('perf_projects');
+    const key = (n) => xlkS(n).replace(/\s/g, ''), exist = new Map(), fresh = new Map(), auto = new Map();
+    PROJ.filter((p) => p.source !== 'edu').forEach((p) => exist.set(key(p.name), p));
+    const depts = ME.depts || [], cats = ME.categories || [];
+    const prow = P.map((o) => {
+      const r = { _row: o._row, _st: 'ok', name: xlkS(o.사업명), dept: xlkS(o.부서), cat: xlkS(o.사업분류), manager_name: xlkS(o.담당자), target: xlkS(o.사업대상),
+        start_date: xlkDate(o.사업시작일), end_date: xlkDate(o.사업종료일), plan_count: xlkNum(o.계획횟수), plan_people: xlkNum(o.계획인원), purpose: xlkS(o.사업목적), content: xlkS(o.사업내용), note: xlkS(o.비고) };
+      if (!r.name) xlkBad(r, '사업명이 없습니다');
+      if (r.dept && depts.length && depts.indexOf(r.dept) < 0) xlkBad(r, '없는 부서 (' + depts.join(', ') + ')');
+      r.category_id = ''; if (r.cat) { const c = cats.find((x) => x.name === r.cat); if (c) r.category_id = c.id; else xlkBad(r, '없는 사업 분류'); }
+      if (r.start_date === '!') xlkBad(r, '사업 시작일 형식'); if (r.end_date === '!') xlkBad(r, '사업 종료일 형식');
+      if (r.start_date && r.end_date && r.start_date !== '!' && r.end_date !== '!' && r.end_date < r.start_date) xlkBad(r, '종료일이 시작일보다 빠릅니다');
+      if (isNaN(r.plan_count) || isNaN(r.plan_people)) xlkBad(r, '계획 횟수·인원은 숫자로');
+      if (r._st === 'ok') { const k = key(r.name); if (exist.has(k)) { r._st = 'skip'; r._why = '이미 등록된 사업 — 실적만 붙입니다'; } else if (fresh.has(k)) { r._st = 'skip'; r._why = '위에 같은 사업명이 있습니다'; } else fresh.set(k, r); }
+      return r;
+    });
+    let lo = '9999', hi = '0000';
+    const srow = S.map((o) => {
+      const r = { _row: o._row, _st: 'ok', pname: xlkS(o.사업명), held_on: xlkDate(o.실시일), end_on: xlkDate(o.종료일), rounds: xlkNum(o.실시횟수), start_time: xlkTime(o.시작시각), end_time: xlkTime(o.종료시각),
+        place: xlkS(o.장소), content: xlkS(o.내용), manager_name: xlkS(o.담당자), extra: xlkNum(o.참여인원), note: xlkS(o.비고) };
+      if (r.rounds === '') r.rounds = 1;
+      if (r.extra === '') r.extra = 0;
+      if (!r.pname) xlkBad(r, '사업명이 없습니다');
+      if (!r.held_on || r.held_on === '!') xlkBad(r, '실시일 형식 (예: 2023-05-20)');
+      if (r.end_on === '!') xlkBad(r, '종료일 형식'); else if (r.end_on && r.held_on && r.held_on !== '!' && r.end_on < r.held_on) xlkBad(r, '종료일이 실시일보다 빠릅니다');
+      if (isNaN(r.rounds) || r.rounds < 1 || r.rounds > 1000 || r.rounds % 1) xlkBad(r, '실시 횟수는 1~1000');
+      if (r.start_time === '!' || r.end_time === '!') xlkBad(r, '시각 형식 (예: 10:00)');
+      if (isNaN(r.extra) || r.extra < 0) xlkBad(r, '참여 인원은 숫자로');
+      if (r.rounds > 1) { r.start_time = ''; r.end_time = ''; }
+      const k = key(r.pname); r.k = k;
+      if (r._st === 'ok') {
+        if (exist.has(k)) r.target = exist.get(k).name;
+        else if (fresh.has(k)) r.target = fresh.get(k).name + ' (새 사업)';
+        else { r.target = r.pname + ' (새로 만듦)'; auto.set(k, r.pname); r._why = '[사업] 시트에 없어 같은 이름으로 사업을 만듭니다'; }
+        if (r.held_on < lo) lo = r.held_on; if ((r.end_on || r.held_on) > hi) hi = r.end_on || r.held_on;
+      }
+      return r;
+    });
+    // 이미 같은 실적이 있으면 건너뜀 (같은 사업 + 같은 실시일 + 같은 횟수)
+    if (lo <= hi) {
+      const old = await rpc('perf_sessions', { p_from: lo, p_to: hi }), seen = new Set(old.map((x) => key(x.project_name) + '|' + x.held_on + '|' + (x.rounds || 1)));
+      srow.forEach((r) => { if (r._st !== 'ok') return; const t = r.k + '|' + r.held_on + '|' + r.rounds; if (seen.has(t)) { r._st = 'skip'; r._why = '이미 같은 실적이 있습니다'; } else seen.add(t); });
+    }
+    PIM = { prow, srow, auto, exist, fresh };
+    const np = prow.filter((r) => r._st === 'ok').length, ns = srow.filter((r) => r._st === 'ok').length;
+    flash('');
+    $('pimPrev').innerHTML = (P.length ? xlkPrev(prow, [['사업명', (r) => r.name], ['부서', (r) => r.dept || '공통'], ['분류', (r) => r.cat], ['기간', (r) => [r.start_date, r.end_date].filter((x) => x && x !== '!').join(' ~ ')],
+        ['계획', (r) => (r.plan_count || 0) + '회 · ' + (r.plan_people || 0) + '명']], '[사업] 시트') : '')
+      + (S.length ? xlkPrev(srow, [['사업', (r) => r.target || r.pname], ['실시일', (r) => r.held_on === '!' ? '' : r.held_on + (r.end_on && r.end_on !== '!' ? ' ~ ' + r.end_on : '')],
+        ['횟수', (r) => isNaN(r.rounds) ? '' : r.rounds + '회'], ['시각', (r) => [r.start_time, r.end_time].filter((x) => x && x !== '!').join('~')], ['장소', (r) => r.place], ['인원', (r) => isNaN(r.extra) ? '' : r.extra + '명']], '[실적] 시트') : '')
+      + `<div class="tools" style="margin-top:10px">${np + ns ? `<button class="main" onclick="perfImpSave()">사업 ${np + auto.size}개 · 실적 ${ns}건 저장</button>` : ''}<button onclick="$('pimPrev').innerHTML=''">닫기</button></div>`;
+  } catch (e) { flash('엑셀을 읽지 못했습니다: ' + e.message, 'err'); }
+}
+async function perfImpSave() {
+  if (!PIM) return;
+  const { prow, srow, auto, exist } = PIM, ids = new Map(), fail = [];
+  exist.forEach((p, k) => ids.set(k, p.id));
+  const key = (n) => xlkS(n).replace(/\s/g, '');
+  let np = 0, ns = 0;
+  const saveP = async (body, row) => { try { const id = await rpc('perf_project_save', { p: body }); ids.set(key(body.name), id); np++; } catch (e) { fail.push((row ? row + '줄 ' : '') + body.name + ': ' + e.message); } };
+  for (const r of prow.filter((x) => x._st === 'ok')) {
+    flash(`사업 저장 중… ${r.name}`, 'warn');
+    await saveP({ id: '', name: r.name, category_id: r.category_id, manager_name: r.manager_name, target: r.target, start_date: r.start_date === '!' ? '' : r.start_date, end_date: r.end_date === '!' ? '' : r.end_date,
+      plan_count: r.plan_count || 0, plan_people: r.plan_people || 0, purpose: r.purpose, content: r.content, note: r.note, dept: r.dept }, r._row);
+  }
+  const ok = srow.filter((x) => x._st === 'ok');
+  for (const [k, name] of auto) {
+    if (ids.has(k)) continue;
+    const mine = ok.filter((r) => r.k === k), d1 = mine.map((r) => r.held_on).sort()[0] || '', d2 = mine.map((r) => r.end_on || r.held_on).sort().pop() || '';
+    await saveP({ id: '', name, category_id: '', manager_name: (mine[0] || {}).manager_name || '', target: '', start_date: d1, end_date: d2, plan_count: 0, plan_people: 0, purpose: '', content: '', note: '과거 자료 올리기로 만듦', dept: ME.cur_dept || '' });
+  }
+  const groups = {}; ok.forEach((r) => { (groups[r.k] = groups[r.k] || []).push(r); });
+  for (const k of Object.keys(groups)) {
+    const pid = ids.get(k); if (!pid) { groups[k].forEach((r) => fail.push(r._row + '줄: 사업을 만들지 못해 건너뜀')); continue; }
+    let round;
+    try { round = Number(await rpc('perf_next_round', { p_project: Number(pid) })) || 1; } catch (e) { round = 1; }
+    for (const r of groups[k].sort((a, b) => a.held_on.localeCompare(b.held_on))) {
+      flash(`실적 저장 중… ${ns + 1} / ${ok.length}`, 'warn');
+      try {
+        await rpc('perf_session_save', { p: { id: '', project_id: pid, round_no: round, held_on: r.held_on, start_time: r.start_time, end_time: r.end_time, place: r.place, content: r.content,
+          manager_name: r.manager_name, note: r.note, members: [], externals: [], extra_count: r.extra || 0, rounds: r.rounds, end_on: r.end_on || '' } });
+        round += r.rounds; ns++;
+      } catch (e) { fail.push(r._row + '줄 (' + r.pname + ' ' + r.held_on + '): ' + e.message); }
+    }
+  }
+  PIM = null; $('pimPrev').innerHTML = '';
+  flash(`✅ 사업 ${np}개 · 실적 ${ns}건 저장` + (fail.length ? ` · 실패 ${fail.length}건 — ${fail.slice(0, 3).join(' / ')}${fail.length > 3 ? ' …' : ''}` : ''), fail.length ? 'warn' : 'ok');
+}
 // ===== 대시보드 =====
 const DASH = { year: curYear(), ch: '' };
 async function showDash() { const VT = vtok();
@@ -231,7 +381,7 @@ async function showProjects(kw) { const VT = vtok();
     PROJ = await rpc('perf_projects');
     kw = kw || '';
     const list = PROJ.filter((p) => dfOk(p.dept) && (!kw || p.name.includes(kw) || (p.manager_name || '').includes(kw)));
-    vview(VT, head('사업관리', '사업의 기본정보를 등록합니다. 같은 사업을 여러 번 하면 실적(회차)만 추가합니다.', ME.can_manage ? `<button class="main" onclick="projectForm()">+ 사업 등록</button>` : '') +
+    vview(VT, head('사업관리', '사업의 기본정보를 등록합니다. 같은 사업을 여러 번 하면 실적(회차)만 추가합니다.', ME.can_manage ? `<button onclick="showPerfImport()">과거 자료 올리기</button> <button class="main" onclick="projectForm()">+ 사업 등록</button>` : '') +
       `<div id="pform"></div>
       <div class="tools">${dfSel("showProjects(document.getElementById('pkw').value)")}<input id="pkw" placeholder="사업명 또는 담당자 검색" value="${esc(kw)}" onchange="showProjects(this.value)"><span class="muted">총 ${fmt(list.length)}개</span></div>
       <div class="tablewrap"><table><thead><tr><th>사업명</th><th>분류</th><th>담당자</th><th>기간</th><th class="n">계획 횟수</th><th class="n">실시 횟수</th><th></th></tr></thead><tbody>

@@ -1168,6 +1168,183 @@ function chapterOptions(selected, allLabel, hqFirst) {
     list.map(c => `<option ${selected === c ? 'selected' : ''}>${esc(c)}</option>`).join('');
 }
 
+/* ===== 과거 자료 올리기 공통: 엑셀 읽기·날짜 정리·미리보기 표 ===== */
+const XLK_URL = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+function xlkLoad() { return window.XLSX ? Promise.resolve() : new Promise((ok, no) => { const s = document.createElement('script'); s.src = XLK_URL; s.onload = ok; s.onerror = () => no(new Error('엑셀 도구를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.')); document.head.appendChild(s); }); }
+// 시트 이름 → [{_row: 엑셀 줄 번호, 칸이름(띄어쓰기·* 뺌): 값}]  (빈 줄은 뺌)
+async function xlkRead(file) {
+  await xlkLoad();
+  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' }), out = {};
+  wb.SheetNames.forEach((n) => {
+    const a = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: '', raw: true });
+    if (!a.length) return;
+    const h = a[0].map((x) => String(x).replace(/[*\s]/g, ''));
+    out[n.replace(/\s/g, '')] = a.slice(1).map((r, i) => { const o = { _row: i + 2 }; h.forEach((k, j) => { if (k) o[k] = typeof r[j] === 'string' ? r[j].trim() : r[j]; }); return o; })
+      .filter((o) => Object.keys(o).some((k) => k !== '_row' && String(o[k]).trim() !== ''));
+  });
+  return out;
+}
+// 이름이 맞는 시트, 없으면 '작성 안내'가 아닌 첫 시트
+function xlkSheet(out, name) { if (out[name]) return out[name]; const k = Object.keys(out).find((x) => x !== '작성안내'); return k ? out[k] : []; }
+const xlkEx = (o) => Object.keys(o).some((k) => k !== '_row' && /\(예시\)/.test(String(o[k])));   // 예시 줄
+const xlkS = (v) => (v == null ? '' : String(v).trim());
+// 날짜 → 2024-03-05 ('' = 비어 있음, '!' = 형식 오류)
+function xlkDate(v) {
+  if (v === '' || v == null) return '';
+  if (typeof v === 'number') { if (v > 20000 && v < 80000) { const d = XLSX.SSF.parse_date_code(v); return d.y + '-' + String(d.m).padStart(2, '0') + '-' + String(d.d).padStart(2, '0'); } return '!'; }
+  const m = String(v).trim().match(/^(\d{4})\s*[-./년]\s*(\d{1,2})\s*[-./월]\s*(\d{1,2})/); if (!m) return '!';
+  const s = m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0'), d = new Date(s + 'T00:00:00');
+  return isNaN(d) || d.getDate() !== Number(m[3]) ? '!' : s;
+}
+// 시각 → 10:00
+function xlkTime(v) {
+  if (v === '' || v == null) return '';
+  if (typeof v === 'number' && v < 1) { const t = Math.round(v * 1440); return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); }
+  const m = String(v).trim().match(/^(\d{1,2})\s*[:시]\s*(\d{2})?/); return m && Number(m[1]) < 24 ? m[1].padStart(2, '0') + ':' + (m[2] || '00') : '!';
+}
+// 숫자 ('' = 비어 있음, NaN = 숫자 아님)
+function xlkNum(v) { if (v === '' || v == null) return ''; const n = Number(String(v).replace(/[,\s원명회시간]/g, '')); return isFinite(n) ? n : NaN; }
+function xlkTpl(href, name) { const a = document.createElement('a'); a.href = href; a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
+function xlkPick(fn) { const i = document.createElement('input'); i.type = 'file'; i.accept = '.xlsx,.xls'; i.onchange = () => { if (i.files[0]) fn(i.files[0]); }; i.click(); }
+// 미리보기 표. rows: {_row, _st:'ok'|'skip'|'err', _why}, cols: [[제목, r => 값]]
+function xlkPrev(rows, cols, title) {
+  const n = { ok: 0, skip: 0, err: 0 }; rows.forEach((r) => n[r._st]++);
+  const td = 'border-bottom:1px solid #e5e7eb;padding:6px;text-align:left;vertical-align:top;font-size:13px';
+  return `<div style="margin:10px 0 6px">${title ? `<b>${esc(title)}</b> · ` : ''}<b>${rows.length}줄</b> 읽음 · <span style="color:#15803d;font-weight:700">저장할 줄 ${n.ok}</span> · <span style="color:#6b7280">건너뜀 ${n.skip}</span> · <span style="color:#b91c1c;font-weight:700">오류 ${n.err}</span></div>
+    ${n.err ? '<div style="font-size:13px;color:#b91c1c;margin-bottom:6px">빨간 줄은 저장하지 않습니다. 엑셀에서 고친 뒤 다시 올리거나, 나머지만 먼저 저장하세요.</div>' : ''}
+    <div style="overflow:auto;max-height:420px;border:1px solid #e5e7eb;border-radius:8px"><table style="border-collapse:collapse;width:100%"><thead><tr style="background:#f1f5f9;position:sticky;top:0"><th style="${td}">줄</th><th style="${td}">결과</th>${cols.map((c) => `<th style="${td};white-space:nowrap">${esc(c[0])}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map((r) => `<tr style="${r._st === 'err' ? 'background:#fef2f2' : r._st === 'skip' ? 'color:#9ca3af' : ''}"><td style="${td}">${r._row}</td><td style="${td};white-space:nowrap">${r._st === 'ok' ? '✅ 저장' : r._st === 'skip' ? '건너뜀' : '❌ 오류'}${r._why ? `<div style="font-size:12px;color:${r._st === 'err' ? '#b91c1c' : '#6b7280'};white-space:normal;min-width:120px">${esc(r._why)}</div>` : ''}</td>${cols.map((c) => `<td style="${td}">${esc(c[1](r))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+const xlkBad = (r, why) => { r._st = 'err'; r._why = (r._why ? r._why + ' · ' : '') + why; };
+/* =========================================================
+   과거 자료 올리기 (엑셀 [강좌]·[수강생] 시트)
+   - 수강생이 있는 강좌: 명단 + 출석(앞에서부터 출석 횟수만큼) + 수료(O/X)
+   - 수강생이 없는 강좌: 인원만 입력 강좌 (1회차 = 실인원, 나머지 회차에 연인원을 나눠 넣음)
+   ========================================================= */
+let EIM = null;
+function renderEduImport() {
+  view().innerHTML = `<button class="link" id="back">← 강좌 목록</button><h2>과거 자료 올리기</h2>
+    <p class="hint">양식의 <b>[강좌]</b> 시트에 강좌를, <b>[수강생]</b> 시트에 수강생을 적어 올리세요. 올리면 먼저 미리보기가 나오고, [저장]을 눌러야 실제로 들어갑니다.<br>
+    · 수강생 명단이 있는 강좌는 출석·수료가 자동 계산되고, 명단이 없는 강좌는 <b>인원만 입력</b> 강좌로 들어갑니다.<br>
+    · 강좌명 + 시작일이 같은 강좌가 이미 있으면 건너뜁니다. · 보고가 제출·승인된 기간의 강좌는 잠겨 있어 올라가지 않습니다.</p>
+    <div class="row" style="margin:10px 0">${isAdmin() ? `<select id="eimCh" style="width:auto">${chapterOptions('', '지회 선택')}</select>` : ''}
+      <button class="btn" id="eimTpl">양식 받기</button><button class="btn primary" id="eimUp">엑셀 파일 올리기</button></div>
+    <div id="eimPrev"></div>`;
+  $('#back').onclick = () => renderCourses();
+  $('#eimTpl').onclick = () => xlkTpl('tpl_edu.xlsx', '수어교육_양식.xlsx');
+  $('#eimUp').onclick = () => { if (isAdmin() && !$('#eimCh').value) return toast('어느 지회의 자료인지 먼저 고르세요.', true); xlkPick(eduImpRead); };
+}
+async function eduImpRead(f) {
+  try {
+    const out = await xlkRead(f), C = (out['강좌'] || []).filter(o => !xlkEx(o)), P = (out['수강생'] || []).filter(o => !xlkEx(o));
+    if (!C.length) return toast('[강좌] 시트에 내용이 없습니다. 양식의 시트 이름을 바꾸지 마세요.', true);
+    const ch = isAdmin() ? $('#eimCh').value : S.init.user.chapter;
+    const key = v => xlkS(v).replace(/\s/g, '');
+    const crs = C.map(o => {
+      const r = { _row: o._row, _st: 'ok', 강좌명: xlkS(o.강좌명), 주관: xlkS(o.주관), 교육구분: xlkS(o.교육구분), 수준: xlkS(o.수준).replace(/\s/g, ''), 기관명: xlkS(o.기관명),
+        시작일: xlkDate(o.시작일), 종료일: xlkDate(o.종료일), 총회차: xlkNum(o.총회차), 회당시간: xlkNum(o.회당시간), 강사: xlkS(o.강사), 보조강사: xlkS(o.보조강사), 교재: xlkS(o.교재),
+        실인원: xlkNum(o.실인원), 연인원: xlkNum(o.연인원), stu: [] };
+      if (!r.강좌명) xlkBad(r, '강좌명이 없습니다');
+      if (ch !== '도협회' && ['지회', '센터'].indexOf(r.주관) < 0) xlkBad(r, '주관은 지회/센터');
+      if (['내부', '외부'].indexOf(r.교육구분) < 0) xlkBad(r, '교육구분은 내부/외부');
+      if (['초급', '중급', '고급', '특강', '구분없음'].indexOf(r.수준) < 0) xlkBad(r, '수준은 초급/중급/고급/특강/구분없음');
+      if (!r.시작일 || r.시작일 === '!') xlkBad(r, '시작일 형식'); if (!r.종료일 || r.종료일 === '!') xlkBad(r, '종료일 형식');
+      else if (r.시작일 && r.시작일 !== '!' && r.종료일 < r.시작일) xlkBad(r, '종료일이 시작일보다 빠릅니다');
+      if (!(r.총회차 >= 1 && r.총회차 <= 100 && r.총회차 % 1 === 0)) xlkBad(r, '총회차는 1~100');
+      if (!(r.회당시간 > 0 && r.회당시간 <= 12)) xlkBad(r, '회당 시간은 0보다 크고 12 이하');
+      if (isNaN(r.실인원) || isNaN(r.연인원)) xlkBad(r, '실인원·연인원은 숫자로');
+      r.k = key(r.강좌명);
+      return r;
+    });
+    const byName = {}; crs.forEach(r => { (byName[r.k] = byName[r.k] || []).push(r); });
+    const stu = P.map(o => {
+      const r = { _row: o._row, _st: 'ok', 강좌명: xlkS(o.강좌명), 이름: xlkS(o.이름), 연락처: xlkS(o.연락처), 성별: xlkS(o.성별), 출석: xlkNum(o.출석횟수), 수료: xlkS(o.수료).toUpperCase() };
+      const cs = byName[key(r.강좌명)] || [];
+      if (!r.이름) xlkBad(r, '이름이 없습니다');
+      if (!cs.length) xlkBad(r, '[강좌] 시트에 없는 강좌명');
+      else if (cs.length > 1) xlkBad(r, '[강좌] 시트에 같은 강좌명이 여러 개 — 강좌명을 구분해 주세요');
+      if (r.성별 && ['남', '여'].indexOf(r.성별) < 0) xlkBad(r, '성별은 남/여');
+      if (r.수료 && ['O', 'X', '0'].indexOf(r.수료) < 0) xlkBad(r, '수료는 O/X'); if (r.수료 === '0') r.수료 = 'O';
+      const c = cs[0];
+      if (isNaN(r.출석) || (r.출석 !== '' && (r.출석 < 0 || r.출석 % 1))) xlkBad(r, '출석 횟수는 숫자로');
+      else if (c && r.출석 !== '' && c.총회차 >= 1 && r.출석 > c.총회차) xlkBad(r, '출석 횟수가 총회차보다 많습니다');
+      if (r._st === 'ok' && c) { if (c.stu.some(x => key(x.이름) === key(r.이름) && x.연락처 === r.연락처)) { r._st = 'skip'; r._why = '같은 강좌에 같은 사람이 위에 있습니다'; } else c.stu.push(r); }
+      return r;
+    });
+    crs.forEach(r => {
+      if (r._st !== 'ok') return;
+      if (r.stu.length && isAdmin() && ch !== '도협회') xlkBad(r, '수강생 명단이 있는 강좌는 개인정보라 그 지회 계정으로 올려 주세요 (도협회는 인원만 입력 강좌만)');
+      else if (r.stu.length) { r.mode = '명단'; if (r.stu.length > 300) xlkBad(r, '수강생은 강좌당 300명까지'); if (stu.some(x => x._st === 'err' && key(x.강좌명) === r.k)) r._why = '수강생 중 오류 줄은 빼고 저장합니다'; }
+      else {
+        r.mode = '인원만';
+        const R = r.실인원 || 0, T = r.총회차; let Y = r.연인원 === '' ? R * T : r.연인원;
+        if (r.연인원 !== '' && !R && Y) xlkBad(r, '연인원이 있으면 실인원도 적어 주세요');
+        else if (Y > R * T) xlkBad(r, '연인원이 실인원 × 총회차보다 많습니다');
+        else if (R && Y < R) xlkBad(r, '연인원이 실인원보다 적습니다');
+        r.Y = Y; if (!R) r._why = '인원이 없어 강좌만 만듭니다';
+      }
+    });
+    // 이미 있는 강좌(강좌명+시작일) 건너뜀
+    const years = [...new Set(crs.filter(r => r._st === 'ok').map(r => r.시작일.slice(0, 4)))];
+    const have = new Set();
+    for (const y of years) (await call('listCourses', { 연도: y, 지회명: ch })).forEach(c => have.add(key(c.강좌명) + '|' + c.시작일));
+    crs.forEach(r => { if (r._st !== 'ok') return; const t = r.k + '|' + r.시작일; if (have.has(t)) { r._st = 'skip'; r._why = '이미 등록된 강좌'; } else have.add(t); });
+    stu.forEach(r => { const c = (byName[key(r.강좌명)] || [])[0]; if (r._st === 'ok' && c && c._st !== 'ok') { r._st = 'skip'; r._why = '강좌를 저장하지 않아 함께 건너뜀'; } });
+    EIM = { crs, stu, ch };
+    const nc = crs.filter(r => r._st === 'ok').length, ns = crs.filter(r => r._st === 'ok').reduce((a, r) => a + (r.stu || []).filter(x => x._st === 'ok').length, 0);
+    $('#eimPrev').innerHTML = xlkPrev(crs, [['강좌명', r => r.강좌명], ['구분', r => [r.주관, r.교육구분, r.수준].filter(Boolean).join(' · ')], ['기간', r => [r.시작일, r.종료일].filter(x => x && x !== '!').join(' ~ ')],
+        ['회차', r => isNaN(r.총회차) ? '' : r.총회차 + '회 × ' + (r.회당시간 || '') + '시간'], ['강사', r => r.강사], ['방식', r => r.mode === '명단' ? '명단 ' + r.stu.length + '명' : r.mode === '인원만' ? '인원만 (실 ' + (r.실인원 || 0) + ' · 연 ' + (r.Y || 0) + ')' : '']], '[강좌] 시트')
+      + (P.length ? xlkPrev(stu, [['강좌명', r => r.강좌명], ['이름', r => r.이름], ['연락처', r => r.연락처], ['성별', r => r.성별], ['출석', r => r.출석 === '' ? '전체' : (isNaN(r.출석) ? '' : r.출석 + '회')], ['수료', r => r.수료 || '자동']], '[수강생] 시트') : '')
+      + `<div class="row" style="margin-top:10px">${nc ? `<button class="btn primary" id="eimSave">강좌 ${nc}개 · 수강생 ${ns}명 저장</button>` : ''}<button class="btn" id="eimClose">닫기</button></div><div id="eimLog" class="hint"></div>`;
+    $('#eimClose').onclick = () => { $('#eimPrev').innerHTML = ''; EIM = null; };
+    if ($('#eimSave')) $('#eimSave').onclick = () => act($('#eimSave'), eduImpSave);
+  } catch (e) { if (e.code !== 'AUTH') toast('엑셀을 읽지 못했습니다: ' + e.message, true); }
+}
+// n번째 회차 수업일: 시작일~종료일 사이에 고르게
+function eimDay(start, end, s, total) {
+  if (total <= 1) return start;
+  const a = new Date(start + 'T00:00:00'), b = new Date(end + 'T00:00:00'), d = new Date(a.getTime() + Math.round((b - a) / 86400000 * (s - 1) / (total - 1)) * 86400000);
+  return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+}
+async function eduImpSave() {
+  if (!EIM) return;
+  const list = EIM.crs.filter(r => r._st === 'ok'), fail = [], log = m => { const el = $('#eimLog'); if (el) el.textContent = m; };
+  let nc = 0, np = 0;
+  for (const [i, r] of list.entries()) {
+    const T = r.총회차, who = `${r._row}줄 ${r.강좌명}`;
+    log(`저장하는 중… 강좌 ${i + 1} / ${list.length} — ${r.강좌명}`);
+    let cid;
+    try {
+      const named = r.mode === '명단';
+      const data = { 강좌명: r.강좌명, 시작일: r.시작일, 종료일: r.종료일, 총회차: T, 회당시간: r.회당시간, 강사: r.강사, 보조강사: r.보조강사, 기관명: r.기관명, 교재: r.교재,
+        수료기준: '', 상태: '종료', 주관: EIM.ch === '도협회' ? '' : r.주관, 교육구분: r.교육구분, 수준: r.수준, 확인서필요: '', 인원만입력: named ? '' : 'Y', 수료집계: named ? 'Y' : 'N' };
+      if (isAdmin()) data.지회명 = EIM.ch;
+      const d = await call('saveCourse', data); cid = d.course.강좌ID; nc++;
+      if (named) {
+        const ss = r.stu.filter(x => x._st === 'ok');
+        const det = await call('addParticipants', cid, ss.map(x => ({ 이름: x.이름, 연락처: x.연락처, 성별: x.성별, 비고: '' })));
+        const parts = (det && det.detail && det.detail.participants) || [];
+        const pidOf = x => { const p = parts.find(q => q.이름 === x.이름 && String(q.연락처 || '') === x.연락처) || parts.find(q => q.이름 === x.이름); return p ? String(p.참여자ID) : null; };
+        ss.forEach(x => { x.pid = pidOf(x); if (x.pid) np++; });
+        for (let s = 1; s <= T; s++) {
+          log(`저장하는 중… 강좌 ${i + 1} / ${list.length} — ${r.강좌명} 출석 ${s} / ${T}회차`);
+          await call('saveAttendance', cid, s, ss.filter(x => x.pid && (x.출석 === '' ? T : x.출석) >= s).map(x => x.pid), eimDay(r.시작일, r.종료일, s, T));
+        }
+        for (const x of ss.filter(x => x.pid && x.수료)) await call('setCompletion', cid, x.pid, x.수료 === 'O' ? 'Y' : 'N');
+      } else if (r.실인원) {
+        const R = r.실인원, extra = r.Y - R, base = T > 1 ? Math.floor(extra / (T - 1)) : 0, rem = T > 1 ? extra - base * (T - 1) : 0;
+        for (let s = 1; s <= T; s++) {
+          log(`저장하는 중… 강좌 ${i + 1} / ${list.length} — ${r.강좌명} 인원 ${s} / ${T}회차`);
+          await call('saveHeadcount', cid, s, s === 1 ? R : base + (s - 1 <= rem ? 1 : 0), eimDay(r.시작일, r.종료일, s, T));
+        }
+      }
+    } catch (e) { if (e.code === 'AUTH') return; fail.push(who + (cid ? ' (강좌는 만들어짐)' : '') + ': ' + e.message); }
+  }
+  EIM = null;
+  $('#eimPrev').innerHTML = `<div class="panel"><b>✅ 강좌 ${nc}개 · 수강생 ${np}명 저장</b>${fail.length ? `<div style="color:#b91c1c;margin-top:6px">실패 ${fail.length}건</div><ul style="margin:4px 0 0 18px;color:#b91c1c">${fail.map(x => `<li>${esc(x)}</li>`).join('')}</ul>` : ''}
+    <div class="row" style="margin-top:8px"><button class="btn" id="eimDone">강좌 목록으로</button></div></div>`;
+  $('#eimDone').onclick = () => renderCourses();
+}
 /* =========================================================
    강좌 목록
    ========================================================= */
@@ -1175,6 +1352,7 @@ async function renderCourses() {
   view().innerHTML = crsSwitchHtml('courses') + `
     <div class="row" style="margin-bottom:6px">
       <h2>강좌</h2><span class="spacer"></span>
+      <button class="btn" id="impCourse">과거 자료 올리기</button>
       <button class="btn primary" id="newCourse">강좌 등록</button>
     </div>
     <div class="row" style="margin:12px 0 16px">
@@ -1215,6 +1393,7 @@ async function renderCourses() {
   $('#goSearch').onclick = () => go('search');
   $('#certLedger').onclick = () => act($('#certLedger'), renderCertLedger);
   $('#newCourse').onclick = () => renderCourseForm(null);
+  $('#impCourse').onclick = () => renderEduImport();
   const onF = () => {
     S.filter = { 연도: $('#fy').value, 반기: $('#fh').value, 지회명: isAdmin() ? $('#fc').value : '', 주관: $('#fo').value, 교육구분: $('#fk').value, 수준: $('#fl').value };
     loadList();

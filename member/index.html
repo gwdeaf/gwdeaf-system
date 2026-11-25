@@ -53,7 +53,7 @@
   <button data-tab="fees" class="sub" onclick="showFees()">회비 내역</button>
   <button data-tab="feein" id="btnFeeIn" class="sub" onclick="showFeeIn()" style="display:none">회비 한꺼번에 입력</button>
   <button data-tab="unpaid" class="sub" onclick="showUnpaid()">미납자</button>
-  <button data-tab="import" id="btnImport" class="sub" onclick="showImport()" style="display:none">명단 가져오기</button>
+  <button data-tab="import" id="btnImport" class="sub" onclick="showImport()" style="display:none">과거 자료 올리기</button>
   <button data-tab="sum" id="btnSum" class="sub" onclick="showSummary()" style="display:none">지회별 요약</button>
   <button id="logoutBtn" class="sub" onclick="logout()">로그아웃</button>
 </nav>
@@ -89,7 +89,8 @@ function cannotUse(e) {
   $('topNav').style.display = 'none'; $('who').textContent = '';
   $('view').innerHTML = `<div class="card" style="cursor:default"><h2>사용할 수 없습니다</h2><p>${esc(e.message)}</p><button class="sub" onclick="logout()">다른 계정으로 로그인</button></div>`;
 }
-function setTab(id) { document.querySelectorAll('#topNav button[data-tab]').forEach(b => b.classList.toggle('sub', b.dataset.tab !== id)); }
+function setTab(id) { document.querySelectorAll('#topNav button[data-tab]').forEach(b => b.classList.toggle('sub', b.dataset.tab !== id));
+  try { if (window.parent !== window) window.parent.postMessage({ type: 'help-tab', tab: id }, location.origin); } catch (e) {} }   // 사용 안내가 이 화면 설명부터 열리게
 
 // ===== 회원관리 =====
 let ME = null, LIST = [];
@@ -309,16 +310,154 @@ async function showUnpaid(y) { const VT = vtok();
     $('uBody').innerHTML = !u.length ? '<p>미납자가 없습니다. 👍</p>' : `<div class="hint">${u.length}명</div><table class="t"><thead><tr><th>이름</th><th>연락처</th><th>구분</th></tr></thead><tbody>${u.map(m => `<tr class="click" onclick="showMember(${m.id})"><td>${esc(m.name)}</td><td>${esc(m.phone)}</td><td>${esc(m.category)}</td></tr>`).join('')}</tbody></table>`;
   } catch (e) { $('uBody').innerHTML = `<p>${esc(e.message)}</p>`; }
 }
-// ---- 명단 가져오기 ----
+/* ===== 과거 자료 올리기 공통: 엑셀 읽기·날짜 정리·미리보기 표 ===== */
+const XLK_URL = 'https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js';
+function xlkLoad() { return window.XLSX ? Promise.resolve() : new Promise((ok, no) => { const s = document.createElement('script'); s.src = XLK_URL; s.onload = ok; s.onerror = () => no(new Error('엑셀 도구를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.')); document.head.appendChild(s); }); }
+// 시트 이름 → [{_row: 엑셀 줄 번호, 칸이름(띄어쓰기·* 뺌): 값}]  (빈 줄은 뺌)
+async function xlkRead(file) {
+  await xlkLoad();
+  const wb = XLSX.read(await file.arrayBuffer(), { type: 'array' }), out = {};
+  wb.SheetNames.forEach((n) => {
+    const a = XLSX.utils.sheet_to_json(wb.Sheets[n], { header: 1, defval: '', raw: true });
+    if (!a.length) return;
+    const h = a[0].map((x) => String(x).replace(/[*\s]/g, ''));
+    out[n.replace(/\s/g, '')] = a.slice(1).map((r, i) => { const o = { _row: i + 2 }; h.forEach((k, j) => { if (k) o[k] = typeof r[j] === 'string' ? r[j].trim() : r[j]; }); return o; })
+      .filter((o) => Object.keys(o).some((k) => k !== '_row' && String(o[k]).trim() !== ''));
+  });
+  return out;
+}
+// 이름이 맞는 시트, 없으면 '작성 안내'가 아닌 첫 시트
+function xlkSheet(out, name) { if (out[name]) return out[name]; const k = Object.keys(out).find((x) => x !== '작성안내'); return k ? out[k] : []; }
+const xlkEx = (o) => Object.keys(o).some((k) => k !== '_row' && /\(예시\)/.test(String(o[k])));   // 예시 줄
+const xlkS = (v) => (v == null ? '' : String(v).trim());
+// 날짜 → 2024-03-05 ('' = 비어 있음, '!' = 형식 오류)
+function xlkDate(v) {
+  if (v === '' || v == null) return '';
+  if (typeof v === 'number') { if (v > 20000 && v < 80000) { const d = XLSX.SSF.parse_date_code(v); return d.y + '-' + String(d.m).padStart(2, '0') + '-' + String(d.d).padStart(2, '0'); } return '!'; }
+  const m = String(v).trim().match(/^(\d{4})\s*[-./년]\s*(\d{1,2})\s*[-./월]\s*(\d{1,2})/); if (!m) return '!';
+  const s = m[1] + '-' + m[2].padStart(2, '0') + '-' + m[3].padStart(2, '0'), d = new Date(s + 'T00:00:00');
+  return isNaN(d) || d.getDate() !== Number(m[3]) ? '!' : s;
+}
+// 시각 → 10:00
+function xlkTime(v) {
+  if (v === '' || v == null) return '';
+  if (typeof v === 'number' && v < 1) { const t = Math.round(v * 1440); return String(Math.floor(t / 60)).padStart(2, '0') + ':' + String(t % 60).padStart(2, '0'); }
+  const m = String(v).trim().match(/^(\d{1,2})\s*[:시]\s*(\d{2})?/); return m && Number(m[1]) < 24 ? m[1].padStart(2, '0') + ':' + (m[2] || '00') : '!';
+}
+// 숫자 ('' = 비어 있음, NaN = 숫자 아님)
+function xlkNum(v) { if (v === '' || v == null) return ''; const n = Number(String(v).replace(/[,\s원명회시간]/g, '')); return isFinite(n) ? n : NaN; }
+function xlkTpl(href, name) { const a = document.createElement('a'); a.href = href; a.download = name; document.body.appendChild(a); a.click(); a.remove(); }
+function xlkPick(fn) { const i = document.createElement('input'); i.type = 'file'; i.accept = '.xlsx,.xls'; i.onchange = () => { if (i.files[0]) fn(i.files[0]); }; i.click(); }
+// 미리보기 표. rows: {_row, _st:'ok'|'skip'|'err', _why}, cols: [[제목, r => 값]]
+function xlkPrev(rows, cols, title) {
+  const n = { ok: 0, skip: 0, err: 0 }; rows.forEach((r) => n[r._st]++);
+  const td = 'border-bottom:1px solid #e5e7eb;padding:6px;text-align:left;vertical-align:top;font-size:13px';
+  return `<div style="margin:10px 0 6px">${title ? `<b>${esc(title)}</b> · ` : ''}<b>${rows.length}줄</b> 읽음 · <span style="color:#15803d;font-weight:700">저장할 줄 ${n.ok}</span> · <span style="color:#6b7280">건너뜀 ${n.skip}</span> · <span style="color:#b91c1c;font-weight:700">오류 ${n.err}</span></div>
+    ${n.err ? '<div style="font-size:13px;color:#b91c1c;margin-bottom:6px">빨간 줄은 저장하지 않습니다. 엑셀에서 고친 뒤 다시 올리거나, 나머지만 먼저 저장하세요.</div>' : ''}
+    <div style="overflow:auto;max-height:420px;border:1px solid #e5e7eb;border-radius:8px"><table style="border-collapse:collapse;width:100%"><thead><tr style="background:#f1f5f9;position:sticky;top:0"><th style="${td}">줄</th><th style="${td}">결과</th>${cols.map((c) => `<th style="${td};white-space:nowrap">${esc(c[0])}</th>`).join('')}</tr></thead>
+    <tbody>${rows.map((r) => `<tr style="${r._st === 'err' ? 'background:#fef2f2' : r._st === 'skip' ? 'color:#9ca3af' : ''}"><td style="${td}">${r._row}</td><td style="${td};white-space:nowrap">${r._st === 'ok' ? '✅ 저장' : r._st === 'skip' ? '건너뜀' : '❌ 오류'}${r._why ? `<div style="font-size:12px;color:${r._st === 'err' ? '#b91c1c' : '#6b7280'};white-space:normal;min-width:120px">${esc(r._why)}</div>` : ''}</td>${cols.map((c) => `<td style="${td}">${esc(c[1](r))}</td>`).join('')}</tr>`).join('')}</tbody></table></div>`;
+}
+const xlkBad = (r, why) => { r._st = 'err'; r._why = (r._why ? r._why + ' · ' : '') + why; };
+// ---- 과거 자료 올리기 (회원명단·회비 엑셀) ----
 function showImport() {
   vtok();
   setTab('import'); msg('');
-  $('view').innerHTML = `<div class="card" style="cursor:default"><b>엑셀·구글 시트 명단 가져오기</b>
+  $('view').innerHTML = `<div class="card" style="cursor:default"><b>과거 자료 올리기</b>
+    <div class="hint">양식을 받아 채운 뒤 올리세요. 올리면 먼저 미리보기가 나오고, [저장]을 눌러야 실제로 들어갑니다.<br><b>회원명단을 먼저</b> 올린 뒤 회비를 올리세요. (회비는 회원명단에 있는 회원에게만 들어갑니다)</div></div>
+    <div class="card" style="cursor:default"><b>① 회원명단</b>
+      <div class="actions"><button class="sub" onclick="xlkTpl('tpl_members.xlsx','회원명단_양식.xlsx')">양식 받기</button><button onclick="xlkPick(impMembers)">엑셀 파일 올리기</button></div><div id="impMPrev"></div></div>
+    <div class="card" style="cursor:default"><b>② 회비 납부 기록</b>
+      <div class="actions"><button class="sub" onclick="xlkTpl('tpl_fees.xlsx','회비납부_양식.xlsx')">양식 받기</button><button onclick="xlkPick(impFees)">엑셀 파일 올리기</button></div><div id="impFPrev"></div></div>
+    <details class="card" style="cursor:default"><summary style="cursor:pointer"><b>엑셀에서 복사해 붙여넣기로 명단 가져오기</b></summary>
     <div class="hint">1) 엑셀에서 <b>제목 줄을 포함해</b> 표를 복사(Ctrl+C) → 2) 아래 칸에 붙여넣기(Ctrl+V) → 3) [확인]<br>
     알아듣는 제목: 회원번호, 이름(성명), 생년월일, 성별, 연락처(전화번호), 주소, 구분, 가입일(입회일), 상태, 비고 — 다른 제목의 열은 무시합니다.<br>
     같은 이름+연락처가 이미 있으면 건너뜁니다. 주민등록번호 열은 빼고 복사하세요.</div>
     <textarea id="imp" rows="10" placeholder="여기에 붙여넣기"></textarea>
-    <div class="actions"><button onclick="checkImport()">확인</button></div><div id="impPrev"></div></div>`;
+    <div class="actions"><button onclick="checkImport()">확인</button></div><div id="impPrev"></div></details>`;
+}
+const nmKey = (s) => xlkS(s).replace(/\s/g, '');
+let IMPM = [], IMPF = [];
+async function impMembers(f) {
+  try {
+    msg('엑셀을 읽는 중…');
+    const out = await xlkRead(f), rows = xlkSheet(out, '회원명단');
+    LIST = await rpc('member_list', {});
+    const seen = new Set(LIST.map((m) => nmKey(m.name) + '|' + xlkS(m.phone)));
+    IMPM = rows.filter((o) => !xlkEx(o)).map((o) => {
+      const r = { _row: o._row, _st: 'ok', member_no: xlkS(o.회원번호 ?? o.번호), name: xlkS(o.이름 ?? o.성명), phone: xlkS(o.연락처 ?? o.전화번호), address: xlkS(o.주소),
+        category: xlkS(o.구분 ?? o.회원구분), status: xlkS(o.상태), note: xlkS(o.비고), gender: xlkS(o.성별) };
+      const b = xlkDate(o.생년월일); r.birth = b === '!' ? xlkS(o.생년월일) : b;
+      r.join_date = xlkDate(o.가입일 ?? o.입회일);
+      if (Object.keys(o).some((k) => k.indexOf('주민') >= 0)) xlkBad(r, '주민등록번호 칸은 지우고 올려 주세요');
+      if (!r.name) xlkBad(r, '이름이 없습니다');
+      if (r.join_date === '!') { xlkBad(r, '가입일 형식 (예: 2019-03-02)'); }
+      if (r.status && STATUS.indexOf(r.status) < 0) xlkBad(r, '상태는 활동/휴회/탈퇴');
+      if (r.gender && ['남', '여'].indexOf(r.gender) < 0) xlkBad(r, '성별은 남/여');
+      if (r._st === 'ok') { const k = nmKey(r.name) + '|' + r.phone; if (seen.has(k)) { r._st = 'skip'; r._why = '이미 등록된 회원 (이름+연락처 같음)'; } else seen.add(k); }
+      return r;
+    });
+    msg('');
+    const n = IMPM.filter((r) => r._st === 'ok').length;
+    $('impMPrev').innerHTML = xlkPrev(IMPM, [['회원번호', (r) => r.member_no], ['이름', (r) => r.name], ['생년월일', (r) => r.birth], ['성별', (r) => r.gender], ['연락처', (r) => r.phone],
+      ['구분', (r) => r.category], ['가입일', (r) => r.join_date === '!' ? '' : r.join_date], ['상태', (r) => r.status || '활동']], f.name)
+      + `<div class="actions">${n ? `<button onclick="saveMembers()">회원 ${n}명 저장</button>` : ''}<button class="sub" onclick="$('impMPrev').innerHTML=''">닫기</button></div>`;
+  } catch (e) { msg('엑셀을 읽지 못했습니다: ' + e.message, 'err'); }
+}
+async function saveMembers() {
+  const ok = IMPM.filter((r) => r._st === 'ok').map((r) => ({ member_no: r.member_no, name: r.name, birth: r.birth, gender: r.gender, phone: r.phone, address: r.address,
+    category: r.category, join_date: r.join_date, status: r.status, note: r.note }));
+  if (!ok.length) return;
+  try {
+    let a = 0, s = 0;
+    for (let i = 0; i < ok.length; i += 1000) { const r = await rpc('member_import', { p_rows: ok.slice(i, i + 1000) }); a += r.added; s += r.skipped; }
+    msg(`✅ 회원 ${a}명 저장${s ? ' · 이미 있어 건너뜀 ' + s + '명' : ''}`, 'ok'); LIST = []; IMPM = []; $('impMPrev').innerHTML = '';
+  } catch (e) { msg(e.message, 'err'); }
+}
+async function impFees(f) {
+  try {
+    msg('엑셀을 읽는 중…');
+    const out = await xlkRead(f), rows = xlkSheet(out, '회비납부');
+    LIST = await rpc('member_list', {});
+    const fees = await rpc('member_fee_list', { p_member: null, p_year: null });
+    const key = (id, k, y, a, d) => [id, k, y, a, d].join('|');
+    const have = new Set(fees.filter((x) => x.status !== '취소').map((x) => key(x.member_id, x.kind, x.year, Number(x.amount), x.paid_date)));
+    IMPF = rows.filter((o) => !xlkEx(o)).map((o) => {
+      const r = { _row: o._row, _st: 'ok', no: xlkS(o.회원번호), name: xlkS(o.이름 ?? o.성명), phone: xlkS(o.연락처), kind: xlkS(o.종류) || '회비',
+        amount: xlkNum(o.금액), date: xlkDate(o.납부일), method: xlkS(o.납부방법) || '계좌이체', note: xlkS(o.비고) };
+      const y = xlkNum(o.해당연도);
+      if (!r.name && !r.no) xlkBad(r, '이름이 없습니다');
+      let m = null;
+      if (r.no) m = LIST.find((x) => xlkS(x.member_no) === r.no) || null;
+      if (!m && r.name && r.phone) m = LIST.find((x) => nmKey(x.name) === nmKey(r.name) && xlkS(x.phone) === r.phone) || null;
+      if (!m && r.name) { const same = LIST.filter((x) => nmKey(x.name) === nmKey(r.name)); if (same.length === 1) m = same[0]; else if (same.length > 1) xlkBad(r, '같은 이름의 회원이 ' + same.length + '명 — 회원번호나 연락처를 적어 주세요'); }
+      if (!m && r._st === 'ok' && (r.name || r.no)) xlkBad(r, '회원명단에 없는 회원');
+      r.member = m;
+      if (['회비', '입회비', '기타'].indexOf(r.kind) < 0) xlkBad(r, '종류는 회비/입회비/기타');
+      if (!(r.amount > 0)) xlkBad(r, '금액을 숫자로');
+      if (!r.date || r.date === '!') xlkBad(r, '납부일 형식 (예: 2023-02-15)');
+      if (['계좌이체', '현금', '카드', '기타'].indexOf(r.method) < 0) xlkBad(r, '납부 방법은 계좌이체/현금/카드/기타');
+      if (y !== '' && !(y >= 1990 && y <= 2100)) xlkBad(r, '해당 연도 확인');
+      r.year = y === '' || isNaN(y) ? (r.date && r.date !== '!' ? Number(r.date.slice(0, 4)) : '') : y;
+      if (r._st === 'ok') { const k = key(m.id, r.kind, r.year, r.amount, r.date); if (have.has(k)) { r._st = 'skip'; r._why = '이미 같은 납부 기록이 있습니다'; } else have.add(k); }
+      return r;
+    });
+    msg('');
+    const n = IMPF.filter((r) => r._st === 'ok').length;
+    $('impFPrev').innerHTML = xlkPrev(IMPF, [['이름', (r) => r.member ? r.member.name + (r.member.member_no ? ' (' + r.member.member_no + ')' : '') : r.name], ['종류', (r) => r.kind], ['해당 연도', (r) => r.year],
+      ['금액', (r) => r.amount > 0 ? won(r.amount) : ''], ['납부일', (r) => r.date === '!' ? '' : r.date], ['방법', (r) => r.method]], f.name)
+      + `<div class="actions">${n ? `<button onclick="saveFees()">납부 기록 ${n}건 저장</button>` : ''}<button class="sub" onclick="$('impFPrev').innerHTML=''">닫기</button></div>`;
+  } catch (e) { msg('엑셀을 읽지 못했습니다: ' + e.message, 'err'); }
+}
+async function saveFees() {
+  const ok = IMPF.filter((r) => r._st === 'ok'); if (!ok.length) return;
+  let done = 0; const fail = [];
+  for (const r of ok) {
+    msg(`저장하는 중… ${done + fail.length + 1} / ${ok.length}`);
+    try { await rpc('member_fee_add', { p_member: r.member.id, p_kind: r.kind, p_year: r.year, p_amount: r.amount, p_date: r.date, p_method: r.method, p_note: r.note }); done++; }
+    catch (e) { fail.push(r._row + '줄: ' + e.message); }
+  }
+  msg(`✅ 납부 기록 ${done}건 저장` + (fail.length ? ` · 실패 ${fail.length}건 (${fail.slice(0, 3).join(' / ')})` : ''), fail.length ? 'err' : 'ok');
+  IMPF = []; $('impFPrev').innerHTML = '';
 }
 let IMP = [];
 function checkImport() {

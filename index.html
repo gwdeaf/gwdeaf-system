@@ -176,6 +176,9 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .thello{display:flex;align-items:center;gap:12px;min-width:0}
 .thello h2{margin:0;font-size:1.2rem;font-weight:800;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .thello .chip{padding:3px 10px;font-size:.76rem}
+.cheer{display:flex;flex-direction:column;line-height:1.15;font-family:'Nanum Pen Script',cursive;min-width:0;padding-left:12px;border-left:2px solid var(--line,#e5e7eb);font-size:.78rem;color:var(--mute,#6b7280)}
+.cheer b{font-weight:400;font-size:1.1rem;color:#8a8f98;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cheer i{font-style:normal;font-size:.95rem;color:#a3a8b0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .tdate{font-size:.84rem;color:var(--mute);font-weight:600;white-space:nowrap}
 .wldate{display:flex;align-items:center;gap:6px;margin-left:8px;flex-shrink:0}.wldate.hide{display:none}.wldate input{border:1px solid var(--line);border-radius:8px;padding:5px 8px;font:inherit;font-size:.88rem;background:#fff}.wlst{font-size:.75rem;font-weight:700;color:var(--pri);background:var(--pri-soft);border-radius:20px;padding:3px 9px;white-space:nowrap}.wlst:empty{display:none}@media(max-width:600px){.wlst{display:none}.wldate input{padding:4px 5px;font-size:.8rem;max-width:128px}}
 .wltabs{display:flex;gap:2px;background:#eef2f8;border-radius:10px;padding:3px;margin-left:10px;flex-shrink:0}.wltabs.hide{display:none}.wltabs button{border:0;background:transparent;border-radius:8px;padding:6px 12px;font-size:.88rem;font-weight:700;color:var(--mute);cursor:pointer;white-space:nowrap}.wltabs button.on{background:#fff;color:var(--pri);box-shadow:0 1px 3px rgba(0,0,0,.08)}@media(max-width:600px){.wltabs button{padding:5px 8px;font-size:.8rem}}
@@ -343,6 +346,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
   .tdate,.thello .chips{display:none}
   .thello h2{font-size:1rem}
   .thello .hi{display:none}
+  .cheer{display:none}
   .pstat{padding:6px 8px;font-size:.74rem}
   .pstat .lb{display:none}.pstat .sl{display:inline}
   .pbtn{padding:8px 11px;font-size:.82rem}
@@ -425,7 +429,9 @@ html.dark .emo{filter:invert(1) hue-rotate(180deg) saturate(.7) brightness(.92)}
 </style>
 <link rel="stylesheet" href="/ui.css?v=1">
 <style>.gbtn2{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 11px;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--text)}.gbtn2:hover{background:var(--pri-soft)}@media(max-width:600px){.gbtn2 .gtx{display:none}}</style>
-<script src="/guide.js?v=5"></script>
+<script src="/guide.js?v=6"></script>
+<script src="/guide_detail.js?v=1"></script>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap">
 </head>
 <body>
 
@@ -469,7 +475,7 @@ html.dark .emo{filter:invert(1) hue-rotate(180deg) saturate(.7) brightness(.92)}
     <div class="mbreak"></div>
     <div class="mfs2" title="글씨 크기"><button data-fs="1" onclick="setFs(1)" aria-label="글씨 보통">가−</button><button data-fs="1.15" onclick="setFs(1.15)" aria-label="글씨 크게">가+</button></div>
     <div class="crumb hide" id="crumb"></div>
-    <div class="thello" id="thello"><h2 id="hello"></h2><span class="chips" id="chips"></span></div>
+    <div class="thello" id="thello"><h2 id="hello"></h2><span class="cheer" id="cheer"></span><span class="chips" id="chips"></span></div>
     <div class="wltabs hide" id="wltabs"><button data-t="writer" class="on" onclick="wlTab('writer')">✍️ 일지 작성</button><button data-t="calendar" onclick="wlTab('calendar')">🗓️ 캘린더</button></div>
     <div class="wldate hide" id="wldate"><input type="date" id="wl-date" onchange="wlDate(this.value)" title="작성일자"><span class="wlst" id="wl-st"></span></div>
     <div class="tright">
@@ -478,7 +484,7 @@ html.dark .emo{filter:invert(1) hue-rotate(180deg) saturate(.7) brightness(.92)}
       <span class="pstat hide" id="pstat" onclick="openPunch()" title="출퇴근 기록"></span>
       <button class="pbtn hide" id="pbtn" onclick="openPunch()">📍 출퇴근</button>
       <div class="thm" title="화면 모드"><button data-th="light" onclick="setTheme('light')">☀️<span class="tt"> 라이트</span></button><button data-th="dark" onclick="setTheme('dark')">🌙<span class="tt"> 다크</span></button></div>
-      <button class="gbtn2" onclick="openGuide(ME, /:senior/.test(CUR||'') ? 'senior' : (CUR||'home').split(':')[0])" title="사용 안내">📖<span class="gtx"> 사용 안내</span><span class="gtx2"> 사용설명서</span></button>
+      <button class="gbtn2" onclick="var g=(CUR||'home').split(':'),h=HELPTAB.split(':');openGuide(ME, /:senior/.test(CUR||'') ? 'senior' : g[0], (h[0]===g[0]?h[1]:'')||g[2]||'', g[1]==='a')" title="사용 안내">📖<span class="gtx"> 사용 안내</span><span class="gtx2"> 사용설명서</span></button>
       <div class="tuser" onclick="openMy()" title="마이페이지"><div class="av sm" id="tb-av"></div><span id="tb-nm"></span></div>
     </div>
   </div>
@@ -629,7 +635,7 @@ var ORG = '강원특별자치도농아인협회';
 function chapLabel(){ var n = (ME.chapter_name || '').trim(); if (!n || ME.is_hq) return ''; return /지회$/.test(n) ? n : n + '지회'; }
 
 /* ── 왼쪽 메뉴 (하위 메뉴 항상 표시) · 오른쪽 내용 전환 ── */
-var EDU_HIDE = [], ATT = null, PUNCH = null, CUR = 'home:s:', FR = { key:'', ready:false, tab:'', loadedGo:'' };
+var HELPTAB = '', EDU_HIDE = [], ATT = null, PUNCH = null, CUR = 'home:s:', FR = { key:'', ready:false, tab:'', loadedGo:'' };
 function mid(kind, adm, tab){ return kind + ':' + (adm ? 'a' : 's') + ':' + (tab || ''); }
 function kidHtml(kind, adm, tab, label){
   return '<a class="kid" data-id="' + mid(kind, adm, tab) + '" data-lb="' + esc(label) + '" onclick="go(\'' + kind + '\',\'' + tab + '\',' + (adm ? 'true' : 'false') + ')">' + esc(label) + '</a>';
@@ -755,7 +761,7 @@ function go(kind, tab, adm){
     CUR = 'home:s:'; $('view-frame').classList.add('hide'); $('view-home').classList.remove('hide'); $('sysnote').classList.add('hide');
     markNav(); try { history.replaceState(null, '', location.pathname); } catch(e){} window.scrollTo(0, 0); return;
   }
-  CUR = mid(kind, adm, tab);
+  CUR = mid(kind, adm, tab); HELPTAB = '';
   $('view-home').classList.add('hide'); $('view-frame').classList.remove('hide');
   showSysNote(kind);
   var key = kind + ':' + (adm ? 'a' : 's'), fr = $('frame');
@@ -842,7 +848,7 @@ function pvEnd(){
   render(); go('home');
 }
 function pvShow(kind, tab, adm){
-  CUR = mid(kind, adm, tab);
+  CUR = mid(kind, adm, tab); HELPTAB = '';
   ['view-home','view-frame','view-inq','view-attall'].forEach(function(id){ var e = $(id); if (e) e.classList.add('hide'); });
   var sec = /^senior:/.test(tab) ? 'senior' : (kind === 'att' && adm) ? 'attadmin' : (kind === 'access' || kind === 'org') ? 'manager' : kind === 'car' ? 'car' : kind === 'inq' ? 'inq' : kind;
   var g = window.guideSection ? guideSection(sec) : null, a = document.querySelector('#nav [data-id="' + CUR + '"]');
@@ -928,7 +934,7 @@ function subKind(){ return FR.key ? FR.key.split(':')[0] : ''; }
 window.addEventListener('message', function(e){
   if (e.origin !== location.origin) return;
   var d = e.data || {};
-  if (d.type === 'wl-view' && e.source === $('frame').contentWindow) { wlMark(d.view); if (d.date && document.activeElement !== $('wl-date')) $('wl-date').value = d.date; $('wl-st').textContent = d.status || ''; return; }
+  if (d.type === 'wl-view' && e.source === $('frame').contentWindow) { HELPTAB = 'worklog:' + (d.view === 'writer' ? 'write' : d.view); wlMark(d.view); if (d.date && document.activeElement !== $('wl-date')) $('wl-date').value = d.date; $('wl-st').textContent = d.status || ''; return; }
   if (d.type === 'att-ready' && e.source === $('frame').contentWindow) {
     FR.ready = true; $('floading').classList.add('hide');
     if (FR.tab !== FR.loadedGo) { FR.loadedGo = FR.tab; e.source.postMessage({ type:'att-go', tab:FR.tab }, location.origin); }
@@ -948,6 +954,7 @@ window.addEventListener('message', function(e){
     FR.ready = true; $('floading').classList.add('hide');
     if (FR.tab && FR.tab !== d.tab) e.source.postMessage({ type:'sub-go', tab:FR.tab }, location.origin);
   }
+  if (d.type === 'help-tab' && e.source === $('frame').contentWindow) { HELPTAB = (CUR || '').split(':')[0] + ':' + (d.tab || ''); return; }   // 사용 안내를 이 화면 설명부터
   if (d.type === 'sub-tab' && e.source === $('frame').contentWindow && SUBAPP[subKind()]) {   // 화면 안에서 이동해도 왼쪽 메뉴·위치 표시를 맞춤
     var k = subKind(); if (!document.querySelector('#nav [data-id="' + mid(k, false, d.tab) + '"]')) return;
     FR.tab = d.tab; CUR = mid(k, false, d.tab); markNav();
@@ -1039,12 +1046,15 @@ function setPunch(t){
   $('punch').innerHTML = row('🟢 출근', t.in) + row('🔴 퇴근', t.out) + (t.trip ? row('🚗 출장', t.trip, '#1e40af') : '')
     + (PUNCH_STD ? '<div class="mute" style="margin-top:8px">내 기준 시각 — 출근 ' + esc(PUNCH_STD.in) + ' · 퇴근 ' + esc(PUNCH_STD.out) + '</div>' : '');
 }
+var CHEER = [["오늘도 한 걸음, 충분히 잘하고 있어요.", "One step today is enough. You're doing great."], ["작은 일도 정성껏, 그게 큰 힘이 됩니다.", "Small things done with care add up to great things."], ["오늘의 수고가 누군가의 하루를 밝혀요.", "Your effort today brightens someone's day."], ["천천히 가도 괜찮아요. 멈추지만 않으면 돼요.", "It's okay to go slowly, as long as you keep going."], ["당신의 손끝에서 소통이 시작됩니다.", "Communication begins at your fingertips."], ["힘든 날도 지나가요. 오늘도 응원해요.", "Hard days pass too. Cheering for you today."], ["웃으며 시작하면 하루가 가벼워져요.", "Start with a smile and the day feels lighter."], ["완벽보다 꾸준함이 더 멀리 갑니다.", "Consistency goes further than perfection."], ["오늘 할 수 있는 만큼만, 그걸로 충분해요.", "Do what you can today. That's enough."], ["함께라서 더 든든한 하루예요.", "Together, today feels stronger."], ["쉼도 일의 일부예요. 잠깐 숨 고르세요.", "Rest is part of the work. Take a breath."], ["당신이 있어 이 일이 빛나요.", "This work shines because of you."], ["어제보다 조금 더 나은 오늘이면 돼요.", "Just a little better than yesterday."], ["좋은 하루는 좋은 마음에서 시작돼요.", "A good day starts with a good heart."], ["오늘도 고맙습니다. 수고 많으세요.", "Thank you for today. You're working hard."], ["문제는 풀라고 있는 거예요. 할 수 있어요.", "Problems are meant to be solved. You can do it."], ["작은 친절이 큰 변화를 만들어요.", "Small kindness makes big change."], ["오늘의 나를 칭찬해 주세요.", "Give yourself some credit today."], ["한 사람의 노력이 모두의 길이 됩니다.", "One person's effort becomes everyone's path."], ["서두르지 말고, 포기하지 말고.", "Don't rush, don't give up."], ["오늘도 마음 따뜻한 하루 되세요.", "Have a warm-hearted day."], ["할 일이 많아도 하나씩이면 돼요.", "Lots to do? One thing at a time."], ["당신의 미소가 사무실을 밝혀요.", "Your smile lights up the office."], ["꾸준히 쌓은 하루가 실력이 됩니다.", "Days built steadily become skill."], ["실수해도 괜찮아요. 배우는 중이니까요.", "Mistakes are fine. We're all learning."], ["오늘은 어제보다 더 잘될 거예요.", "Today will go better than yesterday."], ["마음을 전하는 일, 정말 멋진 일이에요.", "Connecting hearts is truly wonderful work."], ["잠깐의 여유가 더 큰 힘을 줘요.", "A moment of ease gives greater strength."], ["오늘의 노력은 반드시 돌아와요.", "Today's effort always comes back to you."], ["기대되는 하루, 즐겁게 시작해요.", "Let's start this promising day with joy."], ["당신은 생각보다 훨씬 잘하고 있어요.", "You're doing much better than you think."], ["좋은 동료가 되어 줘서 고마워요.", "Thanks for being a great colleague."], ["한 번에 하나, 차근차근 해봐요.", "One at a time, step by step."], ["오늘도 무리하지 말고 건강 챙기세요.", "Don't overdo it, take care of yourself."], ["작은 성취를 마음껏 기뻐하세요.", "Celebrate your small wins."], ["물 한 잔 마시고 힘내요!", "Drink some water and cheer up!"], ["당신의 하루를 응원합니다.", "Cheering on your day."], ["포기하지 않는 마음이 가장 큰 재능이에요.", "Never giving up is the greatest talent."], ["오늘 만나는 사람에게 따뜻한 한마디를.", "Share a kind word with someone today."], ["천 리 길도 한 걸음부터예요.", "A journey of a thousand miles begins with one step."], ["오늘의 작은 시작이 내일의 큰 결과로.", "Today's small start, tomorrow's big result."], ["힘들 땐 도움을 청해도 괜찮아요.", "It's okay to ask for help."], ["당신의 수고를 모두가 알고 있어요.", "Everyone knows how hard you work."], ["밝은 생각이 밝은 하루를 만들어요.", "Bright thoughts make a bright day."], ["오늘도 나답게, 내 속도로.", "Be yourself today, at your own pace."], ["배움에는 끝이 없어 더 즐거워요.", "Learning never ends, and that's the fun."], ["함께 웃는 하루가 되길 바라요.", "Hope today is full of shared smiles."], ["어려운 일도 함께하면 가벼워져요.", "Hard things get lighter together."], ["오늘 하루도 충분히 의미 있어요.", "Today is meaningful, just as it is."], ["잘하고 있어요. 지금 이대로 좋아요.", "You're doing well. Just as you are."], ["새로운 하루, 새로운 기회예요.", "A new day is a new chance."], ["마음이 통하면 길이 열려요.", "When hearts connect, paths open."], ["오늘의 피곤함은 내일의 보람이에요.", "Today's tiredness is tomorrow's reward."], ["가끔은 하늘을 올려다봐요.", "Look up at the sky now and then."], ["당신 덕분에 오늘도 든든해요.", "Thanks to you, today feels secure."], ["긍정의 한마디가 하루를 바꿔요.", "One positive word can change a day."], ["오늘도 파이팅! 끝까지 힘내요.", "You've got this! Keep going till the end."], ["모든 노력은 흔적을 남겨요.", "Every effort leaves its mark."], ["스스로를 믿어 보세요. 충분해요.", "Believe in yourself. You're enough."], ["오늘 하루도 정말 수고했어요.", "You did a great job today."], ["오늘 하루, 나에게 다정하게.", "Be gentle with yourself today."], ["좋은 일은 생각보다 가까이 있어요.", "Good things are closer than you think."], ["커피 한 잔의 여유로 시작해요.", "Start with the ease of a cup of coffee."], ["당신의 꼼꼼함이 모두를 지켜요.", "Your care keeps everyone safe."], ["오늘도 우리 함께 잘 해봐요.", "Let's do well together today."], ["마음먹은 일, 오늘 하나만 해봐요.", "Try just one thing you've set your mind to."], ["지금 이 순간도 소중해요.", "This very moment matters too."], ["잘 쉬어야 잘 일할 수 있어요.", "Rest well to work well."], ["당신의 목소리 없는 말이 세상을 바꿔요.", "Your silent words change the world."], ["오늘 받은 고마움을 기억해요.", "Remember the thanks you received today."], ["느려도 괜찮아요, 방향이 맞으면 돼요.", "Slow is fine if the direction is right."], ["하루의 끝에 웃을 수 있기를.", "May you smile at the end of the day."], ["작은 변화가 큰 내일을 만들어요.", "Small changes make a big tomorrow."], ["오늘의 어려움은 내일의 이야기예요.", "Today's struggle is tomorrow's story."], ["당신이 하는 일은 꼭 필요한 일이에요.", "What you do truly matters."], ["기분 좋은 인사로 하루를 열어요.", "Open the day with a cheerful greeting."], ["한숨 대신 심호흡 한 번!", "Take a deep breath instead of a sigh!"], ["오늘도 성장하는 중이에요.", "You're growing today, too."], ["나를 믿는 만큼 해낼 수 있어요.", "You can achieve as much as you believe."], ["함께 일해서 즐거워요.", "It's a joy working together."], ["오늘의 계획, 가볍게 하나씩.", "Today's plan, lightly, one by one."], ["당신의 배려가 큰 힘이 돼요.", "Your thoughtfulness is a great strength."], ["비 온 뒤에 땅이 굳어요.", "After rain, the ground grows firm."], ["오늘도 무사히, 즐겁게.", "Safe and joyful today."], ["스스로에게 박수 한 번 보내요.", "Give yourself a round of applause."], ["모든 시작은 서툴러요. 괜찮아요.", "Every start is clumsy. That's okay."], ["행복은 가까운 곳에 있어요.", "Happiness is close by."], ["오늘 하루도 반짝이길 바라요.", "Hope your day sparkles."], ["당신의 열정이 모두에게 전해져요.", "Your passion reaches everyone."], ["내일의 나에게 고마운 오늘을.", "Make today one tomorrow's you will thank."]];   // 오늘의 응원 문장 [한글, 영어]
 function render(){
   var cl = chapLabel();
   $('brand-tx').innerHTML = ORG + '<br>' + (cl ? esc(cl) + ' ' : '') + '업무 시스템';
   document.title = ORG + (cl ? cl : '') + ' 업무 시스템';   // 기관명과 지회명은 띄어 쓰지 않음 (강원특별자치도농아인협회춘천시지회)
   var name = ME.name || (ME.email || '').split('@')[0];
   $('hello').innerHTML = esc(name) + ' <span style="color:var(--pri,#3b5bdb)">' + esc(ME.chapter_name || '') + '</span>';   // 예: 김유진 도협회 (부서는 옆 드롭다운)
+  var ci = Math.floor((Date.now() + 9 * 3600000) / 86400000) % CHEER.length;   // 한국 날짜 기준으로 날마다 바뀜
+  $('cheer').innerHTML = '<b>' + esc(CHEER[ci][0]) + '</b><i>' + esc(CHEER[ci][1]) + '</i>';
   $('today').textContent = new Date().toLocaleDateString('ko-KR', { timeZone:'Asia/Seoul', year:'numeric', month:'long', day:'numeric', weekday:'long' });
   $('me-av').textContent = name.charAt(0);
   $('me-nm').textContent = name;

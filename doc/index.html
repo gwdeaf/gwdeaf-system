@@ -661,6 +661,14 @@ async function openWrite(id) {
     $('fVia').value = ''; $('fCoop').value = ''; $('fOpen').value = '공개'; $('fChain').value = ''; $('fChief').value = ''; $('fPages').value = '1';
     addStepRow({});
     kindChanged();
+    // 내 부서 결재라인(기관 설정 → 결재라인)으로 결재선 미리 채우기 — 여기서 추가·삭제·수정 가능
+    try {
+      const { data } = await sb.rpc('doc_default_steps');
+      if (data && data.length && !current && $('screenWrite').classList.contains('on')) {
+        $('stepsBody').innerHTML = ''; data.forEach((st) => addStepRow(st));
+        msg('stepsMsg', '내 부서 결재라인(기관 설정 → 결재라인)으로 채웠습니다. 여기서 추가·삭제·수정할 수 있습니다.', true); pvSoon();
+      }
+    } catch (e) {}
     return;
   }
   const { data, error } = await sb.from('doc_documents').select('*').eq('id', id).single();
@@ -771,7 +779,7 @@ function renderView() {
     + ((f.attachments || []).length ? `<div style="margin-top:8px"><b>붙임</b> ${(f.attachments || []).map((a, i) => esc((f.attachments.length > 1 ? (i + 1) + '. ' : '') + a)).join(' · ')}</div>` : '');
 
   $('viewSteps').innerHTML = currentSteps.length
-    ? currentSteps.map((s) => `<tr><td>${s.seq}</td><td>${esc(s.role)}</td><td>${esc(s.name)}</td><td class="ea">${esc(s.method)}</td>
+    ? currentSteps.map((s) => `<tr><td>${s.seq}</td><td>${esc(s.role)}</td><td>${esc(s.name)}${!E_APPROVAL && s.method === '전자서명' && s.status === '완료' ? ' <span class="badge">✍️ 서명함</span>' : ''}</td><td class="ea">${esc(s.method)}</td>
         <td class="ea">${esc(s.type)}</td><td class="ea">${esc(s.status)}</td><td class="ea">${ko(s.done_at)}</td></tr>`).join('')
     : '<tr><td colspan="7" class="muted">결재선이 없습니다.</td></tr>';
 
@@ -782,6 +790,11 @@ function renderView() {
   if (canReject) b.push(`<button class="danger" onclick="rejectDoc()">반려</button>`);
   if (canPaper && d.status === '결재중') b.push(`<button class="main" onclick="paperDone()">✅ 확정 (대장에 올리기)</button>`);
   if (canPaper) b.push(`<button onclick="recallDoc()" title="고칠 내용이 생겼을 때. 번호는 그대로 둡니다.">↩ 회수해서 수정</button>`);
+  // 전자결재 전: 결재선에 내가 있으면 내 칸에 서명 이미지를 직접 넣거나 뺌 (다른 사람 칸은 불가)
+  const mine = !E_APPROVAL && d.number && !d.deleted && ['결재중', '완료', '발송'].includes(d.status) ? currentSteps.filter((s) => (s.email || '').toLowerCase() === (me.email || '').toLowerCase()) : [];
+  if (mine.length) b.push(mine.some((s) => s.method === '전자서명' && s.status === '완료')
+    ? `<button onclick="signMine(false)" title="인쇄할 때 내 결재 칸의 서명 이미지를 뺍니다">✍️ 내 서명 빼기</button>`
+    : `<button onclick="signMine(true)" title="인쇄할 때 내 결재 칸에 등록한 서명 이미지가 들어갑니다">✍️ 내 서명 넣기</button>`);
   b.push(`<button onclick="copyDoc()">복사</button>`, `<button onclick="printDoc()">인쇄 / PDF 저장</button>`);
   if (d.number && !d.deleted) b.push(`<button id="pdfBtn" onclick="savePdfDrive()">📁 드라이브에 PDF 저장</button>`);
   if (d.number && ['완료', '발송'].includes(d.status) && !d.deleted && (me.is_admin || isDrafter)) b.push(`<button class="main" onclick="openSendCard()">📤 다른 곳으로 보내기</button>`);
@@ -813,7 +826,7 @@ async function actDoc(action, opinion = '') {
 async function autoAppendDoc(d) {
   try {
     const f = d.form || {};
-    const r = await gd({ action: 'append', kind: '공문 대장', year: d.year, title: (me.chapter_name || '') + ' 문서대장 ' + d.year, sheetName: '공문 대장',
+    const r = await gd({ action: 'append', kind: '공문 대장', year: d.year, dept: d.dept || '', title: (me.chapter_name || '') + ' 문서대장 ' + d.year, sheetName: '공문 대장',
       header: ['번호', '종류', '시행일자', '수신', '제목', '기안자', '완료일시'],
       rows: [[d.number || '', d.kind, f.date || '', d.recipient || '', d.title || '', d.drafter_name || '', new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' })]] });
     if (r && r.ok === false && r.code !== 'not_connected') console.warn('자동 쌓기 실패:', r.msg);
@@ -838,6 +851,15 @@ async function paperDone() {
     const { error } = await sb.rpc('doc_paper_done', { p_id: current.id });
     if (error) throw error;
     autoAppendDoc(current);
+    openDoc(current.id);
+  } catch (e) { msg('viewMsg', errText(e)); }
+}
+// 내 서명 넣기/빼기 (전자결재 전): 결재선의 내 칸에만
+async function signMine(on) {
+  try {
+    const { error } = await sb.rpc('doc_sign_mine', { p_id: current.id, p_on: on });
+    if (error) throw error;
+    msg('viewMsg', on ? '내 결재 칸에 서명을 넣었습니다. 인쇄하면 서명이 들어갑니다.' : '내 서명을 뺐습니다.', true);
     openDoc(current.id);
   } catch (e) { msg('viewMsg', errText(e)); }
 }
@@ -883,6 +905,11 @@ function bigName(t, size) {   // '사단법인 ○○' → '사단법인'은 작
            : `<span style="font-size:${size}pt">${esc(t)}</span>`;
 }
 function dotDate(v) { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? `${m[1]}. ${+m[2]}. ${+m[3]}.` : ''; }
+// 서명한 결재자는 이름 대신 서명 이미지
+function coopSig(s, as) {
+  const img = s.method === '전자서명' && (s.status === '완료' || s.status === '전결') && as && as.sigs && as.sigs[(s.email || '').toLowerCase()];
+  return img ? `<img src="${esc(img)}" style="max-height:9mm;max-width:28mm;vertical-align:middle">` : '';
+}
 // 업무협조전 모양: 위쪽 상자(기관명 · 제목 · 결재칸 / 주소 · 연락처 / 결재라인) → 시행일 · 수신 · 제목 → 본문 → 단체장 + 직인생략
 function buildCoopHtml(d, f, steps, as, minH) {
   as = as || {}; const cfg = as.cfg || {};
@@ -894,7 +921,7 @@ function buildCoopHtml(d, f, steps, as, minH) {
   const lines = numberLines(parseLines(srcOf(f)));
   if (lines.length) lines[lines.length - 1] = Object.assign({}, lines[lines.length - 1], { text: lines[lines.length - 1].text + '  끝.' });
   const ap = (steps || []).filter((s) => s.role || s.name).slice().reverse();   // 위가 윗사람 (결재선 아래쪽부터)
-  const apRows = (ap.length ? ap : [{ role: '', name: '' }]).map((s) => `<tr><td style="border:1px solid #000;width:22mm;text-align:center;letter-spacing:${String(s.role || '').length === 2 ? '0.9em' : '0'};padding:3px 2px">${esc(s.role || '')}</td><td style="border:1px solid #000;width:30mm;text-align:center;padding:3px 2px">${esc(s.name || '')}</td></tr>`).join('');
+  const apRows = (ap.length ? ap : [{ role: '', name: '' }]).map((s) => `<tr><td style="border:1px solid #000;width:22mm;text-align:center;letter-spacing:${String(s.role || '').length === 2 ? '0.9em' : '0'};padding:3px 2px">${esc(s.role || '')}</td><td style="border:1px solid #000;width:30mm;text-align:center;padding:3px 2px">${coopSig(s, as) || esc(s.name || '')}</td></tr>`).join('');
   const addr = [cfg['우편번호'] && ('(' + cfg['우편번호'] + ')'), cfg['주소'] || as.address].filter(Boolean).join(' ');   // 공문 설정이 비면 기관 정보 주소
   const tel = [(cfg['전화'] || as.phone) && ('전화 ' + (cfg['전화'] || as.phone)), cfg['전송'] && ('팩스 ' + cfg['전송']), cfg['영상전화'] && ('영상전화 ' + cfg['영상전화']), cfg['이메일']].filter(Boolean).join(' / ');
   const wd = (v) => { const m = String(v || '').match(/^(\d{4})-(\d{2})-(\d{2})/); if (!m) return ''; const w = '일월화수목금토'[new Date(+m[1], +m[2] - 1, +m[3]).getDay()]; return `${m[1]}. ${+m[2]}. ${+m[3]}. (${w})`; };
@@ -1016,7 +1043,7 @@ async function savePdfDrive() {
     }
     const b64 = pdf.output('datauristring').split('base64,').pop();
     const d = current;
-    const r = await gd({ action: 'savePdf', filename: (d.number || '번호없음') + ' ' + (d.title || ''), year: d.year, pdf: b64 });
+    const r = await gd({ action: 'savePdf', filename: (d.number || '번호없음') + ' ' + (d.title || ''), year: d.year, dept: d.dept || '', pdf: b64 });
     if (!r.ok) throw new Error(r.msg || '저장하지 못했습니다.');
     $('viewMsg').innerHTML = '<span class="ok">드라이브에 저장했습니다. </span><a href="' + esc(r.url) + '" target="_blank" rel="noopener">열기</a>';
   } catch (e) { msg('viewMsg', errText(e)); }
@@ -1104,7 +1131,7 @@ async function saveLedgerSheet() {
   msg('ledgerMsg', '시트로 저장하는 중입니다...', true);
   const kind = $('lKind').value === '공문' ? '문서 발송' : $('lKind').value, year = $('lYear').value;
   const grid = [['번호', '종류', '시행일자', '수신', '제목', '기안자', '상태'], ...rows.map((d) => [d.number, d.kind, d.form?.date || '', d.recipient, d.title, d.drafter_name, d.status])];
-  const r = await gd({ action: 'saveSheet', kind: '공문 대장', title: `${kind}_${year}_대장`, sheets: [{ name: kind, rows: grid, widths: [22, 10, 12, 24, 40, 12, 8] }] });
+  const r = await gd({ action: 'saveSheet', kind: '공문 대장', dept: (me && me.dept) || '', title: `${kind}_${year}_대장`, sheets: [{ name: kind, rows: grid, widths: [22, 10, 12, 24, 40, 12, 8] }] });
   if (!r.ok) return msg('ledgerMsg', r.msg || '저장하지 못했습니다.');
   $('ledgerMsg').innerHTML = '<span class="ok">저장했습니다. </span><a href="' + esc(r.url) + '" target="_blank" rel="noopener">시트 열기</a>';
 }

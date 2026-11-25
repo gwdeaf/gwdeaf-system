@@ -364,6 +364,7 @@
   .detail-item .d-right{white-space:nowrap;text-align:right;}
   .settings-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(380px,1fr));gap:1rem;align-items:start;}
   .settings-grid .card{margin-bottom:0;}
+  #view-adm-settings .set-off{display:none!important;}
   .set-col{display:flex;flex-direction:column;gap:1rem;}
   .f2{display:grid;grid-template-columns:1fr 1fr;gap:0.2rem 0.8rem;margin-bottom:0.4rem;}   /* 기본 정보: 한 줄에 두 칸 */
   .f2 label{display:block;font-size:0.82rem;color:var(--text-muted);margin-bottom:2px;} .f2 > div{margin-bottom:0.5rem;}
@@ -371,6 +372,9 @@
   #policy-card .field-row{display:flex;flex-wrap:wrap;align-items:center;gap:6px 10px;} #policy-card .field-row label{width:110px;flex:none;}
   #policy-card .field-row .hint{flex-basis:100%;margin:0 0 0 120px !important;}
   .field-row{display:grid;grid-template-columns:130px 1fr;gap:0.6rem;align-items:center;margin-bottom:0.6rem;font-size:0.88rem;}
+  @media(min-width:641px){ .field-row{grid-template-columns:130px minmax(0,1fr) auto auto;} .field-row > .btn{margin-left:0 !important;} }
+  @media(max-width:640px){ .field-row > .btn{grid-column:1/-1;justify-self:start;} }
+  .field-row > *{min-width:0;}
   .notice-card{border:1px solid #c2d8f0;background:#eef4fb;border-left:4px solid var(--primary-light);border-radius:8px;padding:0.7rem 1rem;margin-bottom:0.7rem;}
   .notice-card.notice-important{background:#fff4f2;border-color:#f0b9b0;border-left-color:#c0392b;}
   .notice-card.notice-promo{background:#fff8ec;border-color:#f5d98a;border-left-color:#e0a000;}
@@ -2001,15 +2005,15 @@
 <div class="view view-wide" id="view-adm-settings">
   <div class="page-head">
     <div>
-      <h2>🏢 기관 설정</h2>
-      <div class="sub">코드를 고치지 않고 여기에서 바꿉니다. ([설정]·[결재설정] 시트에 저장됩니다)</div>
+      <h2 id="set-title">📍 출퇴근 · 근무지</h2>
+      <div class="sub" id="set-sub">근무 기준(연차·근무시간·휴일)과 출퇴근 근무지를 정합니다. 결재라인은 왼쪽 메뉴 <b>기관 설정 → 결재라인</b>에서 정합니다.</div>
     </div>
   </div>
   <div id="admin-alert"></div>
   <div class="settings-grid">
-    <div class="set-col" id="set-left">
+    <div class="set-col set-place" id="set-left">
     <div class="card">
-      <div class="card-title">기본 정보</div>
+      <div class="card-title">근무 기준</div>
       <div class="f2">
         <div><label for="cfg-org-name">기관명</label><input type="text" id="cfg-org-name" placeholder="예) ○○시지회"></div>
         <div><label for="cfg-annual">연차 기본일수</label><input type="number" id="cfg-annual" min="0" step="1"></div>
@@ -2019,23 +2023,15 @@
       <div class="field-row"><label>추가 휴일</label><input type="text" id="cfg-extra-holidays" placeholder="예: 2026-12-31, 2027-01-02 (임시공휴일·지회 휴일)"></div>
       <div class="hint" style="margin:-0.2rem 0 0.6rem;">관공서 공휴일·대체공휴일·선거일은 저절로 빠져요(2026·2027년). 임시공휴일이나 지회 자체 휴일만 쉼표로 넣으세요.</div>
       <div class="hint" style="margin-bottom:0.8rem;">시수 입력 시간대는 '시작-끝' 형식입니다. 예) 9-18 → 9시~18시 사이에서 선택</div>
-      <button class="btn btn-primary" onclick="saveAdminSettings()">💾 기본 정보 저장</button>
+      <button class="btn btn-primary" onclick="saveAdminSettings()">💾 근무 기준 저장</button>
       <hr style="border:none;border-top:1px solid var(--border);margin:1rem 0;">
       <div class="hint">🔐 로그인은 각자의 <b>구글 계정</b>으로 합니다. 지회 담당자(관리자)는 <b>도협회</b>가 지정합니다.</div>
     </div>
 
-    <div class="card">
-      <div class="card-title">직원 접속 링크</div>
-      <div class="hint" style="margin-bottom:0.8rem;">이 링크를 직원들에게 보내세요. 열면 구글 로그인 화면이 나옵니다. (직원의 구글 계정은 [직원 관리]에 등록되어 있어야 합니다)</div>
-      <button onclick="copyLink()" class="btn btn-outline" style="width:100%;justify-content:center;">🔗 직원 접속 링크 복사</button>
-      <div class="hint" id="cfg-link-url" style="word-break:break-all;margin-top:0.6rem;"></div>
-      <hr style="border:none;border-top:1px solid var(--border);margin:1rem 0;">
-      <div class="card-title">버전</div>
-      <div class="hint" id="cfg-version"></div>
-    </div>
+    <div class="hint" style="padding:0 0.4rem">버전: <span id="cfg-version"></span><span id="cfg-link-url" style="display:none"></span></div>
     </div>
 
-    <div class="card" id="policy-card" style="display:none;">
+    <div class="card set-place" id="policy-card" style="display:none;">
       <div class="card-title">🏛 도협회: 근태 공통 설정 (모든 지회 동일 적용)</div>
       <div class="hint" style="margin-bottom:0.8rem;">값을 입력하면 <b>모든 지회에 똑같이 적용</b>되고 지회 화면에서는 수정할 수 없습니다. <b>비워 두면</b> 지회가 각자 정한 값을 씁니다.</div>
       <div class="field-row"><label>허용 반경 (m)</label><input type="number" id="pol-radius" min="30" max="5000" step="10" style="max-width:150px;" placeholder="비움=지회별"></div>
@@ -2060,7 +2056,7 @@
       </div>
     </div>
 
-    <div class="card" style="grid-column:1/-1;">
+    <div class="card set-place" style="grid-column:1/-1;">
       <div class="card-title">📍 출퇴근 · 근무지 설정 (모바일 출퇴근 기록)</div>
       <div class="hint" style="margin-bottom:0.8rem;">
         직원이 모바일에서 출퇴근을 찍으면 <b>근무지에서 허용 반경 안</b>인지, <b>기준 시각</b>에 맞는지 확인하고 벗어나면 사유를 받습니다. 주소 변환(좌표→주소)과 주소 검색에는 <b>카카오 REST API 키</b>가 필요합니다. <span id="cfg-att-sharednote" style="display:none;color:var(--success);font-weight:700;">✅ 도협회가 등록한 공용 키를 사용 중이라 지회에서 키를 넣을 필요가 없습니다. 근무지 주소만 입력하세요.</span><span id="cfg-att-keyguide"><br>
@@ -2069,16 +2065,17 @@
         </span><br>③ 근무지 주소를 입력 → <b>주소로 좌표 찾기</b> (또는 근무지에서 <b>현재 위치로</b>) → 저장
       </div>
       <div class="field-row"><label>근무지 이름</label><input type="text" id="cfg-att-place" placeholder="예) 춘천지회 사무실"></div>
-      <div class="field-row"><label>근무지 주소</label><input type="text" id="cfg-att-addr" placeholder="도로명 주소"><button class="btn btn-outline btn-sm" onclick="attFindCoord()" style="margin-left:8px;white-space:nowrap;">🔎 주소로 좌표 찾기</button></div>
+      <div class="field-row"><label>근무지 주소</label><input type="text" id="cfg-att-addr" placeholder="도로명 주소"><button class="btn btn-outline btn-sm" onclick="attFindCoord()" style="margin-left:8px;white-space:nowrap;flex-shrink:0;">🔎 주소로 좌표 찾기</button></div>
       <div class="field-row"><label>위도 / 경도</label>
-        <input type="text" id="cfg-att-lat" placeholder="위도" style="max-width:150px;"> <input type="text" id="cfg-att-lng" placeholder="경도" style="max-width:150px;margin-left:6px;">
-        <button class="btn btn-outline btn-sm" onclick="attUseHere()" style="margin-left:8px;white-space:nowrap;">📍 현재 위치로</button></div>
+        <div style="display:flex;gap:6px;min-width:0"><input type="text" id="cfg-att-lat" placeholder="위도" style="max-width:170px;min-width:0"><input type="text" id="cfg-att-lng" placeholder="경도" style="max-width:170px;min-width:0"></div>
+        <button class="btn btn-outline btn-sm" onclick="attUseHere()" style="margin-left:8px;white-space:nowrap;flex-shrink:0;">📍 현재 위치로</button></div>
+      <div id="cfg-att-map" style="display:none;margin:0 0 0.8rem;"></div>
       <div class="hint" id="cfg-att-locknote" style="display:none;margin-bottom:0.5rem;">🔒 회색으로 잠긴 항목은 도협회 공통 설정이라 지회에서 바꿀 수 없습니다.</div>
-      <div class="field-row"><label>사무실 인터넷 주소</label><input type="text" id="cfg-att-ips" placeholder="예) 14.54.94.66 (여러 개는 쉼표로)" style="max-width:320px;">
-        <button class="btn btn-outline btn-sm" onclick="attAddMyIp()" style="margin-left:8px;white-space:nowrap;">🖥️ 지금 이 PC 주소 넣기</button></div>
+      <div class="field-row"><label>사무실 인터넷 주소</label><input type="text" id="cfg-att-ips" placeholder="예) 14.54.94.66 (여러 개는 쉼표로)">
+        <button class="btn btn-outline btn-sm" onclick="attAddMyIp()" style="margin-left:8px;white-space:nowrap;flex-shrink:0;">🖥️ 지금 이 PC 주소 넣기</button></div>
       <div class="hint" style="margin:-0.2rem 0 0.6rem;">PC는 GPS가 없어 위치가 부정확합니다. 사무실 인터넷(공유기·와이파이)으로 접속해 출퇴근하면 위치와 상관없이 <b>근무지 안</b>으로 기록됩니다. 사무실 PC에서 [지금 이 PC 주소 넣기] → 저장하세요. 인터넷 회사가 주소를 바꾸면 다시 넣어야 합니다.</div>
       <div class="field-row"><label>허용 반경 (m)</label><input type="number" id="cfg-att-radius" min="30" max="5000" step="10" style="max-width:150px;"><span class="hint" style="margin-left:8px;">이 거리 안이면 사유 없이 기록 (기본 300m)</span></div>
-      <div class="field-row"><label>기본 출근 / 퇴근</label><input type="time" id="cfg-att-in" style="max-width:130px;"> <input type="time" id="cfg-att-out" style="max-width:130px;margin-left:6px;"><span class="hint" style="margin-left:8px;">직원별 기준은 [직원 관리]에서 따로 지정 (단축근무 등)</span></div>
+      <div class="field-row"><label>기본 출근 / 퇴근</label><div style="display:flex;gap:6px;min-width:0"><input type="time" id="cfg-att-in" style="max-width:130px;"><input type="time" id="cfg-att-out" style="max-width:130px;"></div><span class="hint" style="margin-left:8px;">직원별 기준은 [직원 관리]에서 따로 지정 (단축근무 등)</span></div>
       <div class="field-row" id="cfg-att-keyrow"><label>카카오 REST API 키</label><input type="password" id="cfg-att-key" placeholder="저장하면 다시 보이지 않습니다" autocomplete="off"><span id="cfg-att-keystate" style="font-size:0.8rem;margin-left:8px;white-space:nowrap;"></span></div>
       <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.6rem;">
         <button class="btn btn-primary" onclick="saveAttendSettings()">💾 출퇴근 설정 저장</button>
@@ -2087,8 +2084,9 @@
       <div id="cfg-att-msg" style="font-size:0.82rem;min-height:1.2em;margin-top:0.4rem;"></div>
     </div>
 
-    <div class="card" style="grid-column:1/-1;">
+    <div class="card set-noti" style="grid-column:1/-1;">
       <div class="card-title">🔔 슬랙 알림 (후임이 신청하면 선임에게 DM)</div>
+      <div class="hint" id="cfg-slack-hq" style="margin-bottom:0.6rem;padding:8px 10px;background:#eef6ff;border-radius:8px;">🏛 <b>도협회에서 봇 토큰을 한 번 저장하면 모든 지회에 같이 적용됩니다.</b> 지회는 따로 넣지 않아도 됩니다. (지회가 직접 넣으면 그 지회 토큰을 씁니다)</div>
       <div class="hint" style="margin-bottom:0.8rem;">
         휴가 · 시간외(사전신청·보고서) · 대체휴무 · 시수 · 대체시수를 후임이 신청/보고하면, 그 직원의 <b>담당 선임</b> 슬랙 DM으로 알려 줍니다.<br>
         ① api.slack.com/apps → <b>Create New App → From scratch</b> (우리 슬랙 워크스페이스 선택)<br>
@@ -2108,7 +2106,7 @@
       <div id="cfg-slack-last" style="font-size:0.82rem;margin-top:0.4rem;padding:8px 10px;background:var(--bg,#f5f7fb);border-radius:8px;"></div>
     </div>
 
-    <div class="card" style="grid-column:1/-1;">
+    <div class="card" style="grid-column:1/-1;display:none;" id="att-approval-card">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:0.8rem;">
         <div class="card-title" style="margin:0;border:none;padding:0;">📋 결재라인 (전체 신청서 공통)</div>
         <button onclick="adminAddApprovalRow()" class="btn btn-outline btn-sm">+ 추가</button>
@@ -2514,10 +2512,20 @@ function switchTabSenior(tab) {
 }
 
 // ===== 관리자 메뉴 =====
+// 기관 설정 화면: 출퇴근·근무지 / 알림 나눠 보기
+function setMode(m) {
+  document.querySelectorAll('#view-adm-settings .set-place').forEach(function(el){ el.classList.toggle('set-off', m !== 'place'); });
+  document.querySelectorAll('#view-adm-settings .set-noti').forEach(function(el){ el.classList.toggle('set-off', m !== 'noti'); });
+  var t = document.getElementById('set-title'), sb = document.getElementById('set-sub');
+  if (t) t.textContent = m === 'noti' ? '🔔 알림' : '📍 출퇴근 · 근무지';
+  if (sb) sb.innerHTML = m === 'noti' ? '후임이 신청하면 담당 선임에게 슬랙으로 알려 줍니다. 직원별 슬랙 ID는 <b>직원·권한 관리</b>에서 넣습니다.' : '근무 기준(연차·근무시간·휴일)과 출퇴근 근무지를 정합니다. 결재라인은 왼쪽 메뉴 <b>기관 설정 → 결재라인</b>에서 정합니다.';
+}
 function switchAdminTab(tab) {
   if (!leaveIsAdmin) { showLeaveLoginView(); return; }
   clearAllViews();
+  var noti = tab === 'notify'; if (noti) tab = 'settings';   // 알림은 기관 설정 화면의 알림 칸만
   var el = document.getElementById(tab==='approval' ? 'view-leavemgr' : 'view-adm-'+tab);
+  if (tab === 'settings') setMode(noti ? 'noti' : 'place');
   if (el) el.classList.add('active');
   document.querySelectorAll('#tabs-admin .tab').forEach(function(t){
     t.classList.toggle('active', t.getAttribute('data-adm')===tab);
@@ -3818,7 +3826,7 @@ function slackMsg(t, kind) {
 function loadSlackSettings() {
   gasRun('getSlackConfig', null, function(c) {
     var st = document.getElementById('cfg-slack-state');
-    if (st && c && c.ok) { st.textContent = c.hasToken ? '✅ 연결됨' : '⚪ 미설정'; st.style.color = c.hasToken ? 'var(--success)' : 'var(--text-muted)'; }
+    if (st && c && c.ok) { st.textContent = c.ownToken ? '✅ 연결됨 (우리 기관 토큰)' : c.hasToken ? '✅ 도협회 토큰 사용 중' : '⚪ 미설정'; st.style.color = c.hasToken ? 'var(--success)' : 'var(--text-muted)'; }
     var lt = document.getElementById('cfg-slack-last'), L = c && c.last;
     if (lt) lt.innerHTML = L ? '<b>최근 선임 알림</b> ' + esc(L.at || '') + ' · ' + esc(L.from || '') + (L.to ? ' → ' + esc(L.to) : '') + ' · ' + esc(L.title || '') + '<br>'
       + (L.ok ? '<span style="color:var(--success)">✅ 보냄</span>' : '<span style="color:var(--danger)">❌ 못 보냄: ' + esc(L.why || '') + '</span>') : '<b>최근 선임 알림</b> 아직 없음';
@@ -6528,7 +6536,7 @@ function downloadTripLedger() {
 }
 function saveTripLedgerGSheet() {
   var sh = tripLedgerSheets(); if (!sh) return;
-  gsheetSave('출장대장', (window._orgName || '') + ' 출장 대장 ' + _tripLabel(), sh);
+  gsheetSave('출장대장', (window._orgName || '') + ' 출장 대장 ' + _tripLabel(), sh, (document.getElementById('adm-trip-dept') || {}).value || '');
 }
 
 // ===== 구글 시트로 저장 (지회 구글 드라이브) =====
@@ -6552,16 +6560,18 @@ function gsheetCall(body, cb) {
   }).catch(function(e) { cb({ ok: false, msg: (e && e.message) || '오류' }); });
 }
 // 자동 쌓기: 신청이 접수되면 우리 지회 연도별 시트에 한 줄 추가 (실패해도 신청에는 영향 없음)
-function autoAppend(kind, year, header, row) {
+function autoAppend(kind, year, header, row, dept) {   // dept: 부서별 저장 위치가 있으면 그 부서 드라이브·시트에
   try {
-    gsheetCall({ action: 'append', kind: kind, year: year, title: (window._orgName ? window._orgName + ' ' : '') + kind + ' ' + year, header: header, rows: [row], sheetName: kind }, function(r) {
+    gsheetCall({ action: 'append', kind: kind, year: year, dept: dept || '', title: (window._orgName ? window._orgName + ' ' : '') + kind + ' ' + year, header: header, rows: [row], sheetName: kind }, function(r) {
       if (r && r.ok === false && r.code !== 'not_connected') console.warn('자동 쌓기 실패:', r.msg);
     });
   } catch (e) {}
 }
 function nowSeoul() { return new Date().toLocaleString('sv-SE', { timeZone: 'Asia/Seoul' }); }
 // 지회 공용 구글 캘린더에 일정 등록·삭제 (캘린더가 연결되지 않았거나 실패해도 신청에는 영향 없음)
+var CAL_AUTO = false;   // 휴가·출장 → 공용 구글 캘린더 자동 등록: 지금은 끔 (나중에 true 로 바꾸면 다시 켜짐)
 function calCall(body) {
+  if (!CAL_AUTO) return;
   try { gsheetCall(body, function(r) { if (r && r.ok === false && r.code !== 'not_connected') console.warn('캘린더 처리 실패:', r.msg); }); } catch (e) {}
 }
 function leaveCalKey(name, start, end) { return 'leave|' + name + '|' + start + '|' + end; }
@@ -6569,18 +6579,18 @@ function leaveAutoAppend(d) {
   calCall({ action: 'calAdd', key: leaveCalKey(d.name, d.start, d.end), title: '[휴가] ' + d.name, start: d.start, end: d.end });
   autoAppend('연차현황', Number(String(d.start).slice(0, 4)) || new Date().getFullYear(),
     ['기록일시', '성명', '부서', '직위', '휴가종류', '시작일', '종료일', '일수', '업무대행', '상태'],
-    [nowSeoul(), d.name, d.dept, d.position, d.type, d.start, d.end, Number(d.days) || d.days, d.delegate || '', d.status || '']);
+    [nowSeoul(), d.name, d.dept, d.position, d.type, d.start, d.end, Number(d.days) || d.days, d.delegate || '', d.status || ''], d.dept);
 }
 function tripAutoAppend(it) {
   calCall({ action: 'calAdd', key: 'trip|' + it.docNo, title: '[출장] ' + it.name + (it.to ? ' · ' + it.to : ''), place: it.to || '', start: it.start, end: it.end,
     description: '목적: ' + (it.purpose || '') + ((it.passengers || []).length ? '\n동행: ' + it.passengers.join(', ') : '') });
   autoAppend('출장대장', Number(String(it.start).slice(0, 4)) || new Date().getFullYear(),
     ['기록일시', '문서번호', '출장인', '부서', '직위', '연락처', '동행자', '출장목적', '시작일', '종료일', '일수', '출장지', '교통편', '업무대행자', '지급출처', '비고'],
-    [nowSeoul(), it.docNo, it.name, it.dept, it.position, it.contact, (it.passengers || []).join(', '), it.purpose, it.start, it.end, it.days, it.to, it.transport, it.deputy, it.payment, it.note]);
+    [nowSeoul(), it.docNo, it.name, it.dept, it.position, it.contact, (it.passengers || []).join(', '), it.purpose, it.start, it.end, it.days, it.to, it.transport, it.deputy, it.payment, it.note], it.dept);
 }
-function gsheetSave(kind, title, sheets) {
+function gsheetSave(kind, title, sheets, dept) {
   gsheetNote('📊 구글 시트로 저장하는 중... (잠시만 기다려 주세요)');
-  gsheetCall({ action: 'saveSheet', kind: kind, title: title, sheets: sheets }, function(r) {
+  gsheetCall({ action: 'saveSheet', kind: kind, title: title, sheets: sheets, dept: dept || '' }, function(r) {
     if (r && r.ok) gsheetNote('✅ 구글 드라이브에 저장했습니다. <a href="' + r.url + '" target="_blank" rel="noopener" style="color:#fff;font-weight:700;text-decoration:underline">시트 열기 ↗</a>');
     else if (r && r.code === 'not_connected') gsheetNote('📂 우리 지회 구글 드라이브가 아직 연결되지 않았습니다. 지금은 엑셀로 받아 주세요. (연결: 홈 → 시스템 관리 → 드라이브 연결)', true);
     else gsheetNote((r && r.msg) || '저장하지 못했습니다.', true);
@@ -7736,6 +7746,7 @@ function loadAttendSettings() {
     if (!c || !c.ok) return;
     var set = function(id, v) { var el = document.getElementById(id); if (el) el.value = v == null ? '' : v; };
     set('cfg-att-ips', c.officeIps); set('cfg-att-place', c.placeName); set('cfg-att-addr', c.address); set('cfg-att-lat', c.lat); set('cfg-att-lng', c.lng); set('cfg-att-radius', c.radius); set('cfg-att-in', c.stdIn); set('cfg-att-out', c.stdOut);
+    attShowMap();
     var st = document.getElementById('cfg-att-keystate'); if (st) { st.textContent = c.hasKey ? '✅ 저장됨' : '⚪ 미설정'; st.style.color = c.hasKey ? 'var(--success)' : 'var(--text-muted)'; }
     var shared = c.keySource === 'shared';   // 공용 키가 있으면 지회는 키 입력 칸·발급 안내를 숨김
     [['cfg-att-keyrow', !shared], ['cfg-att-keyguide', !shared], ['cfg-att-keydel', !shared]].forEach(function(x) { var el = document.getElementById(x[0]); if (el) el.style.display = x[1] ? '' : 'none'; });
@@ -7753,7 +7764,7 @@ function attFindCoord() {
     if (res && res.ok) {
       document.getElementById('cfg-att-lat').value = res.lat; document.getElementById('cfg-att-lng').value = res.lng;
       if (res.addr) document.getElementById('cfg-att-addr').value = res.addr;
-      attMsg('✅ 좌표를 찾았습니다. 아래 [출퇴근 설정 저장]을 눌러 주세요.', 'ok');
+      attMsg('✅ 좌표를 찾았습니다. 아래 지도에서 위치를 확인하고 [출퇴근 설정 저장]을 눌러 주세요.', 'ok'); attShowMap();
     } else attMsg((res && res.msg) || '찾지 못했습니다.', 'warn');
   }, function(m) { attMsg('오류: ' + m, 'warn'); });
 }
@@ -7767,12 +7778,23 @@ function attAddMyIp() {
     attMsg('✅ ' + ip + ' 을(를) 넣었습니다. 사무실 인터넷에 연결된 상태인지 확인하고 [출퇴근 설정 저장]을 눌러 주세요.', 'ok');
   }, function(m) { attMsg('오류: ' + m, 'warn'); });
 }
+// 위도·경도 아래에 지도 (오픈스트리트맵 · 키 필요 없음). 빨간 표시가 근무지
+function attShowMap() {
+  var box = document.getElementById('cfg-att-map'); if (!box) return;
+  var la = Number(document.getElementById('cfg-att-lat').value), ln = Number(document.getElementById('cfg-att-lng').value);
+  if (!la || !ln || Math.abs(la) > 90 || Math.abs(ln) > 180) { box.style.display = 'none'; box.innerHTML = ''; return; }
+  var d = 0.004, bb = [ln - d, la - d * 0.75, ln + d, la + d * 0.75].map(function(v){ return v.toFixed(6); }).join(',');
+  var nm = encodeURIComponent(document.getElementById('cfg-att-place').value || '근무지');
+  box.innerHTML = '<iframe title="근무지 지도" src="https://www.openstreetmap.org/export/embed.html?bbox=' + bb + '&layer=mapnik&marker=' + la + ',' + ln + '" style="width:100%;height:260px;border:1px solid var(--border);border-radius:8px" loading="lazy"></iframe>'
+    + '<div class="hint" style="margin-top:4px">표시된 곳이 근무지 좌표입니다. 다르면 주소를 고쳐 다시 찾거나, 근무지에서 [현재 위치로]를 누르세요. <a href="https://map.kakao.com/link/map/' + nm + ',' + la + ',' + ln + '" target="_blank" rel="noopener">카카오맵으로 크게 보기</a></div>';
+  box.style.display = '';
+}
 function attUseHere() {
   if (!navigator.geolocation) { attMsg('이 브라우저는 위치 기능을 지원하지 않습니다.', 'warn'); return; }
   attMsg('현재 위치를 확인하는 중...', 'info');
   navigator.geolocation.getCurrentPosition(function(pos) {
     document.getElementById('cfg-att-lat').value = pos.coords.latitude.toFixed(6); document.getElementById('cfg-att-lng').value = pos.coords.longitude.toFixed(6);
-    attMsg('✅ 현재 위치를 넣었습니다. (근무지에서 누르세요) 아래 [출퇴근 설정 저장]을 눌러 주세요.', 'ok');
+    attMsg('✅ 현재 위치를 넣었습니다. (근무지에서 누르세요) 아래 [출퇴근 설정 저장]을 눌러 주세요.', 'ok'); attShowMap();
   }, function() { attMsg('위치를 확인하지 못했습니다. 브라우저의 위치 권한을 허용해 주세요.', 'warn'); }, {enableHighAccuracy: true, timeout: 15000});
 }
 function saveAttendSettings() {

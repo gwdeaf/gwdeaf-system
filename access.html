@@ -256,8 +256,8 @@ function staffForm(s, mgr){
       <button class="btn" style="margin-top:10px" onclick="staffSave(${isNew?"null":s.id})">${isNew?"등록":"저장"}</button><button class="btn sub" style="margin-top:10px" onclick="editId=null;render()">취소</button></div>`;
 }
 /* ───── 근무조건 기록 (적용일별 주간 근무시간 · 직급·호봉 · 시급) ───── */
-let WT = {id:null, rows:[], grades:[]};
-const wtTxt = r => [r.weekly_hours ? "주 " + Number(r.weekly_hours) + "시간" : "주 40시간(기본)", r.monthly ? "월 기본급 " + Number(r.monthly).toLocaleString() + "원" : r.hourly ? "시급 직접 입력" : [r.grade, r.step!=null ? r.step + "호봉" : ""].filter(Boolean).join(" ")].filter(Boolean).join(" · ");
+let WT = {id:null, rows:[], grades:[], levels:[]};
+const wtTxt = r => [r.weekly_hours ? "주 " + Number(r.weekly_hours) + "시간" : "주 40시간(기본)", r.monthly ? "월 기본급 " + Number(r.monthly).toLocaleString() + "원" : r.hourly ? "시급 직접 입력" : [r.grade, r.level, r.step!=null ? r.step + "호봉" : ""].filter(Boolean).join(" ")].filter(Boolean).join(" · ");
 // 저장할 때 근태 직원목록에 넣을 '오늘' 값 (근무조건 기록이 없으면 예전 값 그대로)
 function wtNow(k, id){
   const cur = WT.id === id ? WT.rows.find(r=>r.current) : null;
@@ -271,19 +271,20 @@ function wtFields(pfx, r){
     <div>${'<label class="muted" style="font-size:12px;display:block">적용 시작일</label>'}<input id="${pfx}_start" type="date" value="${esc(r.start_on||"")}"></div>
     <div><label class="muted" style="font-size:12px;display:block">주간 근무시간 <b>(단축근무자만 · 비우면 40)</b></label><input id="${pfx}_week" inputmode="decimal" placeholder="40" value="${r.weekly_hours?Number(r.weekly_hours):""}"></div>
     <div><label class="muted" style="font-size:12px;display:block">직급 (호봉표)</label><input id="${pfx}_grade" list="wtGrades" value="${esc(r.grade||"")}" placeholder="예: 주임"></div>
-    <div><label class="muted" style="font-size:12px;display:block">호봉</label><input id="${pfx}_step" inputmode="numeric" value="${r.step!=null?r.step:""}" placeholder="예: 3"></div>
+    <div style="display:flex;gap:6px"><div style="flex:1"><label class="muted" style="font-size:12px;display:block">급수</label><input id="${pfx}_level" list="wtLevels" value="${esc(r.level||"")}" placeholder="예: 6급"></div>
+      <div style="flex:1"><label class="muted" style="font-size:12px;display:block">호봉</label><input id="${pfx}_step" inputmode="numeric" value="${r.step!=null?r.step:""}" placeholder="예: 3"></div></div>
     <div><label class="muted" style="font-size:12px;display:block">월 기본급 직접 입력 <b>(호봉표를 안 쓸 때)</b></label><input id="${pfx}_mon" inputmode="numeric" value="${r.monthly?Number(r.monthly).toLocaleString():""}" placeholder="예: 2,500,000" oninput="wtMon('${pfx}')">
       <div class="muted" id="${pfx}_monh" style="font-size:12px">${r.monthly?"→ 시급 "+Math.round(r.monthly/209).toLocaleString()+"원 (÷209시간)":"넣으면 시급이 저절로 계산됩니다 (÷209시간)"}</div></div>
     <div><label class="muted" style="font-size:12px;display:block">시급 직접 입력 <b>(시간제 등 시급제만)</b></label><input id="${pfx}_hour" inputmode="numeric" value="${r.hourly&&!r.monthly?r.hourly:""}" placeholder="비우면 호봉표·기본급으로 계산"></div>
     <div class="full"><label class="muted" style="font-size:12px;display:block">메모</label><input id="${pfx}_note" value="${esc(r.note||"")}" placeholder="예: 육아기 단축근무, 정기 승급"></div></div>
-    <div class="muted" style="font-size:12px">시급은 <b>시급 직접 입력 → 월 기본급 → 호봉표(직급·호봉)</b> 순서로 정해집니다. 하나만 넣으세요.</div>`;
+    <div class="muted" style="font-size:12px">시급은 <b>시급 직접 입력 → 월 기본급 → 호봉표(직급·급수·호봉)</b> 순서로 정해집니다. 하나만 넣으세요.</div>`;
 }
 const wtVal = pfx => { const n = x => { const v = String(val(pfx+"_"+x)).replace(/[^0-9.]/g,""); return v === "" ? null : Number(v); };
-  return {p_start: val(pfx+"_start") || null, p_weekly: n("week"), p_grade: val(pfx+"_grade"), p_step: n("step"), p_hourly: n("hour"), p_monthly: n("mon"), p_note: val(pfx+"_note")}; };
+  return {p_start: val(pfx+"_start") || null, p_weekly: n("week"), p_grade: val(pfx+"_grade"), p_level: val(pfx+"_level"), p_step: n("step"), p_hourly: n("hour"), p_monthly: n("mon"), p_note: val(pfx+"_note")}; };
 function wtMon(pfx){ const n = Number(String(val(pfx+"_mon")).replace(/[^0-9]/g,"")); $("#"+pfx+"_monh").textContent = n ? "→ 시급 " + Math.round(n/209).toLocaleString() + "원 (÷209시간)" : "넣으면 시급이 저절로 계산됩니다 (÷209시간)"; }
 function wtNewHTML(s){
-  return `<div class="muted" style="font-size:12px">시간외 수당 계산에 쓰입니다. 호봉표가 있으면 <b>직급·호봉</b>만, 없으면 <b>월 기본급</b>(시급이 저절로 계산됨)이나 <b>시급</b>을 넣으세요. 나중에 단축근무·승급이 생기면 수정 화면에서 <b>변경 추가</b>로 적용일과 함께 넣습니다.</div>
-    <datalist id="wtGrades"></datalist>${wtFields("wn", {start_on: s.hire_date || new Date().toISOString().slice(0,10)})}`;
+  return `<div class="muted" style="font-size:12px">시간외 수당 계산에 쓰입니다. 호봉표가 있으면 <b>직급·급수·호봉</b>만, 없으면 <b>월 기본급</b>(시급이 저절로 계산됨)이나 <b>시급</b>을 넣으세요. 나중에 단축근무·승급이 생기면 수정 화면에서 <b>변경 추가</b>로 적용일과 함께 넣습니다.</div>
+    <datalist id="wtGrades"></datalist><datalist id="wtLevels"></datalist>${wtFields("wn", {start_on: s.hire_date || new Date().toISOString().slice(0,10)})}`;
 }
 async function wtNewSave(id){
   const v = wtVal("wn"); if(!v.p_start) v.p_start = val("e_hire") || new Date().toISOString().slice(0,10);
@@ -292,7 +293,7 @@ async function wtNewSave(id){
 }
 async function wtLoad(id){
   const box = $("#wtBox"); if(!box) return;
-  try{ const d = await rpc("work_terms_get", PC({p_staff:id})); WT = {id, rows:d.rows||[], grades:d.grades||[]}; }
+  try{ const d = await rpc("work_terms_get", PC({p_staff:id})); WT = {id, rows:d.rows||[], grades:d.grades||[], levels:d.levels||[]}; }
   catch(e){ box.innerHTML = `<div class="muted">${esc(e.message)}</div>`; return; }
   wtDraw();
 }
@@ -300,7 +301,7 @@ function wtDraw(edit){
   const box = $("#wtBox"); if(!box) return;
   const s = staff.find(x=>x.id===WT.id), a = s ? attOf(s) : null, won = n => Number(n||0).toLocaleString() + "원";
   const today = new Date().toISOString().slice(0,10);
-  box.innerHTML = `<datalist id="wtGrades">${WT.grades.map(g=>`<option value="${esc(g)}">`).join("")}</datalist>
+  box.innerHTML = `<datalist id="wtGrades">${WT.grades.map(g=>`<option value="${esc(g)}">`).join("")}</datalist><datalist id="wtLevels">${WT.levels.map(g=>`<option value="${esc(g)}">`).join("")}</datalist>
     <div class="muted" style="font-size:12px;margin-bottom:6px">단축근무·호봉 승급·시급이 바뀌면 <b>변경 추가</b>로 <b>적용 시작일</b>과 함께 넣으세요. 미리 넣어 둬도 되고, 시간외 수당은 <b>그 근무일</b>에 맞는 값으로 계산됩니다.</div>
     ${WT.rows.length ? `<div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:13px"><tr style="background:#f1f5f9"><th style="padding:6px;text-align:left">적용 시작일</th><th style="padding:6px;text-align:left">근무조건</th><th style="padding:6px;text-align:right">시급</th><th style="padding:6px;text-align:left">메모</th><th></th></tr>
       ${WT.rows.map(r=>`<tr style="border-top:1px solid #e5e7eb;${r.current?"background:#eef6ff":""}"><td style="padding:6px;white-space:nowrap">${esc(r.start_on)} ${r.current?'<span class="badge">지금</span>':r.start_on>today?'<span class="badge o">예정</span>':""}</td>
@@ -328,39 +329,40 @@ function payView(){
   const won = n => Number(n||0).toLocaleString();
   const ys = [...new Set([...PAY.years, PAY.year, new Date().getFullYear(), new Date().getFullYear()+1])].sort((a,b)=>b-a);
   $("#body").innerHTML = chPicker() + `<div class="card"><h2>호봉표</h2>
-    <div class="muted" style="font-size:13px">연도별로 <b>직급 · 호봉 · 월 기본급</b>을 넣으면 시급이 저절로 계산됩니다 (월 기본급 ÷ 209시간). 직원에게는 <b>직원 수정 → 근무조건</b>에서 직급·호봉만 정해 주면 됩니다.<br>
+    <div class="muted" style="font-size:13px">연도별로 <b>직급 · 급수 · 호봉 · 월 기본급</b>을 넣으면 시급이 저절로 계산됩니다 (월 기본급 ÷ 209시간). 직원에게는 <b>직원 수정 → 근무조건</b>에서 직급·급수·호봉만 정해 주면 됩니다. 급수를 안 쓰면 비워 두세요.<br>
     해마다 임금이 오르면 <b>다른 해로 복사</b>로 인상률을 넣어 새 해 표를 만들고, 호봉이 오른 직원은 근무조건에 <b>변경 추가</b>(적용일 · 새 호봉)만 하면 됩니다.</div>
     <div class="row" style="margin:10px 0;align-items:center">
       <select id="payYear" style="width:auto" onchange="PAY.year=Number(this.value);payLoad().then(payView,e=>toast(e.message,true))">${ys.map(y=>`<option ${y===PAY.year?"selected":""}>${y}</option>`).join("")}</select><span class="muted">년 호봉표</span>
       <span style="flex:1"></span>
       ${PAY.rows.length ? `<input id="payTo" type="number" style="width:90px" value="${PAY.year+1}" title="받을 연도"><span class="muted">년으로</span><input id="payPct" type="number" step="0.1" style="width:80px" value="0" title="인상률 %"><span class="muted">% 올려</span><button class="btn sub" style="margin:0" onclick="payCopy()">다른 해로 복사</button>` : ""}
     </div>
-    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:14px" id="payTbl"><tr style="background:#f1f5f9"><th style="padding:6px;text-align:left">직급</th><th style="padding:6px;text-align:left;width:90px">호봉</th><th style="padding:6px;text-align:left">월 기본급 (원)</th><th style="padding:6px;text-align:right">시급</th><th style="width:40px"></th></tr>
-      ${(PAY.rows.length ? PAY.rows : [{grade:"",step:"",monthly:""}]).map(payRow).join("")}</table></div>
+    <div style="overflow-x:auto"><table style="width:100%;border-collapse:collapse;font-size:14px" id="payTbl"><tr style="background:#f1f5f9"><th style="padding:6px;text-align:left">직급</th><th style="padding:6px;text-align:left;width:90px">급수</th><th style="padding:6px;text-align:left;width:80px">호봉</th><th style="padding:6px;text-align:left">월 기본급 (원)</th><th style="padding:6px;text-align:right">시급</th><th style="width:40px"></th></tr>
+      ${(PAY.rows.length ? PAY.rows : [{grade:"",level:"",step:"",monthly:""}]).map(payRow).join("")}</table></div>
     <div class="row" style="margin-top:8px"><button class="btn sub" style="margin:0" onclick="payAdd()">＋ 줄 추가</button>
       <span style="flex:1"></span><button class="btn" style="margin:0" onclick="paySave()">${PAY.year}년 호봉표 저장</button></div>
-    <details style="margin-top:12px"><summary class="muted" style="cursor:pointer">엑셀에서 붙여넣기 (직급 · 호봉 · 월 기본급 세 칸)</summary>
-      <div class="muted" style="font-size:12px;margin:4px 0">엑셀에서 세 칸(직급, 호봉, 월 기본급)을 제목 줄 없이 복사해 붙여넣고 [표에 넣기]를 누르세요. 지금 표 아래에 추가됩니다.</div>
-      <textarea id="payPaste" rows="5" placeholder="주임	1	2400000"></textarea><button class="btn sub" style="margin:4px 0 0" onclick="payPaste()">표에 넣기</button></details></div>`;
+    <details style="margin-top:12px"><summary class="muted" style="cursor:pointer">엑셀에서 붙여넣기 (직급 · 급수 · 호봉 · 월 기본급)</summary>
+      <div class="muted" style="font-size:12px;margin:4px 0">엑셀에서 네 칸(직급, 급수, 호봉, 월 기본급)을 제목 줄 없이 복사해 붙여넣고 [표에 넣기]를 누르세요. 급수를 안 쓰면 세 칸(직급, 호봉, 월 기본급)도 됩니다. 지금 표 아래에 추가됩니다.</div>
+      <textarea id="payPaste" rows="5" placeholder="주임	6급	1	2400000"></textarea><button class="btn sub" style="margin:4px 0 0" onclick="payPaste()">표에 넣기</button></details></div>`;
 }
 function payRow(r){
-  return `<tr class="payr" style="border-top:1px solid #e5e7eb"><td style="padding:4px"><input class="pg" value="${esc(r.grade||"")}" placeholder="예: 주임"></td><td style="padding:4px"><input class="ps" inputmode="numeric" value="${r.step===""||r.step==null?"":r.step}" placeholder="1"></td>
+  return `<tr class="payr" style="border-top:1px solid #e5e7eb"><td style="padding:4px"><input class="pg" value="${esc(r.grade||"")}" placeholder="예: 주임"></td><td style="padding:4px"><input class="pl" value="${esc(r.level||"")}" placeholder="예: 6급"></td><td style="padding:4px"><input class="ps" inputmode="numeric" value="${r.step===""||r.step==null?"":r.step}" placeholder="1"></td>
     <td style="padding:4px"><input class="pm" inputmode="numeric" value="${r.monthly?Number(r.monthly).toLocaleString():""}" placeholder="2,400,000" oninput="payCalc(this)"></td><td style="padding:4px;text-align:right" class="ph">${r.monthly?Math.round(r.monthly/209).toLocaleString()+"원":""}</td>
     <td><button class="btn sub sm" style="margin:0" onclick="this.closest('tr').remove()" title="이 줄 빼기">✕</button></td></tr>`;
 }
 function payCalc(el){ const n = Number(String(el.value).replace(/[^0-9]/g,"")); el.closest("tr").querySelector(".ph").textContent = n ? Math.round(n/209).toLocaleString()+"원" : ""; }
-function payAdd(r){ $("#payTbl").insertAdjacentHTML("beforeend", payRow(r || {grade:"",step:"",monthly:""})); }
+function payAdd(r){ $("#payTbl").insertAdjacentHTML("beforeend", payRow(r || {grade:"",level:"",step:"",monthly:""})); }
 function payPaste(){
   const lines = String(val("payPaste")).split(/\r?\n/).map(l=>l.split("\t")).filter(c=>c.length>=3 && c.join("").trim());
-  if(!lines.length) return toast("붙여넣은 내용에서 세 칸(직급, 호봉, 월 기본급)을 찾지 못했습니다.", true);
-  lines.forEach(c=>payAdd({grade:c[0].trim(), step:c[1].trim(), monthly:Number(String(c[2]).replace(/[^0-9]/g,""))}));
+  if(!lines.length) return toast("붙여넣은 내용에서 직급·(급수)·호봉·월 기본급 칸을 찾지 못했습니다.", true);
+  lines.forEach(c=>payAdd(c.length >= 4 ? {grade:c[0].trim(), level:c[1].trim(), step:c[2].trim(), monthly:Number(String(c[3]).replace(/[^0-9]/g,""))}
+                                        : {grade:c[0].trim(), level:"", step:c[1].trim(), monthly:Number(String(c[2]).replace(/[^0-9]/g,""))}));
   $("#payPaste").value = ""; toast(lines.length + "줄을 넣었습니다. 확인 후 [저장]을 누르세요.");
 }
 async function paySave(){
-  const rows = [...document.querySelectorAll("#payTbl tr.payr")].map(tr=>({grade:tr.querySelector(".pg").value.trim(), step:tr.querySelector(".ps").value.trim(), monthly:tr.querySelector(".pm").value.replace(/[^0-9]/g,"")}))
-    .filter(r=>r.grade || r.step || r.monthly);
+  const rows = [...document.querySelectorAll("#payTbl tr.payr")].map(tr=>({grade:tr.querySelector(".pg").value.trim(), level:tr.querySelector(".pl").value.trim(), step:tr.querySelector(".ps").value.trim(), monthly:tr.querySelector(".pm").value.replace(/[^0-9]/g,"")}))
+    .filter(r=>r.grade || r.level || r.step || r.monthly);
   if(rows.some(r=>r.step==="" || !r.monthly)) return toast("호봉과 월 기본급은 모든 줄에 넣어 주세요.", true);
-  const seen = new Set(); for(const r of rows){ const k = r.grade+"|"+r.step; if(seen.has(k)) return toast(`${r.grade||"(직급 없음)"} ${r.step}호봉이 두 번 있습니다.`, true); seen.add(k); }
+  const seen = new Set(); for(const r of rows){ const k = r.grade+"|"+r.level+"|"+r.step; if(seen.has(k)) return toast(`${[r.grade||"(직급 없음)", r.level].filter(Boolean).join(" ")} ${r.step}호봉이 두 번 있습니다.`, true); seen.add(k); }
   try{ const n = await rpc("pay_scale_save", PC({p_year:PAY.year, p_rows:rows})); toast(`${PAY.year}년 호봉표 ${n}줄을 저장했습니다.`); await payLoad(); payView(); }catch(e){ toast(e.message, true); }
 }
 async function payCopy(){
@@ -598,7 +600,8 @@ function orgSealDel(kind){ if(confirm("직인을 삭제할까요?")) act("delete
 let mySign = "", sigStat = null, padDraw = false, padDirty = false;
 function signView(){
   $("#body").innerHTML = `<div class="card"><h2>✍️ 내 서명</h2>
-    <div style="background:#fff7e6;border:1px solid #fde3a7;border-radius:8px;padding:8px 10px;margin:6px 0;font-size:13px">📌 <b>지금은 쓰이는 곳이 없습니다.</b> 지금은 모든 문서를 출력해서 수기로 결재하고 있어서, 등록한 서명은 <b>앞으로 전자결재를 도입하면</b> 공문 결재란 등에 자동으로 찍힙니다. 미리 등록해 두면 그때 바로 쓸 수 있습니다.</div>
+    <div style="background:#fff7e6;border:1px solid #fde3a7;border-radius:8px;padding:8px 10px;margin:6px 0;font-size:13px">📌 <b>공문</b>: 결재선에 내 이름이 있는 문서를 열어 <b>✍️ 내 서명 넣기</b>를 누르면 인쇄할 때 내 결재 칸에 이 서명이 들어갑니다. (각자 자기 칸에만)<br>
+      📌 <b>앞으로 전자결재를 도입하면</b> 결재 버튼을 누를 때 이 서명이 자동으로 찍힙니다.</div>
     <div class="muted">같은 지회 직원만 꺼내 쓸 수 있고, 도협회·다른 지회는 볼 수 없습니다.</div>
     <div style="margin-top:10px"><b>등록된 서명</b>${mySign?`<div><img src="${esc(mySign)}" style="max-height:90px;max-width:240px;border:1px solid #ddd;margin-top:4px;background:#fff"></div>`:'<div class="muted">아직 등록하지 않았습니다.</div>'}</div>
     <div style="margin-top:10px"><input type="file" accept="image/png,image/jpeg,image/webp" id="sg_f" style="display:none" onchange="signUpload(this)">
@@ -642,6 +645,7 @@ async function gd(body){
   const t = await r.text(); try{ return JSON.parse(t); }catch(e){ return {ok:false, msg: r.status===404 ? "서버에 gdrive 함수가 아직 설치되지 않았습니다. (설정 안내서 참고)" : "응답을 읽을 수 없습니다."}; }
 }
 async function loadDrive(){ drv = await gd({action:"status"}); }
+const CAL_AUTO = false;   // 휴가·출장 → 공용 캘린더 자동 등록: 지금은 끔 (나중에 true)
 let DOPEN = null;   // 펼쳐 둔 지회 (다시 그려도 유지)
 function driveOpen(id){ DOPEN = DOPEN === id ? null : id; driveView(); setTimeout(()=>{ const el = document.getElementById("dc"+id); if(el && DOPEN === id) el.scrollIntoView({block:"start", behavior:"smooth"}); }, 30); }
 function driveView(){
@@ -661,8 +665,8 @@ function driveView(){
     : `<div class="card"><h2>📂 드라이브·캘린더 연결</h2><div class="muted" style="color:#c0392b">서버에 구글 서비스 계정이 아직 등록되지 않았습니다. 설정 안내서(구글드라이브_설정안내.md)의 1단계를 먼저 진행해 주세요.</div></div>`;
   // 한눈에 보기 (지회가 여러 개일 때)
   const table = chs.length > 1 ? `<div class="card"><h2>🗂 지회별 연결 현황</h2><div class="muted">지회 이름을 누르면 그 지회 설정이 펼쳐집니다.</div>
-    <div style="overflow-x:auto"><table class="dtab"><tr><th>지회</th>${MG?"<th>담당자</th><th>직원</th>":""}<th>드라이브</th><th>공용 캘린더</th><th>함께 볼 캘린더</th><th>통역 시트</th></tr>
-    ${chs.map(c=>`<tr class="${DOPEN===c.id?"on":""}" onclick="driveOpen(${c.id})"><td><b>${esc(c.name)}</b></td>${MG?(()=>{ const x=CH(c.id); return x&&x.is_hq?'<td class="muted">도협회</td><td>'+(x.staff_count||0)+'</td>':`<td>${x&&x.lead_name?esc(x.lead_name):'<span class="badge o">없음</span>'}</td><td>${x?x.staff_count||0:"-"}</td>`; })():""}<td>${c.connected?"✅":(c.status==="error"?"⚠️":"⚪")}</td><td>${c.calendar_id?"✅":"⚪"}</td>
+    <div style="overflow-x:auto"><table class="dtab"><tr><th>지회</th>${MG?"<th>담당자</th><th>직원</th>":""}<th>드라이브</th>${CAL_AUTO?"<th>공용 캘린더</th>":""}<th>함께 볼 캘린더</th><th>통역 시트</th></tr>
+    ${chs.map(c=>`<tr class="${DOPEN===c.id?"on":""}" onclick="driveOpen(${c.id})"><td><b>${esc(c.name)}</b></td>${MG?(()=>{ const x=CH(c.id); return x&&x.is_hq?'<td class="muted">도협회</td><td>'+(x.staff_count||0)+'</td>':`<td>${x&&x.lead_name?esc(x.lead_name):'<span class="badge o">없음</span>'}</td><td>${x?x.staff_count||0:"-"}</td>`; })():""}<td>${c.connected?"✅":(c.status==="error"?"⚠️":"⚪")}</td>${CAL_AUTO?`<td>${c.calendar_id?"✅":"⚪"}</td>`:""}
       <td>${(c.extras||[]).filter(x=>!x.global).length ? (c.extras||[]).filter(x=>!x.global).length+"개" : "-"}</td><td>${c.interp_sheet_id?"✅":"⚪"}</td></tr>`).join("")}</table></div></div>` : "";
   const sec = (n, title, on, desc, body, how) => `<div class="dsec"><div class="dsec-h"><span class="dnum">${n}</span><b>${title}</b>${on===null?"":(on?'<span class="badge">연결됨</span>':'<span class="badge o">미연결</span>')}</div>
     <div class="muted">${desc}</div>${body}${how?`<details class="dhow"><summary>설정 방법</summary><div>${how}</div></details>`:""}</div>`;
@@ -670,36 +674,36 @@ function driveView(){
     const open = DOPEN === c.id, mine = (c.extras||[]).filter(x=>!x.global), glob = (c.extras||[]).filter(x=>x.global);
     return `<div class="card dch ${open?"open":""}" id="dc${c.id}">
       <div class="dch-h" onclick="driveOpen(${c.id})"><span class="dname">${esc(c.name)}</span>
-        <span class="dpills">${ok(c.connected,"드라이브")}${ok(c.calendar_id,"공용 캘린더")}${ok(mine.length,"함께 볼 "+mine.length)}${ok(c.interp_sheet_id,"통역 시트")}</span>
+        <span class="dpills">${ok(c.connected,"드라이브")}${CAL_AUTO?ok(c.calendar_id,"공용 캘린더"):""}${ok(mine.length,"함께 볼 "+mine.length)}${ok(c.interp_sheet_id,"통역 시트")}</span>
         <span class="darw">${open?"접기 ▴":"펼치기 ▾"}</span></div>
       ${open?`<div class="dch-b">
       ${MG && CH(c.id) && !CH(c.id).is_hq ? sec("0","👤 지회 담당자", null,
         CH(c.id).lead_email?`현재 담당: <b>${esc(CH(c.id).lead_name)}</b> <span class="muted">${esc(CH(c.id).lead_email)}</span> · 직원 ${CH(c.id).staff_count||0}명`:"아직 담당자가 없습니다. 담당자는 그 지회의 직원·권한과 연결 설정을 관리합니다.",
         `<div class="drow"><input id="l_e${c.id}" placeholder="새 담당 이메일 (@gwdeaf.or.kr)"><input id="l_n${c.id}" placeholder="이름 (처음 등록할 때)" style="max-width:200px"><button class="btn" onclick="setLead(${c.id})">${CH(c.id).lead_email?"담당자 교체":"담당자 지정"}</button></div>`, "") : ""}
-      ${sec(1,"📁 기본 드라이브 폴더", !!c.base_ok,
-        c.connected?`<b>${esc(c.folder_name)}</b> · 하위 폴더 ${c.subfolders.length}개`:"출장대장·월별근태·연차현황·운행일지·교육실적 폴더가 자동으로 만들어집니다.",
-        `${c.status==="error"?`<div class="muted" style="color:#c0392b">⚠️ ${esc(c.status_msg)}</div>`:""}
-        ${c.connected?`<label class="dck"><input type="checkbox" ${c.auto_append?"checked":""} onchange="driveAuto(${c.id},this.checked)"> 자동 쌓기 <span class="muted">(출장·휴가·운행·공문·교육 기록을 시트에 자동 추가)</span></label>`:""}
-        <div class="drow"><input id="d_f${c.id}" placeholder="드라이브(또는 폴더) 주소 붙여넣기"><button class="btn" onclick="driveConnect(${c.id})">${c.connected?"다시 연결":"연결"}</button>${c.connected?`<button class="btn sub" onclick="driveOff(${c.id})">해제</button>`:""}</div>`,
-        `공유 드라이브의 <b>멤버 관리</b>에 서비스 계정(${sa})을 <b>콘텐츠 관리자</b>로 추가 → 드라이브 주소를 복사해 붙여넣기`)}
-      ${sec("1-2","🗄 부서·업무별 드라이브", null,
-        "업무마다 저장할 드라이브를 따로 정합니다. 드라이브는 그 부서 직원에게만 공유하세요. 정하지 않은 업무는 위 <b>기본 드라이브</b>에 저장됩니다.",
+      ${c.connected && c.folder_name ? `<div class="dsec"><div class="muted" style="font-size:13px">📁 예전에 연결한 기본 드라이브: <b>${esc(c.folder_name)}</b> — 아래에서 업무별 저장 위치를 정하지 않은 업무는 여기에 쌓입니다. 업무별 드라이브로 다 옮겼으면 <button class="btn sub sm" style="margin:0" onclick="driveOff(${c.id})">해제</button></div></div>` : ""}
+      ${sec(1,"🗄 부서·업무별 드라이브 (자동 쌓기)", (c.dests||[]).length ? true : null,
+        "부서·업무마다 저장할 공유 드라이브를 넣고, 업무별로 어디에 쌓을지 고릅니다. 출장·휴가·운행·공문·교육 기록이 그 드라이브의 연도별 시트에 <b>자동으로 쌓입니다</b>. 위치를 정하지 않은 업무는 처음 넣은 드라이브에 쌓입니다.<br>각 화면의 <b>시트로 저장</b>은 누를 때마다 <b>새 파일</b>을 따로 만들어서 자동 쌓기 시트와 섞이지 않습니다.",
         `${(c.dests||[]).map(x=>`<div class="dx"><span><b>${esc(x.name)}</b> <span class="muted">${esc(x.folder_name)}</span>${x.status!=="ok"?` <span class="badge o">${esc(x.status_msg||"오류")}</span>`:""}</span><button class="btn sub" onclick="destDel(${c.id},'${x.id}')">삭제</button></div>`).join("")||'<div class="muted" style="margin:6px 0">아직 넣은 드라이브가 없습니다.</div>'}
-        <div class="drow"><input id="d_dn${c.id}" placeholder="이름 (예: 교육부)" style="max-width:160px"><input id="d_du${c.id}" placeholder="드라이브(또는 폴더) 주소 붙여넣기"><button class="btn" onclick="destAdd(${c.id})">추가</button></div>
-        ${(c.dests||[]).length?`<div style="margin-top:10px"><b style="font-size:13px">업무별 저장 위치</b>${Object.keys(drv.groups||{}).map(gk=>`<div class="dx"><span>${esc(gk)} <span class="muted" style="font-size:12px">(${esc(drv.groups[gk].join("·"))})</span></span>
-          <select onchange="destRoute(${c.id},'${gk}',this.value)"><option value="">기본 드라이브</option>${(c.dests||[]).map(x=>`<option value="${x.id}" ${(c.routes||{})[gk]===x.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select></div>`).join("")}</div>`:""}`,
-        `① 부서·업무용 드라이브를 만들고 그 부서 직원만 멤버로 넣기 ② 멤버 관리에 서비스 계정(${sa})을 <b>콘텐츠 관리자</b>로 추가(직접 해야 함) ③ 이름과 주소를 넣고 추가 ④ 업무별 저장 위치에서 드라이브 고르기<br>저장 위치를 바꾸면 새 드라이브에 새 시트로 쌓기 시작합니다. 예전 파일은 그대로 남습니다.`)}
-      ${sec(2,"📅 공용 구글 캘린더 (휴가·출장 자동 등록)", !!c.calendar_id,
+        <div class="drow"><input id="d_dn${c.id}" placeholder="이름 (예: 센터, 법인)" style="max-width:160px"><input id="d_du${c.id}" placeholder="드라이브(또는 폴더) 주소 붙여넣기"><button class="btn" onclick="destAdd(${c.id})">추가</button></div>
+        ${(c.dests||[]).length || c.connected ? `<div style="margin-top:10px"><b style="font-size:13px">업무별 저장 위치 · 자동 쌓기</b>${Object.keys(drv.groups||{}).map(gk=>{
+          const R = c.routes||{}, opts = cur => `<option value="">${c.connected?"기본 드라이브":"처음 넣은 드라이브"}</option>${(c.dests||[]).map(x=>`<option value="${x.id}" ${cur===x.id?"selected":""}>${esc(x.name)}</option>`).join("")}`;
+          const byDept = (drv.dept_groups||[]).includes(gk) && (c.depts||[]).length > 1, nDept = (c.depts||[]).filter(dp=>R[gk+"|"+dp]).length;
+          return `<div class="dx" style="flex-wrap:wrap"><span><label style="display:inline-flex;align-items:center;gap:4px;margin-right:6px"><input type="checkbox" style="width:auto;margin:0" ${(c.auto||{})[gk]!==false?"checked":""} onchange="groupAuto(${c.id},'${gk}',this.checked)">자동 쌓기</label><b>${esc(gk)}</b> <span class="muted" style="font-size:12px">(${esc(drv.groups[gk].filter(k=>k!=="공문 작성").join("·"))})</span></span>
+            <select style="width:auto;min-width:160px;max-width:240px;margin:0" onchange="destRoute(${c.id},'${gk}',this.value)">${opts(R[gk])}</select>
+            ${byDept ? `<details style="flex-basis:100%;margin:4px 0 0 24px" ${nDept?"open":""}><summary class="muted" style="cursor:pointer;font-size:12px">부서별로 다르게 ${nDept?"("+nDept+"개 부서)":""}</summary>
+              ${(c.depts||[]).map(dp=>`<div class="dx" style="padding:3px 0;flex-wrap:nowrap"><span style="font-size:13px;white-space:nowrap">${esc(dp)}</span><select style="width:auto;min-width:160px;max-width:240px;margin:0" onchange="destRoute(${c.id},'${gk}',this.value,'${esc(dp)}')"><option value="">위와 같게</option>${(c.dests||[]).map(x=>`<option value="${x.id}" ${R[gk+"|"+dp]===x.id?"selected":""}>${esc(x.name)}</option>`).join("")}</select></div>`).join("")}</details>` : ""}</div>`; }).join("")}</div>` : ""}`,
+        `① 부서·업무용 공유 드라이브를 만들고 그 부서 직원만 멤버로 넣기 ② 멤버 관리에 서비스 계정(${sa})을 <b>콘텐츠 관리자</b>로 추가(직접 해야 함) ③ 이름과 주소를 넣고 추가 ④ 업무별 저장 위치(필요하면 부서별로)에서 드라이브 고르기<br>저장 위치를 바꾸면 새 드라이브에 새 시트로 쌓기 시작합니다. 예전 파일은 원래 드라이브에 그대로 남습니다.`)}
+      ${!CAL_AUTO ? "" : sec(2,"📅 공용 구글 캘린더 (휴가·출장 자동 등록)", !!c.calendar_id,
         c.calendar_id?`<b>${esc(c.calendar_name)}</b> · 휴가·출장 신청이 이 캘린더에 자동으로 들어가고 홈 화면에 보입니다.`:"휴가·출장 신청이 자동으로 들어가는 캘린더입니다. (지회당 1개)",
         `<div class="drow"><input id="d_c${c.id}" placeholder="캘린더 ID (예: abc123@group.calendar.google.com)"><button class="btn" onclick="calConnect(${c.id})">${c.calendar_id?"다시 연결":"연결"}</button>${c.calendar_id?`<button class="btn sub" onclick="calOff(${c.id})">해제</button>`:""}</div>`,
         `구글 캘린더 → 캘린더 <b>설정 및 공유</b> → 특정 사용자와 공유에 서비스 계정을 <b>일정 변경</b> 권한으로 추가 → 아래 <b>캘린더 통합 → 캘린더 ID</b> 복사<br>새로 만들 때: 왼쪽 "다른 캘린더 +" → 새 캘린더 만들기. 직원들은 <b>모든 일정 세부정보 보기</b>로 공유하세요.`)}
-      ${sec(3,"👀 함께 볼 캘린더 (보기만)", null,
+      ${sec(CAL_AUTO?3:2,"👀 함께 볼 캘린더 (보기만)", null,
         "홈 화면 일정에 함께 보여 줄 캘린더입니다. (예: 회의실, 교육 일정) <b>이 지회 홈 화면에만</b> 보입니다.",
         `${mine.map(x=>`<div class="dx"><label><input type="checkbox" ${x.hidden?"":"checked"} onchange="calShow(${x.id},${c.id},this.checked)"> ${esc(x.name)}</label>${x.can_edit?`<button class="btn sub" onclick="calExtraDel(${x.id})">삭제</button>`:""}</div>`).join("")||'<div class="muted" style="margin:6px 0">추가한 캘린더가 없습니다.</div>'}
         ${glob.length?`<div class="muted" style="margin-top:8px">🌐 도협회가 추가한 <b>전 지회 공용</b> 캘린더 (체크를 끄면 이 지회 홈에서만 숨김)</div>${glob.map(x=>`<div class="dx"><label><input type="checkbox" ${x.hidden?"":"checked"} onchange="calShow(${x.id},${c.id},this.checked)"> ${esc(x.name)} <span class="badge">전 지회 공용</span></label></div>`).join("")}`:""}
         <div class="drow"><input id="d_x${c.id}" placeholder="캘린더 ID"><input id="d_xn${c.id}" placeholder="표시 이름 (예: 회의실)" style="max-width:200px"><button class="btn" onclick="calExtraAdd(${c.id})">추가</button></div>`,
         `캘린더 공유에 서비스 계정을 <b>모든 일정 세부정보 보기</b>로 추가 → 캘린더 ID 복사`)}
-      ${sec(4,"🤟 통역일지 구글 시트", !!c.interp_sheet_id,
+      ${sec(CAL_AUTO?4:3,"🤟 통역일지 구글 시트", !!c.interp_sheet_id,
         c.interp_sheet_id?`<b>'${esc(c.interp_sheet_name)}'</b> 탭 · 통역일지를 저장하면 F열부터 빈 줄에 자동으로 한 줄 추가합니다.`:"통역일지를 저장할 때 기존 시트의 '통역' 탭에도 자동으로 적습니다. (미연결이어도 시스템에는 저장됨)",
         `<div class="drow"><input id="d_i${c.id}" placeholder="통역일지 구글 시트 주소 붙여넣기"><button class="btn" onclick="interpConnect(${c.id})">${c.interp_sheet_id?"다시 연결":"연결"}</button>${c.interp_sheet_id?`<button class="btn sub" onclick="interpOff(${c.id})">해제</button>`:""}</div>`,
         `그 시트의 <b>공유</b>에 서비스 계정을 <b>편집자</b>로 추가 → 시트 주소 복사`)}
@@ -736,7 +740,8 @@ async function destAdd(id){
   toast(r.ok?"추가했습니다.":r.msg, !r.ok); if(r.ok){ await loadDrive(); driveView(); } }
 async function destDel(id, did){ if(!confirm("이 드라이브를 목록에서 뺄까요? (드라이브 속 파일은 지워지지 않습니다)")) return;
   const r = await gd({action:"destDel", chapterId:id, id:did}); toast(r.ok?"뺐습니다.":r.msg, !r.ok); await loadDrive(); driveView(); }
-async function destRoute(id, gk, did){ const r = await gd({action:"destRoute", chapterId:id, group:gk, id:did}); toast(r.ok?gk+" 저장 위치를 바꿨습니다.":r.msg, !r.ok); await loadDrive(); driveView(); }
+async function destRoute(id, gk, did, dept){ const r = await gd({action:"destRoute", chapterId:id, group:gk, id:did, dept:dept||""}); toast(r.ok?gk+(dept?" · "+dept:"")+" 저장 위치를 바꿨습니다.":r.msg, !r.ok); await loadDrive(); driveView(); }
+async function groupAuto(id, gk, on){ const r = await gd({action:"groupAuto", chapterId:id, group:gk, on}); toast(r.ok?gk+" 자동 쌓기를 "+(on?"켰습니다.":"껐습니다."):r.msg, !r.ok); await loadDrive(); driveView(); }
 async function driveAuto(id,on){ const r = await gd({action:"setAuto", chapterId:id, on}); toast(r.ok?(on?"자동 쌓기를 켰습니다.":"자동 쌓기를 껐습니다."):r.msg, !r.ok); await loadDrive(); driveView(); }
 async function interpConnect(id){
   const f = val("d_i"+id); if(!f) return toast("구글 시트 주소를 붙여 넣어 주세요.", true);

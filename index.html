@@ -674,7 +674,7 @@ function renderNav(){
   if (ME.can_manage || isAttAdmin()) {   // 🏢 기관 설정: 기관 정보·부서·결재라인·출퇴근 설정 등을 한곳에
     h += grpHtml('🏢', '기관 설정');
     if (ME.can_manage) h += kidHtml('org', false, 'org', '기본 정보') + kidHtml('org', false, 'depts', '부서') + kidHtml('org', false, 'lines', '결재라인');
-    if (isAttAdmin()) h += kidHtml('att', true, 'settings', '출퇴근·근무지·알림');
+    if (isAttAdmin()) h += kidHtml('att', true, 'settings', '출퇴근·근무지') + kidHtml('att', true, 'notify', '알림');
     if (ME.role === 'lead') h += kidHtml('org', false, 'drive', '드라이브·캘린더 연결');
     if (ME.role === 'admin') h += kidHtml('org', false, 'chapters', '지회 관리');
     if (ME.role === 'admin' || ME.role === 'lead') h += kidHtml('org', false, 'reset', '자료 초기화');
@@ -685,7 +685,6 @@ function renderNav(){
   }
   if (isVehAdmin()) h += topHtml('car:a:', '🔧', '차량 관리', "go('car','',true)");
   if (ME.can_manage) h += topHtml('access:s:', '🔑', '직원·권한 관리', "go('access')");
-  if ((PV ? PV.real.ME : ME).role === 'admin' && !PV) h += topHtml('pv:s:', '👀', '지회 화면 미리보기', 'pvOpen()');
   $('nav').innerHTML = h;
   foldNav();
   if (PREFS !== undefined && $('quick')) loadQuick();

@@ -414,4 +414,100 @@
     else cur = KIND[kind] && list.some(function (s) { return s.id === KIND[kind]; }) ? KIND[kind] : 'start';
     drawList(''); show(cur);
   };
+
+  /* ── 🔎 무엇이든 물어보기 (사용 안내에서 찾아 주는 도우미 · AI 아님, 무료) ── */
+  var STOP = /^(어떻게|어떡해|어떻게해|하나요|해요|해야|하면|하려면|방법|뭐|무엇|어디|어디서|어디에|언제|누가|좀|수|있나요|있어요|되나요|돼요|안|싶어요|알려줘|알려주세요|궁금해요|무엇이든|하는|할|합니다|해주세요)$/;
+  var SYN = { '휴가': ['연차', '휴가'], '연가': ['연차'], '야근': ['시간외'], '초과근무': ['시간외'], '잔업': ['시간외'], '슬랙': ['슬랙', 'Slack'], 'slack': ['슬랙', 'Slack'],
+    '알림': ['알림', 'Slack'], '출근': ['출근', '출퇴근'], '퇴근': ['퇴근', '출퇴근'], '지각': ['지각', '사유'], '조퇴': ['조퇴', '사유'], '복명': ['복명서'], '반차': ['반차', '연차'],
+    '인쇄': ['인쇄', '출력'], '출력': ['출력', '인쇄'], '서명': ['서명'], '도장': ['서명', '직인'], '비밀번호': ['로그인'], '로그인': ['로그인', '구글 계정'], '차': ['차량'], '차량': ['차량', '운행'],
+    '권한': ['권한'], '메뉴': ['메뉴', '권한'], '승인': ['수락', '선임 확인'], '결재': ['결재'], '공문': ['공문', '문서'], '삭제': ['취소', '삭제'], '취소': ['취소'] };
+  function askItems(ME) {
+    ME = ME || {}; var out = [];
+    var ok = function (s) { try { return !s.show || s.show(ME); } catch (e) { return false; } };
+    SECTIONS.filter(ok).forEach(function (s) { out.push({ ic: s.ic, t: s.t, w: '사용 안내', b: s.b }); });
+    var G = window.GUIDE_DETAIL || {};
+    Object.keys(G).forEach(function (k) { (G[k].items || []).filter(ok).forEach(function (it) { out.push({ ic: it.ic || '📄', t: it.t, w: G[k].t, b: it.b }); }); });
+    return out;
+  }
+  function askTokens(q) {
+    var words = q.replace(/[?!.,~·()\[\]"']/g, ' ').split(/\s+/).filter(Boolean), out = [];
+    words.forEach(function (w) {
+      w = w.replace(/(에서는|에서|으로는|으로|에게|하고|이랑|랑|이나|까지|부터|은|는|이|가|을|를|에|로|도|만|의|요)$/, '');
+      w = w.replace(/(하려면|하는법|하는|하기|할때|할|해요|했어요|하나요|되나요|돼요|해야|하면|하고|싶어요)$/, '');
+      var syn = SYN[w.toLowerCase()] || SYN[w];
+      if (!w || STOP.test(w) || (w.length < 2 && !syn)) return;
+      out.push(syn ? syn : [w]);
+    });
+    return out;
+  }
+  function askSearch(q, ME) {
+    var groups = askTokens(q); if (!groups.length) return [];
+    return askItems(ME).map(function (it) {
+      var title = it.t, text = strip(it.b), sc = 0, hitAll = true, hits = [];
+      groups.forEach(function (g) {
+        var best = 0;
+        g.forEach(function (t) { var v = (title.indexOf(t) >= 0 ? 12 : 0) + Math.min(5, text.split(t).length - 1); if (v > best) best = v; if (v) hits.push(t); });
+        if (!best) hitAll = false; sc += best;
+      });
+      if (hitAll && groups.length > 1) sc += 8;
+      return { it: it, sc: sc, hits: hits };
+    }).filter(function (r) { return r.sc > 0; }).sort(function (a, b) { return b.sc - a.sc; }).slice(0, 4);
+  }
+  function askEsc(t) { return String(t).replace(/[&<>]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;' }[c]; }); }
+  function askMark(h, hits) { return h.replace(/>([^<]+)</g, function (m, t) { hits.forEach(function (x) { t = t.split(x).join('\u0001' + x + '\u0002'); }); return '>' + t.replace(/\u0001/g, '<mark>').replace(/\u0002/g, '</mark>') + '<'; }); }
+  function askSnip(r) {
+    var text = strip(r.it.b).replace(/\s+/g, ' ').trim(), i = -1;
+    r.hits.some(function (h) { i = text.indexOf(h); return i >= 0; });
+    var a = Math.max(0, i - 30), s = (a ? '…' : '') + text.slice(a, a + 110) + (text.length > a + 110 ? '…' : '');
+    return askMark('>' + askEsc(s) + '<', r.hits).slice(1, -1);
+  }
+  var askCss = '#askBtn{position:fixed;right:18px;bottom:18px;z-index:8000;border:0;border-radius:999px;background:#2f5bd6;color:#fff;font-size:15px;font-weight:700;padding:12px 18px;box-shadow:0 6px 20px rgba(47,91,214,.35);cursor:pointer}' +
+    '#askBox{position:fixed;right:18px;bottom:78px;z-index:8001;width:min(400px,calc(100vw - 24px));max-height:min(72vh,640px);background:#fff;border-radius:16px;box-shadow:0 14px 44px rgba(15,23,42,.28);display:flex;flex-direction:column;overflow:hidden;font-size:15px;color:#1f2937}' +
+    '#askHead{display:flex;align-items:center;gap:8px;padding:14px 16px;background:#2f5bd6;color:#fff}#askHead b{flex:1;font-size:16px}#askHead button{background:rgba(255,255,255,.18);border:0;color:#fff;border-radius:8px;padding:5px 10px;cursor:pointer}' +
+    '#askForm{display:flex;gap:6px;padding:12px 14px 6px}#askQ{flex:1;padding:10px 12px;border:1px solid #cbd5e1;border-radius:10px;font-size:15px}#askForm button{border:0;background:#2f5bd6;color:#fff;border-radius:10px;padding:0 14px;font-weight:700;cursor:pointer}' +
+    '#askChips{display:flex;flex-wrap:wrap;gap:6px;padding:4px 14px 10px}#askChips span{background:#eef2ff;color:#2f5bd6;border-radius:999px;padding:5px 10px;font-size:13px;cursor:pointer}' +
+    '#askOut{flex:1;overflow:auto;padding:0 14px 12px;line-height:1.65;word-break:keep-all;overflow-wrap:anywhere}' +
+    '.askCard{border:1px solid #e5e9f2;border-radius:12px;padding:10px 12px;margin:0 0 8px;cursor:pointer}.askCard:hover{border-color:#2f5bd6;background:#f8faff}' +
+    '.askCard .t{font-weight:700}.askCard .w{font-size:12px;color:#64748b;margin:1px 0 4px}.askCard .s{font-size:14px;color:#475569}' +
+    '#askOut mark{background:#fff3a3}#askOut h4{margin:12px 0 4px;color:#2f5bd6;font-size:15px}#askOut ol,#askOut ul{padding-left:20px;margin:8px 0}#askOut li{margin:0 0 8px}#askOut .hint{color:#64748b;font-size:14px;background:#f8fafc;border-left:3px solid #cbd5e1;padding:6px 10px}' +
+    '.askBack{border:1px solid #e5e9f2;background:#fff;border-radius:8px;padding:5px 10px;font-size:13px;cursor:pointer;margin:2px 0 8px}' +
+    '#askFoot{border-top:1px solid #e5e9f2;padding:10px 14px;font-size:13px;color:#64748b}#askFoot a{color:#2f5bd6;font-weight:700;cursor:pointer}' +
+    '@media(max-width:700px){#askBtn{right:12px;bottom:12px;padding:11px 15px;font-size:14px}#askBox{right:0;left:0;bottom:0;width:auto;max-height:82vh;border-radius:16px 16px 0 0}}';
+  var askLast = [], askQtxt = '';
+  function askDraw() {
+    var o = el('askOut'); if (!o) return;
+    if (!askQtxt) { o.innerHTML = '<p style="color:#64748b;font-size:14px">궁금한 것을 적어 보세요. 사용 안내에서 맞는 설명을 찾아 드립니다.</p>'; return; }
+    o.innerHTML = askLast.length ? askLast.map(function (r, i) {
+      return '<div class="askCard" data-i="' + i + '"><div class="t">' + r.it.ic + ' ' + askEsc(r.it.t) + '</div><div class="w">' + askEsc(r.it.w) + '</div><div class="s">' + askSnip(r) + '</div></div>';
+    }).join('') : '<p>찾는 설명이 없습니다. 다른 낱말로 물어보거나, 아래 <b>문의함</b>에 질문으로 남겨 주세요.</p>';
+    Array.prototype.forEach.call(o.querySelectorAll('.askCard'), function (c) { c.onclick = function () { askOpen(+c.dataset.i); }; });
+  }
+  function askOpen(i) {
+    var r = askLast[i], o = el('askOut');
+    o.innerHTML = '<button class="askBack">← 다른 결과</button><h4 style="font-size:16px;color:#1f2937">' + r.it.ic + ' ' + askEsc(r.it.t) + '</h4>' + askMark(pretty(r.it.b), r.hits);
+    o.querySelector('.askBack').onclick = askDraw; o.scrollTop = 0;
+  }
+  function askRun(q) { askQtxt = (q || '').trim(); el('askQ').value = askQtxt; askLast = askQtxt ? askSearch(askQtxt, window.ME) : []; askDraw(); }
+  window.openAsk = function () {
+    if (!el('askStyle')) { var st = document.createElement('style'); st.id = 'askStyle'; st.textContent = askCss; document.head.appendChild(st); }
+    if (el('askBox')) { el('askBox').remove(); return; }
+    var b = document.createElement('div'); b.id = 'askBox'; b.setAttribute('role', 'dialog'); b.setAttribute('aria-label', '무엇이든 물어보기');
+    b.innerHTML = '<div id="askHead"><b>🔎 무엇이든 물어보기</b><button id="askX">닫기</button></div>' +
+      '<form id="askForm"><input id="askQ" type="search" placeholder="예: 시간외 신청은 어떻게 해요?" autocomplete="off"><button>찾기</button></form>' +
+      '<div id="askChips">' + ['휴가 신청', '시간외 신청', '출장 복명서', '슬랙 알림', '출퇴근 사유', '인쇄'].map(function (c) { return '<span>' + c + '</span>'; }).join('') + '</div>' +
+      '<div id="askOut"></div><div id="askFoot">원하는 답이 없나요? <a id="askInq">💬 문의함에 질문하기</a></div>';
+    document.body.appendChild(b);
+    el('askX').onclick = function () { b.remove(); };
+    el('askForm').onsubmit = function (e) { e.preventDefault(); askRun(el('askQ').value); };
+    Array.prototype.forEach.call(b.querySelectorAll('#askChips span'), function (c) { c.onclick = function () { askRun(c.textContent); }; });
+    el('askInq').onclick = function () { b.remove(); if (typeof go === 'function') go('inq'); };
+    askDraw(); setTimeout(function () { el('askQ').focus(); }, 50);
+  };
+  function askInit() {
+    if (el('askBtn') || /embed=1/.test(location.search)) return;
+    if (!el('askStyle')) { var st = document.createElement('style'); st.id = 'askStyle'; st.textContent = askCss; document.head.appendChild(st); }
+    var btn = document.createElement('button'); btn.id = 'askBtn'; btn.type = 'button'; btn.innerHTML = '🔎 무엇이든 물어보기'; btn.onclick = window.openAsk;
+    document.body.appendChild(btn);
+  }
+  if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', askInit); else askInit();
 })();

@@ -62,7 +62,7 @@ const sb = supabase.createClient(SB_URL, SB_KEY);
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? "" : s).replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 const SYS = {core:"관리", vehicle:"차량운행", edu:"수어교육", att:"근태", interp:"수어통역", acct:"회계", cert:"증서·증명", member:"회원관리", perf:"사업실적", news:"뉴스 배정표", book:"교재 주문", movie:"영화실적"};
-const ROLE = {admin:"도협회 관리자", lead:"지회 담당", staff:"직원"};
+const ROLE = {admin:"도협회 관리자", lead:"사무국장", staff:"직원"};
 const ACT = {chapter_reset:"자료 초기화", dept:"부서", add_staff:"직원 등록", delete_staff:"직원 삭제", update_staff:"직원 정보 수정", enable_staff:"사용 재개", disable_staff:"사용 중지", grant:"권한 부여", revoke:"권한 해제",
              save_approval:"결재라인 저장", delete_approval:"결재라인 삭제", assign_lead:"지회 담당 지정", set_admin:"도협회 관리자 변경"};
 const DEFAULT_AP = ["부장","사무처장","본부장"];
@@ -379,10 +379,11 @@ function staffCard(s, mgr){
       const k = c.system+"."+c.perm, on = s.grants.includes(k), dis = c.system==="core" && !mgr;
       return `<label><input type="checkbox" ${on?"checked":""} ${dis?"disabled":""} onchange="grant(${s.id},'${c.system}','${c.perm}',this.checked)">${esc(permTxt(c.label))}</label>`; }).join("")}`).join("")}</div>` : "";
   const a = attOf(s);
-  return `<div class="card ${off?"off":""}"><div class="st"><div><b>${esc(s.name)}</b> <span class="muted">${esc(s.position)} ${esc(s.dept)}${(s.depts2||[]).length?" + "+esc(s.depts2.join(", ")):""}</span>${s.org_type?`<span class="badge g">${esc(s.org_type)}</span>`:""}${a&&a.role==="선임"?'<span class="badge o">선임</span>':""}
-      ${s.hire_date||(a&&a.supervisor)?`<div class="muted" style="font-size:12px">${s.hire_date?"입사 "+esc(s.hire_date):""}${a&&a.supervisor?(s.hire_date?" · ":"")+"담당 선임 "+esc(a.supervisor):""}</div>`:""}
-      <span class="badge ${lead?"":"g"}">${ROLE[s.role]}</span>${off?'<span class="badge x">사용 중지</span>':""}${s.grants.includes("core.manage_staff")?'<span class="badge o">공동 관리자</span>':""}
-      <div class="muted">${esc(s.email)}</div>${lead?'<div class="muted">담당자는 모든 권한을 가집니다.</div>':`<div class="muted">부여된 권한 ${s.grants.length}개</div>`}</div>
+  const sub = [esc(s.email), s.hire_date ? "입사 " + esc(s.hire_date) : "", a && a.supervisor ? "담당 선임 " + esc(a.supervisor) : "", lead ? "모든 권한" : "권한 " + s.grants.length + "개"].filter(Boolean).join(" · ");
+  return `<div class="card ${off?"off":""}"><div class="st"><div style="min-width:0">
+      <div><b>${esc(s.name)}</b> <span class="muted">${esc(s.position)}${s.dept?" · "+esc(s.dept):""}${(s.depts2||[]).length?" + "+esc(s.depts2.join(", ")):""}</span>
+      ${ROLE[s.role]!==s.position?`<span class="badge ${lead?"":"g"}">${ROLE[s.role]}</span>`:""}${a&&a.role==="선임"?'<span class="badge o">선임</span>':""}${off?'<span class="badge x">사용 중지</span>':""}${s.grants.includes("core.manage_staff")?'<span class="badge o">공동 관리자</span>':""}</div>
+      <div class="muted" style="font-size:12px;margin-top:2px">${sub}</div></div>
       <div class="row">${lead?"":`<button class="btn sub sm" onclick="openId=(openId===${s.id}?null:${s.id});render()">권한</button>`}
       <button class="btn sub sm" onclick="editId=${s.id};render()">수정</button>
       ${!self && !lead ? `<button class="btn ${off?"sub":"red"} sm" onclick="toggleActive(${s.id},${off})">${off?"사용 재개":"사용 중지"}</button>`:""}

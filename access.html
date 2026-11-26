@@ -32,6 +32,8 @@ input,select{font:inherit;padding:8px;border:1px solid #d5dbe8;border-radius:8px
 .st{display:flex;justify-content:space-between;gap:8px;align-items:flex-start;flex-wrap:wrap}
 .off{opacity:.55}
 .perm{background:#f7f9fc;border-radius:8px;padding:8px;margin-top:8px}
+.sinfo{background:#f7f9fc;border-radius:8px;padding:10px 12px;margin-top:8px;display:grid;grid-template-columns:110px 1fr;gap:5px 10px;font-size:14px}
+.sinfo dt{color:#6b7280}.sinfo dd{margin:0;word-break:break-all}.sname{cursor:pointer}.sname:hover b{text-decoration:underline}
 .perm b{display:block;margin:6px 0 2px;font-size:13px;color:#555}
 .perm label{display:flex;gap:6px;align-items:center;padding:3px 0}
 .perm input{width:auto}
@@ -69,7 +71,7 @@ const DEFAULT_AP = ["부장","사무처장","본부장"];
 const VIEW = (new URLSearchParams(location.search).get("view") || "") === "org" ? "org" : "people";   // org = 🏢 기관 설정, people = 직원·권한 관리
 const GO0 = new URLSearchParams(location.search).get("go") || "";
 let me = null, tab = "staff", staff = [], catalog = [], lines = [], chapters = [], logs = [];
-let openId = null, editId = null, drafts = {}, deptKeys = [];
+let openId = null, editId = null, viewId = null, drafts = {}, deptKeys = [];
 
 function toast(msg, bad){ const t = $("#toast"); t.textContent = msg; t.className = bad ? "bad" : ""; t.style.display = "block"; clearTimeout(toast.h); toast.h = setTimeout(()=>{ t.style.display = "none"; }, 2600); }
 async function rpc(fn, args){ const r = await sb.rpc(fn, args || {}); if(r.error) throw new Error(r.error.message); return r.data; }
@@ -94,7 +96,7 @@ async function login(){
   const r = await sb.auth.signInWithOAuth({provider:"google", options:{redirectTo: location.origin + location.pathname}});
   if(r.error) toast(r.error.message, true);
 }
-async function logout(){ await sb.auth.signOut(); location.reload(); }
+async function logout(){ await sb.auth.signOut({ scope: 'local' }); location.reload(); }
 function msgView(title, text, bad){
   $("#app").innerHTML = `<div class="center"><h2>${esc(title)}</h2><p class="${bad?"":"muted"}">${esc(text)}</p><button class="btn sub" onclick="logout()">다른 계정으로 로그인</button></div>`;
 }
@@ -232,7 +234,7 @@ function staffForm(s, mgr){
   const attBox = attOn ? `
       <div>${lb("역할")}<select id="e_arole"><option ${a.role!=="선임"?"selected":""}>일반</option><option ${a.role==="선임"?"selected":""}>선임</option></select></div>
       <div>${lb("담당 선임 (시간외·대체휴무 승인자)")}<select id="e_asup"><option value="">(없음)</option>${seniors.map(n=>`<option ${n===a.supervisor?"selected":""}>${esc(n)}</option>`).join("")}</select></div>
-      <div class="full">${lb("기본 연차 (일 · 입사일을 넣으면 자동 계산)")}<input id="e_aleave" inputmode="decimal" value="${esc(a.annualLeave)}"></div>
+      <div class="full">${lb("기본 연차 (일 · 입사일이 없는 직원만 사용)")}<input id="e_aleave" inputmode="decimal" value="${esc(a.annualLeave)}" placeholder="입사일이 있으면 자동 계산값이 우선"></div>
       <details class="full" style="margin-top:6px" ${a.stdIn||a.stdOut?"open":""}><summary class="muted" style="cursor:pointer;font-size:13px">출퇴근 기준 시각 · 비고 <b>(기관 기본 시각과 다른 사람만)</b></summary>
         <div class="muted" style="font-size:12px;margin:4px 0">비워 두면 기관 기본 출퇴근 시각(기관 설정 → 출퇴근·근무지)을 따릅니다. 시차출퇴근처럼 시각이 다른 직원만 넣으세요.</div><div class="grid">
         <div>${lb("출근 기준 시각 (다른 사람만)")}<input id="e_ain" type="time" value="${esc(a.stdIn)}"></div>
@@ -246,7 +248,7 @@ function staffForm(s, mgr){
       <div>${lb("직급·직위")}<input id="e_pos" value="${esc(s.position)}" placeholder="직위"></div>
       <div class="full">${lb("기본 부서")}${deptPick("e_dept", s.dept)}</div>
       ${DEPTS && DEPTS.length > 1 ? `<div class="full">${lb("함께 맡는 부서 (두 부서 업무를 같이 하면 체크)")}<div class="row" id="e_d2box">${DEPTS.map(d=>`<label style="display:flex;align-items:center;gap:4px;white-space:nowrap;margin-right:10px"><input type="checkbox" style="width:auto;margin:0" class="e_d2" value="${esc(d.name)}" ${(s.depts2||[]).includes(d.name)?"checked":""}>${esc(d.name)}</label>`).join("")}</div></div>` : ""}
-      <div class="full">${lb("입사일 (넣으면 연차 자동 계산)")}<input id="e_hire" type="date" value="${esc(s.hire_date||"")}"></div>
+      <div class="full">${lb("입사일 (넣으면 연차 자동 계산)")}<input id="e_hire" type="date" value="${esc(s.hire_date||"")}" oninput="annHint()" onchange="annHint()"><div id="e_annauto" class="muted" style="font-size:13px;margin-top:4px">${annText(s.hire_date||"")}</div></div>
       ${attOn ? `<div>${lb("연락처")}<input id="e_acontact" value="${esc(a.contact)}"></div>
       <div>${lb("슬랙 ID (알림 받을 때 필요)")}<input id="e_aslack" value="${esc(a.slackId)}" placeholder="U0…"></div>` : ""}
       ${sec("② 근태 정보")}${attBox}
@@ -255,6 +257,31 @@ function staffForm(s, mgr){
       ${isNew ? "" : `<div class="full muted" style="font-size:12px;margin-top:8px">이름을 바꾸면 근태 직원목록의 이름도 바뀝니다. 이미 있는 휴가·시수 기록은 예전 이름으로 남으니 꼭 필요할 때만 바꾸세요.</div>`}
       <button class="btn" style="margin-top:10px" onclick="staffSave(${isNew?"null":s.id})">${isNew?"등록":"저장"}</button><button class="btn sub" style="margin-top:10px" onclick="editId=null;render()">취소</button></div>`;
 }
+/* ───── 입사일 → 자동 연차 (근태 서버와 같은 계산) ─────
+   입사한 해: 한 달 개근마다 1일(최대 11일) / 다음 해부터 15일, 셋째 해부터 2년마다 1일씩 더함(최대 25일) */
+function annAuto(hire, year){
+  if(!/^\d{4}-\d{2}-\d{2}$/.test(hire||"")) return null;
+  const hy = +hire.slice(0,4), y = +year;
+  if(y < hy) return 0;
+  if(y === hy){
+    const t = new Date(Date.now() + 9*3600e3).toISOString().slice(0,10);
+    const end = +t.slice(0,4) > y ? y + "-12-31" : t;
+    const add = k => { let yy = +hire.slice(0,4), m = +hire.slice(5,7) + k; const d = +hire.slice(8,10);
+      yy += Math.floor((m-1)/12); m = ((m-1)%12)+1; const last = new Date(Date.UTC(yy, m, 0)).getUTCDate();
+      return yy + "-" + String(m).padStart(2,"0") + "-" + String(Math.min(d,last)).padStart(2,"0"); };
+    let n = 0; for(let k=1;k<=12;k++){ const x = add(k); if(x <= end && x.slice(0,4) === String(y)) n++; }
+    return Math.min(11, n);
+  }
+  return Math.min(25, 15 + Math.floor((y - hy - 1)/2));
+}
+function annText(hire){
+  const y = +new Date(Date.now() + 9*3600e3).toISOString().slice(0,4);
+  const a = annAuto(hire, y), b = annAuto(hire, y+1);
+  if(a === null) return "입사일을 넣으면 연차가 자동 계산됩니다.";
+  return "🗓️ 자동 연차: <b>" + y + "년 " + a + "일</b> · " + (y+1) + "년 " + b + "일 <span style=\"opacity:.8\">(연차 관리에서 그해 일수를 직접 넣으면 그 값이 우선)</span>";
+}
+function annHint(){ const h = document.getElementById("e_hire"), box = document.getElementById("e_annauto"); if(h && box) box.innerHTML = annText(h.value);
+  const al = document.getElementById("e_aleave"); if(h && al){ const y = +new Date(Date.now() + 9*3600e3).toISOString().slice(0,4), n = annAuto(h.value, y); al.placeholder = n === null ? "" : "입사일 기준 자동 " + n + "일"; } }
 /* ───── 근무조건 기록 (적용일별 주간 근무시간 · 직급·호봉 · 시급) ───── */
 let WT = {id:null, rows:[], grades:[], levels:[]};
 const wtTxt = r => [r.weekly_hours ? "주 " + Number(r.weekly_hours) + "시간" : "주 40시간(기본)", r.monthly ? "월 기본급 " + Number(r.monthly).toLocaleString() + "원" : r.hourly ? "시급 직접 입력" : [r.grade, r.level, r.step!=null ? r.step + "호봉" : ""].filter(Boolean).join(" ")].filter(Boolean).join(" · ");
@@ -379,16 +406,32 @@ function staffCard(s, mgr){
       const k = c.system+"."+c.perm, on = s.grants.includes(k), dis = c.system==="core" && !mgr;
       return `<label><input type="checkbox" ${on?"checked":""} ${dis?"disabled":""} onchange="grant(${s.id},'${c.system}','${c.perm}',this.checked)">${esc(permTxt(c.label))}</label>`; }).join("")}`).join("")}</div>` : "";
   const a = attOf(s);
+  const y0 = +new Date(Date.now() + 9*3600e3).toISOString().slice(0,4), au = annAuto(s.hire_date||"", y0);
+  const permList = lead ? "모든 권한" : (s.grants.length ? s.grants.map(k=>esc(permLabel(k))).join(", ") : "없음");
+  const info = viewId === s.id ? `<dl class="sinfo">
+      <dt>구글 이메일</dt><dd>${esc(s.email)}</dd>
+      <dt>직위 · 부서</dt><dd>${esc(s.position||"-")} · ${esc(s.dept||"-")}${(s.depts2||[]).length?" (+ "+esc(s.depts2.join(", "))+")":""}</dd>
+      <dt>입사일</dt><dd>${s.hire_date ? esc(s.hire_date) + (au!==null ? ` <span class="muted">(${y0}년 자동 연차 ${au}일)</span>` : "") : '<span class="muted">없음</span>'}</dd>
+      ${a ? `<dt>연락처</dt><dd>${esc(a.contact||"-")}</dd>
+      <dt>슬랙 ID</dt><dd>${a.slackId ? esc(a.slackId) : '<span class="muted">없음 (알림을 못 받음)</span>'}</dd>
+      <dt>역할</dt><dd>${esc(a.role||"일반")}</dd>
+      <dt>담당 선임</dt><dd>${a.supervisor ? esc(a.supervisor) : '<span class="muted">없음 (본인이 직접 승인)</span>'}</dd>
+      ${!s.hire_date ? `<dt>기본 연차</dt><dd>${esc(a.annualLeave||0)}일</dd>` : ""}
+      ${a.stdIn||a.stdOut ? `<dt>출퇴근 기준</dt><dd>${esc(a.stdIn||"-")} ~ ${esc(a.stdOut||"-")}</dd>` : ""}
+      ${a.note ? `<dt>비고</dt><dd>${esc(a.note)}</dd>` : ""}` : ""}
+      <dt>권한</dt><dd>${permList}</dd>
+      <div style="grid-column:1/-1;text-align:right;margin-top:4px"><button class="btn sm" onclick="editId=${s.id};viewId=null;render()">✏️ 정보 수정</button></div>
+    </dl>` : "";
   const sub = [esc(s.email), s.hire_date ? "입사 " + esc(s.hire_date) : "", a && a.supervisor ? "담당 선임 " + esc(a.supervisor) : "", lead ? "모든 권한" : "권한 " + s.grants.length + "개"].filter(Boolean).join(" · ");
   return `<div class="card ${off?"off":""}"><div class="st"><div style="min-width:0">
-      <div><b>${esc(s.name)}</b> <span class="muted">${esc(s.position)}${s.dept?" · "+esc(s.dept):""}${(s.depts2||[]).length?" + "+esc(s.depts2.join(", ")):""}</span>
+      <div class="sname" onclick="viewId=(viewId===${s.id}?null:${s.id});render()" title="눌러서 정보 보기"><b>${esc(s.name)}</b> <span class="muted">${esc(s.position)}${s.dept?" · "+esc(s.dept):""}${(s.depts2||[]).length?" + "+esc(s.depts2.join(", ")):""}</span>
       ${ROLE[s.role]!==s.position?`<span class="badge ${lead?"":"g"}">${ROLE[s.role]}</span>`:""}${a&&a.role==="선임"?'<span class="badge o">선임</span>':""}${off?'<span class="badge x">사용 중지</span>':""}${s.grants.includes("core.manage_staff")?'<span class="badge o">공동 관리자</span>':""}</div>
-      <div class="muted" style="font-size:12px;margin-top:2px">${sub}</div></div>
+      <div class="muted sname" style="font-size:12px;margin-top:2px" onclick="viewId=(viewId===${s.id}?null:${s.id});render()">${sub} ${viewId===s.id?"▲":"▼"}</div></div>
       <div class="row">${lead?"":`<button class="btn sub sm" onclick="openId=(openId===${s.id}?null:${s.id});render()">권한</button>`}
       <button class="btn sub sm" onclick="editId=${s.id};render()">수정</button>
       ${!self && !lead ? `<button class="btn ${off?"sub":"red"} sm" onclick="toggleActive(${s.id},${off})">${off?"사용 재개":"사용 중지"}</button>`:""}
       ${!self && !lead ? `<button class="btn red sm" onclick="delStaff(${s.id})">삭제</button>`:""}
-      ${me.role==="admin" && s.role==="admin" && !self ? `<button class="btn red sm" onclick="dropAdmin('${esc(s.email)}')">관리자 해제</button>`:""}</div></div>${panel}</div>`;
+      ${me.role==="admin" && s.role==="admin" && !self ? `<button class="btn red sm" onclick="dropAdmin('${esc(s.email)}')">관리자 해제</button>`:""}</div></div>${info}${panel}</div>`;
 }
 const val = id => ($("#"+id) ? $("#"+id).value.trim() : "");
 /* 등록·수정 저장: 기본 정보 → 함께 맡는 부서 → 소속·입사일·근태 → 권한 순서로 한 번에 */

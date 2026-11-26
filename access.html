@@ -234,8 +234,8 @@ function staffForm(s, mgr){
   const attBox = attOn ? `
       <div>${lb("역할")}<select id="e_arole"><option ${a.role!=="선임"?"selected":""}>일반</option><option ${a.role==="선임"?"selected":""}>선임</option></select></div>
       <div>${lb("담당 선임 (시간외·대체휴무 승인자)")}<select id="e_asup"><option value="">(없음)</option>${seniors.map(n=>`<option ${n===a.supervisor?"selected":""}>${esc(n)}</option>`).join("")}</select></div>
-      <div class="full">${lb("기본 연차 (일 · 입사일이 없는 직원만 사용)")}<input id="e_aleave" inputmode="decimal" value="${esc(a.annualLeave)}" placeholder="입사일이 있으면 자동 계산값이 우선"></div>
-      <div class="full">${lb("매년 가산 연차 (일 · 경력 인정 등으로 해마다 더 주는 날, 없으면 비움)")}<input id="e_aextra" inputmode="decimal" value="${esc(a.annualExtra||"")}" placeholder="예: 2" oninput="annHint()"></div>
+      <div class="full" id="e_aleave_box" style="${s.hire_date?'display:none':''}">${lb("기본 연차 (일 · 입사일이 없는 직원만)")}<input id="e_aleave" inputmode="decimal" value="${esc(Number(a.annualLeave)?a.annualLeave:"")}" placeholder="예: 15"></div>
+      <div class="full" id="e_aextra_box" style="${s.hire_date?'':'display:none'}">${lb("매년 가산 연차 (일 · 경력 인정 등으로 해마다 더 주는 날, 없으면 비움)")}<input id="e_aextra" inputmode="decimal" value="${esc(a.annualExtra||"")}" placeholder="예: 2" oninput="annHint()"></div>
       <details class="full" style="margin-top:6px" ${a.stdIn||a.stdOut?"open":""}><summary class="muted" style="cursor:pointer;font-size:13px">출퇴근 기준 시각 · 비고 <b>(기관 기본 시각과 다른 사람만)</b></summary>
         <div class="muted" style="font-size:12px;margin:4px 0">비워 두면 기관 기본 출퇴근 시각(기관 설정 → 출퇴근·근무지)을 따릅니다. 시차출퇴근처럼 시각이 다른 직원만 넣으세요.</div><div class="grid">
         <div>${lb("출근 기준 시각 (다른 사람만)")}<input id="e_ain" type="time" value="${esc(a.stdIn)}"></div>
@@ -288,7 +288,9 @@ function annText(hire, extra){
 }
 function annHint(){ const h = document.getElementById("e_hire"), box = document.getElementById("e_annauto"), ex = document.getElementById("e_aextra"), xv = ex ? ex.value : 0;
   if(h && box) box.innerHTML = annText(h.value, xv);
-  const al = document.getElementById("e_aleave"); if(h && al){ const y = +new Date(Date.now() + 9*3600e3).toISOString().slice(0,4), n = annPlus(h.value, y, xv); al.placeholder = n === null ? "" : "입사일 기준 자동 " + n + "일"; } }
+  const lb2 = document.getElementById("e_aleave_box"); if(h && lb2) lb2.style.display = h.value ? "none" : "";
+  const xb = document.getElementById("e_aextra_box"); if(h && xb) xb.style.display = h.value ? "" : "none";   // 입사일이 있으면 기본 연차 칸은 숨김 (자동 계산)
+  const al = document.getElementById("e_aleave"); if(h && al){ const y = +new Date(Date.now() + 9*3600e3).toISOString().slice(0,4), n = annPlus(h.value, y, xv); al.placeholder = n === null ? "예: 15" : "입사일 기준 자동 " + n + "일"; } }
 /* ───── 근무조건 기록 (적용일별 주간 근무시간 · 직급·호봉 · 시급) ───── */
 let WT = {id:null, rows:[], grades:[], levels:[]};
 const wtTxt = r => [r.weekly_hours ? "주 " + Number(r.weekly_hours) + "시간" : "주 40시간(기본)", r.monthly ? "월 기본급 " + Number(r.monthly).toLocaleString() + "원" : r.hourly ? "시급 직접 입력" : [r.grade, r.level, r.step!=null ? r.step + "호봉" : ""].filter(Boolean).join(" ")].filter(Boolean).join(" · ");

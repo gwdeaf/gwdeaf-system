@@ -235,6 +235,7 @@ function staffForm(s, mgr){
       <div>${lb("역할")}<select id="e_arole"><option ${a.role!=="선임"?"selected":""}>일반</option><option ${a.role==="선임"?"selected":""}>선임</option></select></div>
       <div>${lb("담당 선임 (시간외·대체휴무 승인자)")}<select id="e_asup"><option value="">(없음)</option>${seniors.map(n=>`<option ${n===a.supervisor?"selected":""}>${esc(n)}</option>`).join("")}</select></div>
       <div class="full">${lb("기본 연차 (일 · 입사일이 없는 직원만 사용)")}<input id="e_aleave" inputmode="decimal" value="${esc(a.annualLeave)}" placeholder="입사일이 있으면 자동 계산값이 우선"></div>
+      <div class="full">${lb("매년 가산 연차 (일 · 경력 인정 등으로 해마다 더 주는 날, 없으면 비움)")}<input id="e_aextra" inputmode="decimal" value="${esc(a.annualExtra||"")}" placeholder="예: 2" oninput="annHint()"></div>
       <details class="full" style="margin-top:6px" ${a.stdIn||a.stdOut?"open":""}><summary class="muted" style="cursor:pointer;font-size:13px">출퇴근 기준 시각 · 비고 <b>(기관 기본 시각과 다른 사람만)</b></summary>
         <div class="muted" style="font-size:12px;margin:4px 0">비워 두면 기관 기본 출퇴근 시각(기관 설정 → 출퇴근·근무지)을 따릅니다. 시차출퇴근처럼 시각이 다른 직원만 넣으세요.</div><div class="grid">
         <div>${lb("출근 기준 시각 (다른 사람만)")}<input id="e_ain" type="time" value="${esc(a.stdIn)}"></div>
@@ -248,7 +249,7 @@ function staffForm(s, mgr){
       <div>${lb("직급·직위")}<input id="e_pos" value="${esc(s.position)}" placeholder="직위"></div>
       <div class="full">${lb("기본 부서")}${deptPick("e_dept", s.dept)}</div>
       ${DEPTS && DEPTS.length > 1 ? `<div class="full">${lb("함께 맡는 부서 (두 부서 업무를 같이 하면 체크)")}<div class="row" id="e_d2box">${DEPTS.map(d=>`<label style="display:flex;align-items:center;gap:4px;white-space:nowrap;margin-right:10px"><input type="checkbox" style="width:auto;margin:0" class="e_d2" value="${esc(d.name)}" ${(s.depts2||[]).includes(d.name)?"checked":""}>${esc(d.name)}</label>`).join("")}</div></div>` : ""}
-      <div class="full">${lb("입사일 (넣으면 연차 자동 계산)")}<input id="e_hire" type="date" value="${esc(s.hire_date||"")}" oninput="annHint()" onchange="annHint()"><div id="e_annauto" class="muted" style="font-size:13px;margin-top:4px">${annText(s.hire_date||"")}</div></div>
+      <div class="full">${lb("입사일 (넣으면 연차 자동 계산)")}<input id="e_hire" type="date" value="${esc(s.hire_date||"")}" oninput="annHint()" onchange="annHint()"><div id="e_annauto" class="muted" style="font-size:13px;margin-top:4px">${annText(s.hire_date||"", a && a.annualExtra)}</div></div>
       ${attOn ? `<div>${lb("연락처")}<input id="e_acontact" value="${esc(a.contact)}"></div>
       <div>${lb("슬랙 ID (알림 받을 때 필요)")}<input id="e_aslack" value="${esc(a.slackId)}" placeholder="U0…"></div>` : ""}
       ${sec("② 근태 정보")}${attBox}
@@ -274,14 +275,20 @@ function annAuto(hire, year){
   }
   return Math.min(25, 15 + Math.floor((y - hy)/2));
 }
-function annText(hire){
-  const y = +new Date(Date.now() + 9*3600e3).toISOString().slice(0,4);
-  const a = annAuto(hire, y), b = annAuto(hire, y+1);
-  if(a === null) return "입사일을 넣으면 연차가 자동 계산됩니다.";
-  return "🗓️ 자동 연차: <b>" + y + "년 " + a + "일</b> · " + (y+1) + "년 " + b + "일 <span style=\"opacity:.8\">(연차 관리에서 그해 일수를 직접 넣으면 그 값이 우선)</span>";
+function annPlus(hire, year, extra){   // 자동 연차 + 매년 가산 (입사한 해 월차에는 더하지 않음)
+  const n = annAuto(hire, year); if(n === null) return null;
+  const x = Number(extra) > 0 ? Number(extra) : 0;
+  return +year > +String(hire).slice(0,4) ? n + x : n;
 }
-function annHint(){ const h = document.getElementById("e_hire"), box = document.getElementById("e_annauto"); if(h && box) box.innerHTML = annText(h.value);
-  const al = document.getElementById("e_aleave"); if(h && al){ const y = +new Date(Date.now() + 9*3600e3).toISOString().slice(0,4), n = annAuto(h.value, y); al.placeholder = n === null ? "" : "입사일 기준 자동 " + n + "일"; } }
+function annText(hire, extra){
+  const y = +new Date(Date.now() + 9*3600e3).toISOString().slice(0,4);
+  const a = annPlus(hire, y, extra), b = annPlus(hire, y+1, extra);
+  if(a === null) return "입사일을 넣으면 연차가 자동 계산됩니다.";
+  return "🗓️ 자동 연차: <b>" + y + "년 " + a + "일</b> · " + (y+1) + "년 " + b + "일" + (Number(extra) > 0 ? " (매년 +" + Number(extra) + "일 포함)" : "") + " <span style=\"opacity:.8\">(연차 관리에서 그해 일수를 직접 넣으면 그 값이 우선)</span>";
+}
+function annHint(){ const h = document.getElementById("e_hire"), box = document.getElementById("e_annauto"), ex = document.getElementById("e_aextra"), xv = ex ? ex.value : 0;
+  if(h && box) box.innerHTML = annText(h.value, xv);
+  const al = document.getElementById("e_aleave"); if(h && al){ const y = +new Date(Date.now() + 9*3600e3).toISOString().slice(0,4), n = annPlus(h.value, y, xv); al.placeholder = n === null ? "" : "입사일 기준 자동 " + n + "일"; } }
 /* ───── 근무조건 기록 (적용일별 주간 근무시간 · 직급·호봉 · 시급) ───── */
 let WT = {id:null, rows:[], grades:[], levels:[]};
 const wtTxt = r => [r.weekly_hours ? "주 " + Number(r.weekly_hours) + "시간" : "주 40시간(기본)", r.monthly ? "월 기본급 " + Number(r.monthly).toLocaleString() + "원" : r.hourly ? "시급 직접 입력" : [r.grade, r.level, r.step!=null ? r.step + "호봉" : ""].filter(Boolean).join(" ")].filter(Boolean).join(" · ");
@@ -406,12 +413,12 @@ function staffCard(s, mgr){
       const k = c.system+"."+c.perm, on = s.grants.includes(k), dis = c.system==="core" && !mgr;
       return `<label><input type="checkbox" ${on?"checked":""} ${dis?"disabled":""} onchange="grant(${s.id},'${c.system}','${c.perm}',this.checked)">${esc(permTxt(c.label))}</label>`; }).join("")}`).join("")}</div>` : "";
   const a = attOf(s);
-  const y0 = +new Date(Date.now() + 9*3600e3).toISOString().slice(0,4), au = annAuto(s.hire_date||"", y0);
+  const y0 = +new Date(Date.now() + 9*3600e3).toISOString().slice(0,4), au = annPlus(s.hire_date||"", y0, a && a.annualExtra);
   const permList = lead ? "모든 권한" : (s.grants.length ? s.grants.map(k=>esc(permLabel(k))).join(", ") : "없음");
   const info = viewId === s.id ? `<dl class="sinfo">
       <dt>구글 이메일</dt><dd>${esc(s.email)}</dd>
       <dt>직위 · 부서</dt><dd>${esc(s.position||"-")} · ${esc(s.dept||"-")}${(s.depts2||[]).length?" (+ "+esc(s.depts2.join(", "))+")":""}</dd>
-      <dt>입사일</dt><dd>${s.hire_date ? esc(s.hire_date) + (au!==null ? ` <span class="muted">(${y0}년 자동 연차 ${au}일)</span>` : "") : '<span class="muted">없음</span>'}</dd>
+      <dt>입사일</dt><dd>${s.hire_date ? esc(s.hire_date) + (au!==null ? ` <span class="muted">(${y0}년 자동 연차 ${au}일${a && Number(a.annualExtra)>0 ? " · 매년 +"+esc(a.annualExtra)+"일 포함" : ""})</span>` : "") : '<span class="muted">없음</span>'}</dd>
       ${a ? `<dt>연락처</dt><dd>${esc(a.contact||"-")}</dd>
       <dt>슬랙 ID</dt><dd>${a.slackId ? esc(a.slackId) : '<span class="muted">없음 (알림을 못 받음)</span>'}</dd>
       <dt>역할</dt><dd>${esc(a.role||"일반")}</dd>
@@ -456,7 +463,7 @@ async function staffSave(id){
     if(DEPTS && DEPTS.length > 1) await rpc("staff_depts_set", PC({p_staff:id, p_depts:[...document.querySelectorAll(".e_d2:checked")].map(x=>x.value)}));
     step = "소속·입사일·근태 정보";
     const p = {org_type: (staff.find(x=>x.id===id)||{}).org_type || "", hire_date: val("e_hire")};   // 소속 구분은 화면에서 뺐음 (예전 값 유지)
-    if($("#e_arole")) p.att = {role:val("e_arole"), supervisor:val("e_asup"), annualLeave:val("e_aleave"), stdIn:val("e_ain"), stdOut:val("e_aout"),
+    if($("#e_arole")) p.att = {role:val("e_arole"), supervisor:val("e_asup"), annualLeave:val("e_aleave"), annualExtra:val("e_aextra"), stdIn:val("e_ain"), stdOut:val("e_aout"),
       hourly:wtNow("hourly", id), contact:val("e_acontact"), slackId:val("e_aslack"), note:val("e_anote")};
     if($("#e_arole")) p.att.weeklyHours = wtNow("weekly", id);
     await rpc("staff_att_save", PC({p_id:id, p:p}));

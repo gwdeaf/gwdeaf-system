@@ -548,6 +548,12 @@ html.dark .emo{filter:invert(1) hue-rotate(180deg) saturate(.7) brightness(.92)}
     </div>
   </main>
   <main id="view-pv" class="hide"></main>
+  <main id="view-prep" class="hide" style="padding:24px"><div style="max-width:560px;margin:8vh auto 0;background:#fff;border:1px solid var(--line);border-radius:18px;padding:44px 28px;text-align:center;box-shadow:0 6px 24px rgba(15,23,42,.06)">
+    <div style="font-size:2.6rem;line-height:1">🛠️</div>
+    <h2 id="prep-t" style="margin:14px 0 8px;font-size:1.35rem">준비 중입니다</h2>
+    <p id="prep-d" style="margin:0;color:#64748b;line-height:1.7"></p>
+    <button class="btn" style="margin-top:20px" onclick="go('home')">홈으로</button>
+  </div></main>
   <div id="view-frame" class="hide">
     <div class="sysnote hide" id="sysnote"></div>
     <div class="fwrap">
@@ -743,6 +749,17 @@ var SUBAPP = { book:'/book/', doc:'/doc/', interp:'/interp/', worklog:'/worklog/
 var SUBDEF = { book:'order', doc:'write', interp:'log', worklog:'write', acct:'prop', cert:'issue', perf:'dash' };   // 하위 메뉴 없이 열면 첫 메뉴
 function go(kind, tab, adm){
   tab = tab || ''; adm = !!adm; closeSide();
+  $('view-prep').classList.add('hide');
+  if ((kind === 'acct' || kind === 'perf') && ME && !ME.is_hq) {   // 지회: 회계·사업실적은 준비 중 (도협회는 그대로)
+    CUR = mid(kind, adm, tab);
+    ['view-frame', 'view-home', 'view-attall', 'view-inq', 'view-pv'].forEach(function(id){ var e = $(id); if (e) e.classList.add('hide'); });
+    $('sysnote').classList.add('hide');
+    var nm = kind === 'acct' ? '회계' : '사업실적';
+    $('prep-t').textContent = nm + ' · 준비 중입니다';
+    $('prep-d').innerHTML = nm + ' 메뉴는 지금 지회에서 쓰기 좋게 다듬고 있어요.<br>준비되면 공지로 알려 드릴게요.';
+    $('view-prep').classList.remove('hide');
+    markNav(); window.scrollTo(0, 0); return;
+  }
   $('view-pv').classList.add('hide');
   if (PV && kind !== 'home') { pvShow(kind, tab, adm); return; }
   if (SUBAPP[kind] && !tab) tab = SUBDEF[kind];

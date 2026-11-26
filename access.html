@@ -258,7 +258,7 @@ function staffForm(s, mgr){
       <button class="btn" style="margin-top:10px" onclick="staffSave(${isNew?"null":s.id})">${isNew?"등록":"저장"}</button><button class="btn sub" style="margin-top:10px" onclick="editId=null;render()">취소</button></div>`;
 }
 /* ───── 입사일 → 자동 연차 (근태 서버와 같은 계산) ─────
-   입사한 해: 한 달 개근마다 1일(최대 11일) / 다음 해부터 15일, 셋째 해부터 2년마다 1일씩 더함(최대 25일) */
+   입사한 해: 한 달 개근마다 1일(최대 11일) / 다음 해 15일, 그 뒤 2년마다 1일씩 더함(최대 25일) */
 function annAuto(hire, year){
   if(!/^\d{4}-\d{2}-\d{2}$/.test(hire||"")) return null;
   const hy = +hire.slice(0,4), y = +year;
@@ -272,7 +272,7 @@ function annAuto(hire, year){
     let n = 0; for(let k=1;k<=12;k++){ const x = add(k); if(x <= end && x.slice(0,4) === String(y)) n++; }
     return Math.min(11, n);
   }
-  return Math.min(25, 15 + Math.floor((y - hy - 1)/2));
+  return Math.min(25, 15 + Math.floor((y - hy)/2));
 }
 function annText(hire){
   const y = +new Date(Date.now() + 9*3600e3).toISOString().slice(0,4);

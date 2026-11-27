@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>강원특별자치도농아인협회 업무 시스템</title>
+<title>강원특별자치도농아인협회 통합 업무시스템</title>
 <link rel="icon" href="/favicon.ico" sizes="any">
 <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
@@ -11,8 +11,8 @@
 <meta name="theme-color" content="#4a5bd4">
 <!-- 링크 미리보기(카카오톡 등). 주소(도메인)를 바꾸면 og:image 주소도 같이 바꾸세요 -->
 <meta property="og:type" content="website">
-<meta property="og:title" content="강원특별자치도농아인협회 업무 시스템">
-<meta property="og:description" content="직원 전용 업무 시스템입니다. 협회 구글 계정으로 로그인하세요.">
+<meta property="og:title" content="강원특별자치도농아인협회 통합 업무시스템">
+<meta property="og:description" content="직원 전용 통합 업무시스템입니다. 협회 구글 계정으로 로그인하세요.">
 <meta property="og:image" content="https://gwdeaf-system.vercel.app/og/og-home.png">
 <meta property="og:image:width" content="1200"><meta property="og:image:height" content="630">
 <meta name="twitter:card" content="summary_large_image">
@@ -88,6 +88,9 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .b-all{background:var(--pri-soft);color:var(--pri)}
 .b-chap{background:#eef0f5;color:#6b7280}
 .ntb{padding:0 2px 14px;color:#374151;line-height:1.65;white-space:pre-wrap;word-break:break-word}
+.bfbox{margin-top:8px}.bfbox>label.btn{display:inline-flex!important;width:auto!important;margin:0!important;font-weight:700}.bflist{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px;white-space:normal}
+.bfchip{display:inline-flex;align-items:center;gap:4px;background:#f1f5ff;border:1px solid #d6e0fb;border-radius:8px;padding:4px 8px;font-size:13px;color:#1e3a8a;text-decoration:none;max-width:100%;word-break:break-all}
+.bfchip a{color:#b04a4a;text-decoration:none;font-weight:700;margin-left:2px}
 .ntb .meta{display:flex;gap:8px;align-items:center;margin-top:10px;color:var(--mute);font-size:.8rem;white-space:normal}
 /* 내 근태 */
 .ring{display:flex;align-items:center;gap:16px;margin-bottom:14px}
@@ -293,7 +296,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
   #newsbox .sch .tx{white-space:normal;overflow:visible;text-overflow:clip;display:flex;flex-wrap:wrap;gap:2px 10px}
   #newsbox .sch .tx>span{margin:0!important}
 }
-/* 휴대폰 위쪽: 1줄 = ☰ 로고·업무 시스템(홈) … 사용설명서 / 2줄 = 이름 · 출퇴근 · 글씨 크기 */
+/* 휴대폰 위쪽: 1줄 = ☰ 로고·통합 업무시스템(홈) … 사용설명서 / 2줄 = 이름 · 출퇴근 · 글씨 크기 */
 .mbrand,.mbreak,.mfs2,.gtx2{display:none}
 @media(max-width:860px){
   .topbar{flex-wrap:wrap;height:auto;padding:8px 12px;row-gap:8px}
@@ -378,7 +381,7 @@ html.dark .emo{filter:invert(1) hue-rotate(180deg) saturate(.7) brightness(.92)}
 .thm button{border:0;background:none;border-radius:8px;padding:5px 9px;font-size:.82rem;font-weight:700;color:var(--mute);cursor:pointer;white-space:nowrap}
 .thm button.on{background:var(--pri-soft);color:var(--pri)}
 @media(max-width:860px){.thm button{padding:4px 7px;font-size:.78rem}}
-/* 휴대폰 위쪽 정리 (1줄: ☰ 로고 업무 시스템 … ☀️🌙 📖 / 2줄: 이름 · 출퇴근 · 가−가+) */
+/* 휴대폰 위쪽 정리 (1줄: ☰ 로고 통합 업무시스템 … ☀️🌙 📖 / 2줄: 이름 · 출퇴근 · 가−가+) */
 @media(max-width:860px){
   .topbar{padding:6px 10px;row-gap:6px;gap:6px}
   .menubtn{order:1;padding:4px 8px}
@@ -429,8 +432,8 @@ html.dark .emo{filter:invert(1) hue-rotate(180deg) saturate(.7) brightness(.92)}
 </style>
 <link rel="stylesheet" href="/ui.css?v=1">
 <style>.gbtn2{border:1px solid var(--line);background:#fff;border-radius:10px;padding:7px 11px;font-size:.9rem;font-weight:600;cursor:pointer;color:var(--text)}.gbtn2:hover{background:var(--pri-soft)}@media(max-width:600px){.gbtn2 .gtx{display:none}}</style>
-<script src="/guide.js?v=9"></script>
-<script src="/guide_detail.js?v=3"></script>
+<script src="/guide.js?v=12"></script>
+<script src="/guide_detail.js?v=5"></script>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Nanum+Pen+Script&display=swap">
 </head>
 <body>
@@ -439,7 +442,7 @@ html.dark .emo{filter:invert(1) hue-rotate(180deg) saturate(.7) brightness(.92)}
 <div id="login" class="center hide">
   <div class="logincard">
     <div class="logo">🏠</div>
-    <h1>강원특별자치도농아인협회<br>업무 시스템</h1>
+    <h1>강원특별자치도농아인협회<br>통합 업무시스템</h1>
     <p>업무용 구글 계정(@gwdeaf.or.kr)으로<br>로그인하세요.</p>
     <button class="gbtn" onclick="doLogin()">🔐 구글 계정으로 로그인</button>
     <div id="loginmsg" class="msg"></div>
@@ -459,7 +462,7 @@ html.dark .emo{filter:invert(1) hue-rotate(180deg) saturate(.7) brightness(.92)}
 <!-- 대시보드 -->
 <div id="app" class="shell hide">
   <aside class="side" id="side">
-    <div class="brand" onclick="go('home')" title="홈으로"><div class="logo" id="brand-logo"><img src="/logo.png" alt="" onerror="this.parentNode.textContent='농'"></div><span class="tx" id="brand-tx">강원특별자치도농아인협회<br>업무 시스템</span></div>
+    <div class="brand" onclick="go('home')" title="홈으로"><div class="logo" id="brand-logo"><img src="/logo.png" alt="" onerror="this.parentNode.textContent='농'"></div><span class="tx" id="brand-tx">강원특별자치도농아인협회<br>통합 업무시스템</span></div>
     <nav class="nav" id="nav"></nav>
     <div class="grow"></div>
     <div class="me">
@@ -471,7 +474,7 @@ html.dark .emo{filter:invert(1) hue-rotate(180deg) saturate(.7) brightness(.92)}
   <div class="content">
   <div class="topbar">
     <button class="menubtn" onclick="toggleSide()">☰</button>
-    <div class="mbrand" onclick="go('home')" title="홈으로"><img src="/logo.png" alt="" onerror="this.remove()"><span>업무 시스템</span></div>
+    <div class="mbrand" onclick="go('home')" title="홈으로"><img src="/logo.png" alt="" onerror="this.remove()"><span>통합 업무시스템</span></div>
     <div class="mbreak"></div>
     <div class="mfs2" title="글씨 크기"><button data-fs="1" onclick="setFs(1)" aria-label="글씨 보통">가−</button><button data-fs="1.15" onclick="setFs(1.15)" aria-label="글씨 크게">가+</button></div>
     <div class="crumb hide" id="crumb"></div>
@@ -593,7 +596,7 @@ async function doLogin(){
   var r = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + '/', queryParams: { hd: DOMAIN, prompt: 'select_account' } } });
   if (r.error) $('loginmsg').textContent = '로그인을 시작하지 못했습니다: ' + r.error.message;
 }
-async function doLogout(){ try { await sb.auth.signOut(); } catch(e){} location.href = '/'; }
+async function doLogout(){ try { await sb.auth.signOut({ scope: 'local' }); } catch(e){} location.href = '/'; }
 
 async function start(){
   var s = await sb.auth.getSession();
@@ -610,7 +613,7 @@ async function start(){
     $('blk-t').textContent = t; $('blk-d').innerHTML = d; return;
   }
   ME = w; render(); show('app');
-  loadNotices(); loadAtt(); loadBoard(); loadQuick(); if (w.is_hq || w.role === 'admin') loadNews(); inqBadge(); setInterval(inqBadge, 120000);
+  loadNotices(); loadAtt(); loadBoard(); loadQuick(); if (w.is_hq || w.role === 'admin') loadNews(); inqBadge(); setInterval(function(){ if (!document.hidden) inqBadge(); }, 120000);
   fromHash();
 }
 
@@ -664,7 +667,7 @@ function renderNav(){
     if (!ME.is_hq) h += kidHtml('book', false, 'order', '교재 주문');   // 도협회는 주문 관리만
     if (bookMgr) h += kidHtml('book', false, 'admin', '교재 주문 관리').replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', '<span class="nbadge hide" id="book-badge"></span></a>');
   }
-  h += grpHtml('📝', '공문 작성') + kidHtml('doc', false, 'write', '문서 작성') + kidHtml('doc', false, 'recv', '받은 문서 (도↔지회)').replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', '<span class="nbadge hide" id="docr-badge"></span></a>') + kidHtml('doc', false, 'sent', '보낸 문서 (도↔지회)') + kidHtml('doc', false, 'ledger', '발송 대장') + kidHtml('doc', false, 'rledger', '수신 대장');
+  h += grpHtml('📝', '공문 작성') + kidHtml('doc', false, 'write', '문서 작성') + kidHtml('doc', false, 'recv', '받은 문서 (도↔시군)').replace('class="kid"', 'class="kid" style="display:flex;align-items:center"').replace('</a>', '<span class="nbadge hide" id="docr-badge"></span></a>') + kidHtml('doc', false, 'sent', '보낸 문서 (도↔시군)') + kidHtml('doc', false, 'ledger', '발송 대장') + kidHtml('doc', false, 'rledger', '수신 대장');
   h += grpHtml('🤟', '수어통역') + kidHtml('interp', false, 'log', '통역일지') + kidHtml('interp', false, 'counsel', '상담일지')
     + (['interp.view', 'interp.report', 'interp.review'].some(function(k){ return (ME.perms || []).indexOf(k) >= 0; }) ? kidHtml('interp', false, 'stats', '통계') : '');
   h += grpHtml('📒', '업무일지') + kidHtml('worklog', false, 'write', '업무일지 작성') + kidHtml('worklog', false, 'print', '업무일지 인쇄');
@@ -681,7 +684,7 @@ function renderNav(){
     h += grpHtml('🏢', '기관 설정');
     if (ME.can_manage) h += kidHtml('org', false, 'org', '기본 정보') + kidHtml('org', false, 'depts', '부서') + kidHtml('org', false, 'lines', '결재라인');
     if (isAttAdmin()) h += kidHtml('att', true, 'settings', '출퇴근·근무지') + kidHtml('att', true, 'notify', '알림');
-    if (ME.role === 'lead') h += kidHtml('org', false, 'drive', '드라이브·캘린더 연결');
+    if (ME.role === 'lead' || (ME.can_manage && ME.role !== 'admin')) h += kidHtml('org', false, 'drive', '드라이브·캘린더 연결');   // 공동 관리자 포함
     if (ME.role === 'admin') h += kidHtml('org', false, 'chapters', '지회 관리');
     if (ME.role === 'admin' || ME.role === 'lead') h += kidHtml('org', false, 'reset', '자료 초기화');
   }
@@ -1065,8 +1068,8 @@ function setPunch(t){
 var CHEER = [["오늘도 한 걸음, 충분히 잘하고 있어요.", "One step today is enough. You're doing great."], ["작은 일도 정성껏, 그게 큰 힘이 됩니다.", "Small things done with care add up to great things."], ["오늘의 수고가 누군가의 하루를 밝혀요.", "Your effort today brightens someone's day."], ["천천히 가도 괜찮아요. 멈추지만 않으면 돼요.", "It's okay to go slowly, as long as you keep going."], ["당신의 손끝에서 소통이 시작됩니다.", "Communication begins at your fingertips."], ["힘든 날도 지나가요. 오늘도 응원해요.", "Hard days pass too. Cheering for you today."], ["웃으며 시작하면 하루가 가벼워져요.", "Start with a smile and the day feels lighter."], ["완벽보다 꾸준함이 더 멀리 갑니다.", "Consistency goes further than perfection."], ["오늘 할 수 있는 만큼만, 그걸로 충분해요.", "Do what you can today. That's enough."], ["함께라서 더 든든한 하루예요.", "Together, today feels stronger."], ["쉼도 일의 일부예요. 잠깐 숨 고르세요.", "Rest is part of the work. Take a breath."], ["당신이 있어 이 일이 빛나요.", "This work shines because of you."], ["어제보다 조금 더 나은 오늘이면 돼요.", "Just a little better than yesterday."], ["좋은 하루는 좋은 마음에서 시작돼요.", "A good day starts with a good heart."], ["오늘도 고맙습니다. 수고 많으세요.", "Thank you for today. You're working hard."], ["문제는 풀라고 있는 거예요. 할 수 있어요.", "Problems are meant to be solved. You can do it."], ["작은 친절이 큰 변화를 만들어요.", "Small kindness makes big change."], ["오늘의 나를 칭찬해 주세요.", "Give yourself some credit today."], ["한 사람의 노력이 모두의 길이 됩니다.", "One person's effort becomes everyone's path."], ["서두르지 말고, 포기하지 말고.", "Don't rush, don't give up."], ["오늘도 마음 따뜻한 하루 되세요.", "Have a warm-hearted day."], ["할 일이 많아도 하나씩이면 돼요.", "Lots to do? One thing at a time."], ["당신의 미소가 사무실을 밝혀요.", "Your smile lights up the office."], ["꾸준히 쌓은 하루가 실력이 됩니다.", "Days built steadily become skill."], ["실수해도 괜찮아요. 배우는 중이니까요.", "Mistakes are fine. We're all learning."], ["오늘은 어제보다 더 잘될 거예요.", "Today will go better than yesterday."], ["마음을 전하는 일, 정말 멋진 일이에요.", "Connecting hearts is truly wonderful work."], ["잠깐의 여유가 더 큰 힘을 줘요.", "A moment of ease gives greater strength."], ["오늘의 노력은 반드시 돌아와요.", "Today's effort always comes back to you."], ["기대되는 하루, 즐겁게 시작해요.", "Let's start this promising day with joy."], ["당신은 생각보다 훨씬 잘하고 있어요.", "You're doing much better than you think."], ["좋은 동료가 되어 줘서 고마워요.", "Thanks for being a great colleague."], ["한 번에 하나, 차근차근 해봐요.", "One at a time, step by step."], ["오늘도 무리하지 말고 건강 챙기세요.", "Don't overdo it, take care of yourself."], ["작은 성취를 마음껏 기뻐하세요.", "Celebrate your small wins."], ["물 한 잔 마시고 힘내요!", "Drink some water and cheer up!"], ["당신의 하루를 응원합니다.", "Cheering on your day."], ["포기하지 않는 마음이 가장 큰 재능이에요.", "Never giving up is the greatest talent."], ["오늘 만나는 사람에게 따뜻한 한마디를.", "Share a kind word with someone today."], ["천 리 길도 한 걸음부터예요.", "A journey of a thousand miles begins with one step."], ["오늘의 작은 시작이 내일의 큰 결과로.", "Today's small start, tomorrow's big result."], ["힘들 땐 도움을 청해도 괜찮아요.", "It's okay to ask for help."], ["당신의 수고를 모두가 알고 있어요.", "Everyone knows how hard you work."], ["밝은 생각이 밝은 하루를 만들어요.", "Bright thoughts make a bright day."], ["오늘도 나답게, 내 속도로.", "Be yourself today, at your own pace."], ["배움에는 끝이 없어 더 즐거워요.", "Learning never ends, and that's the fun."], ["함께 웃는 하루가 되길 바라요.", "Hope today is full of shared smiles."], ["어려운 일도 함께하면 가벼워져요.", "Hard things get lighter together."], ["오늘 하루도 충분히 의미 있어요.", "Today is meaningful, just as it is."], ["잘하고 있어요. 지금 이대로 좋아요.", "You're doing well. Just as you are."], ["새로운 하루, 새로운 기회예요.", "A new day is a new chance."], ["마음이 통하면 길이 열려요.", "When hearts connect, paths open."], ["오늘의 피곤함은 내일의 보람이에요.", "Today's tiredness is tomorrow's reward."], ["가끔은 하늘을 올려다봐요.", "Look up at the sky now and then."], ["당신 덕분에 오늘도 든든해요.", "Thanks to you, today feels secure."], ["긍정의 한마디가 하루를 바꿔요.", "One positive word can change a day."], ["오늘도 파이팅! 끝까지 힘내요.", "You've got this! Keep going till the end."], ["모든 노력은 흔적을 남겨요.", "Every effort leaves its mark."], ["스스로를 믿어 보세요. 충분해요.", "Believe in yourself. You're enough."], ["오늘 하루도 정말 수고했어요.", "You did a great job today."], ["오늘 하루, 나에게 다정하게.", "Be gentle with yourself today."], ["좋은 일은 생각보다 가까이 있어요.", "Good things are closer than you think."], ["커피 한 잔의 여유로 시작해요.", "Start with the ease of a cup of coffee."], ["당신의 꼼꼼함이 모두를 지켜요.", "Your care keeps everyone safe."], ["오늘도 우리 함께 잘 해봐요.", "Let's do well together today."], ["마음먹은 일, 오늘 하나만 해봐요.", "Try just one thing you've set your mind to."], ["지금 이 순간도 소중해요.", "This very moment matters too."], ["잘 쉬어야 잘 일할 수 있어요.", "Rest well to work well."], ["당신의 목소리 없는 말이 세상을 바꿔요.", "Your silent words change the world."], ["오늘 받은 고마움을 기억해요.", "Remember the thanks you received today."], ["느려도 괜찮아요, 방향이 맞으면 돼요.", "Slow is fine if the direction is right."], ["하루의 끝에 웃을 수 있기를.", "May you smile at the end of the day."], ["작은 변화가 큰 내일을 만들어요.", "Small changes make a big tomorrow."], ["오늘의 어려움은 내일의 이야기예요.", "Today's struggle is tomorrow's story."], ["당신이 하는 일은 꼭 필요한 일이에요.", "What you do truly matters."], ["기분 좋은 인사로 하루를 열어요.", "Open the day with a cheerful greeting."], ["한숨 대신 심호흡 한 번!", "Take a deep breath instead of a sigh!"], ["오늘도 성장하는 중이에요.", "You're growing today, too."], ["나를 믿는 만큼 해낼 수 있어요.", "You can achieve as much as you believe."], ["함께 일해서 즐거워요.", "It's a joy working together."], ["오늘의 계획, 가볍게 하나씩.", "Today's plan, lightly, one by one."], ["당신의 배려가 큰 힘이 돼요.", "Your thoughtfulness is a great strength."], ["비 온 뒤에 땅이 굳어요.", "After rain, the ground grows firm."], ["오늘도 무사히, 즐겁게.", "Safe and joyful today."], ["스스로에게 박수 한 번 보내요.", "Give yourself a round of applause."], ["모든 시작은 서툴러요. 괜찮아요.", "Every start is clumsy. That's okay."], ["행복은 가까운 곳에 있어요.", "Happiness is close by."], ["오늘 하루도 반짝이길 바라요.", "Hope your day sparkles."], ["당신의 열정이 모두에게 전해져요.", "Your passion reaches everyone."], ["내일의 나에게 고마운 오늘을.", "Make today one tomorrow's you will thank."]];   // 오늘의 응원 문장 [한글, 영어]
 function render(){
   var cl = chapLabel();
-  $('brand-tx').innerHTML = ORG + '<br>' + (cl ? esc(cl) + ' ' : '') + '업무 시스템';
-  document.title = ORG + (cl ? cl : '') + ' 업무 시스템';   // 기관명과 지회명은 띄어 쓰지 않음 (강원특별자치도농아인협회춘천시지회)
+  $('brand-tx').innerHTML = ORG + '<br>' + (cl ? esc(cl) + ' ' : '') + '통합 업무시스템';
+  document.title = ORG + (cl ? cl : '') + ' 통합 업무시스템';   // 기관명과 지회명은 띄어 쓰지 않음 (강원특별자치도농아인협회춘천시지회)
   var name = ME.name || (ME.email || '').split('@')[0];
   $('hello').innerHTML = esc(name) + ' <span style="color:var(--pri,#3b5bdb)">' + esc(ME.chapter_name || '') + '</span>';   // 예: 김유진 도협회 (부서는 옆 드롭다운)
   var ci = Math.floor((Date.now() + 9 * 3600000) / 86400000) % CHEER.length;   // 한국 날짜 기준으로 날마다 바뀜
@@ -1260,8 +1263,8 @@ async function loadNotices(){
       + (n.mine_sent ? '<span class="badge b-sent">보낸 공지</span>' : '')
       + (n.audience && n.audience !== 'all' ? '<span class="badge b-aud">' + esc(n.audience_label) + '</span>' : '')
       + '<span class="badge ' + (n.all ? 'b-all' : 'b-chap') + '">' + esc(n.scope) + '</span>'
-      + '<span class="t">' + esc(n.title) + '</span><span class="d">' + fmtDate(n.created_at) + '</span></div>'
-      + '<div class="ntb hide" id="nb' + i + '">' + esc(n.body || '(내용 없음)')
+      + '<span class="t">' + esc(n.title) + ((n.files || []).length ? ' 📎' : '') + '</span><span class="d">' + fmtDate(n.created_at) + '</span></div>'
+      + '<div class="ntb hide" id="nb' + i + '">' + esc(n.body || ((n.files || []).length ? '' : '(내용 없음)')) + bfLinks(n.files)
       + '<div class="meta"><span>작성: ' + esc(n.author) + (n.start_on || n.end_on ? ' · 게시 ' + esc(n.start_on || '') + ' ~ ' + esc(n.end_on || '') : '') + '</span>'
       + (n.can_edit ? '<button class="btn sm" onclick="openNotice(' + i + ')">수정</button><button class="btn sm red" onclick="delNotice(' + n.id + ')">삭제</button>' : '')
       + '</div></div></div>';
@@ -1280,26 +1283,75 @@ function openNotice(i){
   $('modal').innerHTML = '<div class="modal nform"><h3>' + (n ? '공지 수정' : '공지 쓰기') + '</h3>'
     + '<label>제목</label><input type="text" id="nt-t" maxlength="100" value="' + esc(n ? n.title : '') + '">'
     + '<label>내용</label><textarea id="nt-b">' + esc(n ? n.body : '') + '</textarea>'
+    + bfBox('nt', n ? (n.files || []) : [])
     + (M.hq ? '<label>보는 사람</label><select id="nt-aud">' + M.audiences.map(function(a){ return '<option value="' + a.v + '"' + (a.v === aud ? ' selected' : '') + '>' + esc(a.label) + (a.v === 'all' ? '' : ' (그 업무 권한이 있는 직원만)') + '</option>'; }).join('') + '</select>'
         : '<input type="hidden" id="nt-aud" value="all">')   // 지회 공지는 우리 직원 모두에게
-    + (M.hq ? '<label>받는 곳</label><div class="radios">'
-        + [['mine','우리(도협회)'],['all','전체 지회'],['pick','지회 골라서']].map(function(x){ return '<label><input type="radio" name="nt-sc" value="' + x[0] + '"' + (x[0] === sc ? ' checked' : '') + ' onchange="ntScope()"> ' + x[1] + '</label>'; }).join('') + '</div>'
+    + ((M.hq || M.multi) ? '<label>받는 곳</label><div class="radios">'
+        + [['mine', M.hq ? '우리(도협회)' : '우리 지회'],['all','전체 지회'],['pick','지회 골라서']].map(function(x){ return '<label><input type="radio" name="nt-sc" value="' + x[0] + '"' + (x[0] === sc ? ' checked' : '') + ' onchange="ntScope()"> ' + x[1] + '</label>'; }).join('') + '</div>'
         + '<div class="chlist' + (sc === 'pick' ? '' : ' hide') + '" id="nt-chs">' + M.chapters.map(function(c){ return '<label><input type="checkbox" value="' + c.id + '"' + (picked.indexOf(c.id) >= 0 ? ' checked' : '') + '> ' + esc(c.name) + '</label>'; }).join('') + '</div>' : '')
     + '<label>게시 기간 (비우면 계속)</label><div class="row2"><input type="date" id="nt-s" value="' + esc(n && n.start_on || '') + '"><input type="date" id="nt-e" value="' + esc(n && n.end_on || '') + '"></div>'
     + '<label class="ck"><input type="checkbox" id="nt-i"' + (n && n.important ? ' checked' : '') + '> 중요 공지로 표시 (맨 위)</label>'
     + '<div class="mfoot"><button class="btn" onclick="closeModal()">취소</button><button class="btn pri" onclick="saveNotice(' + (n ? n.id : 'null') + ')">저장</button></div></div>';
-  $('modal').classList.remove('hide');
+  $('modal').classList.remove('hide'); bfDraw('nt');
 }
 function ntScope(){ var v = (document.querySelector('input[name=nt-sc]:checked') || {}).value; $('nt-chs').classList.toggle('hide', v !== 'pick'); }
 function closeModal(){ $('modal').classList.add('hide'); $('modal').innerHTML = ''; }
+/* ── 첨부 파일 (공지·문의) : Storage 'board-files' (비공개), 5개·20MB까지 ── */
+var BF_MAX = 5, BF_SIZE = 20 * 1024 * 1024, BF = {};   // BF[칸] = [{ file } 또는 이미 붙은 { path, name, size }]
+function bfSize(n){ n = Number(n) || 0; return n >= 1048576 ? (n / 1048576).toFixed(1) + 'MB' : Math.max(1, Math.round(n / 1024)) + 'KB'; }
+function bfBox(key, init){   // 파일 고르는 칸
+  BF[key] = (init || []).slice();
+  return '<div class="bfbox"><label class="btn sm" style="cursor:pointer">📎 파일 첨부<input type="file" multiple style="display:none" onchange="bfAdd(\'' + key + '\', this)"></label>'
+    + '<span class="mute" style="font-size:12px;margin-left:6px">' + BF_MAX + '개까지 · 파일 하나 20MB까지</span><div class="bflist" id="bf-' + key + '"></div></div>';
+}
+function bfDraw(key){
+  var el = $('bf-' + key); if (!el) return;
+  el.innerHTML = (BF[key] || []).map(function(x, i){ var f = x.file || x;
+    return '<span class="bfchip">📄 ' + esc(f.name) + ' <span class="mute">' + bfSize(f.size) + '</span> <a href="#" onclick="BF[\'' + key + '\'].splice(' + i + ',1);bfDraw(\'' + key + '\');return false" title="빼기">✕</a></span>'; }).join('');
+}
+function bfAdd(key, input){
+  var list = BF[key] || (BF[key] = []);
+  [].forEach.call(input.files || [], function(f){
+    if (list.length >= BF_MAX) { toast('파일은 ' + BF_MAX + '개까지 첨부할 수 있습니다.'); return; }
+    if (f.size > BF_SIZE) { toast(f.name + ' 파일이 20MB보다 큽니다.'); return; }
+    list.push({ file: f });
+  });
+  input.value = ''; bfDraw(key);
+}
+async function bfUpload(key){   // 새로 고른 파일만 올리고, 전체 목록 [{path,name,size}] 돌려줌
+  var out = [], up = [], list = BF[key] || [];
+  var folder = 'up/' + ME.id + '/' + (window.crypto && crypto.randomUUID ? crypto.randomUUID() : Date.now() + '-' + Math.random().toString(36).slice(2));
+  try {
+    for (var i = 0; i < list.length; i++) {
+      var x = list[i];
+      if (!x.file) { out.push({ path: x.path, name: x.name, size: x.size }); continue; }
+      var ext = (x.file.name.match(/\.([A-Za-z0-9]{1,8})$/) || [, 'bin'])[1].toLowerCase(), path = folder + '/' + i + '.' + ext;
+      var r = await sb.storage.from('board-files').upload(path, x.file, { contentType: x.file.type || 'application/octet-stream', upsert: false });
+      if (r.error) throw new Error(x.file.name + ' 올리기 실패: ' + r.error.message);
+      up.push(path); out.push({ path: path, name: x.file.name, size: x.file.size });
+    }
+  } catch (e) { if (up.length) sb.storage.from('board-files').remove(up).catch(function(){}); throw e; }
+  out.uploaded = up; return out;
+}
+function bfLinks(files){   // 붙은 파일 보여주기 (누르면 내려받기)
+  if (!files || !files.length) return '';
+  return '<div class="bflist">' + files.map(function(f){
+    return '<a class="bfchip" href="#" data-p="' + esc(f.path) + '" data-n="' + esc(f.name) + '" onclick="event.stopPropagation();bfOpen(this.dataset.p, this.dataset.n);return false">📎 ' + esc(f.name) + ' <span class="mute">' + bfSize(f.size) + '</span></a>'; }).join('') + '</div>';
+}
+async function bfOpen(path, name){
+  var r = await sb.storage.from('board-files').createSignedUrl(path, 600, { download: name || true });
+  if (r.error) { toast('파일을 열 수 없습니다: ' + r.error.message); return; }
+  location.href = r.data.signedUrl;
+}
 async function saveNotice(id){
   var t = $('nt-t').value.trim(); if (!t) { toast('제목을 입력하세요.'); return; }
   var scEl = document.querySelector('input[name=nt-sc]:checked'), sc = scEl ? scEl.value : 'mine';
   var ids = sc === 'pick' ? [].map.call(document.querySelectorAll('#nt-chs input:checked'), function(x){ return Number(x.value); }) : [];
   if (sc === 'pick' && !ids.length) { toast('받을 지회를 골라 주세요.'); return; }
+  var files; try { if ((BF.nt || []).some(function(x){ return x.file; })) toast('파일을 올리는 중입니다...'); files = await bfUpload('nt'); } catch (e) { toast(e.message); return; }
   var r = await sb.rpc('notice_save', { p: { id: id || '', title: t, body: $('nt-b').value, important: $('nt-i').checked, audience: $('nt-aud').value,
-    scope: sc, chapter_ids: ids, start_on: $('nt-s').value, end_on: $('nt-e').value } });
-  if (r.error) { toast(r.error.message); return; }
+    scope: sc, chapter_ids: ids, start_on: $('nt-s').value, end_on: $('nt-e').value, files: files } });
+  if (r.error) { if (files.uploaded.length) sb.storage.from('board-files').remove(files.uploaded).catch(function(){}); toast(r.error.message); return; }
   closeModal(); toast('저장했습니다.'); loadNotices(); SYSNOTE = {};
 }
 async function delNotice(id){
@@ -1365,18 +1417,20 @@ function inqThread(q){
     + '<h3><span class="badge b-cat">' + esc(q.category) + '</span> ' + esc(q.title) + '<div class="mute" style="font-weight:600;margin-top:4px">' + esc(q.from_name) + ' → ' + esc(q.to_name) + ' · ' + (q.status === '해결' ? '해결됨' : '진행 중') + '</div></h3>'
     + (q.side !== 'view' ? '<button class="btn sm" onclick="inqSetStatus(' + (q.status === '해결' ? 'false' : 'true') + ')">' + (q.status === '해결' ? '다시 진행' : '✔ 해결') + '</button>' : '') + '</div>'
     + '<div class="posts" id="inq-posts">' + q.posts.map(function(p){
-        return '<div class="post' + (mine(p) ? ' me' : '') + '"><div class="w">' + esc(p.who) + ' · ' + esc(p.author || '') + ' · ' + inqWhen(p.at) + '</div><div class="b">' + esc(p.body) + '</div></div>';
+        return '<div class="post' + (mine(p) ? ' me' : '') + '"><div class="w">' + esc(p.who) + ' · ' + esc(p.author || '') + ' · ' + inqWhen(p.at) + '</div><div class="b">' + esc(p.body) + bfLinks(p.files) + '</div></div>';
       }).join('') + '</div>'
     + (last && mine(last) && q.other_seen ? '<div class="mute" style="text-align:right;margin-top:4px">상대 확인함 ✓</div>' : '')
-    + (q.side !== 'view' ? '<div class="ireply"><textarea id="inq-reply" maxlength="2000" placeholder="답글 쓰기"></textarea><button class="btn pri" onclick="inqReply()">보내기</button></div>'
+    + (q.side !== 'view' ? '<div class="ireply"><textarea id="inq-reply" maxlength="2000" placeholder="답글 쓰기"></textarea><button class="btn pri" onclick="inqReply()">보내기</button></div>' + bfBox('iqr', [])
                          : '<div class="note" style="margin-top:10px">지회끼리 주고받는 문의입니다. 도협회는 보기만 할 수 있습니다.</div>')
     + (q.edu ? '<div class="mute" style="margin-top:8px">수어교육관리의 문의와 같은 자료입니다. 강좌·파견 관련 문의는 수어교육관리에서도 볼 수 있습니다.</div>' : '');
   var ps = $('inq-posts'); if (ps) ps.scrollTop = ps.scrollHeight;
+  bfDraw('iqr');
 }
 async function inqReply(){
-  var t = $('inq-reply').value.trim(); if (!t) { toast('내용을 적어 주세요.'); return; }
-  var r = await sb.rpc('inq_reply', { p_key: INQ_CUR, p_body: t });
-  if (r.error) { toast(r.error.message); return; }
+  var t = $('inq-reply').value.trim(); if (!t && !(BF.iqr || []).length) { toast('내용을 적거나 파일을 첨부해 주세요.'); return; }
+  var files; try { files = await bfUpload('iqr'); } catch (e) { toast(e.message); return; }
+  var r = await sb.rpc('inq_reply', { p_key: INQ_CUR, p_body: t, p_files: files });
+  if (r.error) { if (files.uploaded.length) sb.storage.from('board-files').remove(files.uploaded).catch(function(){}); toast(r.error.message); return; }
   inqThread(r.data); loadInqQuiet();
 }
 async function inqSetStatus(done){
@@ -1392,13 +1446,15 @@ async function inqNewForm(){
     + '<label>분류</label><select id="iq-cat"><option>수어교육</option><option>통역</option><option>근태</option><option>회계</option><option>공문</option><option>사업실적</option><option>구글 Workspace</option><option selected>기타</option></select>'
     + '<label>제목</label><input id="iq-t" maxlength="100" placeholder="비우면 내용 첫 줄">'
     + '<label>내용</label><textarea id="iq-b" maxlength="2000" style="min-height:140px" placeholder="개인정보(수강생·이용인 이름, 연락처 등)는 적지 마세요."></textarea>'
+    + bfBox('iqn', [])
     + '<div class="mute" style="margin-top:6px">받는 곳에서는 지회 담당자와 그 분류 업무 담당자가 봅니다. 도협회는 지회끼리 주고받은 문의도 볼 수 있습니다.</div>'
     + '<div style="margin-top:12px;display:flex;gap:8px;justify-content:flex-end"><button class="btn" onclick="document.querySelector(\'.inqwrap\').classList.remove(\'reading\');$(\'inq-thread\').innerHTML=\'\'">취소</button><button class="btn pri" onclick="inqSend()">보내기</button></div></div>';
 }
 async function inqSend(){
-  var b = $('iq-b').value.trim(); if (!b) { toast('내용을 적어 주세요.'); return; }
-  var r = await sb.rpc('inq_new', { p: { to: $('iq-to').value, category: $('iq-cat').value, title: $('iq-t').value, body: b } });
-  if (r.error) { toast(r.error.message); return; }
+  var b = $('iq-b').value.trim(); if (!b && !(BF.iqn || []).length) { toast('내용을 적거나 파일을 첨부해 주세요.'); return; }
+  var files; try { files = await bfUpload('iqn'); } catch (e) { toast(e.message); return; }
+  var r = await sb.rpc('inq_new', { p: { to: $('iq-to').value, category: $('iq-cat').value, title: $('iq-t').value, body: b, files: files } });
+  if (r.error) { if (files.uploaded.length) sb.storage.from('board-files').remove(files.uploaded).catch(function(){}); toast(r.error.message); return; }
   toast('문의를 보냈습니다.'); $('inq-f-st').value = '진행'; await loadInq(); inqOpen(r.data);
 }
 /* ── 각 시스템 화면 위 '담당 공지' 띠 (보는 사람이 그 업무 담당인 공지) ── */

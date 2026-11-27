@@ -99,7 +99,7 @@ function msg(t, type) { const m = $('msg'); m.textContent = t || ''; m.className
 function todayStr() { return new Date().toLocaleDateString('sv-SE', { timeZone: 'Asia/Seoul' }); }
 function krDate(d) { if (!d) return ''; const s = String(d).slice(0, 10).split('-'); return s[0] + '년 ' + Number(s[1]) + '월 ' + Number(s[2]) + '일'; }
 
-// ── 하위 메뉴 (업무 시스템 왼쪽 메뉴와 연결) ──
+// ── 하위 메뉴 (통합 업무시스템 왼쪽 메뉴와 연결) ──
 const SUB = { go: new URLSearchParams(location.search).get('go') || '', ready: false };
 function subTell(t) { if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-tab', tab: t }, location.origin); } catch (e) {} }
 function subReady() { SUB.ready = true; if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-ready', tab: SUB.go }, location.origin); } catch (e) {} }
@@ -109,7 +109,7 @@ function badgeTell(n) { if (EMBED && window.parent !== window) try { window.pare
 let D = null, CART = {}, F = { receive: 'delivery', ship: 'prepaid', st: false, rc: false, tax: false }, ORDERS = [], AF = '접수';
 async function init() { const VT = vtok();
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { vw(VT).innerHTML = '<div class="card">업무 시스템에 로그인한 뒤 다시 열어 주세요.</div>'; return; }
+  if (!session) { vw(VT).innerHTML = '<div class="card">통합 업무시스템에 로그인한 뒤 다시 열어 주세요.</div>'; return; }
   try { D = await rpc('book_init'); } catch (e) { vw(VT).innerHTML = '<div class="card">' + esc(e.message) + '</div>'; return; }
   $('who').textContent = D.me.chapter_name + ' · ' + (D.me.name || D.me.email);
   document.querySelectorAll('.mgr').forEach(b => b.style.display = D.mgr ? '' : 'none');

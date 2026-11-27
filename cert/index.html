@@ -86,7 +86,7 @@ async function loginGoogle() {
   const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname, queryParams: { hd: 'gwdeaf.or.kr', prompt: 'select_account' } } });
   if (error) alert(error.message);
 }
-async function logout() { await sb.auth.signOut(); location.href = location.origin + location.pathname; }
+async function logout() { await sb.auth.signOut({ scope: 'local' }); location.href = location.origin + location.pathname; }
 function needLogin() {
   $('topNav').style.display = 'none';
   $('view').innerHTML = '<div class="card" style="cursor:default"><h2>로그인</h2><p>업무용 구글 계정(@gwdeaf.or.kr)으로 로그인하세요.</p><button onclick="loginGoogle()">구글 계정으로 로그인</button></div>';
@@ -96,7 +96,7 @@ function cannotUse(e) {
   $('view').innerHTML = `<div class="card" style="cursor:default"><h2>사용할 수 없습니다</h2><p>${esc(e.message)}</p><button class="sub" onclick="logout()">다른 계정으로 로그인</button></div>`;
 }
 function setTab(id) { document.querySelectorAll('#topNav button[data-tab]').forEach(b => b.classList.toggle('sub', b.dataset.tab !== id)); if (id === 'issue' || id === 'list') subTell(id); }
-// ===== 하위 메뉴 (업무 시스템 왼쪽 메뉴에서 이동) =====
+// ===== 하위 메뉴 (통합 업무시스템 왼쪽 메뉴에서 이동) =====
 const SUB = { go: new URLSearchParams(location.search).get('go') || '', ready: false };
 function subTell(t) { if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-tab', tab: t }, location.origin); } catch (e) {} }
 function subReady() { SUB.ready = true; if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-ready', tab: SUB.go }, location.origin); } catch (e) {} }

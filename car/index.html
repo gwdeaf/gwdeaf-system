@@ -278,6 +278,8 @@ function applyCfg(cars,drivers){ CARS=cars.map((x,i)=>({...x,...PALETTE[i%PALETT
 /* ================================== */
 
 const $ = s => document.querySelector(s);
+const nf = v=>{ const t=String(v??"").trim(); return /^-?\d+(\.\d+)?$/.test(t.replace(/,/g,"")) && t!=="" ? Number(t.replace(/,/g,"")).toLocaleString("ko-KR") : t; };   // 천 단위 쉼표
+const numIn = el=>{ const d=el.value.replace(/[^0-9]/g,""); el.value = d ? Number(d).toLocaleString("ko-KR") : ""; };
 const ls = {get:(k,d)=>{try{return JSON.parse(localStorage.getItem(k))??d}catch(e){return d}}, set:(k,v)=>localStorage.setItem(k,JSON.stringify(v))};
 const pad = n => String(n).padStart(2,"0");
 const dStr = d => `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`;
@@ -563,7 +565,8 @@ function arrive(){
   <input type="text" id="dest" placeholder="어디를 다녀왔나요?" value="${tr.dest||''}">
   <label>목적 <span class="req">*필수</span></label>
   <div class="opts"><button id="p1" class="${purpose==='업무'?'on':''}" onclick="setP('업무')">업무</button><button id="p2" class="${purpose==='통역'?'on':''}" onclick="setP('통역')">통역</button></div>
-  <div class="lbl" id="pHint" style="margin-top:6px;color:#2f5bd6;${purpose==='통역'?'':'display:none'}">🤟 통역을 고르면 저장한 뒤 <b>통역일지 쓰기</b>로 넘어가요. 날짜·시간·장소가 미리 채워집니다.</div>
+  <div class="lbl" style="margin-top:6px;color:#5b6577">📘 저장하면 내 <b>업무일지</b>에 외근(완료)으로 자동 기록돼요.</div>
+  <div class="lbl" id="pHint" style="margin-top:4px;color:#2f5bd6;${purpose==='통역'?'':'display:none'}">🤟 통역을 고르면 저장한 뒤 <b>통역일지 쓰기</b>로 넘어가요. 날짜·시간·장소가 미리 채워집니다.</div>
   <label>🕒 도착 날짜·시간</label>
   <div class="two"><input type="date" id="eD" value="${dStr(new Date())}" oninput="this.dataset.t='1'"><input type="time" id="eT" value="${tStr(new Date())}" oninput="this.dataset.t='1'"></div>
   <div class="lbl" style="margin-top:6px">수정하지 않으면 저장하는 시각이 자동 기록됩니다.</div>
@@ -631,13 +634,15 @@ async function save(){
     recent[car]=[{md:sD.slice(5).replace("-","/"), st:tr.time, en:eT, driver:tr.driver, dest, odoS:String(tr.odoS), odoE:String(e)}];
     ls.set("recent",recent);
     if(gauge){ fuelMap[car]=gauge; ls.set("fuelMap",fuelMap); }
+    // 업무·통역으로 다녀온 것은 입력한 사람의 업무일지에 '외근(완료)'으로 담아 둠 (업무일지를 열면 들어감)
+    try{ await sb.rpc("worklog_inbox_add",{p_date:sD, p_start:sT, p_end:eT, p_dest:dest, p_purpose:purpose, p_car:car}); }catch(_){}
     if(purpose==="통역"){   // 통역으로 다녀왔으면 통역일지 쓰기로 (날짜·시간·장소를 넘겨줌)
       try{ localStorage.setItem("interpFromCar", JSON.stringify({date:sD, start:sT, end:eT, location:dest, car, at:Date.now()})); }catch(_){}
       toast("저장되었습니다 · 통역일지로 이동합니다");
       setTimeout(()=>{ if(EMBED && window.parent!==window){ try{ window.parent.postMessage({type:"nav-go", kind:"interp", tab:""}, location.origin); return; }catch(_){} } location.href="/interp/"; },1400);
       return;
     }
-    toast("저장되었습니다"); setTimeout(goHome,1400);
+    toast("저장되었습니다 · 업무일지에 외근으로 기록했어요"); setTimeout(goHome,1400);
   }catch(x){ err.textContent="저장에 실패했습니다. 인터넷 연결을 확인하고 다시 눌러 주세요."; btn.disabled=false; btn.textContent="💾 저장"; }
 }
 
@@ -744,7 +749,7 @@ function adminLogView(){
   <div class="hbtns"><select onchange="logFrom=+this.value;if(logTo<logFrom)logTo=logFrom;render()" title="시트 저장 시작 월">${[1,2,3,4,5,6,7,8,9,10,11,12].map(n=>`<option value="${n}" ${n===logFrom?"selected":""}>${n}월</option>`).join("")}</select>~<select onchange="logTo=+this.value;if(logFrom>logTo)logFrom=logTo;render()" title="시트 저장 끝 월">${[1,2,3,4,5,6,7,8,9,10,11,12].map(n=>`<option value="${n}" ${n===logTo?"selected":""}>${n}월</option>`).join("")}</select><button class="addbtn" onclick="saveLogGSheet()">📊 시트로 저장</button><button class="addbtn" onclick="adminLoad('records')">↻ 새로고침</button><button class="btn-save" onclick="logNew()">➕ 기록 추가</button></div></div>
   <div class="sechd"><b>🚗 차량</b>${carSelect(true)}</div>
   <div class="scroll"><table class="tb wide"><tr><th>월/일</th><th>쪽</th><th>차량</th><th>운전자</th><th>탑승</th><th>행선지</th><th>목적</th><th>출발</th><th>도착</th><th>출발km</th><th>도착km</th><th>거리</th><th>차량정비·주유</th><th>잔유량</th><th></th></tr>
-  ${rows.map(r=>`<tr class="${r.flag?'flag':''}"><td>${esc(r.m)}/${esc(r.d)}</td><td>${esc(labelOf[r.rowNo]||'-')}</td><td>${esc(r.car)}</td><td>${esc(r.driver)}</td><td>${esc(r.people)}</td><td>${esc(r.dest)}</td><td>${esc(r.purpose)}</td><td>${esc(r.st)}</td><td>${esc(r.en)}</td><td>${esc(r.odoS)}</td><td>${esc(r.odoE)}</td><td>${esc(r.dist)}</td><td>${esc(r.fix)}</td><td>${esc(r.gauge)}</td><td><button class="mini" onclick="logEdit(${r.rowNo})">수정</button></td></tr>`).join("")||'<tr><td colspan="15">기록이 없습니다</td></tr>'}
+  ${rows.map(r=>`<tr class="${r.flag?'flag':''}"><td>${esc(r.m)}/${esc(r.d)}</td><td>${esc(labelOf[r.rowNo]||'-')}</td><td>${esc(r.car)}</td><td>${esc(r.driver)}</td><td>${esc(r.people)}</td><td>${esc(r.dest)}</td><td>${esc(r.purpose)}</td><td>${esc(r.st)}</td><td>${esc(r.en)}</td><td>${esc(nf(r.odoS))}</td><td>${esc(nf(r.odoE))}</td><td>${esc(nf(r.dist))}</td><td>${esc(r.fix)}</td><td>${esc(r.gauge)}</td><td><button class="mini" onclick="logEdit(${r.rowNo})">수정</button></td></tr>`).join("")||'<tr><td colspan="15">기록이 없습니다</td></tr>'}
   </table></div></div>`;
   if(adminEditRow===null) return `<div>${list}</div>`;
   return `<div class="split"><div>${list}</div><div>${logEditForm()}</div></div>`;
@@ -964,14 +969,37 @@ function printPages(){
   window.print();
   host.remove();
 }
+/* 일지 인쇄 열 고르기: 숨긴 열은 인쇄에서 빠짐 (이 기기에 기억) */
+const PCOLS=[["driver","운전자"],["people","탑승인원"],["dest","행선지"],["purpose","목적"],["time","운행시간"],["odo","출발·도착 km"],["dist","주행거리"],["fix","차량정비·주유"],["gauge","잔유량"]];
+let PHIDE=ls.get("printHide",{});
+function pcolOn(k){ return !PHIDE[k]; }
+function togglePcol(k,on){ if(on) delete PHIDE[k]; else PHIDE[k]=1; ls.set("printHide",PHIDE); render(); }
+function pcolPicker(){
+  return `<div style="margin-top:14px"><b>인쇄할 열</b> <span class="lbl">빼고 싶은 열은 체크를 끄세요</span></div>
+  <div class="pkl" style="display:flex;flex-wrap:wrap;gap:6px 14px;margin-top:6px">${PCOLS.map(([k,h])=>`<label class="pk"><input type="checkbox" ${pcolOn(k)?'checked':''} onchange="togglePcol('${k}',this.checked)"> ${h}</label>`).join("")}</div>`;
+}
 function pageHtml(c,page,pc){
+  const on=pcolOn, top=[], sub=[];
+  const one=(k,h)=>{ if(on(k)) top.push(`<th rowspan="2">${h}</th>`); };
+  top.push('<th rowspan="2">월</th><th rowspan="2">일</th>');
+  one("driver","운전자"); one("people","탑승<br>인원"); one("dest","행선지"); one("purpose","목적");
+  if(on("time")){ top.push('<th colspan="2">운행시간</th>'); sub.push('<th>출발</th><th>도착</th>'); }
+  const dn=(on("odo")?2:0)+(on("dist")?1:0);
+  if(dn){ top.push(`<th colspan="${dn}">운행거리(km)</th>`); if(on("odo")) sub.push('<th>출발</th><th>도착</th>'); if(on("dist")) sub.push('<th>주행거리</th>'); }
+  one("fix","차량정비·주유"); one("gauge","잔유량");
+  const cells=r=>[`<td>${esc(r.m)}</td><td>${esc(r.d)}</td>`,
+    on("driver")?`<td>${esc(r.driver)}</td>`:"", on("people")?`<td>${esc(r.people)}</td>`:"", on("dest")?`<td>${esc(r.dest)}</td>`:"", on("purpose")?`<td>${esc(r.purpose)}</td>`:"",
+    on("time")?`<td>${esc(r.st)}</td><td>${esc(r.en)}</td>`:"", on("odo")?`<td>${esc(nf(r.odoS))}</td><td>${esc(nf(r.odoE))}</td>`:"", on("dist")?`<td>${esc(nf(r.dist))}</td>`:"",
+    on("fix")?`<td>${esc(r.fix)}</td>`:"", on("gauge")?`<td>${esc(r.gauge)}</td>`:""].join("");
+  const ncol=2+["driver","people","dest","purpose","fix","gauge"].filter(on).length+(on("time")?2:0)+dn;
+  const subRow = sub.length ? `<tr>${sub.join("")}</tr>` : "";
+  const topRow = sub.length ? top.join("") : top.join("").replace(/ rowspan="2"/g,"");
   return `<div class="pg">
   <div class="ph"><div class="phl"><div class="pt">차량운행 및 정비일지</div><div class="pcar">차량번호 ${esc(c.p)} · 차종 ${esc(c.n)}</div></div>${signTable(pc,c.n)}</div>
   <div class="pno">NO. ${esc(page.label)}</div>
-  <table class="pt2"><tr><th rowspan="2">월</th><th rowspan="2">일</th><th rowspan="2">운전자</th><th rowspan="2">탑승<br>인원</th><th rowspan="2">행선지</th><th rowspan="2">목적</th><th colspan="2">운행시간</th><th colspan="3">운행거리(km)</th><th rowspan="2">차량정비·주유</th><th rowspan="2">잔유량</th></tr>
-  <tr><th>출발</th><th>도착</th><th>출발</th><th>도착</th><th>주행거리</th></tr>
-  ${page.rows.map(r=>`<tr class="${r.flag?'flag':''}"><td>${esc(r.m)}</td><td>${esc(r.d)}</td><td>${esc(r.driver)}</td><td>${esc(r.people)}</td><td>${esc(r.dest)}</td><td>${esc(r.purpose)}</td><td>${esc(r.st)}</td><td>${esc(r.en)}</td><td>${esc(r.odoS)}</td><td>${esc(r.odoE)}</td><td>${esc(r.dist)}</td><td>${esc(r.fix)}</td><td>${esc(r.gauge)}</td></tr>`).join("")}
-  ${Array.from({length:Math.max(0,20-page.rows.length)}).map(()=>`<tr class="blank"><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td><td></td></tr>`).join("")}
+  <table class="pt2"><tr>${topRow}</tr>${subRow}
+  ${page.rows.map(r=>`<tr class="${r.flag?'flag':''}">${cells(r)}</tr>`).join("")}
+  ${Array.from({length:Math.max(0,20-page.rows.length)}).map(()=>`<tr class="blank">${"<td></td>".repeat(ncol)}</tr>`).join("")}
   </table></div>`;
 }
 let adminPrefill=null, adminOn={};
@@ -1027,6 +1055,7 @@ function adminPrintView(){
       ${printCarSelect()}
       <div style="margin-top:14px"><b>인쇄할 쪽 고르기</b> <button class="mini" onclick="setAllPages(true)">전체 선택</button> <button class="mini" onclick="setAllPages(false)">전체 해제</button></div>
       ${pagePicker(targets)}
+      ${pcolPicker()}
     </div>
     <div class="card">
       <b>선택된 쪽 (${picked})</b>
@@ -1048,10 +1077,10 @@ function adminMaintView(){
   const defCar = adminCar || (CARS[0]?CARS[0].n:"");
   return `<div class="card cfgcard noprint">
   <div class="cfghead"><div><b class="cfgttl">🔧 정비기록</b><div class="lbl cfgnote">차량별 정비 내역을 기록하고, 관리대장으로 인쇄합니다.</div></div>
-  <div class="hbtns"><button class="addbtn" onclick="printPages()">🖨 목록 인쇄</button><button class="btn-save" onclick="adminEditMaint={id:'',car:'${esc(defCar)}',date:'',kind:'',shop:'',who:'',cost:'',memo:''};render()">+ 정비 기록 추가</button></div></div>
+  <div class="hbtns"><button class="addbtn" onclick="printPages()">🖨 목록 인쇄</button><button class="btn-save" onclick="adminEditMaint={id:'',car:'${esc(defCar)}',date:'',kind:'',shop:'',who:'',cost:'',km:'',memo:''};render()">+ 정비 기록 추가</button></div></div>
   <div class="sechd"><b>🚗 차량</b>${carSelect(true)}</div>
-  <table class="tb"><tr><th>차량</th><th>일시</th><th>구분</th><th>정비소</th><th>담당</th><th>비용</th><th>내용</th><th></th></tr>
-  ${rows.map(m=>`<tr><td>${esc(m.car)}</td><td>${esc(m.date)}</td><td>${esc(m.kind)}</td><td>${esc(m.shop)}</td><td>${esc(m.who)}</td><td>${esc(m.cost)}</td><td>${esc(m.memo)}</td><td><button class="mini" onclick="maintEdit('${esc(m.id)}')">수정</button></td></tr>`).join("")||'<tr><td colspan="8">정비 기록이 없습니다</td></tr>'}
+  <table class="tb"><tr><th>차량</th><th>일시</th><th>구분</th><th>정비소</th><th>담당</th><th>주행거리(km)</th><th>비용(원)</th><th>내용</th><th></th></tr>
+  ${rows.map(m=>`<tr><td>${esc(m.car)}</td><td>${esc(m.date)}</td><td>${esc(m.kind)}</td><td>${esc(m.shop)}</td><td>${esc(m.who)}</td><td>${esc(nf(m.km))}</td><td>${esc(nf(m.cost))}</td><td>${esc(m.memo)}</td><td><button class="mini" onclick="maintEdit('${esc(m.id)}')">수정</button></td></tr>`).join("")||'<tr><td colspan="9">정비 기록이 없습니다</td></tr>'}
   </table></div>
   <div id="printArea">${mPrintHtml(targets)}</div>`;
 }
@@ -1060,12 +1089,12 @@ function mPrintHtml(targets){
     const rows=adminMaint.filter(m=>m.car===c.n);
     return `<div class="mpage"><div class="mhead">차량정비 관리대장</div>
     <table class="minfo"><tr><td style="width:30%">차종: <b>${esc(c.n)}</b></td><td style="width:40%">차량번호: <b>${esc(c.p)}</b></td><td>구입일: ${c.d?esc(c.d):'______________'}</td></tr></table>
-    <table class="mtb"><tr><th>구분</th><th>일시</th><th>정비소</th><th>담당</th><th>비용</th><th>비고</th></tr>
-    ${rows.map(m=>`<tr><td>${esc(m.kind)}</td><td>${esc(m.date)}</td><td>${esc(m.shop)}</td><td>${esc(m.who)}</td><td>${esc(m.cost)}</td><td>${esc(m.memo)}</td></tr>`).join("")}
+    <table class="mtb"><tr><th>구분</th><th>일시</th><th>정비소</th><th>담당</th><th>주행거리(km)</th><th>비용(원)</th><th>비고</th></tr>
+    ${rows.map(m=>`<tr><td>${esc(m.kind)}</td><td>${esc(m.date)}</td><td>${esc(m.shop)}</td><td>${esc(m.who)}</td><td>${esc(nf(m.km))}</td><td>${esc(nf(m.cost))}</td><td>${esc(m.memo)}</td></tr>`).join("")}
     </table></div>`;
   }).join("");
 }
-function maintEdit(id){ adminEditMaint=adminMaint.find(m=>m.id===id)||null; render(); }
+function maintEdit(id){ const m=adminMaint.find(x=>String(x.id)===String(id)); adminEditMaint=m?Object.assign({},m):null; render(); }   // id가 숫자라 문자열로 비교
 function maintForm(){
   const m=adminEditMaint, isNew=!m.id;
   return `<div class="card cfgcard"><div class="cfghead"><div><b class="cfgttl">${isNew?'➕ 정비 기록 추가':'✏️ 정비 기록 수정'}</b><div class="lbl cfgnote">차량·일시·구분을 적고 저장합니다.</div></div><div class="hbtns"><button class="btn-save" onclick="maintSave()">💾 저장</button>${isNew?'':`<button class="addbtn danger" onclick="maintDelete()">삭제</button>`}<button class="addbtn" onclick="adminEditMaint=null;render()">취소</button></div></div>
@@ -1075,14 +1104,15 @@ function maintForm(){
   <label>구분<input id="m_kind" value="${esc(m.kind)}" placeholder="엔진오일, 타이어 등"></label>
   <label>정비소<input id="m_shop" value="${esc(m.shop)}"></label>
   <label>담당<input id="m_who" value="${esc(m.who)}"></label>
-  <label>비용(원)<input id="m_cost" value="${esc(m.cost)}"></label>
+  <label>정비 당시 주행거리(km)<input id="m_km" inputmode="numeric" value="${esc(nf(m.km))}" placeholder="예: 45,230" oninput="numIn(this)"></label>
+  <label>비용(원)<input id="m_cost" inputmode="numeric" value="${esc(nf(m.cost))}" placeholder="예: 120,000" oninput="numIn(this)"></label>
   <label style="grid-column:1/-1">내용·비고<textarea id="m_memo" rows="3">${esc(m.memo)}</textarea></label>
   </div><div class="err" id="err"></div>
 </div>`;
 }
 async function maintSave(){
   const err=$("#err"); err.textContent="";
-  const rec={id:adminEditMaint.id, car:$("#m_car").value, date:$("#m_date").value, kind:$("#m_kind").value.trim(), shop:$("#m_shop").value.trim(), who:$("#m_who").value.trim(), cost:$("#m_cost").value.trim(), memo:$("#m_memo").value.trim()};
+  const rec={id:adminEditMaint.id, car:$("#m_car").value, date:$("#m_date").value, kind:$("#m_kind").value.trim(), shop:$("#m_shop").value.trim(), who:$("#m_who").value.trim(), cost:$("#m_cost").value.replace(/,/g,"").trim(), km:$("#m_km").value.replace(/,/g,"").trim(), memo:$("#m_memo").value.trim()};
   if(!rec.date) return err.textContent="일시를 입력해 주세요.";
   if(!rec.kind) return err.textContent="구분을 입력해 주세요.";
   try{
@@ -1136,7 +1166,7 @@ function adminCfgView(){
 function adminFaqView(){
   const Q=[
     ["차량 관리 화면이 안 보여요","차량 관리 권한이 있어야 보입니다. 지회 담당자에게 직원·권한 관리에서 차량 관리 권한을 요청하세요."],
-    ["로그인은 어떻게 하나요","업무 시스템 홈에서 구글 계정(@gwdeaf.or.kr)으로 로그인합니다. 별도의 지회 아이디·비밀번호는 쓰지 않습니다."],
+    ["로그인은 어떻게 하나요","통합 업무시스템 홈에서 구글 계정(@gwdeaf.or.kr)으로 로그인합니다. 별도의 지회 아이디·비밀번호는 쓰지 않습니다."],
     ["직원 화면에 차량이나 운전자가 안 보여요","🚗 차량·운전자 탭에서 차량 사용 체크가 켜져 있는지 확인하고 💾 저장을 누르세요. 직원은 직원·권한 관리에 등록하면 자동으로 운전자가 됩니다."],
     ["직원이 아닌 사람이 운전해요","🚗 차량·운전자 탭의 '추가 운전자'에서 + 운전자 추가로 이름을 넣고 💾 저장을 누르세요."],
     ["그만둔 직원이나 안 쓰는 차량은 어떻게 하나요","사용 체크를 끄세요. 직원 화면에서 숨겨지고 기록은 남습니다. 삭제는 목록에서 완전히 지우므로 신중하게 누르세요."],
@@ -1150,7 +1180,7 @@ function adminFaqView(){
     ["인쇄 쪽은 어떻게 나뉘나요","기록은 저장 연도별로 20줄씩 나뉘고, 쪽 번호는 01번부터 붙습니다. 차량별 현황에서 쪽이 채워진 정도를 볼 수 있습니다."],
     ["주유칸 색은 어떤 기준인가요","남은 칸의 비율로 정해집니다. 20% 이하는 빨강, 60% 이하는 주황, 60%를 넘으면 초록입니다. 칸 하나는 전체의 1/칸 수입니다."],
     ["자주 가는 곳 목록은 어디에 저장되나요","각 기기 브라우저에만 저장되고 다른 기기와 공유되지 않습니다. 브라우저 데이터를 지우면 목록도 사라집니다."],
-    ["직원용 링크를 보냈는데 들어가지지 않아요","직원이 업무 시스템에 구글로 로그인할 수 있도록 직원·권한 관리에 등록되어 있고 차량운행일지 권한이 있는지 확인하세요."]
+    ["직원용 링크를 보냈는데 들어가지지 않아요","직원이 통합 업무시스템에 구글로 로그인할 수 있도록 직원·권한 관리에 등록되어 있고 차량운행일지 권한이 있는지 확인하세요."]
   ];
   return `<div class="card cfgcard">
   <div class="cfghead"><div><b class="cfgttl">❓ 도움말</b><div class="lbl cfgnote">궁금한 내용을 누르면 답이 펼쳐집니다.</div></div></div>
@@ -1180,15 +1210,15 @@ function clearCaches(){
 // 지회 아이디는 영문·숫자로 만듭니다 (예: gangneung). 실제 메일을 보내지 않는 내부 주소로 바꿔서 사용합니다.
 const LOGIN_DOMAIN = "@gwdeaf.local";
 function loginView(){
-  // 구글 로그인은 업무 시스템 홈에서 합니다 (로그인하면 이 화면에서도 자동으로 이어집니다)
+  // 구글 로그인은 통합 업무시스템 홈에서 합니다 (로그인하면 이 화면에서도 자동으로 이어집니다)
   if(!BLOCK){ TOP().location.replace("/"); return; }
-  const msg={not_registered:"이 구글 계정은 업무 시스템에 등록되어 있지 않습니다. 지회 담당자에게 등록을 요청해 주세요.",
+  const msg={not_registered:"이 구글 계정은 통합 업무시스템에 등록되어 있지 않습니다. 지회 담당자에게 등록을 요청해 주세요.",
     inactive:"이 계정은 사용이 중지되었습니다. 지회 담당자에게 문의해 주세요.",
     bad_domain:"@gwdeaf.or.kr 구글 계정으로 로그인해 주세요.",
     no_perm:"이 계정에는 차량운행일지 사용 권한이 없습니다. 지회 담당자에게 권한을 요청해 주세요."}[BLOCK]||"로그인 정보를 확인하지 못했습니다. 홈에서 다시 로그인해 주세요.";
   $("#app").innerHTML = `<div class="head"><h1>차량<span>운행</span>일지</h1></div>
   <div class="card"><p style="line-height:1.7">${msg}</p>
-  <button class="main" onclick="logout()">업무 시스템 홈으로</button></div>`;
+  <button class="main" onclick="logout()">통합 업무시스템 홈으로</button></div>`;
 }
 // 로그인 상태와 이 계정의 지회 번호를 확인합니다
 let BLOCK = "", ME_NAME = "";
@@ -1283,7 +1313,7 @@ async function api(name){
     }
     if(name==="maint_list"){
       const rows=ck(await sb.from("maintenance").select("*").eq("chapter_id",CH).order("id"))||[];
-      return {ok:true, records:rows.map(x=>({id:x.id, car:txt(x.car), date:txt(x.maint_date), kind:txt(x.kind), shop:txt(x.shop), who:txt(x.who), cost:txt(x.cost), memo:txt(x.memo)}))};
+      return {ok:true, records:rows.map(x=>({id:x.id, car:txt(x.car), date:txt(x.maint_date), kind:txt(x.kind), shop:txt(x.shop), who:txt(x.who), cost:txt(x.cost), km:txt(x.km), memo:txt(x.memo)}))};
     }
     return {ok:false, error:"알 수 없는 요청"};
   }catch(e){ return {ok:false, error:e.message}; }
@@ -1397,7 +1427,7 @@ async function post(d){
     // 정비기록 저장·삭제
     if(a==="maint_save"){
       const r=d.rec||{};
-      const row={chapter_id:CH, car:r.car, maint_date:r.date, kind:r.kind, shop:r.shop||"", who:r.who||"", cost:r.cost||"", memo:r.memo||""};
+      const row={chapter_id:CH, car:r.car, maint_date:r.date, kind:r.kind, shop:r.shop||"", who:r.who||"", cost:r.cost||"", km:r.km||"", memo:r.memo||""};
       if(r.id) ck(await sb.from("maintenance").update(row).eq("chapter_id",CH).eq("id",Number(r.id)));
       else ck(await sb.from("maintenance").insert(row));
       return {ok:true};
@@ -1425,11 +1455,11 @@ async function post(d){
 
 // 하단 메뉴: 관리자 계정에만 🔐 관리자 버튼을 보여 줍니다
 function footHtml(){
-  return "";   // 관리자 화면은 업무 시스템 홈의 '시스템 관리'에서 들어옵니다
+  return "";   // 관리자 화면은 통합 업무시스템 홈의 '시스템 관리'에서 들어옵니다
 }
 
 /* ---------- 직원용 링크 ---------- */
-// 직원은 링크로 들어가면 구글 로그인(업무 시스템 홈)으로 이어집니다.
+// 직원은 링크로 들어가면 구글 로그인(통합 업무시스템 홈)으로 이어집니다.
 async function copyStaffLink(){
   const l=location.origin+location.pathname;
   try{ await navigator.clipboard.writeText(l); toast("직원용 링크가 복사되었습니다"); }catch(e){ prompt("아래 링크를 복사하세요", l); }

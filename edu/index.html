@@ -621,7 +621,7 @@ function doLogout() {
   const t = S.token;
   clearSession();
   if (typeof google !== 'undefined' && google.script) google.script.run.logout(t); else fetch('/api/call', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ fn: 'logout', args: [t] }) }).catch(() => {});
-  if (sbc) sbc.auth.signOut().finally(goHome); else goHome();
+  if (sbc) sbc.auth.signOut({ scope: 'local' }).finally(goHome); else goHome();
 }
 function clearSession() {
   if ($('#nb')) $('#nb').innerHTML = '';
@@ -637,7 +637,7 @@ const SB_URL = "https://uamlualqqcqmpdkprjfs.supabase.co";
 const SB_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhbWx1YWxxcWNxbXBka3ByamZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNjE0OTMsImV4cCI6MjExMDYzNzQ5M30._f4p4pfcKaYbmjKRXOPpkMo7Ydcc26oVVI6lRFYsLkY";
 const sbc = (window.supabase && window.supabase.createClient) ? window.supabase.createClient(SB_URL, SB_KEY) : null;
 function goHome() { try { window.top.location.href = '/'; } catch (e) { location.href = '/'; } }
-/* 통합 시스템 구글 로그인 정보로 교육관리에 로그인 */
+/* 통합 업무시스템 구글 로그인 정보로 교육관리에 로그인 */
 async function googleSignIn() {
   if (!sbc) throw new Error('로그인 도구를 불러오지 못했습니다. 인터넷 연결을 확인해 주세요.');
   const r = await sbc.auth.getSession();
@@ -651,10 +651,10 @@ function renderLogin(message) {
   view().innerHTML = `
     <div class="login">
       <h2>로그인</h2>
-      <p class="sub">업무 시스템 홈에서 구글 계정으로 로그인한 뒤 들어오세요.</p>
+      <p class="sub">통합 업무시스템 홈에서 구글 계정으로 로그인한 뒤 들어오세요.</p>
       ${message ? `<div class="notice err">${esc(message)}</div>` : ''}
       <div class="panel">
-        <button class="btn primary" style="width:100%" id="lbtn">업무 시스템 홈으로 가서 로그인</button>
+        <button class="btn primary" style="width:100%" id="lbtn">통합 업무시스템 홈으로 가서 로그인</button>
       </div>
     </div>`;
   $('#lbtn').onclick = goHome;
@@ -668,7 +668,7 @@ async function boot() {
   S.filter = { 연도: S.init.currentYear, 반기: '', 지회명: '' };
   $('#who').textContent = isAdmin() ? `도협회 ${u.name || u.id}` : `${u.chapter} ${u.name || ''}`;
   $('#tabs').classList.remove('hidden');
-  $('#topLogout').classList.remove('hidden'); $('#inqBtn').classList.remove('hidden'); $('#inqBtn').onclick = () => {   // 업무 시스템 안에서는 공통 문의함(모든 분류·지회 간 문의)으로
+  $('#topLogout').classList.remove('hidden'); $('#inqBtn').classList.remove('hidden'); $('#inqBtn').onclick = () => {   // 통합 업무시스템 안에서는 공통 문의함(모든 분류·지회 간 문의)으로
     if (window.parent !== window) { try { window.parent.postMessage({ type: 'nav-go', kind: 'inq' }, location.origin); return; } catch (e) {} }
     go('inquiry');
   }; refreshInqBadge();
@@ -699,7 +699,7 @@ function navPush(st) {   // 화면을 옮길 때마다 기록해 두어, 휴대�
   } catch (e) {}
   S.cur = st; updateBack();
 }
-function updateBack() { const b = $('#backBtn'); if (b) b.classList.add('hidden'); }   // 뒤로 버튼 없음: 업무 시스템 위쪽 경로(수어교육관리 › 메뉴)를 누르면 처음 화면으로
+function updateBack() { const b = $('#backBtn'); if (b) b.classList.add('hidden'); }   // 뒤로 버튼 없음: 통합 업무시스템 위쪽 경로(수어교육관리 › 메뉴)를 누르면 처음 화면으로
 $('#backBtn').onclick = () => { if (S.depth > 0) history.back(); else if (S.init) go('dash'); };
 $('#homeLink').onclick = () => { if (S.init) go('dash'); };
 $('#homeLink').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); if (S.init) go('dash'); } };
@@ -745,7 +745,7 @@ async function go(tab, keepInq) {
 async function loadNotices() {
   const box = $('#nb');
   box.innerHTML = '';
-  return;   // 공지는 업무 시스템 화면 위 '담당 공지' 띠로 보여 줌 (홈 공지와 하나로 합침)
+  return;   // 공지는 통합 업무시스템 화면 위 '담당 공지' 띠로 보여 줌 (홈 공지와 하나로 합침)
   try {
     const d = await call('getNotices');
     S.notices = d.목록;
@@ -761,9 +761,9 @@ function drawNoticeBar() {
   box.querySelectorAll('.nbar').forEach(el => { const t = () => { el.classList.toggle('open'); el.querySelector('.nm').textContent = el.querySelector('.nm').textContent.replace(/눌러서 .*$/, '눌러서 ' + (el.classList.contains('open') ? '접기' : '전체 보기')); }; el.onclick = t; el.querySelector('.nt').onkeydown = e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); t(); } }; });
   if ($('#nbTgl')) $('#nbTgl').onclick = () => { const h = $('#nbMore').classList.toggle('hidden'); $('#nbTgl').textContent = h ? `공지 ${more}건 더 보기 ▾` : '접기 ▴'; };
 }
-// 공지사항은 업무 시스템 홈 공지로 합쳤습니다 (보는 사람: 수어교육 담당). 이 화면은 안내만 보여 줍니다.
+// 공지사항은 통합 업무시스템 홈 공지로 합쳤습니다 (보는 사람: 수어교육 담당). 이 화면은 안내만 보여 줍니다.
 async function renderNotices(editId) {
-  view().innerHTML = '<h2>공지사항</h2><div class="notice">수어교육 공지는 이제 <b>업무 시스템 홈 → 공지사항</b>에서 씁니다.<br>공지를 쓸 때 <b>보는 사람: 수어교육 담당</b>을 고르면 수어교육관리 권한이 있는 직원에게만 보이고, 수어교육관리 화면 맨 위에도 뜹니다.</div>';
+  view().innerHTML = '<h2>공지사항</h2><div class="notice">수어교육 공지는 이제 <b>통합 업무시스템 홈 → 공지사항</b>에서 씁니다.<br>공지를 쓸 때 <b>보는 사람: 수어교육 담당</b>을 고르면 수어교육관리 권한이 있는 직원에게만 보이고, 수어교육관리 화면 맨 위에도 뜹니다.</div>';
   return;
   let d;
   try { d = await call('getNotices'); } catch (e) { if (e.code !== 'AUTH') toast(e.message, true); return; }
@@ -4569,7 +4569,7 @@ function renderMe() {
       <button class="btn primary" id="rsBtn">비밀번호 바꾸기</button>
     </form>` : ''}
     <div class="panel" style="max-width:460px"><h3>전화번호·직인</h3>
-      <p class="hint" style="margin-top:0">포스터·수료증에 들어가는 <b>전화번호와 직인</b>은 이제 업무 시스템 홈의 <b>기관 설정 → 기본 정보</b>에서 관리합니다. (지회 담당자가 입력하면 여기에도 자동으로 반영됩니다.)</p>
+      <p class="hint" style="margin-top:0">포스터·수료증에 들어가는 <b>전화번호와 직인</b>은 이제 통합 업무시스템 홈의 <b>기관 설정 → 기본 정보</b>에서 관리합니다. (지회 담당자가 입력하면 여기에도 자동으로 반영됩니다.)</p>
       <p class="hint" style="margin:0">현재 문의 번호: <b>${esc(S.init.centerPhone || S.init.myPhone || '(입력 전)')}</b></p></div>
     <form class="panel" id="phForm" style="max-width:460px"><h3>${isAdmin() ? '전화번호' : '지회·센터 전화번호'}</h3>
       <p class="hint" style="margin-top:0">${isAdmin() ? '도협회 강좌 홍보 포스터에 <b>문의 번호</b>로 들어갑니다.' : '홍보 포스터의 <b>문의 번호</b>로 들어갑니다. <b>지회가 주관하는 교육</b>은 지회 전화번호, <b>센터가 주관하는 교육</b>은 센터 전화번호가 나옵니다. 두 번호 모두 여기에 직접 적어 주세요.'}</p>
@@ -4625,7 +4625,7 @@ function renderMe() {
 const HELP = [
   { t: '처음 시작하기', f: 'all', b: [
     '<ol>',
-    '<li>업무 시스템 홈에서 <b>업무용 구글 계정(@gwdeaf.or.kr)</b>으로 로그인한 뒤, 왼쪽 메뉴의 <b>수어교육관리</b>를 누릅니다.</li>',
+    '<li>통합 업무시스템 홈에서 <b>업무용 구글 계정(@gwdeaf.or.kr)</b>으로 로그인한 뒤, 왼쪽 메뉴의 <b>수어교육관리</b>를 누릅니다.</li>',
     '<li>처음에는 지회 담당자가 <b>기관 설정 → 기본 정보</b>에서 <b>지회·센터 전화번호</b>(홍보 포스터의 문의 번호)와 <b>직인</b>을 등록해 주세요.</li>',
     '<li>다른 컴퓨터·휴대폰에서도 같은 구글 계정으로 로그인하면 같은 내용이 보입니다.</li>',
     '</ol>',
@@ -4640,7 +4640,7 @@ const HELP = [
     '<ul>',
     '<li><b>강좌</b>: 강좌를 만들고 수강생·출석을 입력합니다. 위쪽 <b>파견 교육</b>을 누르면 도협회가 요청한 파견 교육(예: 반갑다 수어야)이 나옵니다.</li>',
     '<li><b>접수·강사비</b>: 수강 접수 안내, 강사비 확인증</li>',
-    '<li><b>자료요청</b>: 도협회의 자료 요청과 지회 회신 (공지는 업무 시스템 홈 공지사항)</li>',
+    '<li><b>자료요청</b>: 도협회의 자료 요청과 지회 회신 (공지는 통합 업무시스템 홈 공지사항)</li>',
     '<li><b>💬 문의</b>(오른쪽 위): 도협회와 지회가 서로 묻고 답합니다.</li>',
     '<li><b>실적 보고</b>: 분기별(1분기·상반기·3분기·연간) 실적을 확인해 도협회에 제출합니다.<span class="ro-a"> 도협회는 <b>보고 현황</b>에서 확인합니다.</span></li>',
     '<li><b>통계</b>: 월별·분기별·연간 건수와 인원</li>',
@@ -4850,8 +4850,8 @@ const HELP = [
     '</ul>',
     '<p class="golinks">바로가기: <a href="#" data-go="apply">접수·강사비</a></p>' ] },
   { t: '문의 · 공지사항', f: 'all', b: [
-    '<p><b>💬 문의</b> (오른쪽 위 버튼 → 업무 시스템 <b>문의함</b>)</p>',
-    '<p class="hint">문의는 업무 시스템 왼쪽 메뉴 <b>💬 문의함</b>으로 합쳤습니다. 수어교육 문의도 그대로 이어지고, 강좌·파견 화면의 문의 버튼도 계속 쓸 수 있습니다.</p>',
+    '<p><b>💬 문의</b> (오른쪽 위 버튼 → 통합 업무시스템 <b>문의함</b>)</p>',
+    '<p class="hint">문의는 통합 업무시스템 왼쪽 메뉴 <b>💬 문의함</b>으로 합쳤습니다. 수어교육 문의도 그대로 이어지고, 강좌·파견 화면의 문의 버튼도 계속 쓸 수 있습니다.</p>',
     '<ul>',
     '<li><b>지회</b>: <b>도협회에 문의하기</b>를 누르고 내용을 적어 보냅니다. 관련 강좌를 고를 수 있고, 파견 요청에서는 <b>이 요청에 대해 도협회에 문의</b> 버튼으로 바로 이어집니다.</li>',
     '<li class="ro-a"><b>도협회</b>: 지회가 문의하면 💬에 숫자가 뜹니다. 열어서 답하면 지회에 알림이 가고, 지회가 읽으면 “지회 확인함”이 보입니다.</li>',
@@ -4861,7 +4861,7 @@ const HELP = [
     '</ul>',
     '<p><b>📢 공지사항</b></p>',
     '<ul>',
-    '<li>공지는 <b>업무 시스템 홈 → 공지사항</b>에서 씁니다. <b>보는 사람: 수어교육 담당</b>을 고르면 수어교육관리 권한이 있는 직원에게만 보이고, 이 화면 맨 위에도 뜹니다.</li>',
+    '<li>공지는 <b>통합 업무시스템 홈 → 공지사항</b>에서 씁니다. <b>보는 사람: 수어교육 담당</b>을 고르면 수어교육관리 권한이 있는 직원에게만 보이고, 이 화면 맨 위에도 뜹니다.</li>',
     '<li>도협회는 <b>받는 곳</b>에서 전체 지회 또는 지회를 골라 보냅니다. 게시 기간을 정할 수 있습니다.</li>',
     '</ul>',
     '<p class="golinks">바로가기: <a href="#" data-go="inquiry">문의</a></p>' ] },
@@ -4999,7 +4999,7 @@ function openHelp() {
 }
 $('#helpBtn').onclick = openHelp;
 
-/* 통합 시스템 안에서는 화면 위 탭(강좌|파견 교육, 접수 안내|강사비, 실적 보고|통계)을 사용설명서·문의 줄로 올림 */
+/* 통합 업무시스템 안에서는 화면 위 탭(강좌|파견 교육, 접수 안내|강사비, 실적 보고|통계)을 사용설명서·문의 줄로 올림 */
 (function eduTopSlot() {
   if (!document.documentElement.classList.contains('embed')) return;
   const ti = document.querySelector('.top .top-inner'), help = document.getElementById('helpBtn'), sw = document.getElementById('sw'), v = document.getElementById('view');

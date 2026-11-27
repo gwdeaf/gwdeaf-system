@@ -274,7 +274,7 @@ async function loginGoogle() {
   const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname, queryParams: { hd: ALLOWED_DOMAIN, prompt: 'select_account' } } });
   if (error) msg('loginMsg', errText(error));
 }
-async function logout() { await sb.auth.signOut(); location.href = location.origin + location.pathname; }
+async function logout() { await sb.auth.signOut({ scope: 'local' }); location.href = location.origin + location.pathname; }
 async function boot() {
   const { data: { session } } = await sb.auth.getSession();
   if (!session) { $('topNav').style.display = 'none'; showScreen('screenLogin'); return; }
@@ -355,7 +355,7 @@ function carPrefill() {
   msg('writeMsg', '🚗 차량운행일지에서 날짜·시간·장소를 가져왔어요. 의뢰자·종류·대상·통역내용을 적고 저장하세요.', true);
   return true;
 }
-// ===== 하위 메뉴 (업무 시스템 왼쪽 메뉴에서 이동) =====
+// ===== 하위 메뉴 (통합 업무시스템 왼쪽 메뉴에서 이동) =====
 const SUB = { go: new URLSearchParams(location.search).get('go') || '', ready: false };
 function subTell(t) { if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-tab', tab: t }, location.origin); } catch (e) {} }
 function subReady() { SUB.ready = true; if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-ready', tab: SUB.go }, location.origin); } catch (e) {} }

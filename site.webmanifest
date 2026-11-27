@@ -1,6 +1,6 @@
 {
-  "name": "강원특별자치도농아인협회 업무 시스템",
-  "short_name": "업무 시스템",
+  "name": "강원특별자치도농아인협회 통합 업무시스템",
+  "short_name": "통합 업무시스템",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png" },
     { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png" }

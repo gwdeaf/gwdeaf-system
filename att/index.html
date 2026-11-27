@@ -2116,7 +2116,7 @@
         <span id="hqs-count" style="font-size:0.85rem;color:var(--text-muted);"></span>
       </div>
       <div id="hqs-list" style="display:grid;grid-template-columns:repeat(auto-fill,minmax(170px,1fr));gap:6px;margin-bottom:0.6rem;font-size:0.85rem;"></div>
-      <div class="field-row"><label>보낼 문구</label><textarea id="hqs-text" rows="2" maxlength="500" style="flex:1;min-width:0;">✅ 업무 시스템 슬랙 알림 테스트입니다. 이 메시지가 보이면 알림이 잘 연결된 것입니다. (도협회)</textarea></div>
+      <div class="field-row"><label>보낼 문구</label><textarea id="hqs-text" rows="2" maxlength="500" style="flex:1;min-width:0;">✅ 통합 업무시스템 슬랙 알림 테스트입니다. 이 메시지가 보이면 알림이 잘 연결된 것입니다. (도협회)</textarea></div>
       <div style="display:flex;gap:0.5rem;flex-wrap:wrap;margin-top:0.4rem;">
         <button class="btn btn-primary" id="hqs-send" onclick="hqsSend()">📨 선택한 지회에 보내기</button>
         <button class="btn btn-outline" onclick="hqsCsv()">⬇️ 결과 엑셀(CSV)</button>
@@ -3771,7 +3771,7 @@ function renderAltRecord(data) {
 // ===== 모바일 감지 =====
 function applyMobileClass() {
   var uaMobile=/Android|iPhone|iPad|iPod|Mobile/i.test(navigator.userAgent);
-  var isMobile=uaMobile||(!EMBED&&window.innerWidth<=768);   // 업무 시스템 안(PC)의 좁은 팝업은 모바일로 보지 않음
+  var isMobile=uaMobile||(!EMBED&&window.innerWidth<=768);   // 통합 업무시스템 안(PC)의 좁은 팝업은 모바일로 보지 않음
   if (isMobile) document.body.classList.add('mobile'); else document.body.classList.remove('mobile');
 }
 applyMobileClass();
@@ -4084,7 +4084,7 @@ function pickMode(m) {
 function chooseMode() { try { sessionStorage.removeItem('att_mode'); } catch(e) {} location.reload(); }
 function updateModeBtn() {
   var mb = document.getElementById('header-mode-btn');
-  if (mb) mb.style.display = 'none';   // 화면 전환은 업무 시스템 홈 메뉴에서 합니다
+  if (mb) mb.style.display = 'none';   // 화면 전환은 통합 업무시스템 홈 메뉴에서 합니다
 }
 
 // 직원 모드 진입 (로그인 직후 / 새로고침 후 자동 복원)
@@ -6688,7 +6688,7 @@ function loadNoticeBanner() {
   if (!box || !leaveUser) return;
   var html = '';
   var draw = function() { box.innerHTML = html; };
-  // 공지는 업무 시스템 홈 공지(보는 사람: 근태 담당 → 화면 위 띠)로 합침. 여기서는 연가 사용 통지만 보여 줌
+  // 공지는 통합 업무시스템 홈 공지(보는 사람: 근태 담당 → 화면 위 띠)로 합침. 여기서는 연가 사용 통지만 보여 줌
   (function() {
     gasRun('getMyPromo', JSON.stringify({auth: myAuth(), year: new Date().getFullYear()}), function(res) {
       if (res && res.ok) {

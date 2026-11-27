@@ -78,7 +78,7 @@
  *  - 지회: 공지 확인 → 상영 회신(상영작·일정·예상인원) → 관람 실적 입력
  * ===================================================================== */
 
-/* ---------- 0. 업무 시스템 연결 (Supabase) ---------- */
+/* ---------- 0. 통합 업무시스템 연결 (Supabase) ---------- */
 const SUPABASE_URL = 'https://uamlualqqcqmpdkprjfs.supabase.co';
 const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhbWx1YWxxcWNxbXBka3ByamZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNjE0OTMsImV4cCI6MjExMDYzNzQ5M30._f4p4pfcKaYbmjKRXOPpkMo7Ydcc26oVVI6lRFYsLkY';
 const sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
@@ -262,7 +262,7 @@ function vRec(fixRegion) {
 }
 
 function vTheater() {
-  return `<div class="card"><p class="muted small">지회별 신청 극장명과 고정 상영시간을 설정합니다. 칸을 고치면 바로 저장됩니다. (지회 목록은 업무 시스템의 기관 목록을 따릅니다)</p><div class="wrap"><table>
+  return `<div class="card"><p class="muted small">지회별 신청 극장명과 고정 상영시간을 설정합니다. 칸을 고치면 바로 저장됩니다. (지회 목록은 통합 업무시스템의 기관 목록을 따릅니다)</p><div class="wrap"><table>
     <tr><th>지역</th><th>극장명</th><th>고정 상영시간</th></tr>
     ${DB.theaters.map((t, i) => `<tr><td>${esc(t.region)}</td><td><input data-th="${i}" data-k="name" value="${esc(t.name)}" placeholder="극장 이름"></td>
       <td><input type="text" data-th="${i}" data-k="time" value="${esc(t.time)}" placeholder="0째주0요일 14시"></td></tr>`).join('')}</table></div></div>`;
@@ -440,7 +440,7 @@ document.addEventListener('input', e => { if (e.target.closest('#atts')) syncCou
 
 (async function init() {
   const { data: { session } } = await sb.auth.getSession();
-  if (!session) { $('#gm-root').innerHTML = '<main><div class="card"><h3>로그인이 필요합니다</h3><p class="muted">업무 시스템 홈에서 로그인한 뒤 다시 열어 주세요.</p><a class="btn p" href="/">업무 시스템 홈으로</a></div></main>'; return; }
+  if (!session) { $('#gm-root').innerHTML = '<main><div class="card"><h3>로그인이 필요합니다</h3><p class="muted">통합 업무시스템 홈에서 로그인한 뒤 다시 열어 주세요.</p><a class="btn p" href="/">통합 업무시스템 홈으로</a></div></main>'; return; }
   try { await reload(); } catch (e) { $('#gm-root').innerHTML = `<main><div class="card"><h3>영화실적을 열 수 없습니다</h3><p class="muted">${esc(e.message)}</p></div></main>`; return; }
   render();
 })();

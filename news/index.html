@@ -256,7 +256,7 @@ tr.sk-prog-row:nth-child(odd) td { background: #ffffff; }
 <div class="wrap">
   <div id="adminBadge" class="admin-badge" style="display:none;position:fixed;top:10px;right:12px;z-index:999;">🔑 관리자</div>
   <button class="btn btn-admin" id="adminBtn" onclick="toggleAdmin()" style="position:fixed;top:8px;right:12px;z-index:1000;">🔒 관리자</button>
-  <a class="btn no-print" id="homeBtn" href="/" style="display:none;position:fixed;top:8px;left:12px;z-index:1000;text-decoration:none;background:#fff;color:#1a3a7a;border:1px solid #c9d3e6;">🏠 업무 시스템</a>
+  <a class="btn no-print" id="homeBtn" href="/" style="display:none;position:fixed;top:8px;left:12px;z-index:1000;text-decoration:none;background:#fff;color:#1a3a7a;border:1px solid #c9d3e6;">🏠 통합 업무시스템</a>
   <div class="page-header">
     <h1>🗓️ 뉴스통역 배정표</h1>
   </div>
@@ -342,13 +342,13 @@ tr.sk-prog-row:nth-child(odd) td { background: #ffffff; }
   </div>
 </div>
 
-<!-- 관리자 안내 (편집은 업무 시스템 로그인 + 권한) -->
+<!-- 관리자 안내 (편집은 통합 업무시스템 로그인 + 권한) -->
 <div class="modal-backdrop" id="pwModal">
   <div class="modal" style="max-width:320px;text-align:center">
     <h3>🔒 관리자 모드</h3>
-    <div class="modal-sub" style="line-height:1.6;margin:10px 0 14px">배정표 편집은 <b>업무 시스템에 로그인한</b><br>도협회 담당자만 할 수 있어요.<br><span style="color:#888;font-size:12px">(도협회 관리자 또는 '뉴스 통역 배정표 편집' 권한)</span></div>
+    <div class="modal-sub" style="line-height:1.6;margin:10px 0 14px">배정표 편집은 <b>통합 업무시스템에 로그인한</b><br>도협회 담당자만 할 수 있어요.<br><span style="color:#888;font-size:12px">(도협회 관리자 또는 '뉴스 통역 배정표 편집' 권한)</span></div>
     <div style="display:flex;gap:8px;justify-content:center;">
-      <a class="form-btn form-btn-primary" href="/" target="_blank" rel="noopener" style="text-decoration:none">업무 시스템 로그인 ↗</a>
+      <a class="form-btn form-btn-primary" href="/" target="_blank" rel="noopener" style="text-decoration:none">통합 업무시스템 로그인 ↗</a>
       <button class="form-btn form-btn-cancel" onclick="closePwModal()">닫기</button>
     </div>
     <div style="color:#888;font-size:12px;margin-top:10px">로그인한 뒤 이 화면에서 다시 🔒 관리자를 누르세요.</div>
@@ -386,11 +386,11 @@ tr.sk-prog-row:nth-child(odd) td { background: #ffffff; }
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js"></script>
 <script>
 // ★★★ Supabase 설정 ★★★
-// ★ 업무 시스템 Supabase (보기는 누구나, 편집은 업무 시스템에 로그인한 도협회 담당자)
+// ★ 통합 업무시스템 Supabase (보기는 누구나, 편집은 통합 업무시스템에 로그인한 도협회 담당자)
 const SB_URL  = 'https://uamlualqqcqmpdkprjfs.supabase.co';
 const SB_ANON = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InVhbWx1YWxxcWNxbXBka3ByamZzIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUwNjE0OTMsImV4cCI6MjExMDYzNzQ5M30._f4p4pfcKaYbmjKRXOPpkMo7Ydcc26oVVI6lRFYsLkY';
 const sb = window.supabase.createClient(SB_URL, SB_ANON, { auth: { persistSession: true, autoRefreshToken: true } });
-// 업무 시스템에 로그인한 사람에게는 왼쪽 위 '🏠 업무 시스템' 버튼 (휴대폰에서 돌아가기)
+// 통합 업무시스템에 로그인한 사람에게는 왼쪽 위 '🏠 통합 업무시스템' 버튼 (휴대폰에서 돌아가기)
 sb.auth.getSession().then(function(r){ if (r.data && r.data.session) { var b = document.getElementById('homeBtn'); if (b) b.style.display = ''; } }).catch(function(){});
 async function rpc(fn, args){ const r = await sb.rpc(fn, args || {}); if (r.error) throw new Error(r.error.message); return r.data; }
 
@@ -1691,6 +1691,7 @@ function showSaveToast(msg,isError){
 }
 
 setInterval(async()=>{
+  if(document.hidden)return;
   const k=storeKey(curY,curM);const before=JSON.stringify(editStore[k]);
   await loadFromServer(curY,curM);
   if(JSON.stringify(editStore[k])!==before)renderAll();

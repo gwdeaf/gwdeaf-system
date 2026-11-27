@@ -185,7 +185,7 @@ async function loginGoogle() {
   const { error } = await sb.auth.signInWithOAuth({ provider: 'google', options: { redirectTo: location.origin + location.pathname, queryParams: { hd: 'gwdeaf.or.kr', prompt: 'select_account' } } });
   if (error) alert(error.message);
 }
-async function logout() { await sb.auth.signOut(); location.href = location.origin + location.pathname; }
+async function logout() { await sb.auth.signOut({ scope: 'local' }); location.href = location.origin + location.pathname; }
 async function init() { const VT = vtok();
   const { data: { session } } = await sb.auth.getSession();
   if (!session) {
@@ -196,6 +196,7 @@ async function init() { const VT = vtok();
   try {
     OPTS = await api('getFormOptions');
     ME = OPTS.user;
+    try { const ra = await sb.rpc('approval_lines_for', { p_kind: '회계' }); AP_ACCT = ra.data || null; } catch (e) { AP_ACCT = null; }
     $('who').textContent = `${ME.chapter_name} · ${ME.name || ME.email} · ${OPTS.year}회계연도`;
     $('btnNew').style.display = ME.can_write ? '' : 'none'; $('btnNewRes').style.display = ME.can_write ? '' : 'none'; $('btnSet').style.display = ME.can_manage ? '' : 'none';
     $('topNav').style.display = 'flex';
@@ -208,7 +209,7 @@ async function init() { const VT = vtok();
   }
 }
 sb.auth.onAuthStateChange((ev) => { if (ev === 'SIGNED_IN' && !ME) init(); });
-// ===== 하위 메뉴 (업무 시스템 왼쪽 메뉴에서 이동) =====
+// ===== 하위 메뉴 (통합 업무시스템 왼쪽 메뉴에서 이동) =====
 const SUB = { go: new URLSearchParams(location.search).get('go') || '', ready: false };
 function subTell(t) { if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-tab', tab: t }, location.origin); } catch (e) {} }
 function subReady() { SUB.ready = true; if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-ready', tab: SUB.go }, location.origin); } catch (e) {} }
@@ -332,7 +333,7 @@ async function showForm(no) { const VT = vtok();
     <textarea id="f_attach" rows="2">${esc(p['첨부목록'] || '')}</textarea>
     <label>산출근거</label>
     <textarea id="f_basis" rows="3">${esc(p['산출근거'] || '')}</textarea>
-    ${signEditor(p['결재란'] || cfg['결재란'])}
+    ${signEditor(p['결재란'] || apDefault() || cfg['결재란'], !p['결재란'])}
     <div class="actions">
       <button onclick="save()">저장</button>
       <button class="sub" onclick="${back}">돌아가기</button>
@@ -521,7 +522,7 @@ async function showResForm(no, presetKind, presetProp) { const VT = vtok();
     <input type="number" id="r_amt" min="1" value="${esc(r['금액'] || '')}">
     <label>거래처</label>
     <input id="r_vendor" value="${esc(r['거래처'] || '')}">
-    ${signEditor(r['결재란'] || cfg['결재란'])}
+    ${signEditor(r['결재란'] || apDefault() || cfg['결재란'], !r['결재란'])}
     <div class="actions">
       <button onclick="saveRes()">저장</button>
       <button class="sub" onclick="${back}">돌아가기</button>
@@ -1126,9 +1127,17 @@ async function showBudget() { const VT = vtok();
 let PCFG = null;
 async function printCfg() { if (!PCFG) PCFG = await api('printCfg'); return PCFG; }
 // 결재칸: 문서마다 칸 수·직위를 바꿀 수 있음 (문서에 저장한 결재란 → 없으면 설정의 결재란)
-function signEditor(v) {
-  const a = String(v || '').split(',').map(x => x.trim()).filter(Boolean);
-  return `<label>결재칸 <span style="color:#777;font-size:13px;font-weight:normal">이 문서만 · ＋로 칸 추가, ×로 빼기, 직위는 바로 고치기 (최대 6칸)</span></label>
+// 사업별 결재라인 (기관 설정 → 결재라인, 적용: 회계) — 여러 개면 고르고, 하나면 자동
+let AP_ACCT = null;
+function apBiz() { return AP_ACCT && AP_ACCT.lines ? AP_ACCT.lines.filter(l => !l.basic) : []; }
+function apDefault() { const b = apBiz(); return b.length === 1 ? b[0].approvers.join(',') : ''; }
+function apPick(i) { const l = apBiz()[i]; if (!l) return; const ed = $('sgEd'); ed.querySelectorAll('.sgc').forEach(x => x.remove()); l.approvers.forEach(a => ed.lastElementChild.insertAdjacentHTML('beforebegin', sgCell(a))); }
+function signEditor(v, fresh) {
+  const a = String(v || '').split(',').map(x => x.trim()).filter(Boolean), b = apBiz();
+  const cur = b.findIndex(l => l.approvers.join(',') === a.join(','));
+  const pick = b.length > 1 ? `<label>사업 <span style="color:#777;font-size:13px;font-weight:normal">고르면 그 사업의 결재라인으로 결재칸이 채워집니다</span></label>
+    <select onchange="apPick(this.value)"><option value="">${cur < 0 ? (fresh ? '사업을 고르세요' : '직접 정한 결재칸') : ''}</option>${b.map((l, i) => `<option value="${i}"${i === cur ? ' selected' : ''}>${esc(l.name)}</option>`).join('')}</select>` : '';
+  return `${pick}<label>결재칸 <span style="color:#777;font-size:13px;font-weight:normal">이 문서만 · ＋로 칸 추가, ×로 빼기, 직위는 바로 고치기 (최대 6칸) · 뒤에 (협조)를 붙이면 협조 칸</span></label>
     <div class="sged" id="sgEd">${a.map(sgCell).join('')}<button type="button" class="sub" onclick="sgAdd()">＋ 칸</button></div>`;
 }
 function sgCell(x) { return `<span class="sgc"><input value="${esc(x)}" placeholder="직위"><button type="button" class="sub" onclick="this.parentNode.remove()" aria-label="칸 빼기">×</button></span>`; }
@@ -1140,8 +1149,10 @@ async function saveSign2(kind, no) {
   try { await api('docSign', kind, no, v === def ? '' : v); } catch (e) { msg('결재칸 저장: ' + e.message, 'err'); }
 }
 function signTable(cfg, own) {
-  const t = String(own || cfg['결재란'] || '').split(',').filter(Boolean);
-  return `<table class="sign"><tr><th rowspan="2" style="width:8mm;writing-mode:vertical-rl;letter-spacing:4px">결재</th>${t.map(x => `<th>${esc(x)}</th>`).join('')}</tr><tr>${t.map(() => '<td></td>').join('')}</tr></table>`;
+  const all = String(own || cfg['결재란'] || '').split(',').map(x => x.trim()).filter(Boolean);
+  const co = all.filter(x => /\(협조\)\s*$/.test(x)).map(x => x.replace(/\(협조\)\s*$/, '').trim()), t = all.filter(x => !/\(협조\)\s*$/.test(x));
+  const tb = (h, arr) => `<table class="sign"><tr><th rowspan="2" style="width:8mm;writing-mode:vertical-rl;letter-spacing:4px">${h}</th>${arr.map(x => `<th>${esc(x)}</th>`).join('')}</tr><tr>${arr.map(() => '<td></td>').join('')}</tr></table>`;
+  return co.length ? `<div style="display:flex;gap:3mm;justify-content:flex-end;align-items:flex-start">${tb('협조', co)}${tb('결재', t)}</div>` : tb('결재', t);
 }
 function hangulWon(n) {
   n = Math.floor(Number(n) || 0); if (!n) return '영원';

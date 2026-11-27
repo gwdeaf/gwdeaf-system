@@ -7,7 +7,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   .addbox { border: 1px dashed #c9d3e4; border-radius: 10px; padding: 8px 10px; margin: 8px 0; background: #fafcff; } button.sm { padding: 3px 8px; font-size: 12px; min-height: 0; }
-body.embed .noembed{display:none!important}   /* 업무 시스템 안: 위쪽 경로를 눌러 목록으로 */
+body.embed .noembed{display:none!important}   /* 통합 업무시스템 안: 위쪽 경로를 눌러 목록으로 */
 body.noea .ea{display:none!important}
   * { box-sizing: border-box; }
   body { margin: 0; font-family: "Malgun Gothic", "맑은 고딕", sans-serif; background: #f5f7fb; color: #222; font-size: 15px; }
@@ -80,8 +80,8 @@ body.noea .ea{display:none!important}
 <nav id="topNav" style="display:none">
   <button onclick="goHomeAll()">홈(문서 목록)</button>
   <button onclick="openWrite(null)">문서 작성</button>
-  <button onclick="openRecv()">📥 받은 문서 (도↔지회) <span id="recvCnt" class="badge wait" style="display:none"></span></button>
-  <button onclick="openSent()">📤 보낸 문서 (도↔지회)</button>
+  <button onclick="openRecv()">📥 받은 문서 (도↔시군) <span id="recvCnt" class="badge wait" style="display:none"></span></button>
+  <button onclick="openSent()">📤 보낸 문서 (도↔시군)</button>
   <button onclick="openLedger()">발송 대장</button>
   <button onclick="openRLedger()">수신 대장</button>
   <button id="staffBtn" onclick="openSettings()" style="display:none">공문 설정</button>
@@ -178,6 +178,8 @@ body.noea .ea{display:none!important}
       <h3 style="margin-top:0" id="stepsTitle">결재선 (위에서 아래 순서)</h3>
       <div class="hint ea">방식: 전자서명·확인은 본인이 누르고, 수기서명은 출력해서 서명한 뒤 기안자나 관리자가 "수기 서명 완료"를 누릅니다. 전결은 여기서 끝나고 뒤 단계는 건너뜁니다.</div>
       <div class="hint noea-only">출력물 결재란에 들어갈 직책을 순서대로 넣습니다. 기안하면 번호가 붙고 <b>바로 공문 대장에 올라갑니다</b>. 인쇄해서 수기로 결재받으세요. 고칠 내용이 생기면 문서 화면에서 <b>↩ 회수해서 수정</b> (전자결재는 나중에 도입 예정)</div>
+      <div id="apBizBox" style="display:none;margin:6px 0 8px"><b style="font-size:14px">사업</b> <select id="apBiz" onchange="apBizPick(this.value)"></select>
+        <span class="hint" style="display:inline">고르면 그 사업의 결재라인(기관 설정 → 결재라인)으로 결재선이 채워집니다.</span></div>
       <table>
         <thead><tr><th>직원·직책</th><th>이름</th><th class="ea">이메일</th><th class="ea">결재방식</th><th class="ea">구분</th><th></th></tr></thead>
         <tbody id="stepsBody"></tbody>
@@ -441,7 +443,7 @@ async function loginGoogle() {
   if (error) msg('loginMsg', errText(error));
 }
 async function logout() {
-  await sb.auth.signOut();
+  await sb.auth.signOut({ scope: 'local' });
   location.href = location.origin + location.pathname;
 }
 // 로그인 상태 확인 → 직원 명단에 있는지 확인
@@ -468,7 +470,7 @@ async function boot() {
 // 구글 로그인 후 돌아올 때 상태가 바뀌면 다시 확인
 sb.auth.onAuthStateChange((event) => { if (event === 'SIGNED_IN') boot(); });
 
-// ============ 하위 메뉴 (업무 시스템 왼쪽 메뉴에서 이동) ============
+// ============ 하위 메뉴 (통합 업무시스템 왼쪽 메뉴에서 이동) ============
 const SUB = { go: new URLSearchParams(location.search).get('go') || '', ready: false };
 function subTell(t) { if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-tab', tab: t }, location.origin); } catch (e) {} }
 function subReady() { if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'sub-ready', tab: SUB.go }, location.origin); } catch (e) {} }
@@ -652,7 +654,7 @@ async function openWrite(id) {
   showScreen('screenWrite');
   msg('writeMsg', ''); msg('stepsMsg', '');
   $('stepsBody').innerHTML = '';
-  currentSteps = [];
+  currentSteps = []; if ($('apBizBox')) $('apBizBox').style.display = 'none';
   if (!id) {
     current = null;
     $('writeTitle').textContent = '문서 작성';
@@ -669,6 +671,7 @@ async function openWrite(id) {
         msg('stepsMsg', '내 부서 결재라인(기관 설정 → 결재라인)으로 채웠습니다. 여기서 추가·삭제·수정할 수 있습니다.', true); pvSoon();
       }
     } catch (e) {}
+    apBizLoad();
     return;
   }
   const { data, error } = await sb.from('doc_documents').select('*').eq('id', id).single();
@@ -690,6 +693,24 @@ function pickStaff(sel) {
   if (!tr.querySelector('.sRole').value) tr.querySelector('.sRole').value = p.position || '';
 }
 // 결재선 한 줄 추가 (입력칸 줄)
+// 사업별 결재라인 (적용: 공문) — 2개 이상이면 고르는 칸을 보여줌
+async function apBizLoad() {
+  const box = $('apBizBox'); box.style.display = 'none';
+  try {
+    const { data } = await sb.rpc('approval_lines_for', { p_kind: '공문' });
+    const b = ((data && data.lines) || []).filter((l) => !l.basic);
+    if (b.length < 2 || current) return;
+    $('apBiz').innerHTML = '<option value="">사업을 고르세요</option>' + b.map((l) => `<option value="${l.id}">${esc(l.name)}</option>`).join('');
+    box.style.display = '';
+  } catch (e) {}
+}
+async function apBizPick(id) {
+  if (!id) return;
+  const { data, error } = await sb.rpc('doc_default_steps', { p_line_id: Number(id) });
+  if (error) return msg('stepsMsg', errText(error));
+  $('stepsBody').innerHTML = ''; (data || []).forEach((st) => addStepRow(st));
+  msg('stepsMsg', $('apBiz').selectedOptions[0].textContent + ' 결재라인으로 채웠습니다. 여기서 추가·삭제·수정할 수 있습니다.', true); pvSoon();
+}
 function addStepRow(s) {
   const tr = document.createElement('tr');
   const opt = (list, val) => list.map((v) => `<option ${v === val ? 'selected' : ''}>${v}</option>`).join('');
@@ -1216,7 +1237,7 @@ function yearSel(id) {
   return Number(sel.value);
 }
 function day(t) { return t ? new Date(t).toLocaleDateString('ko-KR') : ''; }
-// 왼쪽 메뉴 숫자 다시 세기 (업무 시스템에 알림)
+// 왼쪽 메뉴 숫자 다시 세기 (통합 업무시스템에 알림)
 async function recvBadge() {
   try { const r = await sb.rpc('doc_recv_badge'); const n = r.data || 0; $('recvCnt').textContent = n; $('recvCnt').style.display = n ? '' : 'none'; } catch (e) {}
   if (EMBED && window.parent !== window) try { window.parent.postMessage({ type: 'doc-badge' }, location.origin); } catch (e) {}

@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>직원·권한 관리 · 강원특별자치도농아인협회 업무 시스템</title>
+<title>직원·권한 관리 · 강원특별자치도농아인협회 통합 업무시스템</title>
 <style>
 *{box-sizing:border-box}
 body{margin:0;font-family:-apple-system,"Noto Sans KR","Malgun Gothic",sans-serif;background:#f5f7fb;color:#222;font-size:15px}
@@ -89,7 +89,7 @@ async function boot(){
   await go(ts.indexOf(GO0) >= 0 ? GO0 : (VIEW === "org" ? ts[0] : (me.can_manage ? "staff" : "me")));
 }
 function loginView(){
-  $("#app").innerHTML = `<div class="center"><h1>강원특별자치도농아인협회 업무 시스템</h1><p class="muted">업무용 구글 계정으로 로그인하세요.</p>
+  $("#app").innerHTML = `<div class="center"><h1>강원특별자치도농아인협회 통합 업무시스템</h1><p class="muted">업무용 구글 계정으로 로그인하세요.</p>
     <button class="btn" onclick="login()">구글 계정으로 로그인</button></div>`;
 }
 async function login(){
@@ -112,7 +112,7 @@ function tabList(){
   const tabs = [];
   if(VIEW === "org"){   // 🏢 기관 설정
     if(me.can_manage) tabs.push(["org","기본 정보"],["depts","부서"],["lines","결재라인"]);
-    if(me.role === "lead") tabs.push(["drive","드라이브·캘린더 연결"]);   // 지회 담당자: 우리 지회 드라이브·캘린더 연결
+    if(me.role === "lead" || (me.can_manage && me.role !== "admin")) tabs.push(["drive","드라이브·캘린더 연결"]);   // 지회 담당자·공동 관리자: 우리 지회 드라이브·캘린더 연결
     if(me.role === "admin") tabs.push(["chapters","지회 관리"]);           // 도협회: 지회 담당 지정 + 드라이브·캘린더 연결
     if(me.role === "admin" || me.role === "lead") tabs.push(["reset","자료 초기화"]);
     return tabs;
@@ -495,37 +495,75 @@ async function grant(id, sys, perm, on){
 }
 function dropAdmin(email){ if(confirm("이 사람의 도협회 관리자 권한을 해제할까요?")) act("set_admin", {p_email:email, p_name:"", p_on:false}, "해제했습니다.", async()=>{ await loadStaff(); render(); }); }
 
-/* 결재라인 */
+/* 결재라인 — 부서마다 '기본'(휴가·출장 인쇄, 나머지 전부) + 사업별 결재라인(회계·공문) */
+let apSeq = 0;
 function linesView(){
-  const set = {}; (DEPTS||[]).forEach(d=>{ set[d.name] = 1; }); staff.forEach(s=>{ if(s.dept) set[s.dept] = 1; }); lines.forEach(l=>{ set[l.dept] = 1; }); Object.keys(drafts).forEach(d=>{ set[d] = 1; });
+  const set = {}; (DEPTS||[]).forEach(d=>{ set[d.name] = 1; }); staff.forEach(s=>{ if(s.dept) set[s.dept] = 1; }); lines.forEach(l=>{ set[l.dept] = 1; }); Object.values(drafts).forEach(x=>{ set[x.dept] = 1; });
   deptKeys = Object.keys(set).sort();
-  $("#body").innerHTML = `<div class="card"><div class="muted">부서별로 결재칸(1~5칸)의 직책 이름과 수신처를 정합니다. 휴가·출장·시간외 등 모든 신청서를 인쇄할 때 이 설정이 쓰입니다.</div>
+  $("#body").innerHTML = `<div class="card"><div class="muted">부서마다 <b>기본</b> 결재라인을 정합니다. 휴가·출장 신청서 인쇄와, 따로 정하지 않은 회계·공문에 쓰입니다.<br>
+      사업마다 결재자가 다르면 <b>＋ 사업 결재라인</b>을 추가하고 적용 업무(회계·공문)를 고릅니다. 서류를 쓸 때 사업 결재라인이 여러 개면 고르고, 하나면 자동으로 들어갑니다.<br>
+      결재자 칸의 <b>협조</b>에 체크하면 인쇄할 때 협조 칸으로 표시됩니다.</div>
     <div class="row" style="margin-top:8px"><input id="nd" placeholder="새 부서 이름" style="flex:1"><button class="btn sub sm" onclick="addDept()">부서 추가</button></div></div>
     ${deptKeys.map((d,i)=>deptCard(d,i)).join("") || '<div class="muted center">직원에 부서를 입력하면 여기에 나타납니다.</div>'}`;
 }
-function draftOf(d){
-  if(!drafts[d]){ const l = lines.find(x=>x.dept===d); drafts[d] = {saved:!!l, ap:l ? l.approvers.slice() : DEFAULT_AP.slice(), to:l ? l.addressee : ""}; }
-  return drafts[d];
+function apSplit(a){ const coop = /\(협조\)\s*$/.test(a); return { t: String(a).replace(/\(협조\)\s*$/, "").trim(), c: coop }; }
+function apKey(l){ return l.id ? "L" + l.id : l.key; }
+function draftOfLine(l){
+  const k = apKey(l);
+  if(!drafts[k]) drafts[k] = { key:k, id:l.id||null, dept:l.dept, name:l.name||"기본", kinds:(l.kinds||[]).slice(), saved:!!l.id,
+                               ap:(l.approvers||DEFAULT_AP).map(apSplit), to:l.addressee||"" };
+  return drafts[k];
+}
+function deptLines(d){
+  const ls = lines.filter(l=>l.dept===d).map(draftOfLine);
+  Object.values(drafts).forEach(x=>{ if(!x.id && x.dept===d && !ls.includes(x)) ls.push(x); });
+  if(!ls.some(x=>x.name==="기본")) ls.unshift(draftOfLine({ key:"B:"+d, dept:d, name:"기본" }));
+  return ls.sort((a,b)=>(b.name==="기본")-(a.name==="기본"));
 }
 function deptCard(d, i){
-  const x = draftOf(d);
-  return `<div class="card"><div class="st"><h2>${esc(d)} ${x.saved?'<span class="badge g">저장됨</span>':'<span class="badge o">저장 전</span>'}</h2><div class="row">
-      <button class="btn sub sm" onclick="apAdd(${i})" ${x.ap.length>=5?"disabled":""}>＋ 칸 추가</button><button class="btn sub sm" onclick="apDel(${i})" ${x.ap.length<=1?"disabled":""}>－ 칸 줄이기</button></div></div>
-    <div class="row" style="margin:8px 0">${x.ap.map((a,k)=>`<input style="flex:1;min-width:80px" value="${esc(a)}" placeholder="직책" oninput="drafts[deptKeys[${i}]].ap[${k}]=this.value;prev(${i})">`).join("")}</div>
-    <input value="${esc(x.to)}" placeholder="수신처 (예: 강원특별자치도수어통역센터장 귀하)" oninput="drafts[deptKeys[${i}]].to=this.value">
-    <div id="pv${i}">${previewHTML(x.ap)}</div>
-    <div class="row"><button class="btn" onclick="apSave(${i})">저장</button>${x.saved?`<button class="btn red" onclick="apRemove(${i})">삭제</button>`:""}</div></div>`;
+  const ls = deptLines(d);
+  return `<div class="card"><div class="st"><h2>${esc(d)}</h2><button class="btn sub sm" onclick="apNewBiz(${i})">＋ 사업 결재라인</button></div>
+    ${ls.map(x=>lineBlock(x)).join('<hr style="border:0;border-top:1px dashed #ddd;margin:14px 0">')}</div>`;
+}
+function lineBlock(x){
+  const k = x.key, basic = x.name === "기본";
+  return `<div>
+    <div class="row" style="align-items:center;gap:8px;flex-wrap:wrap">
+      ${basic ? `<b>기본</b> <span class="muted" style="font-size:13px">휴가·출장 인쇄 · 나머지 전부</span>`
+              : `<input style="width:170px" value="${esc(x.name)}" placeholder="사업 이름 (예: 수어교육 사업)" oninput="drafts['${k}'].name=this.value">
+                 <span class="muted" style="font-size:13px">적용:</span>
+                 ${["회계","공문"].map(kd=>`<label style="font-size:14px;display:inline-flex;align-items:center;gap:4px;margin:0"><input type="checkbox" style="width:auto" ${x.kinds.includes(kd)?"checked":""} onchange="apKind('${k}','${kd}',this.checked)"> ${kd}</label>`).join(" ")}`}
+      ${x.saved?'<span class="badge g">저장됨</span>':'<span class="badge o">저장 전</span>'}
+      <span style="margin-left:auto"></span>
+      <button class="btn sub sm" onclick="apAdd('${k}')" ${x.ap.length>=6?"disabled":""}>＋ 칸</button><button class="btn sub sm" onclick="apDel('${k}')" ${x.ap.length<=1?"disabled":""}>－ 칸</button>
+    </div>
+    <div class="row" style="margin:8px 0;flex-wrap:wrap">${x.ap.map((a,n)=>`<span style="flex:1;min-width:110px;display:flex;flex-direction:column;gap:2px">
+        <input value="${esc(a.t)}" placeholder="직책" oninput="drafts['${k}'].ap[${n}].t=this.value;apPrev('${k}')">
+        <label style="font-size:12px;color:#666;display:inline-flex;align-items:center;gap:4px;margin:0"><input type="checkbox" style="width:auto" ${a.c?"checked":""} onchange="drafts['${k}'].ap[${n}].c=this.checked;apPrev('${k}')"> 협조</label></span>`).join("")}</div>
+    <input value="${esc(x.to)}" placeholder="수신처 (예: 강원특별자치도수어통역센터장 귀하)" oninput="drafts['${k}'].to=this.value">
+    <div id="pv-${k}">${previewHTML(x.ap)}</div>
+    <div class="row"><button class="btn" onclick="apSave('${k}')">저장</button>${x.saved?`<button class="btn red" onclick="apRemove('${k}')">삭제</button>`:(!basic?`<button class="btn sub" onclick="delete drafts['${k}'];linesView()">취소</button>`:"")}</div></div>`;
 }
 function previewHTML(ap){
-  const a = ap.map(v=>v.trim()).filter(Boolean);
-  return `<table class="ap"><tr><td class="h" rowspan="2">결재</td>${a.map(v=>`<td>${esc(v)}</td>`).join("")}</tr><tr class="s">${a.map(()=>"<td></td>").join("")}</tr></table>`;
+  const a = ap.map(v=>typeof v==="string"?apSplit(v):v).filter(v=>v.t.trim()), n = a.filter(v=>!v.c), c = a.filter(v=>v.c);
+  const tb = (h, arr)=> arr.length ? `<table class="ap" style="display:inline-table;margin-right:8px"><tr><td class="h" rowspan="2">${h}</td>${arr.map(v=>`<td>${esc(v.t)}</td>`).join("")}</tr><tr class="s">${arr.map(()=>"<td></td>").join("")}</tr></table>` : "";
+  return tb("협조", c) + tb("결재", n);
 }
-function prev(i){ const el = $("#pv"+i); if(el) el.innerHTML = previewHTML(drafts[deptKeys[i]].ap); }
-function addDept(){ const d = val("nd"); if(!d) return toast("부서 이름을 입력하세요.", true); draftOf(d); linesView(); }
-function apAdd(i){ const x = drafts[deptKeys[i]]; if(x.ap.length < 5) x.ap.push(""); linesView(); }
-function apDel(i){ const x = drafts[deptKeys[i]]; if(x.ap.length > 1) x.ap.pop(); linesView(); }
-function apSave(i){ const d = deptKeys[i], x = drafts[d]; act("save_approval_line", {p_dept:d, p_approvers:x.ap, p_addressee:x.to}, "저장했습니다.", async()=>{ lines = await rpc("get_approval_lines"); drafts = {}; linesView(); }); }
-function apRemove(i){ const d = deptKeys[i]; if(confirm(d + " 부서의 결재라인을 삭제할까요?")) act("delete_approval_line", {p_dept:d}, "삭제했습니다.", async()=>{ lines = await rpc("get_approval_lines"); drafts = {}; linesView(); }); }
+function apPrev(k){ const el = $("#pv-"+k); if(el) el.innerHTML = previewHTML(drafts[k].ap); }
+function apKind(k, kd, on){ const x = drafts[k]; x.kinds = x.kinds.filter(v=>v!==kd); if(on) x.kinds.push(kd); }
+function addDept(){ const d = val("nd"); if(!d) return toast("부서 이름을 입력하세요.", true); draftOfLine({ key:"B:"+d, dept:d, name:"기본" }); linesView(); }
+function apNewBiz(i){ const d = deptKeys[i], k = "N" + (++apSeq); drafts[k] = { key:k, id:null, dept:d, name:"", kinds:["회계"], saved:false, ap:DEFAULT_AP.map(apSplit), to:"" }; linesView(); }
+function apAdd(k){ const x = drafts[k]; if(x.ap.length < 6) x.ap.push({t:"",c:false}); linesView(); }
+function apDel(k){ const x = drafts[k]; if(x.ap.length > 1) x.ap.pop(); linesView(); }
+function apSave(k){
+  const x = drafts[k];
+  if(x.name !== "기본" && !x.name.trim()) return toast("사업 이름을 적어 주세요.", true);
+  const ap = x.ap.map(a=>a.t.trim() ? a.t.trim() + (a.c ? "(협조)" : "") : "").filter(Boolean);
+  act("save_approval_line2", {p:{ id:x.id, dept:x.dept, name:x.name.trim() || "기본", kinds:x.kinds, approvers:ap, addressee:x.to }}, "저장했습니다.",
+      async()=>{ lines = await rpc("get_approval_lines"); drafts = {}; linesView(); });
+}
+function apRemove(k){ const x = drafts[k];
+  if(confirm(x.dept + " · " + x.name + " 결재라인을 삭제할까요?")) act("delete_approval_line2", {p_id:x.id}, "삭제했습니다.", async()=>{ lines = await rpc("get_approval_lines"); drafts = {}; linesView(); }); }
 
 /* 부서 — 부서마다 정식 기관명·발신 명의·주소·전화·직인. 공문·회계 인쇄에 쓰입니다. */
 function deptsView(){

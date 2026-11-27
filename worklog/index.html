@@ -184,6 +184,17 @@ function loadCoverSettings(){try{let saved=JSON.parse(localStorage.getItem(KEY+'
 function saveCoverSettings(){coverSettings={...coverSettings,title:$('coverTitle').value.trim()||'업무일지 결재 보고서',recipient:$('coverRecipient').value.trim()||'강원도농아인협회장',approverCount:Math.max(2,Math.min(4,Number($('approvalCount').value)||4)),approvers:[$('approval1').value.trim()||'결재 1',$('approval2').value.trim()||'결재 2',$('approval3').value.trim()||'결재 3',$('approval4').value.trim()||'결재 4']};try{localStorage.setItem(KEY+'_cover',JSON.stringify(coverSettings));window.dispatchEvent(new Event('workdiary:changed'));toast('표지 설정을 저장했습니다.')}catch(e){toast('표지 설정을 저장하지 못했습니다.')}}
 function blankDraft(date=today(),author=$('currentAuthor').value){let p=person(author);return{id:null,date,author,dept:p.dept,tasks:[],submitted:false,submittedAt:null}}
 function findRecord(author,date){return db.records.find(r=>r.author===author&&r.date===date)}
+// 차량운행일지에서 넘어온 외근(업무·통역) → 그 날짜 업무일지에 '외근 완료'로 추가
+function wlAddOutings(items){if(!Array.isArray(items)||!items.length)return 0;const author=(window.WL_ME&&WL_ME.name)||draft.author||'';if(!author)return 0;const dept=(window.WL_ME&&WL_ME.dept)||(person(author)||{}).dept||'';let n=0;
+ items.forEach(it=>{if(!/^\d{4}-\d{2}-\d{2}$/.test(String(it.date||'')))return;const tid='car-'+it.id;if(db.records.some(r=>(r.tasks||[]).some(t=>t.id===tid)))return;
+  const tm=it.start&&it.end?it.start+'~'+it.end:(it.start||'');const detail=(it.dest||'외근')+' ('+[it.purpose||'업무',tm].filter(Boolean).join(' · ')+')';
+  const task={id:tid,title:'',detail,note:it.car?'차량 '+it.car:'',category:'외근',status:'완료'};
+  let rec=findRecord(author,it.date);if(!rec){rec={id:uid(),date:it.date,author,dept,tasks:[],updatedAt:new Date().toISOString(),submitted:false,submittedAt:null};db.records.push(rec)}
+  rec.tasks.push(JSON.parse(JSON.stringify(task)));rec.updatedAt=new Date().toISOString();
+  if(draft&&draft.date===it.date&&draft.author===author&&!draft.tasks.some(t=>t.id===tid)){draft.tasks.push(JSON.parse(JSON.stringify(task)));if(!draft.id||draft.id!==rec.id)draft.id=rec.id;draft.updatedAt=rec.updatedAt}
+  n++});
+ if(!n)return 0;if(!db.people.some(p=>p.name===author))db.people.push({name:author,dept});persist();try{renderWriter()}catch(e){}toast('🚗 차량운행 외근 '+n+'건을 업무일지에 넣었습니다.');return n}
+window.wlAddOutings=wlAddOutings;
 const localDraftPrefix = KEY + ':draft:';
 const lastDraftDateKey = KEY + ':lastDraftDate';
 
@@ -520,6 +531,7 @@ async function api(payload){
  if(!data||!data.ok)throw apiErr(data&&data.error==='conflict'?409:400);
  return data;
 }
+let inboxBusy=false;
 async function sync(){
  if(busy||!account)return;busy=true;
  try{
@@ -542,6 +554,7 @@ async function sync(){
   localStorage.setItem(baseKey(account.id),JSON.stringify(merged));
   showApp('동기화 완료','ok');
   if(changed)window.dispatchEvent(new Event('workdiary:remote-change'));
+  if(!inboxBusy){inboxBusy=true;SB.rpc('worklog_inbox_take').then(r=>{const l=r&&r.data;if(Array.isArray(l)&&l.length&&typeof window.wlAddOutings==='function')window.wlAddOutings(l)}).catch(()=>{}).finally(()=>{inboxBusy=false})}
  }catch(e){
   if(e.status===401||e.status===403){signedOut('업무용 구글 계정으로 로그인한 뒤 사용해 주세요. (등록된 직원만 사용할 수 있습니다)');return}
   if(activeId){showApp(e.status?'동기화 오류 ('+e.status+')':'동기화 오류 · '+(e.message||'저장 확인 필요'),'error');$('syncStatus').title=e.message||'';return}
@@ -572,11 +585,11 @@ document.querySelector('.quick-guide-close').addEventListener('click',()=>{quick
 quickGuide.addEventListener('click',e=>{if(e.target===quickGuide&&quickGuide.open)quickGuide.open=false});
 document.addEventListener('keydown',e=>{if(e.key==='Escape'&&quickGuide.open)quickGuide.open=false});
 $('syncButton').addEventListener('click',()=>{showStatus('동기화 중','');sync()});
-$('signOut').addEventListener('click',async()=>{if(!confirm('로그아웃할까요? 아직 동기화되지 않은 내용은 이 기기에 보관됩니다.'))return;await SB.auth.signOut();location.reload()});
+$('signOut').addEventListener('click',async()=>{if(!confirm('로그아웃할까요? 아직 동기화되지 않은 내용은 이 기기에 보관됩니다.'))return;await SB.auth.signOut({ scope: 'local' });location.reload()});
 window.addEventListener('workdiary:changed',()=>{if(account&&ready){clearTimeout(timer);timer=setTimeout(sync,800)}});
 window.addEventListener('focus',()=>{if(account&&ready)sync()});
 window.addEventListener('online',()=>{if(account&&ready)sync()});
-setInterval(()=>{if(account&&ready)sync()},30000);
+setInterval(()=>{if(account&&ready&&!document.hidden)sync()},60000);
 boot();
 })();
 </script>
@@ -612,7 +625,7 @@ boot();
 })();
 </script>
 <script>
-/* 업무 시스템 안에서 열 때: 위쪽 띠와 기본 정보 칸을 숨기고,
+/* 통합 업무시스템 안에서 열 때: 위쪽 띠와 기본 정보 칸을 숨기고,
    일지 작성/캘린더 전환 · 작성일자 · 작성 상태는 홈 화면 제목 옆에 표시 */
 (function(){
   if (new URLSearchParams(location.search).get('embed') !== '1' || window.parent === window) return;

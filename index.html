@@ -1391,6 +1391,7 @@ async function loadInq(){
   if (r.error) { $('inq-list').innerHTML = '<div class="empty">문의를 불러오지 못했습니다.<br>' + esc(r.error.message) + '</div>'; return; }
   INQ = r.data || []; inqDraw(); inqBadge();
 }
+function inqTs(t){ if (!t) return 0; var d = new Date(String(t).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(t) ? '' : '+09:00')); return isNaN(d) ? 0 : d.getTime(); }   // 시각 비교용 (시간대 없는 값은 한국 시각)
 function inqWhen(t){ if (!t) return ''; var d = new Date(String(t).replace(' ', 'T') + (/[zZ]|[+-]\d\d:?\d\d$/.test(t) ? '' : '+09:00')); return isNaN(d) ? String(t).slice(0, 16) : d.toLocaleString('ko-KR', { timeZone:'Asia/Seoul', month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' }); }
 function inqDraw(){
   var st = $('inq-f-st').value, cat = $('inq-f-cat').value;
@@ -1419,7 +1420,7 @@ function inqThread(q){
     + '<div class="posts" id="inq-posts">' + q.posts.map(function(p){
         return '<div class="post' + (mine(p) ? ' me' : '') + '"><div class="w">' + esc(p.who) + ' · ' + esc(p.author || '') + ' · ' + inqWhen(p.at) + '</div><div class="b">' + esc(p.body) + bfLinks(p.files) + '</div></div>';
       }).join('') + '</div>'
-    + (last && mine(last) && q.other_seen ? '<div class="mute" style="text-align:right;margin-top:4px">상대 확인함 ✓</div>' : '')
+    + (last && mine(last) && q.other_seen && inqTs(q.other_seen) >= inqTs(last.at) ? '<div class="mute" style="text-align:right;margin-top:4px">상대 확인함 ✓</div>' : '')   // 내 마지막 글 이후에 상대가 열어 봤을 때만
     + (q.side !== 'view' ? '<div class="ireply"><textarea id="inq-reply" maxlength="2000" placeholder="답글 쓰기"></textarea><button class="btn pri" onclick="inqReply()">보내기</button></div>' + bfBox('iqr', [])
                          : '<div class="note" style="margin-top:10px">지회끼리 주고받는 문의입니다. 도협회는 보기만 할 수 있습니다.</div>')
     + (q.edu ? '<div class="mute" style="margin-top:8px">수어교육관리의 문의와 같은 자료입니다. 강좌·파견 관련 문의는 수어교육관리에서도 볼 수 있습니다.</div>' : '');

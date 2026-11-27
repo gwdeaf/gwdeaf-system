@@ -1338,9 +1338,23 @@ function bfLinks(files){   // 붙은 파일 보여주기 (누르면 내려받기
   return '<div class="bflist">' + files.map(function(f){
     return '<a class="bfchip" href="#" data-p="' + esc(f.path) + '" data-n="' + esc(f.name) + '" onclick="event.stopPropagation();bfOpen(this.dataset.p, this.dataset.n);return false">📎 ' + esc(f.name) + ' <span class="mute">' + bfSize(f.size) + '</span></a>'; }).join('') + '</div>';
 }
+// 누르면 먼저 화면에 보여 줌 (사진·PDF·글 파일), 필요하면 [다운로드]
 async function bfOpen(path, name){
-  var r = await sb.storage.from('board-files').createSignedUrl(path, 600, { download: name || true });
+  var r = await sb.storage.from('board-files').createSignedUrl(path, 600);
   if (r.error) { toast('파일을 열 수 없습니다: ' + r.error.message); return; }
+  var url = r.data.signedUrl, ext = (String(name || path).match(/\.([A-Za-z0-9]+)$/) || [, ''])[1].toLowerCase(), view;
+  if (/^(png|jpe?g|gif|webp|bmp|svg)$/.test(ext)) view = '<img src="' + esc(url) + '" alt="" style="max-width:100%;max-height:70vh;display:block;margin:0 auto">';
+  else if (ext === 'pdf') view = '<iframe src="' + esc(url) + '" style="width:100%;height:70vh;border:0;background:#f5f5f5"></iframe>';
+  else if (/^(txt|csv)$/.test(ext)) view = '<iframe src="' + esc(url) + '" style="width:100%;height:60vh;border:1px solid #eee;background:#fff"></iframe>';
+  else if (/^(mp4|webm|mov)$/.test(ext)) view = '<video src="' + esc(url) + '" controls style="max-width:100%;max-height:70vh;display:block;margin:0 auto"></video>';
+  else view = '<div class="empty" style="padding:40px 10px">이 파일(' + esc(ext ? ext.toUpperCase() : '파일') + ')은 화면에서 바로 볼 수 없습니다.<br>아래 <b>다운로드</b>를 눌러 열어 주세요.</div>';
+  $('modal').innerHTML = '<div class="modal" style="max-width:900px;width:94vw"><h3 style="word-break:break-all">📎 ' + esc(name || '파일') + '</h3>' + view
+    + '<div class="mfoot"><button class="btn" onclick="closeModal()">닫기</button><button class="btn pri" data-p="' + esc(path) + '" data-n="' + esc(name || '') + '" onclick="bfDown(this.dataset.p, this.dataset.n)">⬇ 다운로드</button></div></div>';
+  $('modal').classList.remove('hide');
+}
+async function bfDown(path, name){
+  var r = await sb.storage.from('board-files').createSignedUrl(path, 600, { download: name || true });
+  if (r.error) { toast('내려받을 수 없습니다: ' + r.error.message); return; }
   location.href = r.data.signedUrl;
 }
 async function saveNotice(id){

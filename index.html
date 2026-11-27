@@ -255,7 +255,7 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 #pframe{flex:1;width:100%;border:0}
 .sch{display:flex;align-items:center;gap:10px;padding:10px 2px;border-top:1px solid var(--line);cursor:pointer}
 .sch:first-child{border-top:0}
-.sch .dt{flex:none;width:92px;font-weight:800;font-size:.86rem}
+.sch .dt{flex:none;width:122px;font-weight:800;font-size:.86rem}
 .sch .dt small{display:block;color:var(--mute);font-weight:600;font-size:.75rem}
 #calbox .sch .dt{width:auto;min-width:118px;white-space:nowrap}#calbox .sch .dt small{display:inline;margin-left:4px}#calbox .sch .tx small{display:inline;margin-left:6px}#calbox .sch .tx small::before{content:'📍 '}
 #calbox a.sch{color:inherit;text-decoration:none}#calbox a.sch:hover .tx{color:var(--pri);text-decoration:underline}
@@ -1021,15 +1021,19 @@ async function loadCal(){
     var fail = (j.failed && j.failed.length) ? '<div class="note" style="margin-bottom:8px">⚠️ 일정을 불러오지 못한 캘린더: ' + j.failed.map(esc).join(', ') + '</div>' : '';
     legend = fail + legend;
     var wd = '일월화수목금토', items = (j.items || []).map(function(x){
-      var sd = String(x.start).slice(0, 10), ed = String(x.end || x.start).slice(0, 10), tm = x.allDay ? '' : String(x.start).slice(11, 16);
-      return { s: sd, e: ed, title: x.title, tm: tm, place: x.place, ci: x.ci, cal: x.cal, link: x.link };
+      var sd = String(x.start).slice(0, 10), ed = String(x.end || x.start).slice(0, 10);
+      var tm = x.allDay ? '종일' : String(x.start).slice(11, 16) + (x.end ? '~' + String(x.end).slice(11, 16) : '');   // 종일 / 10:00~12:00
+      var st = x.allDay ? 0 : Date.parse(x.start), en = x.allDay ? 0 : Date.parse(x.end || x.start);
+      return { s: sd, e: ed, title: x.title, tm: tm, allDay: !!x.allDay, st: st, en: en, place: x.place, ci: x.ci, cal: x.cal, link: x.link };
     }).filter(function(x){ return x.e >= from; });
     if (!items.length) { $('calbox').innerHTML = legend + '<div class="empty">앞으로 14일간 일정이 없습니다.' + (multi ? '' : '<br><span class="mute">연결된 캘린더: ' + esc((j.cals || []).map(function(c){ return c.name; }).join(', ')) + '</span>') + '</div>' + calFoot(''); return; }
     var shown = items.slice(0, window.matchMedia('(max-width:860px)').matches ? items.length : 8);   // 휴대폰은 2주 일정 모두
     $('calbox').innerHTML = legend + shown.map(function(x){
-      var d = new Date(x.s + 'T00:00:00'), ing = x.s <= from && x.e >= from;
+      var d = new Date(x.s + 'T00:00:00'), now = Date.now();
+      var state = x.allDay ? '' : (x.en && x.en < now ? 'done' : (x.st <= now ? 'ing' : ''));   // 시간 일정만: 지금 하는 중 / 끝남
       var tag = x.link ? 'a href="' + esc(x.link) + '" target="_blank" rel="noopener" title="구글 캘린더에서 열기"' : 'div style="cursor:default"';
-      return '<' + tag + ' class="sch"><div class="dt">' + dRange(x.s, x.e) + '<small>' + (ing ? '진행 중' : '(' + wd.charAt(d.getDay()) + ')') + (x.tm ? ' ' + x.tm : '') + '</small></div>'
+      return '<' + tag + ' class="sch"' + (state === 'done' ? ' style="opacity:.55"' : '') + '><div class="dt">' + dRange(x.s, x.e) + '<small>(' + wd.charAt(d.getDay()) + ') ' + x.tm
+        + (state === 'ing' ? ' <b style="color:#2f5bd6">진행 중</b>' : state === 'done' ? ' 끝남' : '') + '</small></div>'
         + '<div class="tx">' + (multi ? '<i style="display:inline-block;width:8px;height:8px;border-radius:50%;background:' + cidx[x.ci] + ';margin-right:5px"></i>' : '') + esc(x.title) + (x.place ? '<small>' + esc(x.place) + '</small>' : '') + '</div></' + (x.link ? 'a' : 'div') + '>';
     }).join('') + calFoot(items.length > shown.length ? '그 외 ' + (items.length - shown.length) + '건' : '');
   } catch(e) { $('calbox').innerHTML = '<div class="note">캘린더를 불러오지 못했습니다. (' + esc(e.message || e) + ')</div>'; }

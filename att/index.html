@@ -7404,7 +7404,7 @@ function punchSend(type, geo, reason, saveReason, place, geoNote) {
       punchState.reasons = res.reasons || punchState.reasons;
       var name = type === 'in' ? '출근' : type === 'out' ? '퇴근' : '출장';
       punchAlert('✅ ' + name + '이(가) 기록되었습니다 — <b>' + esc(res.time) + '</b><br><span style="font-size:0.85rem;">' + esc(res.addr || '') + '</span>', 'success');
-      renderPunchStatus(res.today);
+      renderPunchStatus(res.today); if (punchState.info && res.today) punchState.info.today = res.today;
       if (type === 'out') otAfterPunchOut(res.time);
     } else if (res && res.needReason) {
       showReasonPanel(res, geoNote);
@@ -7435,20 +7435,31 @@ function showReasonPanel(res, geoNote) {
     document.getElementById('pc-reason-txt').value = (tq.purpose || '').slice(0, 100);
   }
   // 사무실 밖(범위밖·위치없음)이면 구분(교육·통역·행사·회의·출장·기타) + 오늘 일정에서 자동 채우기
+  // 출근·퇴근 사유는 사무실 안·밖 모두 같은 버튼(시수·병가 시수·교육·통역…)으로 고름 (출장 버튼은 예전대로)
   var outside = res.type !== 'trip' && (res.flags || []).some(function(f) { return f.code === 'place' || f.code === 'nogps'; });
-  punchState.outside = outside; punchState.cat = ''; punchState.sug = res.suggest || [];
-  document.getElementById('pc-cat-wrap').style.display = outside ? '' : 'none';
-  ['pc-sel-wrap', 'pc-reason-chips'].forEach(function(id) { document.getElementById(id).style.display = outside ? 'none' : ''; });
-  if (outside) {
+  var catUi = res.type !== 'trip';
+  punchState.outside = catUi; punchState.cat = ''; punchState.sug = res.suggest || [];
+  document.getElementById('pc-cat-wrap').style.display = catUi ? '' : 'none';
+  ['pc-sel-wrap', 'pc-reason-chips'].forEach(function(id) { document.getElementById(id).style.display = catUi ? 'none' : ''; });
+  if (catUi) {
     document.getElementById('pc-cat-txt').value = '';
-    document.getElementById('pc-cats').innerHTML = (res.cats || ['교육', '통역', '행사', '회의', '출장', '기타']).map(function(c) {
-      return '<button type="button" class="hq-b pc-cat" data-c="' + esc(c) + '" onclick="pickPunchCat(\'' + esc(c) + '\')">' + ({ 교육: '🧑‍🏫', 통역: '🤟', 행사: '🎪', 회의: '🤝', 출장: '🚗', 기타: '✏️' }[c] || '') + ' ' + esc(c) + '</button>';
+    document.getElementById('pc-cat-txt').placeholder = outside ? '장소·내용 (예: ○○복지관 수어교실)' : '내용 (시수·병가 시수는 비워도 됩니다)';
+    var cats = ['시수', '병가 시수'].concat(res.cats || ['교육', '통역', '행사', '회의', '출장', '기타']);
+    document.getElementById('pc-cats').innerHTML = cats.map(function(c) {
+      return '<button type="button" class="hq-b pc-cat" data-c="' + esc(c) + '" onclick="pickPunchCat(\'' + esc(c) + '\')">' + ({ 시수: '⏱', '병가 시수': '🤒', 교육: '🧑‍🏫', 통역: '🤟', 행사: '🎪', 회의: '🤝', 출장: '🚗', 기타: '✏️' }[c] || '') + ' ' + esc(c) + '</button>';
     }).join('');
     document.getElementById('pc-sug-wrap').style.display = punchState.sug.length ? '' : 'none';
     document.getElementById('pc-sug').innerHTML = punchState.sug.map(function(x, i) {
       return '<button type="button" class="btn btn-outline pc-sugb" data-i="' + i + '" onclick="pickPunchSug(' + i + ')" style="display:block;width:100%;text-align:left;line-height:1.45;">' + esc(x.ic || '') + ' <b>' + esc(x.cat) + '</b> · ' + esc(x.text) + '</button>';
     }).join('');
     if (punchState.sug.length === 1) pickPunchSug(0);      // 오늘 일정이 하나면 바로 채움
+    // 퇴근: 출근 때 교육·통역·회의 등으로 적은 사유가 있으면 그대로 가져옴 (같은 곳에서 퇴근할 때)
+    var tin = res.type === 'out' && punchState.info && punchState.info.today && punchState.info.today.in;
+    var m = tin && /^\[(교육|통역|행사|회의|출장|기타)\]\s*(.*)$/.exec(tin.reason || '');
+    if (m && outside) {
+      pickPunchCat(m[1]); document.getElementById('pc-cat-txt').value = m[2];
+      document.getElementById('pc-reason-why').innerHTML += '<br><b style="color:#2f5bd6">↪ 출근 사유를 그대로 가져왔어요.</b> 다르면 고쳐서 기록하세요.';
+    }
   }
   document.getElementById('pc-reason').style.display = '';
   onPunchReasonSel();
@@ -7483,11 +7494,11 @@ function punchCancel() { hideReasonPanel(); setPunchBusy(false); punchState.pend
 function punchConfirmReason() {
   var p = punchState.pending; if (!p) return;
   var v = document.getElementById('pc-reason-sel').value, reason = v, isNew = false;
-  if (punchState.outside) {     // 사무실 밖: [구분] 내용
-    var det = (document.getElementById('pc-cat-txt').value || '').trim();
-    if (!punchState.cat) { punchAlert('구분(교육·통역·행사·회의·출장·기타)을 골라 주세요.', 'warn'); return; }
-    if (!det) { punchAlert('장소나 내용을 적어 주세요. (오늘 일정을 누르면 자동으로 채워져요)', 'warn'); return; }
-    reason = ('[' + punchState.cat + '] ' + det).slice(0, 100); v = '';
+  if (punchState.outside) {     // 출근·퇴근: [구분] 내용 (시수·병가 시수는 내용 없이도 됨)
+    var det = (document.getElementById('pc-cat-txt').value || '').trim(), simple = punchState.cat === '시수' || punchState.cat === '병가 시수';
+    if (!punchState.cat) { punchAlert('구분(시수·병가 시수·교육·통역·행사·회의·출장·기타)을 골라 주세요.', 'warn'); return; }
+    if (!det && !simple) { punchAlert('장소나 내용을 적어 주세요. (오늘 일정을 누르면 자동으로 채워져요)', 'warn'); return; }
+    reason = (det ? '[' + punchState.cat + '] ' + det : punchState.cat).slice(0, 100); v = '';
   } else if (v === '__new') { reason = (document.getElementById('pc-reason-txt').value || '').trim(); isNew = true; }
   if (!reason) { punchAlert('사유를 선택하거나 입력해 주세요.', 'warn'); return; }
   var save = isNew && document.getElementById('pc-reason-save').checked;

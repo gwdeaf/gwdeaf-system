@@ -654,7 +654,8 @@ function loadingCard(){ return `<div class="card empty" style="margin-top:12px">
 function openAdmin(){ if(!CAN_MANAGE){ toast("차량 관리 권한이 없습니다"); return; } view="admin"; adminPin="google"; adminDraft=null; adminRecs=null; adminMaint=null; adminTab="log"; adminCar=""; adminEditRow=null; adminEditMaint=null; adminOn={}; adminPrefill=null; adminGo("log"); }
 function adminView(){
   if(!adminPin) return adminGate();
-  if(!adminDraft) adminDraft = ALLCFG ? {cars:ALLCFG.cars.map(c=>({...c})), drivers:ALLCFG.drivers.map(x=>({...x}))} : {cars:CARS.map(c=>({n:c.n,p:c.p||"",d:c.d||"",g:c.g||10,u:true})), drivers:DRIVERS.map(n=>({n,u:true}))};
+  if(!adminDraft) adminDraft = ALLCFG ? {cars:ALLCFG.cars.map(c=>({...c})), drivers:ALLCFG.drivers.map(x=>({...x}))} : {cars:CARS.map(c=>({n:c.n,p:c.p||"",d:c.d||"",g:c.g||10,u:true})), drivers:DRIVERS.filter(n=>!STAFF_DRV.includes(String(n).trim())).map(n=>({n,u:true}))};
+  if(adminDraft) adminDraft.drivers=adminDraft.drivers.filter(x=>!STAFF_DRV.includes(String(x.n||"").trim()));   // 직원은 '추가 운전자'에 넣지 않음
   const tabs=[["log","📋 운행일지"],["print","🖨 일지 인쇄"],["maint","🔧 정비기록"],["cfg","🚗 차량·운전자"],["faq","❓ 도움말"]];
   const body = adminTab==="log" ? adminLogView() : adminTab==="print" ? adminPrintView() : adminTab==="maint" ? adminMaintView() : adminTab==="faq" ? adminFaqView() : adminCfgView();
   $("#app").innerHTML = `${EMBED?"":`<div class="topbar"><button class="back" onclick="location.href='/'">← 업무 홈</button></div>`}
@@ -1141,7 +1142,7 @@ async function adminCfgLoad(){
   if(view==="admin" && adminTab==="cfg") render();
 }
 function adminCfgView(){
-  if(!STAFF_READY){ adminCfgLoad(); return loadingCard(); }
+  if(!STAFF_READY || (!ALLCFG && !LIST_ERR)){ adminCfgLoad(); return loadingCard(); }   // 저장된 목록을 아직 못 받았으면 먼저 받아 옴
   window.CAR_VER = "2026-11-21c";
   const cars=adminDraft.cars, drivers=adminDraft.drivers;
   return `<div class="card cfgcard">
@@ -1158,7 +1159,7 @@ function adminCfgView(){
   ${LIST_ERR?`<div class="err" style="margin-top:6px">차량·운전자 목록을 불러오지 못했습니다: ${esc(LIST_ERR)}</div>`:''}
   ${STAFF_ERR?`<div class="err" style="margin-top:6px">직원 명단을 불러오지 못했습니다. 27번 SQL을 실행했는지 확인해 주세요. (${esc(STAFF_ERR)})</div>`:''}
   <div class="sechd"><b>➕ 추가 운전자</b><button class="addbtn" onclick="adminDraft.drivers.push({n:'',u:true});render()">+ 운전자 추가</button></div>
-  <div class="lbl">직원 명단에 없는 사람(외부 기사, 자원봉사자 등)만 추가합니다. <span style="opacity:.5">(화면 판: 11-21c)</span></div>
+  <div class="lbl">직원 명단에 없는 사람(외부 기사, 자원봉사자 등)만 추가합니다. <span style="opacity:.5">(화면 판: 11-27)</span></div>
   <div class="drvgrid">${drivers.map((x,i)=>`<div class="drvcell"><input value="${esc(x.n)}" placeholder="이름" oninput="adminDraft.drivers[${i}].n=this.value"><label class="useck"><input type="checkbox" ${x.u!==false?'checked':''} onchange="adminDraft.drivers[${i}].u=this.checked"> 사용</label><button onclick="adminDel('drivers',${i})">삭제</button></div>`).join("")}</div>
   </div>`;
 }
@@ -1194,11 +1195,11 @@ async function adminSave(){
   const drivers=adminDraft.drivers.map(x=>({n:(x.n||"").trim(),u:x.u!==false})).filter(x=>x.n);
   if(!cars.some(c=>c.u)) return err.textContent="사용 중인 차량을 한 대 이상 체크해 주세요.";
   if(!STAFF_DRV.length && !drivers.some(x=>x.u)) return err.textContent="운전자가 없습니다. 직원·권한 관리에 직원을 등록하거나 추가 운전자를 넣어 주세요.";
-  const dup=drivers.find(x=>STAFF_DRV.includes(x.n)); if(dup) return err.textContent=`'${dup.n}'은(는) 이미 직원 명단에 있어 자동으로 운전자입니다. 추가 운전자에서 지워 주세요.`;
+  for(let i=drivers.length-1;i>=0;i--) if(STAFF_DRV.includes(drivers[i].n)) drivers.splice(i,1);   // 직원 이름은 자동 운전자이므로 저장하지 않음
   try{
     const j=await post({action:"save_cfg", pin:adminPin, cars, drivers});
     if(!j.ok) throw new Error(j.error);
-    adminDraft=null; await loadResv(); toast("저장되었습니다"); render();
+    adminDraft=null; ALLCFG={cars, drivers}; await loadResv(); toast("저장되었습니다"); render();
   }catch(e){ err.textContent=e.message||"저장에 실패했습니다. 인터넷 연결을 확인해 주세요."; }
 }
 

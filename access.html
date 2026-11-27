@@ -791,7 +791,7 @@ function driveView(){
       ${sec(CAL_AUTO?3:2,"👀 함께 볼 캘린더 (보기만)", null,
         "홈 화면 일정에 함께 보여 줄 캘린더입니다. (예: 회의실, 교육 일정) <b>이 지회 홈 화면에만</b> 보입니다.",
         `${mine.map(x=>`<div class="dx"><label><input type="checkbox" ${x.hidden?"":"checked"} onchange="calShow(${x.id},${c.id},this.checked)"> ${esc(x.name)}</label>${x.can_edit?`<button class="btn sub" onclick="calExtraDel(${x.id})">삭제</button>`:""}</div>`).join("")||'<div class="muted" style="margin:6px 0">추가한 캘린더가 없습니다.</div>'}
-        ${glob.length?`<div class="muted" style="margin-top:8px">🌐 도협회가 추가한 <b>전 지회 공용</b> 캘린더 (체크를 끄면 이 지회 홈에서만 숨김)</div>${glob.map(x=>`<div class="dx"><label><input type="checkbox" ${x.hidden?"":"checked"} onchange="calShow(${x.id},${c.id},this.checked)"> ${esc(x.name)} <span class="badge">전 지회 공용</span></label></div>`).join("")}`:""}
+        ${glob.length?`<div class="muted" style="margin-top:8px">🌐 도협회가 정한 <b>전 지회 공용</b> 캘린더 (모든 지회 홈에 늘 보입니다)</div>${glob.map(x=>`<div class="dx"><span>🔒 ${esc(x.name)} <span class="badge">전 지회 공용</span></span></div>`).join("")}`:""}
         <div class="drow"><input id="d_x${c.id}" placeholder="캘린더 ID"><input id="d_xn${c.id}" placeholder="표시 이름 (예: 회의실)" style="max-width:200px"><button class="btn" onclick="calExtraAdd(${c.id})">추가</button></div>`,
         `캘린더 공유에 서비스 계정을 <b>모든 일정 세부정보 보기</b>로 추가 → 캘린더 ID 복사`)}
       ${sec(CAL_AUTO?4:3,"🤟 통역일지 구글 시트", !!c.interp_sheet_id,

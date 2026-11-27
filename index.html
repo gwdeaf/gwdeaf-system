@@ -69,6 +69,19 @@ main{padding:28px 32px 48px;max-width:1120px;width:100%}
 .mute{color:var(--mute);font-size:.8rem;font-weight:600}
 .card{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:20px;box-shadow:0 1px 3px rgba(31,41,55,.04)}
 .ctitle{display:flex;align-items:center;justify-content:space-between;margin:0 0 14px;font-size:1.02rem;font-weight:800}
+/* 컴퓨터 홈: 화면 높이에 맞춰 고정 (페이지는 스크롤 안 됨, 카드 안에서만 스크롤) — 일정 카드가 왼쪽 아래 끝과 같은 높이 */
+@media (min-width:861px) and (min-height:620px){
+  .content:has(> #view-home:not(.hide)){height:100vh;min-height:0;overflow:hidden}
+  .content > #view-home:not(.hide){flex:1;min-height:0;display:flex;flex-direction:column;padding-bottom:22px}
+  #view-home:not(.hide) > .grid{flex:1;min-height:0;align-items:stretch}
+  #view-home:not(.hide) .col{min-height:0;height:100%}
+  #view-home:not(.hide) .col > .card:not(.hide){display:flex;flex-direction:column;min-height:0}
+  #view-home:not(.hide) .col > .card > .ctitle{flex:none}
+  #view-home:not(.hide) .col > .card > div:last-child{min-height:0;overflow-y:auto;overscroll-behavior:contain}
+  #card-notice,#card-board,#newscard{flex:1 1 0}
+  #todaycard,#card-att{flex:0 1 auto;max-height:34vh}
+  #calcard{flex:1 1 0;min-height:180px}
+}
 .btn{border:1px solid var(--line);background:#fff;border-radius:9px;padding:7px 13px;font-size:.84rem;font-weight:700;color:#374151}
 .btn:hover{background:#f6f8fc}
 .btn.pri{background:var(--pri);border-color:var(--pri);color:#fff}
@@ -615,6 +628,8 @@ async function start(){
   }
   ME = w; render(); show('app');
   loadNotices(); loadAtt(); loadBoard(); loadQuick(); if (w.is_hq || w.role === 'admin') loadNews(); inqBadge(); setInterval(function(){ if (!document.hidden) inqBadge(); }, 120000);
+  setInterval(function(){ if (!document.hidden) autoRefresh(); }, 300000);   // 화면을 켜 둔 채로 있어도 5분마다 새 글 확인
+  document.addEventListener('visibilitychange', function(){ if (!document.hidden && Date.now() - AUTO_AT > 60000) autoRefresh(); });   // 다른 창에 있다가 돌아오면 바로 확인
   fromHash();
 }
 
@@ -1379,6 +1394,19 @@ async function delNotice(id){
   toast('삭제했습니다.'); loadNotices();
 }
 
+/* ── 자동 새로고침: 보고 있는 화면(홈 공지·오늘의 현황·일정 / 문의함)만 조용히 다시 불러옴 ── */
+var AUTO_AT = Date.now();
+function autoRefresh(){
+  AUTO_AT = Date.now();
+  try {
+    if (!$('view-home').classList.contains('hide')) { if (!document.querySelector('#notices .ntb:not(.hide)') && $('modal').classList.contains('hide')) loadNotices(); loadBoard(); if (typeof loadCal === 'function') loadCal(); }
+    if ($('view-inq') && !$('view-inq').classList.contains('hide')) {
+      loadInqQuiet();
+      var box = $('inq-reply');   // 답글을 쓰는 중이면 글이 지워지지 않게 대화는 그대로 둠
+      if (INQ_CUR && (!box || !box.value.trim()) && !(BF.iqr || []).length) sb.rpc('inq_get', { p_key: INQ_CUR }).then(function(r){ if (!r.error && r.data && INQ_CUR === r.data.key) inqThread(r.data); });
+    }
+  } catch (e) {}
+}
 /* ── 문의함: 지회 → 도협회, 지회 → 지회 (도협회는 지회 간 문의도 봄) ── */
 var INQ = [], INQ_CUR = null, INQ_T = null;
 async function inqBadge(){
